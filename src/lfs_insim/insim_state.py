@@ -82,6 +82,13 @@ def get_socket_udp() -> Optional[socket.socket]:
     return _socket_udp
 
 
+def reset_sockets() -> None:
+    """Limpia las referencias a los sockets tras cerrarlos."""
+    global _socket_tcp, _socket_udp
+    _socket_tcp = None
+    _socket_udp = None
+
+
 # =============================================================================
 # CONFIGURACIÓN DINÁMICA
 # =============================================================================

@@ -42,10 +42,14 @@ class InSimApp(InSimClient, PacketSenderMixin):
         # Si no se pasa nombre, usamos el de la clase
         name = name or self.__class__.__name__
         super().__init__(config=config, name=name)
-        
+
         self._loader = _loader
         self._insim_path = _insim_path
         self._module_instances: Dict[str, 'InSimApp'] = {}
+
+        # Copiar la lista de dependencias para que _load_metadata() no mute
+        # el atributo de clase compartido entre todos los módulos.
+        self.dependencies = list(self.__class__.dependencies)
         
         # 1. Cargar metadatos del archivo insim.json si existe
         if self._insim_path:

@@ -56,14 +56,18 @@ def generate_insim_app_stub() -> str:
 
     # 1. Stubs para RECEPCIÓN (on_ISP_*)
     body.append("    # --- Handlers de Recepción ---")
-    for pkt_name in RECEIVE:
+    for pkt_name, pkt_class in vars(RECEIVE).items():
+        if pkt_name.startswith('_'):
+            continue
         body.append(f"    def on_{pkt_name}(self, packet: {pkt_name}) -> None: ...")
-    
+
     body.append("")
 
     # 2. Stubs para ENVÍO (send_ISP_*)
     body.append("    # --- Métodos Dinámicos de Envío ---")
-    for pkt_name, pkt_class in SEND.items():
+    for pkt_name, pkt_class in vars(SEND).items():
+        if pkt_name.startswith('_'):
+            continue
         if not is_dataclass(pkt_class):
             continue
             
@@ -90,20 +94,20 @@ def generate_insim_app_stub() -> str:
 
 def main():
     """Punto de entrada para la generación."""
-    print("🚀 Generando archivos de interfaz (stubs)...")
-    
+    print("Generando archivos de interfaz (stubs)...")
+
     try:
         stub_content = generate_insim_app_stub()
         output_path = Path(__file__).parent / "insim_app.pyi"
-        
+
         with open(output_path, "w", encoding="utf-8") as f:
             f.write(stub_content)
-            
-        print(f"✅ ¡Éxito! Stub generado en: {output_path}")
-        print("💡 Reinicia tu IDE si no ves los cambios en el autocompletado.")
-        
+
+        print(f"Stub generado en: {output_path}")
+        print("Reinicia tu IDE si no ves los cambios en el autocompletado.")
+
     except Exception as e:
-        print(f"❌ Error generando stubs: {e}")
+        print(f"Error generando stubs: {e}")
         sys.exit(1)
 
 if __name__ == "__main__":

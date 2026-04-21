@@ -26,8 +26,7 @@ class LFSConfigManager:
         Nota: LFS usa formato 'Clave Valor'.
         """
         config = {}
-        if not self.validate_path():
-            return config
+        self.validate_path()  # lanza InSimConfigurationError si no existe
 
         try:
             with open(self.cfg_path, 'r', encoding='latin-1') as f:
@@ -55,9 +54,8 @@ class LFSConfigManager:
             updates: Dict con { "Clave": "NuevoValor" }
             backup: Si es True, crea cfg.txt.bak antes de guardar.
         """
-        if not self.validate_path():
-            return False
-            
+        self.validate_path()  # lanza InSimConfigurationError si no existe
+
         if backup:
             backup_path = self.cfg_path + ".bak"
             try:
