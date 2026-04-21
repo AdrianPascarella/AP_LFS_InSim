@@ -55,28 +55,31 @@ CLI (cli.py)
   "name": "my_module",
   "version": "1.0.0",
   "description": "...",
-  "entry": "app.py",
-  "class": "MyClass",
+  "author": "...",
+  "entry_point": "app.py",
   "insim_dependencies": {
     "users_management": ">=1.0.0"
-  }
+  },
+  "python_dependencies": []
 }
 ```
+
+The loader reads `entry_point` (not `entry`) to find the file, then looks for a class whose name matches the module's name in CamelCase (e.g. `ai_control` → `AiControl`). Version constraints in `insim_dependencies` are recorded but not yet enforced.
 
 ### Packet lifecycle
 
 1. Socket receives raw bytes → `insim_packet_io.py` buffers/assembles full packets (TCP) or reads frames (UDP)
 2. `insim_packet_decoders.py` maps header byte → dataclass instance
 3. Client dispatches `on_ISP_<TYPE>(packet)` sequentially to itself, then each module
-4. Lifecycle hooks: `on_connect()`, `on_tick()` (every 0.1 s), `on_disconnect()`
+4. Lifecycle hooks: `on_connect()`, `on_tick()` (every `INSIM_CONFIG["interval"]` ms, default 100 ms), `on_disconnect()`
 
 `on_ISP_*` handlers are called from the IO receiver thread — avoid blocking; heavy work should be deferred.
 
 ### Sending packets
 
 ```python
-self.send(ISP_MSL(Msg="hello"))          # explicit
-self.send_ISP_MSL(Msg="hello")           # magic via PacketSenderMixin.__getattr__
+self.send_ISP_MSL(Msg="hello")           # preferred: magic via PacketSenderMixin.__getattr__
+self.send(ISP_MSL(Msg="hello"))          # explicit: only when building the packet separately
 ```
 
 `send_packet()` is thread-safe (uses a lock internally).
@@ -99,7 +102,12 @@ class MyInSim(InSimApp):
         pass
 ```
 
-For complex modules, use mixin composition (as done in `ai_control`): split concerns into `_CommandsMixin`, `_PhysicsMixin`, etc., each in its own file, and combine in the main `app.py` class.
+For complex modules, use mixin composition (as done in `ai_control`): split concerns into `_CommandsMixin`, `_PhysicsMixin`, etc., each in its own file, and combine them in the main class via MRO — `InSimApp` appears last so mixins get `self.send_*` via inheritance:
+
+```python
+class AIControl(_CommandsMixin, _PhysicsMixin, _NavigationMixin, _TrafficMixin, InSimApp):
+    pass
+```
 
 ### Commands (in-game)
 
@@ -117,17 +125,19 @@ def on_ISP_MSO(self, packet):
             return
 ```
 
-Use `strip_lfs_colors(text)` from `utils.py` to remove LFS color codes (`^0`–`^9`, `^L`, `^h`) from message strings.
+Use `strip_lfs_colors(text)` from `utils.py` to remove LFS color codes (`^0`–`^9`, `^L`, `^h`) from message strings. For sending colored messages, use constants from `TextColors` (e.g. `TextColors.red`, `TextColors.yellow`). For multiple commands with shared whitelist logic, use `CMDManager` instead of chaining `separate_command_args` calls manually.
 
 ## Key conventions
 
 - **Binary protocol**: LFS packets are little-endian, strings are latin-1 null-terminated. `Size` in packet header = total bytes / 4.
-- **Packet definitions**: dataclasses in `src/lfs_insim/packets/insim.py`; sub-structures in `packets/structures.py`; OutSim/OutGauge in `packets/outsim.py`.
-- **Enums**: all protocol flags and constants live in `src/lfs_insim/insim_enums.py` (ISF, ISP, TINY, PTYPE, OSO, etc.).
-- **Global state**: sockets and master reference are singletons in `src/lfs_insim/insim_state.py` — do not instantiate these directly.
+- **Packet definitions**: dataclasses in `src/lfs_insim/packets/insim.py`; sub-structures in `packets/structures.py`; OutSim/OutGauge in `packets/outsim.py`. Each field carries `metadata={'fmt': '...'}` for struct serialization.
+- **Enums**: all protocol flags and constants live in `src/lfs_insim/insim_enums.py` (ISF, ISP, TINY, SMALL, PTYPE, OSO, etc.).
+- **Global state**: sockets and master reference are singletons in `src/lfs_insim/insim_state.py` — only the first setter wins; do not instantiate these directly.
 - **Config**: `config/settings.py` holds `INSIM_CONFIG` (TCP host/port, prefix, interval) and `OUT_CONFIG` (OutSim options); modules read settings via `self.config.get('key', default)`.
 - **Type stubs**: `.pyi` files under `src/lfs_insim/` are auto-generated for IDE autocomplete only — do not edit manually.
 - **PID control**: `PIDController` in `utils.py` has anti-windup and anti-derivative-kick; output is clamped to [-1.0, 1.0] for pedal/steering use.
+- **Exceptions**: raise from the hierarchy in `exceptions.py` — `InSimError` → `InSimConnectionError`, `InSimPacketError`, `InSimModuleError`, `InSimConfigurationError`, `InSimCommandError`.
+- **Requesting initial state**: send `ISP_TINY(SubT=TINY.NCN)` to request all connections and `ISP_TINY(SubT=TINY.NPL)` to request all players during `on_connect()`.
 
 ## Existing InSims
 

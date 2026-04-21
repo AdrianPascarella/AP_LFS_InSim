@@ -113,8 +113,8 @@ class MiModulo(InSimApp):
 
     def on_connect(self):
         # Pedir estado inicial
-        self.send(ISP_TINY(SubT=TINY.NCN))   # todas las conexiones
-        self.send(ISP_TINY(SubT=TINY.NPL))   # todos los jugadores
+        self.send_ISP_TINY(SubT=TINY.NCN)   # todas las conexiones
+        self.send_ISP_TINY(SubT=TINY.NPL)   # todos los jugadores
 
         # Acceder a una dependencia
         self.um = self.get_insim("users_management")
@@ -122,7 +122,7 @@ class MiModulo(InSimApp):
     def on_ISP_MSO(self, packet: ISP_MSO):
         # Mensaje de chat recibido
         if packet.Msg.startswith("!hola"):
-            self.send(ISP_MSL(Msg="^2Hola mundo!"))
+            self.send_ISP_MSL(Msg="^2Hola mundo!")
 
     def on_tick(self):
         pass   # llamado cada 'interval' ms
@@ -161,11 +161,12 @@ CLI (cli.py)
 ## Enviar paquetes
 
 ```python
-# Forma explícita
-self.send(ISP_MSL(Msg="hola"))
-
-# Forma abreviada (via PacketSenderMixin)
+# Forma recomendada (via PacketSenderMixin)
 self.send_ISP_MSL(Msg="hola")
+
+# Forma explícita (solo si necesitas construir el paquete por separado)
+pkt = ISP_MSL(Msg="hola")
+self.send(pkt)
 ```
 
 ---
