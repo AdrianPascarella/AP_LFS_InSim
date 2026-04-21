@@ -48,10 +48,10 @@ def cmd_run(args: argparse.Namespace) -> int:
     try:
         logger.info(f"Cargando InSim: {args.name}")
         insim = loader.load(args.name)
-        
+
         logger.info(f"Iniciando {insim.name} v{insim.version}")
-        insim.start()
-        
+        insim.start()  # start() llama a stop() en su propio finally
+
     except FileNotFoundError as e:
         logger.error(str(e))
         logger.info(f"InSims disponibles: {', '.join(i['name'] for i in loader.list_available())}")
@@ -62,10 +62,7 @@ def cmd_run(args: argparse.Namespace) -> int:
     except Exception as e:
         logger.error(f"Error: {e}", exc_info=args.verbose)
         return 1
-    finally:
-        if 'insim' in locals():
-            insim.stop()
-    
+
     return 0
 
 
@@ -169,6 +166,7 @@ Descripción de tu InSim aquí.
 import logging
 
 from lfs_insim import InSimApp
+from lfs_insim.insim_packet_class import ISP_MSL
 
 logger = logging.getLogger(__name__)
 
@@ -176,19 +174,19 @@ logger = logging.getLogger(__name__)
 class App(InSimApp):
     """
     Tu InSim principal.
-    
+
     Para depender de otros InSims, añádelos a 'dependencies':
         dependencies = ["player_tracker>=1.0.0"]
     """
-    
+
     # Dependencias de otros InSims (opcional)
     dependencies = []
-    
+
     def on_connect(self):
         """Llamado cuando se conecta a LFS."""
         logger.info(f"{{self.name}} conectado!")
-        self.send_msg("^2{args.name} ^7conectado")
-    
+        self.send(ISP_MSL(Msg="^2{args.name} ^7conectado"))
+
     def on_disconnect(self):
         """Llamado cuando se desconecta."""
         logger.info(f"{{self.name}} desconectado")
