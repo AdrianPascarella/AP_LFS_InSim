@@ -176,8 +176,9 @@ class {class_name}(InSimApp):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.cmd_prefix = self.config.get("prefix", "!")
-        self.cmd_base = "{args.name}"
+        self.cmd_prefix: str = self.config.get("prefix", "!")
+        self.cmd_base: str = "{args.name}"
+        self.cmds: CMDManager
         self.logger.info(f"Modulo {{self.name}} inicializado.")
 
     def set_isi_packet(self):

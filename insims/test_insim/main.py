@@ -8,8 +8,9 @@ class TestInsim(InSimApp):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.cmd_prefix = self.config.get("prefix", "!")
-        self.cmd_base = "test_insim"
+        self.cmd_prefix: str = self.config.get("prefix", "!")
+        self.cmd_base: str = "test_insim"
+        self.cmds: CMDManager
         self.logger.info(f"Modulo {self.name} inicializado.")
 
     def set_isi_packet(self):
