@@ -1,7 +1,8 @@
 """
 _cmds_request.py - Comandos que envian un TINY/SMALL de peticion
 y muestran la respuesta cuando LFS la devuelve.
-Cubre: VER, STA, ISM, RST, AXI, NLP, NCI, MAL, PLH, IPB, RIP, PING.
+Cubre: VER, STA, ISM, RST, AXI, NLP, NCI, MAL, PLH, IPB, RIP, PING,
+       REO, CPP, AII.
 """
 from lfs_insim.packets import *
 from lfs_insim.utils import CMDManager, TextColors as c
@@ -29,6 +30,9 @@ class _RequestMixin:
          .add_cmd("ipb",  "Solicita ISP_IPB (IPs baneadas)",       None, self._cmd_ipb,  is_mso_required=False)
          .add_cmd("rip",  "Solicita ISP_RIP (info replay)",        None, self._cmd_rip,  is_mso_required=False)
          .add_cmd("ping", "Envia TINY_PING y espera TINY_REPLY",   None, self._cmd_ping, is_mso_required=False)
+         .add_cmd("reo",  "Solicita ISP_REO (orden de parrilla)",  None, self._cmd_reo,  is_mso_required=False)
+         .add_cmd("cpp",  "Solicita ISP_CPP (posicion camara)",    None, self._cmd_cpp,  is_mso_required=False)
+         .add_cmd("aii",  "Solicita ISP_AII (info IA local)",      None, self._cmd_aii,  is_mso_required=False)
         )
 
     # --- Comandos ---
@@ -81,6 +85,18 @@ class _RequestMixin:
         self.send_ISP_TINY(ReqI=1, SubT=TINY.PING)
         self.send_ISP_MSL(Msg=f"{c.YELLOW}[TINY_PING] Enviado, esperando TINY_REPLY...")
 
+    def _cmd_reo(self):
+        self.send_ISP_TINY(ReqI=1, SubT=TINY.REO)
+        self.send_ISP_MSL(Msg=f"{c.YELLOW}[REO] Peticion enviada...")
+
+    def _cmd_cpp(self):
+        self.send_ISP_TINY(ReqI=1, SubT=TINY.SCP)
+        self.send_ISP_MSL(Msg=f"{c.YELLOW}[CPP] Peticion posicion camara enviada...")
+
+    def _cmd_aii(self):
+        self.send_ISP_SMALL(ReqI=1, SubT=SMALL.AII, UVal=0)
+        self.send_ISP_MSL(Msg=f"{c.YELLOW}[AII] Peticion info IA local enviada...")
+
     # --- Handlers de respuesta ---
 
     def on_ISP_VER(self, packet: ISP_VER):
@@ -122,6 +138,16 @@ class _RequestMixin:
     def on_ISP_RIP(self, packet: ISP_RIP):
         playing = "reproduciendo" if packet.MPR else "no replay"
         self.send_ISP_MSL(Msg=f"{c.GREEN}[RIP] {playing} | '{packet.RName}' | Error={int(packet.Error)}")
+
+    def on_ISP_REO(self, packet: ISP_REO):
+        plids = [p for p in packet.PLID[:packet.NumP] if p != 0]
+        self.send_ISP_MSL(Msg=f"{c.GREEN}[REO] {packet.NumP} coches | PLIDs: {plids}")
+
+    def on_ISP_CPP(self, packet: ISP_CPP):
+        self.send_ISP_MSL(Msg=f"{c.GREEN}[CPP] Cam={int(packet.InGameCam)} PLID={packet.ViewPLID} FOV={packet.FOV:.1f}")
+
+    def on_ISP_AII(self, packet: ISP_AII):
+        self.send_ISP_MSL(Msg=f"{c.GREEN}[AII] PLID={packet.PLID} RPM={packet.RPM:.0f} Gear={int(packet.Gear)}")
 
     def on_ISP_TINY(self, packet: ISP_TINY):
         if packet.SubT == TINY.REPLY:
