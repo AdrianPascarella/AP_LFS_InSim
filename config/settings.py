@@ -21,6 +21,16 @@ class _InsimRotatingHandler(logging.handlers.RotatingFileHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.namer = self._namer
+
+
+class _HighFreqFilter(logging.Filter):
+    """Descarta registros generados por paquetes de alta frecuencia (MCI, NLP, OutSim)."""
+
+    _PATTERNS = frozenset({'ISP_MCI', 'ISP_NLP', 'MCI PLID', 'OutSim', 'OutGauge'})
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        msg = record.getMessage()
+        return not any(p in msg for p in self._PATTERNS)
 from lfs_insim.insim_enums import OSO, ISF
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -85,6 +95,11 @@ OUT_CONFIG: Dict[str, Any] = {
 LOGGING_CONFIG = {
     'version': 1,
     'disable_existing_loggers': False,
+    'filters': {
+        'no_high_freq': {
+            '()': 'config.settings._HighFreqFilter',
+        },
+    },
     'formatters': {
         'standard': {
             'format': '[%(asctime)s] [%(levelname)s] [%(name)s]: %(message)s',
@@ -99,6 +114,7 @@ LOGGING_CONFIG = {
             'class': 'logging.StreamHandler',
             'formatter': 'standard',
             'level': 'INFO',
+            'filters': ['no_high_freq'],
         },
         'file': {
             'class': 'config.settings._InsimRotatingHandler',
@@ -107,7 +123,8 @@ LOGGING_CONFIG = {
             'backupCount': 3,
             'formatter': 'detailed',
             'level': 'DEBUG',
-            'encoding': 'utf-8'
+            'encoding': 'utf-8',
+            'filters': ['no_high_freq'],
         },
     },
     'root': {
