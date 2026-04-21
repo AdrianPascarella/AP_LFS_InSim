@@ -202,8 +202,9 @@ class CMDManager(PacketSenderMixin):
         self._cmds: dict[str, Command] = {}
         self._prefix: str = self.cmd_prefix + self.cmd_base
     
-    def submit(self):
+    def submit(self) -> 'CMDManager':
         self.send(ISP_MSL(Msg=f'{TextColors.YELLOW}Usa "{TextColors.WHITE}{self._prefix}{TextColors.YELLOW}" para ver los comandos.'))
+        return self
     
     def add_cmd(self, name: str, description: str, args: tuple[tuple[str,Any]]|str|None, funct: Callable, is_mso_required: bool = False) -> 'CMDManager':
         """
