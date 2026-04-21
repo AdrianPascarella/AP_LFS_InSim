@@ -3,8 +3,12 @@ from lfs_insim.packets import *
 from lfs_insim.insim_enums import ISF, PTYPE
 from lfs_insim.utils import CMDManager, separate_command_args, TextColors as c
 
+from ._cmds_request import _RequestMixin
+from ._cmds_send import _SendMixin
+from ._handlers_event import _EventMixin
 
-class TestInsim(InSimApp):
+
+class TestInsim(_RequestMixin, _SendMixin, _EventMixin, InSimApp):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -17,34 +21,43 @@ class TestInsim(InSimApp):
         # PLID -> {"ucid": int, "car": str, "plate": str, "is_ai": bool, "ai_name": str}
         self.players: dict[int, dict] = {}
 
+        self._init_event_state()
         self.logger.info(f"Modulo {self.name} inicializado.")
 
     def set_isi_packet(self):
         super().set_isi_packet()
-        self.isi.Flags |= ISF.LOCAL | ISF.MCI
+        self.isi.Flags |= (
+            ISF.LOCAL    |  # eventos de invitado/SP
+            ISF.NLP      |  # paquetes NLP (nodo y vuelta)
+            ISF.MCI      |  # paquetes MCI (telemetria detallada)
+            ISF.CON      |  # colisiones coche-coche
+            ISF.HLV      |  # infracciones HLVC
+            ISF.AXM_LOAD |  # AXM al cargar layout
+            ISF.AXM_EDIT    # AXM al editar objetos
+        )
 
     def on_connect(self):
         self.send_ISP_TINY(ReqI=1, SubT=TINY.NCN)
         self.send_ISP_TINY(ReqI=1, SubT=TINY.NPL)
 
-        self.cmds = (
-            CMDManager(self.cmd_prefix, self.cmd_base)
-            .add_cmd(
-                name="users",
-                description="Lista usuarios conectados",
-                args=None,
-                funct=self._cmd_users,
-                is_mso_required=False,
-            )
-            .add_cmd(
-                name="players",
-                description="Lista coches en pista",
-                args=None,
-                funct=self._cmd_players,
-                is_mso_required=False,
-            )
-            .submit()
+        cmds = CMDManager(self.cmd_prefix, self.cmd_base)
+
+        # comandos base: estado interno
+        (cmds
+         .add_cmd("users",   "Lista usuarios conectados",  None, self._cmd_users,   is_mso_required=False)
+         .add_cmd("players", "Lista coches en pista",      None, self._cmd_players, is_mso_required=False)
         )
+
+        # comandos de peticion request/response
+        self._reg_request_cmds(cmds)
+
+        # comandos de instruccion (enviar paquetes a LFS)
+        self._reg_send_cmds(cmds)
+
+        # comandos de eventos (muestra ultimo evento recibido)
+        self._reg_event_cmds(cmds)
+
+        self.cmds = cmds.submit()
         self.send_ISP_MSL(Msg=f"{c.GREEN}{self.name} {c.WHITE}conectado")
 
     # --- Conexiones ---
@@ -88,11 +101,9 @@ class TestInsim(InSimApp):
     def on_ISP_MCI(self, packet: ISP_MCI):
         for car in packet.Info:
             if car.PLID in self.players:
-                self.logger.debug(
-                    f"MCI PLID {car.PLID}: speed={car.Speed} node={car.Node} lap={car.Lap}"
-                )
+                self.logger.debug(f"MCI PLID {car.PLID}: speed={car.Speed} node={car.Node} lap={car.Lap}")
 
-    # --- Comandos ---
+    # --- Comandos base ---
 
     def on_ISP_MSO(self, packet: ISP_MSO):
         cmd, args = separate_command_args(self.cmd_prefix, packet)
