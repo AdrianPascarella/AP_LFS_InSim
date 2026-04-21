@@ -4,10 +4,13 @@ This module provides a `main()` entrypoint that runs the stub
 generator and the README insims updater so developers can run a
 single command to refresh all generated files.
 """
+import logging
 from pathlib import Path
 import runpy
 import importlib
 import sys
+
+logger = logging.getLogger(__name__)
 
 
 def main() -> None:
@@ -18,7 +21,7 @@ def main() -> None:
         gen = importlib.import_module('lfs_insim.generate_stubs')
         gen.main()
     except Exception as e:
-        print(f"Error running generate_stubs: {e}")
+        logger.error(f"Error running generate_stubs: {e}", exc_info=True)
         raise
 
     # 2) Run the tools/update_insims_readme.py by path
@@ -27,10 +30,10 @@ def main() -> None:
         try:
             runpy.run_path(str(updater), run_name='__main__')
         except Exception as e:
-            print(f"Error running update_insims_readme.py: {e}")
+            logger.error(f"Error running update_insims_readme.py: {e}", exc_info=True)
             raise
     else:
-        print(f"Updater script not found at: {updater}")
+        logger.warning(f"Updater script not found at: {updater}")
 
 
 if __name__ == '__main__':

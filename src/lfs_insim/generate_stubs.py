@@ -6,10 +6,13 @@ para InSimApp, permitiendo autocompletado en métodos on_ISP_* y send_ISP_*.
 """
 
 import sys
+import logging
 from pathlib import Path
 from dataclasses import fields, is_dataclass
 import inspect
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 # Asegurar que podemos importar el framework localmente
 src_path = Path(__file__).parent.parent
@@ -94,7 +97,7 @@ def generate_insim_app_stub() -> str:
 
 def main():
     """Punto de entrada para la generación."""
-    print("Generando archivos de interfaz (stubs)...")
+    logger.info("Generando archivos de interfaz (stubs)...")
 
     try:
         stub_content = generate_insim_app_stub()
@@ -103,11 +106,11 @@ def main():
         with open(output_path, "w", encoding="utf-8") as f:
             f.write(stub_content)
 
-        print(f"Stub generado en: {output_path}")
-        print("Reinicia tu IDE si no ves los cambios en el autocompletado.")
+        logger.info(f"Stub generado en: {output_path}")
+        logger.info("Reinicia tu IDE si no ves los cambios en el autocompletado.")
 
     except Exception as e:
-        print(f"Error generando stubs: {e}")
+        logger.error(f"Error generando stubs: {e}", exc_info=True)
         sys.exit(1)
 
 if __name__ == "__main__":
