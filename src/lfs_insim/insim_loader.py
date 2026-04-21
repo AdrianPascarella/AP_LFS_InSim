@@ -172,10 +172,36 @@ class InSimLoader:
                 insim_state.reset_insim_client()
 
             # 3. IMPORTACIÓN E INSTANCIACIÓN
-            spec = importlib.util.spec_from_file_location(name, entry_file)
-            module = importlib.util.module_from_spec(spec)
-            sys.modules[name] = module
-            spec.loader.exec_module(module)
+            entry_stem = Path(manifest.entry_point).stem  # 'main', '__init__', etc.
+
+            if entry_stem == '__init__':
+                # El entry point es el propio __init__.py del paquete
+                spec = importlib.util.spec_from_file_location(
+                    name, entry_file,
+                    submodule_search_locations=[str(manifest.directory)]
+                )
+                module = importlib.util.module_from_spec(spec)
+                sys.modules[name] = module
+                spec.loader.exec_module(module)
+            else:
+                # El entry point es un submodulo (ej: main.py).
+                # Registramos el paquete primero para que los imports relativos funcionen.
+                init_file = manifest.directory / '__init__.py'
+                pkg_spec = importlib.util.spec_from_file_location(
+                    name,
+                    init_file if init_file.exists() else None,
+                    submodule_search_locations=[str(manifest.directory)]
+                )
+                pkg_module = importlib.util.module_from_spec(pkg_spec)
+                sys.modules[name] = pkg_module
+                if init_file.exists():
+                    pkg_spec.loader.exec_module(pkg_module)
+
+                sub_name = f"{name}.{entry_stem}"
+                spec = importlib.util.spec_from_file_location(sub_name, entry_file)
+                module = importlib.util.module_from_spec(spec)
+                sys.modules[sub_name] = module
+                spec.loader.exec_module(module)
             
             from .insim_app import InSimApp
             
