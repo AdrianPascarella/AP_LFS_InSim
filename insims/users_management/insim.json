@@ -1,0 +1,9 @@
+{
+    "name": "users_management",
+    "version": "1.0.0",
+    "description": "InSim Users Management: Gestiona la información de los usuarios en el sistema",
+    "author": "Adrian Pascarella",
+    "entry_point": "main.py",
+    "insim_dependencies": {},
+    "python_dependencies": []
+}

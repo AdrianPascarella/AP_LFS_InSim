@@ -1,0 +1,9 @@
+{
+    "name": "ai_control",
+    "version": "1.0.0",
+    "description": "Tutorial: Control detallado del movimiento de la AI",
+    "entry_point": "app.py",
+    "insim_dependencies": {
+        "users_management": ">=1.0.0" 
+    }
+}

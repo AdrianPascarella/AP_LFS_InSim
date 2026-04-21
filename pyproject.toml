@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lfs-insim"
+version = "0.2.0"
+authors = [
+  { name="Adrian Pascarella" },
+]
+description = "Framework modular para Live for Speed InSim"
+readme = "README"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Topic :: Games/Entertainment :: Simulation",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/AdrianPascarella/Aprendiendo-InSim-LFS"
+
+# CLI - Comando lfs-insim
+[project.scripts]
+lfs-insim = "lfs_insim.cli:main"
+generate-stubs = "lfs_insim.generate_stubs:main"
+update-all = "lfs_insim.update_all:main"
+
+# Detección automática de paquetes en src/
+[tool.setuptools.packages.find]
+where = ["src"]
+

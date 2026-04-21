@@ -1,0 +1,4 @@
+[console_scripts]
+generate-stubs = lfs_insim.generate_stubs:main
+lfs-insim = lfs_insim.cli:main
+update-all = lfs_insim.update_all:main

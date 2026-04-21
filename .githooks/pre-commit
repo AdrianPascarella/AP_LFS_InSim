@@ -1,0 +1,4 @@
+#!/bin/sh
+# pre-commit hook disabled by user request
+# If you want to re-enable the stub-generation check, restore the original script.
+exit 0

@@ -1,0 +1,27 @@
+# --- Python General ---
+__pycache__/
+*.py[cod]
+*$py.class
+
+# --- Entornos Virtuales ---
+venv/
+.venv/
+env/
+
+# --- IDEs y Editores ---
+.vscode/
+.idea/
+*.swp
+
+# --- Logs del Proyecto ---
+# Ignorar los archivos .log dentro de la carpeta logs
+logs/*.log
+# Pero mantener la carpeta logs (si hay un archivo .gitkeep dentro)
+!logs/.gitkeep
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+
+# claude
+.claude

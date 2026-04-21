@@ -1,0 +1,22 @@
+from .insim import *
+from .outsim import *
+
+# Mapeo de InSim (Tipo de paquete -> Clase)
+INSIM_PACKETS = {
+    ISP_NONE.Type: ISP_NONE, ISP_ISI.Type: ISP_ISI, 2: ISP_VER, 3: ISP_TINY, 4: ISP_SMALL,
+    5: ISP_STA, 6: ISP_SCH, 7: ISP_SFP, 8: ISP_SCC, 9: ISP_CPP,
+    10: ISP_ISM, 11: ISP_MSO, 12: ISP_III, 13: ISP_MST, 14: ISP_MTC,
+    15: ISP_MOD, 16: ISP_VTN, 17: ISP_RST, 18: ISP_NCN, 19: ISP_CNL,
+    20: ISP_CPR, 21: ISP_NPL, 22: ISP_PLP, 23: ISP_PLL, 24: ISP_LAP,
+    25: ISP_SPX, 26: ISP_PIT, 27: ISP_PSF, 28: ISP_PLA, 29: ISP_CCH,
+    30: ISP_PEN, 31: ISP_TOC, 32: ISP_FLG, 33: ISP_PFL, 34: ISP_FIN,
+    35: ISP_RES, 36: ISP_REO, 37: ISP_NLP, 38: ISP_MCI, 39: ISP_MSX,
+    40: ISP_MSL, 41: ISP_CRS, 42: ISP_BFN, 43: ISP_AXI, 44: ISP_AXO,
+    45: ISP_BTN, 46: ISP_BTC, 47: ISP_BTT, 48: ISP_RIP, 49: ISP_SSH,
+    50: ISP_CON, 51: ISP_OBH, 52: ISP_HLV, 53: ISP_PLC, 54: ISP_AXM,
+    55: ISP_ACR, 56: ISP_HCP, 57: ISP_NCI, 58: ISP_JRR, 59: ISP_UCO,
+    60: ISP_OCO, 61: ISP_TTC, 62: ISP_SLC, 63: ISP_CSC, 64: ISP_CIM,
+    65: ISP_MAL, 66: ISP_PLH, 67: ISP_IPB, 68: ISP_AIC, 69: ISP_AII
+}
+
+# OUTSIM_PACKETS se define en packets/__init__.py usando los tamaños reales de cada clase.

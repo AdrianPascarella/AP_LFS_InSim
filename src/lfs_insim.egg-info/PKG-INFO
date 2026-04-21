@@ -1,0 +1,12 @@
+Metadata-Version: 2.4
+Name: lfs-insim
+Version: 0.2.0
+Summary: Framework modular para Live for Speed InSim
+Author: Adrian Pascarella
+Project-URL: Homepage, https://github.com/AdrianPascarella/Aprendiendo-InSim-LFS
+Classifier: Programming Language :: Python :: 3
+Classifier: Operating System :: OS Independent
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: Topic :: Games/Entertainment :: Simulation
+Requires-Python: >=3.9
