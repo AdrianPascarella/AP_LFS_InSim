@@ -25,9 +25,7 @@ env/
 *.swp
 
 # --- Logs del Proyecto ---
-# Ignorar los archivos .log dentro de la carpeta logs
-logs/*.log
-# Pero mantener la carpeta logs (si hay un archivo .gitkeep dentro)
+logs/
 !logs/.gitkeep
 
 # --- OS ---

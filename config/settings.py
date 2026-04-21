@@ -6,7 +6,21 @@ from pathlib import Path
 import logging
 import logging.handlers
 import os
+import re
 from typing import Dict, Any
+
+
+class _InsimRotatingHandler(logging.handlers.RotatingFileHandler):
+    """RotatingFileHandler que nombra los backups como insim1.log, insim2.log, ..."""
+
+    @staticmethod
+    def _namer(name: str) -> str:
+        # name = "/path/insim.log.1"  →  "/path/insim1.log"
+        return re.sub(r'^(.+?)(\.[^.]+)\.(\d+)$', r'\1\3\2', name)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.namer = self._namer
 from lfs_insim.insim_enums import OSO, ISF
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -87,7 +101,7 @@ LOGGING_CONFIG = {
             'level': 'INFO',
         },
         'file': {
-            'class': 'logging.handlers.RotatingFileHandler',
+            'class': 'config.settings._InsimRotatingHandler',
             'filename': str(LOGS_DIR / 'insim.log'),
             'maxBytes': 5 * 1024 * 1024,  # 5 MB
             'backupCount': 3,
@@ -121,7 +135,7 @@ def get_logger(name: str, log_filename: str = None, level: int = logging.INFO) -
 
     if log_filename:
         file_path = LOGS_DIR / log_filename
-        fh = logging.handlers.RotatingFileHandler(file_path, maxBytes=1024*1024, backupCount=1, encoding='utf-8')
+        fh = _InsimRotatingHandler(file_path, maxBytes=1024*1024, backupCount=1, encoding='utf-8')
         fh.setFormatter(formatter)
         logger.addHandler(fh)
     
