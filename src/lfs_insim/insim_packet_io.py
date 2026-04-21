@@ -13,10 +13,12 @@ from typing import Optional
 
 from .insim_packet_decoders import decode_packet
 from .insim_state import (
-    get_insim_client, 
-    set_socket_tcp, 
+    get_insim_client,
+    set_socket_tcp,
     set_socket_udp,
-    get_socket_tcp
+    get_socket_tcp,
+    get_socket_udp,
+    reset_sockets,
 )
 from .exceptions import InSimConnectionError
 
@@ -133,10 +135,21 @@ def _process_raw_bytes(data: bytes):
 def stop_all_threads():
     """Detiene todos los hilos y cierra sockets."""
     STOP_EVENT.set()
+
     tcp_sock = get_socket_tcp()
     if tcp_sock:
         try:
             tcp_sock.shutdown(socket.SHUT_RDWR)
             tcp_sock.close()
-        except:
+        except Exception:
             pass
+
+    udp_sock = get_socket_udp()
+    if udp_sock:
+        try:
+            udp_sock.close()
+        except Exception:
+            pass
+
+    reset_sockets()
+    STOP_EVENT.clear()
