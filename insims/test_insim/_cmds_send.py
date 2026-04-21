@@ -1,6 +1,7 @@
 """
 _cmds_send.py - Comandos que envian paquetes de instruccion a LFS.
-Cubre: MSL, MST, MSX, MTC, BTN, BFN, SCC, SSH, SMALL, SSH.
+Cubre: MSL, MST, MSX, MTC, BTN, BFN, SCC, SSH, SMALL,
+       SCH, SFP, HCP, OCO, TTC, PLC.
 """
 from lfs_insim.packets import *
 from lfs_insim.utils import CMDManager, TextColors as c
@@ -21,6 +22,12 @@ class _SendMixin:
          .add_cmd("scc",   "Envia ISP_SCC (cambia camara a TV)",            None, self._cmd_scc,   is_mso_required=False)
          .add_cmd("ssh",   "Envia ISP_SSH (captura pantalla)",              None, self._cmd_ssh,   is_mso_required=False)
          .add_cmd("small", "Envia ISP_SMALL (SMALL_NLI, intervalo NLP=200)", None, self._cmd_small, is_mso_required=False)
+         .add_cmd("sch",   "Envia ISP_SCH (simula tecla 'T' del teclado)",  None, self._cmd_sch,   is_mso_required=False)
+         .add_cmd("sfp",   "Envia ISP_SFP (activa/desactiva vista 2D)",     None, self._cmd_sfp,   is_mso_required=False)
+         .add_cmd("hcp",   "Envia ISP_HCP (reinicia handicaps a 0)",        None, self._cmd_hcp,   is_mso_required=False)
+         .add_cmd("oco",   "Envia ISP_OCO (resetea luces de semaforo)",     None, self._cmd_oco,   is_mso_required=False)
+         .add_cmd("ttc",   "Envia ISP_TTC (pide AXM de seleccion layout)",  None, self._cmd_ttc,   is_mso_required=False)
+         .add_cmd("plc",   "Envia ISP_PLC (sin restriccion de coches)",     None, self._cmd_plc,   is_mso_required=False)
         )
 
     def _cmd_msl(self):
@@ -64,6 +71,30 @@ class _SendMixin:
     def _cmd_small(self):
         self.send_ISP_SMALL(SubT=SMALL.NLI, UVal=200)
         self.send_ISP_MSL(Msg=f"{c.GREEN}[SMALL] {c.WHITE}SMALL_NLI enviado (intervalo NLP=200ms)")
+
+    def _cmd_sch(self):
+        self.send_ISP_SCH(CharB=ord('T'), Flags=SCH_FLAGS.NONE)
+        self.send_ISP_MSL(Msg=f"{c.GREEN}[SCH] {c.WHITE}Tecla 'T' simulada")
+
+    def _cmd_sfp(self):
+        self.send_ISP_SFP(Flag=ISS_SFP.SHOW_2D, OffOn=OFFON.ON)
+        self.send_ISP_MSL(Msg=f"{c.GREEN}[SFP] {c.WHITE}Vista 2D activada (ISS_SHOW_2D ON)")
+
+    def _cmd_hcp(self):
+        self.send_ISP_HCP()
+        self.send_ISP_MSL(Msg=f"{c.GREEN}[HCP] {c.WHITE}Handicaps reseteados a 0 para todos los coches")
+
+    def _cmd_oco(self):
+        self.send_ISP_OCO(OCOAction=OCO.LIGHTS_RESET, Index=0, Identifier=0, Data=0)
+        self.send_ISP_MSL(Msg=f"{c.GREEN}[OCO] {c.WHITE}Luces reseteadas (LIGHTS_RESET)")
+
+    def _cmd_ttc(self):
+        self.send_ISP_TTC(SubT=TTC.SEL, UCID=0)
+        self.send_ISP_MSL(Msg=f"{c.GREEN}[TTC] {c.WHITE}TTC_SEL enviado a UCID=0 (pide AXM de seleccion)")
+
+    def _cmd_plc(self):
+        self.send_ISP_PLC(UCID=0, Cars=0)
+        self.send_ISP_MSL(Msg=f"{c.GREEN}[PLC] {c.WHITE}Sin restriccion de coches para UCID=0 (Cars=0)")
 
     def on_ISP_SSH(self, packet: ISP_SSH):
         if packet.ReqI:

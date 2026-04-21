@@ -2,7 +2,7 @@
 _handlers_event.py - Handlers para paquetes que solo llegan por eventos.
 Guarda el ultimo paquete recibido de cada tipo y lo muestra con un comando.
 Cubre: CPR, LAP, SPX, PIT, PSF, PLA, CCH, PEN, TOC, FLG, PFL, FIN, RES,
-       CRS, AXO, CON, OBH, HLV, UCO, SLC, CSC, CIM, VTN, III, ACR, AXM.
+       CRS, AXO, CON, OBH, HLV, UCO, SLC, CSC, CIM, VTN, III, ACR, AXM, PLP.
 """
 from typing import Optional
 from lfs_insim.packets import *
@@ -47,6 +47,7 @@ class _EventMixin:
         self._last_iii: Optional[ISP_III] = None
         self._last_acr: Optional[ISP_ACR] = None
         self._last_axm: Optional[ISP_AXM] = None
+        self._last_plp: Optional[ISP_PLP] = None
 
     def _reg_event_cmds(self, cmds: CMDManager) -> None:
         (cmds
@@ -76,6 +77,7 @@ class _EventMixin:
          .add_cmd("iii",  "Ultimo ISP_III (mensaje InSim info)",     None, self._cmd_iii,  is_mso_required=False)
          .add_cmd("acr",  "Ultimo ISP_ACR (comando admin)",          None, self._cmd_acr,  is_mso_required=False)
          .add_cmd("axm",  "Ultimo ISP_AXM (objeto layout)",          None, self._cmd_axm,  is_mso_required=False)
+         .add_cmd("plp",  "Ultimo ISP_PLP (jugador a espectador)",  None, self._cmd_plp,  is_mso_required=False)
         )
 
     # --- Handlers ---
@@ -184,6 +186,10 @@ class _EventMixin:
     def on_ISP_AXM(self, packet: ISP_AXM):
         self._last_axm = packet
         self.logger.info(f"AXM: {packet.NumO} objetos | Action={int(packet.PMOAction)}")
+
+    def on_ISP_PLP(self, packet: ISP_PLP):
+        self._last_plp = packet
+        self.logger.info(f"PLP: PLID {packet.PLID} paso a espectador")
 
     # --- Comandos de display ---
 
@@ -319,3 +325,8 @@ class _EventMixin:
         p = self._last_axm
         if not p: self.send_ISP_MSL(Msg=_no_event("AXM")); return
         self.send_ISP_MSL(Msg=f"{c.GREEN}[AXM] {p.NumO} objetos | Action={int(p.PMOAction)}")
+
+    def _cmd_plp(self):
+        p = self._last_plp
+        if not p: self.send_ISP_MSL(Msg=_no_event("PLP")); return
+        self.send_ISP_MSL(Msg=f"{c.GREEN}[PLP] PLID {p.PLID} paso a espectador")
