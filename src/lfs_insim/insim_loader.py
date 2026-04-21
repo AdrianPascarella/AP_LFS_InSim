@@ -1,12 +1,58 @@
 import importlib.util
 import json
 import logging
+import re
 import sys
 from pathlib import Path
 from typing import Dict, List, Optional, Type, Any
 from .exceptions import InSimModuleError
-# Importamos el estado para gestionar quién es el Maestro
-import lfs_insim.insim_state as insim_state 
+import lfs_insim.insim_state as insim_state
+
+
+def _parse_version(version_str: str) -> tuple:
+    """Convierte '1.2.3' en (1, 2, 3) para comparación."""
+    parts = re.split(r'[.\-]', version_str.strip())
+    result = []
+    for p in parts[:3]:
+        try:
+            result.append(int(p))
+        except ValueError:
+            result.append(0)
+    while len(result) < 3:
+        result.append(0)
+    return tuple(result)
+
+
+def _check_version(actual: str, constraint: str) -> bool:
+    """
+    Comprueba si `actual` satisface `constraint`.
+    Soporta: >=, <=, >, <, ==, != y versión exacta sin operador.
+    """
+    constraint = constraint.strip()
+    if not constraint:
+        return True
+
+    match = re.match(r'^(>=|<=|>|<|==|!=)?\s*(.+)$', constraint)
+    if not match:
+        return True
+
+    op, required_str = match.group(1), match.group(2)
+    actual_t = _parse_version(actual)
+    required_t = _parse_version(required_str)
+
+    if op is None or op == '==':
+        return actual_t == required_t
+    if op == '!=':
+        return actual_t != required_t
+    if op == '>=':
+        return actual_t >= required_t
+    if op == '<=':
+        return actual_t <= required_t
+    if op == '>':
+        return actual_t > required_t
+    if op == '<':
+        return actual_t < required_t
+    return True
 
 logger = logging.getLogger(__name__)
 
@@ -96,13 +142,22 @@ class InSimLoader:
             raise InSimModuleError(f"No se encontró el InSim: {name}")
 
         # 1. CARGA RECURSIVA DE DEPENDENCIAS
-        # Esto cargará primero 'users_management', que temporalmente se creerá el Master.
-        for dep_name in manifest.insim_dependencies.keys():
+        for dep_name, version_constraint in manifest.insim_dependencies.items():
             if dep_name not in self._instances:
                 try:
                     self.load(dep_name)
                 except Exception as e:
-                    logger.error(f"❌ Falló la carga de la dependencia '{dep_name}': {e}")
+                    logger.error(f"Falló la carga de la dependencia '{dep_name}': {e}")
+
+            # Validar versión una vez que el módulo está cargado
+            dep_instance = self._instances.get(dep_name)
+            if dep_instance and version_constraint:
+                actual_version = getattr(dep_instance, 'version', '0.0.0')
+                if not _check_version(actual_version, version_constraint):
+                    raise InSimModuleError(
+                        f"'{name}' requiere '{dep_name}{version_constraint}' "
+                        f"pero la versión instalada es {actual_version}"
+                    )
 
         entry_file = manifest.directory / manifest.entry_point
         if not entry_file.exists():
