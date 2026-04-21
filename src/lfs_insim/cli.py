@@ -13,6 +13,7 @@ Uso:
 import argparse
 import json
 import logging
+import logging.config
 import sys
 import os
 from pathlib import Path
@@ -21,12 +22,17 @@ from pathlib import Path
 sys.path.insert(0, os.getcwd())
 from typing import Optional
 
-# Configurar logging básico
-logging.basicConfig(
-    level=logging.INFO,
-    format='[%(asctime)s] %(levelname)s: %(message)s',
-    datefmt='%H:%M:%S'
-)
+# Aplicar configuración de logging del proyecto (escribe en logs/insim.log)
+try:
+    from config.settings import LOGGING_CONFIG
+    logging.config.dictConfig(LOGGING_CONFIG)
+except Exception:
+    logging.basicConfig(
+        level=logging.INFO,
+        format='[%(asctime)s] %(levelname)s: %(message)s',
+        datefmt='%H:%M:%S'
+    )
+
 logger = logging.getLogger("lfs-insim")
 
 
@@ -166,7 +172,6 @@ Descripción de tu InSim aquí.
 import logging
 
 from lfs_insim import InSimApp
-from lfs_insim.insim_packet_class import ISP_MSL
 
 logger = logging.getLogger(__name__)
 
@@ -185,7 +190,7 @@ class App(InSimApp):
     def on_connect(self):
         """Llamado cuando se conecta a LFS."""
         logger.info(f"{{self.name}} conectado!")
-        self.send(ISP_MSL(Msg="^2{args.name} ^7conectado"))
+        self.send_ISP_MSL(Msg="^2{args.name} ^7conectado")
 
     def on_disconnect(self):
         """Llamado cuando se desconecta."""

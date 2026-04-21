@@ -180,5 +180,5 @@ class RouteManager(PacketSenderMixin):
                 f.write("],\n")
             return True
         except Exception as e:
-            print(f"\n[!] ERROR FATAL GUARDANDO RUTA EN DISCO: {e}\n")
+            logger.error(f"Error fatal guardando ruta en disco: {e}", exc_info=True)
             return False
