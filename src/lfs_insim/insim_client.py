@@ -86,7 +86,8 @@ class InSimClient:
             udp_port = self.config.get('udp_port')
             if udp_port:
                 udp_host = self.config.get('udp_host', '0.0.0.0')
-                connect_udp_lfs(udp_host, udp_port)
+                udp_buffer = self.config.get('udp_buffer', 4096)
+                connect_udp_lfs(udp_host, udp_port, udp_buffer)
 
             # =================================================================
             # LÓGICA DE FUSIÓN DE FLAGS (Flag Aggregation)

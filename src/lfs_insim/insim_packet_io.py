@@ -49,16 +49,16 @@ def connect_tcp_lfs(host: str, port: int):
     except Exception as e:
         raise InSimConnectionError(f"No se pudo conectar a LFS (TCP): {e}")
 
-def connect_udp_lfs(host: str, port: int):
+def connect_udp_lfs(host: str, port: int, buffer_size: int = 4096):
     """Prepara el socket UDP para OutSim/OutGauge."""
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.bind((host, port))
         set_socket_udp(sock)
-        
+
         thread = threading.Thread(
-            target=_udp_listen_loop, 
-            args=(sock,), 
+            target=_udp_listen_loop,
+            args=(sock, buffer_size),
             name="InSim_UDP_Receiver",
             daemon=True
         )
@@ -108,11 +108,11 @@ def _tcp_listen_loop(sock: socket.socket):
 
     logger.debug("Hilo TCP finalizado.")
 
-def _udp_listen_loop(sock: socket.socket):
+def _udp_listen_loop(sock: socket.socket, buffer_size: int = 4096):
     """Bucle de recepción UDP (OutSim/OutGauge no requieren buffer de reensamblado)."""
     while not STOP_EVENT.is_set():
         try:
-            data, _ = sock.recvfrom(1024)
+            data, _ = sock.recvfrom(buffer_size)
             if data:
                 _process_raw_bytes(data)
         except Exception as e:
