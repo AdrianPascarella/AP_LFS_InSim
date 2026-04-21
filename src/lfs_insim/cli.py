@@ -207,8 +207,8 @@ if __name__ == "__main__":
     with open(insim_dir / "main.py", 'w', encoding='utf-8') as f:
         f.write(main_content)
     
-    print(f"\n✅ InSim '{args.name}' creado en: {insim_dir}")
-    print(f"\nPróximos pasos:")
+    print(f"\nInSim '{args.name}' creado en: {insim_dir}")
+    print(f"\nSiguientes pasos:")
     print(f"  1. Edita {insim_dir / 'main.py'}")
     print(f"  2. Ejecuta: lfs-insim run {args.name}")
     print()

@@ -1,0 +1,9 @@
+{
+  "name": "test_insim",
+  "version": "1.0.0",
+  "description": "InSim test_insim",
+  "author": "",
+  "entry_point": "main.py",
+  "insim_dependencies": {},
+  "python_dependencies": []
+}
