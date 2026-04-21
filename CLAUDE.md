@@ -5,8 +5,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-# Install (editable mode, no external deps required)
-pip install -e .
+# Install (editable mode, includes dev deps for testing)
+pip install -e ".[dev]"
+
+# Run all tests
+pytest
+
+# Run a single test file
+pytest tests/test_utils.py
+
+# Run a specific test
+pytest tests/test_utils.py::TestPIDController::test_zero_dt_returns_zero -v
 
 # Run an InSim by name
 lfs-insim run ai_control

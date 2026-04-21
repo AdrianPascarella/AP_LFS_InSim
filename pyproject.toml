@@ -28,7 +28,13 @@ lfs-insim = "lfs_insim.cli:main"
 generate-stubs = "lfs_insim.generate_stubs:main"
 update-all = "lfs_insim.update_all:main"
 
+[project.optional-dependencies]
+dev = ["pytest>=7.0"]
+
 # Detección automática de paquetes en src/
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
 
