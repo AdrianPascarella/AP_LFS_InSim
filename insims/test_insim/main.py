@@ -26,6 +26,7 @@ class TestInsim(InSimApp):
                 description="Saluda al servidor",
                 args=None,
                 funct=self._cmd_hola,
+                is_mso_required=False,
             )
             .submit()
         )
