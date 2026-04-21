@@ -169,7 +169,7 @@ def cmd_init(args: argparse.Namespace) -> int:
     main_content = f'''from lfs_insim import InSimApp
 from lfs_insim.packets import *
 from lfs_insim.insim_enums import ISF
-from lfs_insim.utils import CMDManager, separate_command_args
+from lfs_insim.utils import CMDManager, separate_command_args, TextColors as c
 
 
 class {class_name}(InSimApp):
@@ -198,7 +198,7 @@ class {class_name}(InSimApp):
             )
             .submit()
         )
-        self.send_ISP_MSL(Msg=f"^2{{self.name}} ^7conectado")
+        self.send_ISP_MSL(Msg=f"{{c.GREEN}}{{self.name}} {{c.WHITE}}conectado")
 
     def on_ISP_MSO(self, packet: ISP_MSO):
         cmd, args = separate_command_args(self.cmd_prefix, packet)
@@ -206,7 +206,7 @@ class {class_name}(InSimApp):
             self.cmds.handle_commands(packet, args)
 
     def _cmd_hola(self):
-        self.send_ISP_MSL(Msg="^2Hola desde {args.name}!")
+        self.send_ISP_MSL(Msg=f"{{c.GREEN}}Hola desde {args.name}!")
 
     def on_disconnect(self):
         self.logger.info(f"Modulo {{self.name}} desconectado.")
