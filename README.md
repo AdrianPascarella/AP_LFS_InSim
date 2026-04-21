@@ -73,12 +73,19 @@ generate-stubs
 
 ## Escribir un módulo
 
-### 1. Estructura de archivos
+### 1. Crear el scaffold
+
+```bash
+lfs-insim init mi_modulo
+```
+
+Genera la siguiente estructura:
 
 ```
 insims/
 └── mi_modulo/
     ├── insim.json
+    ├── __init__.py
     └── main.py
 ```
 
@@ -91,44 +98,89 @@ insims/
     "description": "Descripción breve",
     "author": "Tu nombre",
     "entry_point": "main.py",
-    "insim_dependencies": {
-        "users_management": ">=1.0.0"
-    },
+    "insim_dependencies": {},
     "python_dependencies": []
 }
 ```
 
+Declara dependencias de otros InSims en `insim_dependencies` (p. ej. `"users_management": ">=1.0.0"`). El loader las resuelve y puedes acceder a ellas con `self.get_insim("users_management")`.
+
 ### 3. Clase del módulo (`main.py`)
 
 ```python
-from lfs_insim.insim_app import InSimApp
-from lfs_insim.insim_packet_class import ISP_MSL, ISP_TINY, ISP_MSO
-from lfs_insim.insim_enums import ISF, TINY
+from lfs_insim import InSimApp
+from lfs_insim.packets import *
+from lfs_insim.insim_enums import ISF, PTYPE
+from lfs_insim.utils import CMDManager, separate_command_args, TextColors as c
+
 
 class MiModulo(InSimApp):
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.cmd_prefix: str = self.config.get("prefix", "!")
+        self.cmd_base: str = "mi_modulo"
+        self.cmds: CMDManager
+        self.users: dict[int, dict] = {}   # UCID -> datos
+        self.players: dict[int, dict] = {} # PLID -> datos
+        self.logger.info(f"Modulo {self.name} inicializado.")
+
     def set_isi_packet(self):
         super().set_isi_packet()
-        self.isi.Flags |= ISF.LOCAL      # añadir flags necesarios
+        self.isi.Flags |= ISF.LOCAL | ISF.MCI  # añadir flags necesarios
 
     def on_connect(self):
-        # Pedir estado inicial
-        self.send_ISP_TINY(SubT=TINY.NCN)   # todas las conexiones
-        self.send_ISP_TINY(SubT=TINY.NPL)   # todos los jugadores
+        # Pedir snapshot inicial de conexiones y jugadores
+        self.send_ISP_TINY(ReqI=1, SubT=TINY.NCN)
+        self.send_ISP_TINY(ReqI=1, SubT=TINY.NPL)
 
-        # Acceder a una dependencia
-        self.um = self.get_insim("users_management")
+        # Registrar comandos de chat
+        self.cmds = (
+            CMDManager(self.cmd_prefix, self.cmd_base)
+            .add_cmd(
+                name="hola",
+                description="Saluda al servidor",
+                args=None,
+                funct=self._cmd_hola,
+                is_mso_required=False,
+            )
+            .submit()
+        )
+        self.send_ISP_MSL(Msg=f"{c.GREEN}{self.name} {c.WHITE}conectado")
 
+    # Gestión de conexiones
+    def on_ISP_NCN(self, packet: ISP_NCN):
+        self.users[packet.UCID] = {"uname": packet.UName, "plid": None}
+
+    def on_ISP_CNL(self, packet: ISP_CNL):
+        self.users.pop(packet.UCID, None)
+
+    # Gestión de jugadores
+    def on_ISP_NPL(self, packet: ISP_NPL):
+        is_ai = bool(packet.PType & PTYPE.AI)
+        self.players[packet.PLID] = {"ucid": packet.UCID, "car": packet.CName, "is_ai": is_ai}
+        if not is_ai and packet.UCID in self.users:
+            self.users[packet.UCID]["plid"] = packet.PLID
+
+    def on_ISP_PLL(self, packet: ISP_PLL):
+        player = self.players.pop(packet.PLID, None)
+        if player and not player["is_ai"] and player["ucid"] in self.users:
+            self.users[player["ucid"]]["plid"] = None
+
+    # Comandos de chat
     def on_ISP_MSO(self, packet: ISP_MSO):
-        # Mensaje de chat recibido
-        if packet.Msg.startswith("!hola"):
-            self.send_ISP_MSL(Msg="^2Hola mundo!")
+        cmd, args = separate_command_args(self.cmd_prefix, packet)
+        if cmd == self.cmd_base:
+            self.cmds.handle_commands(packet, args)
+
+    def _cmd_hola(self):
+        self.send_ISP_MSL(Msg=f"{c.GREEN}Hola desde mi_modulo!")
 
     def on_tick(self):
-        pass   # llamado cada 'interval' ms
+        pass  # llamado cada 'interval' ms
 
     def on_disconnect(self):
-        pass
+        self.logger.info(f"Modulo {self.name} desconectado.")
 ```
 
 ### 4. Ejecutar
@@ -174,17 +226,17 @@ self.send(pkt)
 ## Utilidades
 
 ```python
-from lfs_insim.utils import strip_lfs_colors, separate_command_args, CMDManager, PIDController
-from lfs_insim.utils import TextColors
+from lfs_insim.utils import strip_lfs_colors, separate_command_args, CMDManager, PIDController, TextColors as c
 
 # Quitar códigos de color de LFS (^0–^9, ^L, ^h)
 texto_limpio = strip_lfs_colors(packet.Msg)
 
 # Parsear comando del chat
-prefix, args = separate_command_args(".miCmd", packet)
+cmd, args = separate_command_args("!", packet)
 
-# Colores en mensajes
-self.send(ISP_MSL(Msg=f"{TextColors.red}Error{TextColors.reset}"))
+# Colores en mensajes (importar TextColors as c es la convención)
+self.send_ISP_MSL(Msg=f"{c.RED}Error{c.WHITE} normal")
+# Constantes disponibles: c.RED, c.GREEN, c.YELLOW, c.WHITE, c.BLUE, c.CYAN, c.PURPLE, c.BLACK
 
 # PID con anti-windup (salida clamped a [-1.0, 1.0])
 pid = PIDController(kp=0.5, ki=0.01, kd=0.1)
@@ -199,9 +251,9 @@ Para módulos complejos, separa responsabilidades en mixins y combínalos con MR
 
 ```python
 # mi_modulo/main.py
+from lfs_insim import InSimApp
 from .commands import _CommandsMixin
 from .physics import _PhysicsMixin
-from lfs_insim.insim_app import InSimApp
 
 class MiModulo(_CommandsMixin, _PhysicsMixin, InSimApp):
     pass
