@@ -22,7 +22,7 @@ Para solicitar la lista actual: enviar `TINY_PLH`.
 | Campo | Tipo | Descripción |
 |-------|------|-------------|
 | PLID | byte | ID único del jugador |
-| Flags | byte | bit 0: set Mass / bit 1: set TRes / bit 7: silencioso (sin mensaje en pantalla) |
+| Flags | PHC | PHC.MASS / PHC.TRES / PHC.SILENT |
 | H_Mass | byte | 0 a 200 — masa añadida en kg |
 | H_TRes | byte | 0 a 50 — restricción de admisión |
 
@@ -43,12 +43,12 @@ class MiInsim(InSimApp):
         print(f"Hándicaps actualizados para {packet.NumP} jugadores")
 
     def aplicar_handicap_jugador(self, plid: int, masa: int, restriccion: int):
-        # Flags=3 -> set Mass Y TRes; bit 7 en Flags=silencioso
-        hcap = {
-            'PLID': plid,
-            'Flags': PHC.MASS | PHC.TRES | PHC.SILENT,
-            'H_Mass': masa,
-            'H_TRes': restriccion,
-        }
+        from lfs_insim.packets.structures import PlayerHCap
+        hcap = PlayerHCap(
+            PLID=plid,
+            Flags=PHC.MASS | PHC.TRES | PHC.SILENT,
+            H_Mass=masa,
+            H_TRes=restriccion,
+        )
         self.send_ISP_PLH(NumP=1, HCaps=[hcap])
 ```

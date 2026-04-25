@@ -40,6 +40,7 @@ Para especificar posición: X, Y, Zbyte, Heading como en autocross; Flags=0x80; 
 from lfs_insim import InSimApp
 from lfs_insim.packets import ISP_NPL
 from lfs_insim.insim_enums import ISF, JRR
+from lfs_insim.packets.structures import ObjectInfo
 
 class MiInsim(InSimApp):
     def set_isi_packet(self):
@@ -57,12 +58,11 @@ class MiInsim(InSimApp):
             self.send_ISP_JRR(
                 PLID=0, UCID=packet.UCID,
                 JRRAction=JRR.SPAWN,
-                StartPos={'X': 0, 'Y': 0, 'Zbyte': 0, 'Flags': 0, 'Index': 0, 'Heading': 0}
+                StartPos=ObjectInfo()  # posición por defecto (ceros)
             )
         else:
             self.send_ISP_JRR(PLID=0, UCID=packet.UCID, JRRAction=JRR.REJECT,
-                              StartPos={'X': 0, 'Y': 0, 'Zbyte': 0,
-                                        'Flags': 0, 'Index': 0, 'Heading': 0})
+                              StartPos=ObjectInfo())
             self.send_ISP_MTC(UCID=packet.UCID,
                               Msg=f"Solo se permiten: {', '.join(coches_permitidos)}")
 ```
