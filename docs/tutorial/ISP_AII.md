@@ -37,12 +37,12 @@ LFS envía este paquete con información detallada sobre el estado físico de un
 | Vel | Vector (3 floats) | Velocidad X, Y, Z |
 | Pos | Vec (3 ints) | Posición X, Y, Z (1m = 65536) |
 
-### Flags AIFLAGS_x
+### Flags AI_FLAGS
 | Flag | Valor | Descripción |
 |------|-------|-------------|
-| AIFLAGS_IGNITION | 1 | Motor encendido |
-| AIFLAGS_CHUP | 4 | Palanca de subida de marcha activa |
-| AIFLAGS_CHDN | 8 | Palanca de bajada de marcha activa |
+| AI_FLAGS.IGNITION | 1 | Motor encendido |
+| AI_FLAGS.CHUP | 4 | Palanca de subida de marcha activa |
+| AI_FLAGS.CHDN | 8 | Palanca de bajada de marcha activa |
 
 ## Ejemplo de uso
 
@@ -50,23 +50,25 @@ LFS envía este paquete con información detallada sobre el estado físico de un
 ```python
 from lfs_insim import InSimApp
 from lfs_insim.packets import ISP_AII
-from lfs_insim.insim_enums import SMALL
+from lfs_insim.insim_enums import SMALL, AI_FLAGS, GEAR
+import math
 
 class MiInsim(InSimApp):
     def solicitar_info_ai(self, plid: int):
-        # SMALL_AII con UVal=PLID
         self.send_ISP_SMALL(SubT=SMALL.AII, UVal=plid)
 
     def on_ISP_AII(self, packet: ISP_AII):
-        # Posición en metros
         x = packet.OSData.Pos[0] / 65536
         y = packet.OSData.Pos[1] / 65536
         z = packet.OSData.Pos[2] / 65536
-        # Velocidad en m/s (magnitud del vector vel)
-        import math
         vx, vy, vz = packet.OSData.Vel
         vel_ms = math.sqrt(vx**2 + vy**2 + vz**2)
+        motor_on = bool(packet.Flags & AI_FLAGS.IGNITION)
+        try:
+            marcha = GEAR(packet.Gear).name
+        except ValueError:
+            marcha = str(packet.Gear)
         print(f"AI PLID {packet.PLID}: pos=({x:.1f}, {y:.1f}, {z:.1f}) "
-              f"vel={vel_ms*3.6:.1f} km/h marcha={packet.Gear-1} "
-              f"RPM={packet.RPM:.0f}")
+              f"vel={vel_ms*3.6:.1f} km/h marcha={marcha} "
+              f"RPM={packet.RPM:.0f} motor={'on' if motor_on else 'off'}")
 ```
