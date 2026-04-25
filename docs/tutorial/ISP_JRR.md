@@ -53,7 +53,7 @@ class MiInsim(InSimApp):
         if packet.NumP != 0:
             return  # jugador normal, no solicitud de unión
 
-        coche = packet.CName.decode('latin-1').rstrip('\x00')
+        coche = packet.CName
         coches_permitidos = ['XFG', 'XRG', 'FXO']
 
         if coche in coches_permitidos:

@@ -39,8 +39,8 @@ class MiInsim(InSimApp):
         self.send_ISP_TINY(ReqI=1, SubT=TINY.NCN)
 
     def on_ISP_NCN(self, packet: ISP_NCN):
-        uname = packet.UName.decode('latin-1').rstrip('\x00')
-        pname = packet.PName.decode('latin-1').rstrip('\x00')
+        uname = packet.UName
+        pname = packet.PName
         self.conexiones[packet.UCID] = {'uname': uname, 'pname': pname}
         print(f"Nueva conexión UCID {packet.UCID}: {pname} ({uname})")
         if packet.UCID != 0:  # no saludar al host

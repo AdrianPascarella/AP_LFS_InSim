@@ -32,7 +32,7 @@ class MiInsim(InSimApp):
         self.send_ISP_TINY(ReqI=1, SubT=TINY.ISM)
 
     def on_ISP_ISM(self, packet: ISP_ISM):
-        nombre = packet.HName.decode('latin-1', errors='replace').rstrip('\x00')
+        nombre = packet.HName
         rol = "host" if packet.Host else "guest"
         if nombre:
             print(f"Conectado como {rol} al servidor: {nombre}")

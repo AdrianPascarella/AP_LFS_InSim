@@ -23,22 +23,20 @@ LFS envía este paquete cuando un jugador recibe o pierde una bandera (azul o am
 ```python
 from lfs_insim import InSimApp
 from lfs_insim.packets import ISP_FLG
+from lfs_insim.insim_enums import BYF, OFFON
 from lfs_insim.utils import TextColors as c
-
-FLAG_BLUE   = 1
-FLAG_YELLOW = 2
 
 class MiInsim(InSimApp):
     def on_ISP_FLG(self, packet: ISP_FLG):
-        if not packet.OffOn:
+        if packet.OffOn == OFFON.OFF:
             return  # bandera quitada, no hacer nada
-        if packet.Flag == FLAG_BLUE:
+        if packet.Flag == BYF.BLUE:
             print(f"PLID {packet.PLID} recibe bandera azul "
                   f"(obstaculiza a PLID {packet.CarBehind})")
             self.send_ISP_MTC(
-                UCID=0,  # al host (broadcast local)
+                UCID=0,
                 Msg=f"{c.YELLOW}Bandera azul para PLID {packet.PLID}"
             )
-        elif packet.Flag == FLAG_YELLOW:
+        elif packet.Flag == BYF.YELLOW:
             print(f"PLID {packet.PLID} causa bandera amarilla")
 ```

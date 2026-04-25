@@ -73,8 +73,8 @@ class MiInsim(InSimApp):
         if packet.NumP == 0:
             # Solicitud de unión — responder con IS_JRR
             return
-        nombre = packet.PName.decode('latin-1').rstrip('\x00')
-        coche = packet.CName.decode('latin-1').rstrip('\x00')
+        nombre = packet.PName
+        coche = packet.CName
         es_ai = bool(packet.PType & 2)
         self.jugadores[packet.PLID] = {
             'nombre': nombre, 'coche': coche, 'ucid': packet.UCID

@@ -18,8 +18,8 @@ LFS envía este paquete al inicio de cada carrera o sesión de calificación. Co
 | NumP | byte | Número de jugadores en carrera |
 | Timing | byte | Info de timing de laps (ver abajo) |
 | Track | char[6] | Nombre corto del track, ej: "FE2R" |
-| Weather | byte | Condición climática (0, 1, 2…) |
-| Wind | byte | 0 = sin viento / 1 = débil / 2 = fuerte |
+| Weather | WEATHER | Condición climática (CLEAR/CLOUDY/RAIN) |
+| Wind | WIND | Viento: OFF / WEAK / STRONG |
 | Flags | word | Flags de carrera (HOSTF_x) |
 | NumNodes | word | Número total de nodos en el path |
 | Finish | word | Índice de nodo de la línea de meta |
@@ -54,7 +54,7 @@ class MiInsim(InSimApp):
         self.send_ISP_TINY(ReqI=1, SubT=TINY.RST)
 
     def on_ISP_RST(self, packet: ISP_RST):
-        track = packet.Track.decode('latin-1').rstrip('\x00')
+        track = packet.Track
         if packet.RaceLaps == 0:
             print(f"Calificación: {packet.QualMins} min en {track}")
         else:

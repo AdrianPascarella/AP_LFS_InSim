@@ -26,8 +26,8 @@ LFS envía este paquete automáticamente cada vez que cambia el estado del juego
 | Sp2 | byte | Reservado |
 | ServerStatus | byte | 0 = desconocido / 1 = OK / >1 = error |
 | Track | char[6] | Nombre corto del track, ej: "FE2R" |
-| Weather | byte | 0, 1, 2... |
-| Wind | byte | 0 = sin viento / 1 = débil / 2 = fuerte |
+| Weather | WEATHER | Condición climática (CLEAR/CLOUDY/RAIN) |
+| Wind | WIND | Viento: OFF / WEAK / STRONG |
 
 ### Flags ISS (estado del juego)
 | Flag | Valor | Descripción |

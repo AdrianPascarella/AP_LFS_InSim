@@ -16,7 +16,7 @@ Requiere `ISF.HLV` en `set_isi_packet()`.
 | Type | byte | ISP_HLV |
 | ReqI | byte | 0 |
 | PLID | byte | ID único del jugador |
-| HLVC | byte | Tipo de incidente: 0=suelo / 1=pared / 4=velocidad en pit / 5=fuera de límites |
+| HLVC | HLVC | Tipo de incidente: GROUND / WALL / SPEEDING / OUT_OF_BOUNDS |
 | Sp1 | byte | Reservado |
 | SpW | word | Reservado |
 | Time | unsigned | Timestamp en ms |
@@ -27,10 +27,7 @@ Requiere `ISF.HLV` en `set_isi_packet()`.
 ```python
 from lfs_insim import InSimApp
 from lfs_insim.packets import ISP_HLV
-from lfs_insim.insim_enums import ISF
-
-HLVC_NOMBRES = {0: "fuera de pista", 1: "golpe de pared",
-                4: "velocidad en pit", 5: "fuera de límites"}
+from lfs_insim.insim_enums import ISF, HLVC
 
 class MiInsim(InSimApp):
     def set_isi_packet(self):
@@ -38,8 +35,8 @@ class MiInsim(InSimApp):
         self.isi.Flags |= ISF.HLV
 
     def on_ISP_HLV(self, packet: ISP_HLV):
-        incidente = HLVC_NOMBRES.get(packet.HLVC, f"tipo {packet.HLVC}")
-        print(f"PLID {packet.PLID}: vuelta invalidada por {incidente} "
+        nombre = HLVC(packet.HLVC).name.lower().replace('_', ' ')
+        print(f"PLID {packet.PLID}: vuelta invalidada por {nombre} "
               f"(t={packet.Time}ms)")
         # Registrar para invalidar el tiempo de vuelta en curso
 ```

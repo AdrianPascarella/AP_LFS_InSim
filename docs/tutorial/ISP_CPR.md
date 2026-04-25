@@ -30,9 +30,9 @@ class MiInsim(InSimApp):
         self.nombres = {}  # UCID -> pname
 
     def on_ISP_CPR(self, packet: ISP_CPR):
-        nuevo_nombre = packet.PName.decode('latin-1').rstrip('\x00')
+        nuevo_nombre = packet.PName
         viejo_nombre = self.nombres.get(packet.UCID, "desconocido")
-        placa = packet.Plate.decode('latin-1')
+        placa = packet.Plate
         self.nombres[packet.UCID] = nuevo_nombre
         print(f"UCID {packet.UCID}: '{viejo_nombre}' -> '{nuevo_nombre}' [{placa}]")
 ```

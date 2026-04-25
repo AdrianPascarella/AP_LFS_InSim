@@ -45,7 +45,7 @@ class MiInsim(InSimApp):
 
     def on_ISP_MSO(self, packet: ISP_MSO):
         # Obtener solo el texto (sin nombre del jugador)
-        texto_completo = packet.Msg.decode('latin-1', errors='replace')
+        texto_completo = packet.Msg
         texto_real = texto_completo[packet.TextStart:]
         texto_limpio = strip_lfs_colors(texto_real)
 

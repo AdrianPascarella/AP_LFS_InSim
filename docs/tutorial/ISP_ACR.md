@@ -27,7 +27,7 @@ from lfs_insim.packets import ISP_ACR
 
 class MiInsim(InSimApp):
     def on_ISP_ACR(self, packet: ISP_ACR):
-        comando = packet.Text.decode('latin-1', errors='replace').rstrip('\x00')
+        comando = packet.Text
         resultados = {1: "procesado", 2: "rechazado", 3: "desconocido"}
         estado = resultados.get(packet.Result, "?")
         admin = "admin" if packet.Admin else "usuario"
