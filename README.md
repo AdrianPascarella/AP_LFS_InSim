@@ -16,9 +16,9 @@ Framework modular en Python para desarrollar plugins de **LFS InSim v10** (Live 
 ## Instalación
 
 ```bash
-git clone https://github.com/AdrianPascarella/Aprendiendo-InSim-LFS
-cd Aprendiendo-InSim-LFS
-pip install -e .
+git clone https://github.com/AdrianPascarella/AP_LFS_InSim
+cd AP_LFS_InSim
+pip install -e ".[dev]"
 ```
 
 ---
@@ -33,7 +33,7 @@ INSIM_CONFIG = {
     "tcp_port": 29999,
     "udp_port": 30000,
     "prefix": "!",        # prefijo de comandos en el chat
-    "interval": 10,       # ms entre actualizaciones NLP/MCI
+    "interval": 100,      # ms entre actualizaciones NLP/MCI
     "insim_name": "InSimApp",
     "insim_ver": 10,
 }
@@ -56,8 +56,27 @@ lfs-insim info users_management
 # Crear un nuevo InSim vacío
 lfs-insim init mi_modulo
 
+# Instalar git hooks (genera stubs .pyi en cada commit)
+bash scripts/install-git-hooks.sh    # Linux/Mac
+./scripts/install-git-hooks.ps1      # Windows
+
 # Regenerar stubs de tipo manualmente
-generate-stubs
+python src/lfs_insim/generate_stubs.py
+```
+
+---
+
+## Tests
+
+```bash
+# Ejecutar toda la suite
+pytest
+
+# Un archivo concreto
+pytest tests/test_utils.py
+
+# Un test específico
+pytest tests/test_utils.py::TestPIDController::test_zero_dt_returns_zero -v
 ```
 
 ---
@@ -68,6 +87,18 @@ generate-stubs
 |--------|-------------|
 | `users_management` | Rastrea en tiempo real conexiones, jugadores e IAs. Mapea UCID ↔ PLID ↔ username. Expone posición y velocidad. |
 | `ai_control` | Controla coches IA mediante PID. Soporta **RouteMode** (waypoints grabados) y **FreeroamMode** (grafo de calles con FSM). Depende de `users_management`. |
+| `test_insim` | Módulo de demostración y prueba del protocolo. Cubre todos los paquetes ISP mediante comandos de chat (`!test <cmd>`). Útil como referencia de uso del framework. |
+
+---
+
+## Documentación del protocolo
+
+`docs/tutorial/` contiene **69 archivos Markdown**, uno por tipo de paquete ISP. Cada archivo incluye:
+- Descripción y dirección del paquete
+- Tabla de campos con tipos enum correctos
+- Ejemplo de uso con el framework
+
+La fuente de verdad del protocolo binario es `docs/InSim.txt`.
 
 ---
 
@@ -110,7 +141,7 @@ Declara dependencias de otros InSims en `insim_dependencies` (p. ej. `"users_man
 ```python
 from lfs_insim import InSimApp
 from lfs_insim.packets import *
-from lfs_insim.insim_enums import ISF, PTYPE
+from lfs_insim.insim_enums import ISF, PTYPE, TINY
 from lfs_insim.utils import CMDManager, separate_command_args, TextColors as c
 
 
@@ -137,14 +168,7 @@ class MiModulo(InSimApp):
         # Registrar comandos de chat
         self.cmds = (
             CMDManager(self.cmd_prefix, self.cmd_base)
-            .add_cmd(
-                name="hola",
-                description="Saluda al servidor",
-                args=None,
-                funct=self._cmd_hola,
-                is_mso_required=False,
-            )
-            .submit()
+            .add_cmd("hola", "Saluda al servidor", None, self._cmd_hola)
         )
         self.send_ISP_MSL(Msg=f"{c.GREEN}{self.name} {c.WHITE}conectado")
 
@@ -167,7 +191,7 @@ class MiModulo(InSimApp):
         if player and not player["is_ai"] and player["ucid"] in self.users:
             self.users[player["ucid"]]["plid"] = None
 
-    # Comandos de chat
+    # Despacho de comandos de chat
     def on_ISP_MSO(self, packet: ISP_MSO):
         cmd, args = separate_command_args(self.cmd_prefix, packet)
         if cmd == self.cmd_base:
@@ -223,6 +247,39 @@ self.send(pkt)
 
 ---
 
+## Módulos con mixins
+
+Para módulos complejos, separa responsabilidades en mixins y combínalos con MRO. `InSimApp` debe ir al final para que los mixins hereden `self.send_*`. Usa el patrón `TYPE_CHECKING` para que el IDE reconozca los métodos del framework dentro del mixin:
+
+```python
+# mi_modulo/_commands.py
+from __future__ import annotations
+from typing import TYPE_CHECKING
+from lfs_insim.packets import *
+from lfs_insim.utils import CMDManager, TextColors as c
+
+if TYPE_CHECKING:
+    from lfs_insim import InSimApp as _Base
+else:
+    _Base = object
+
+class _CommandsMixin(_Base):
+    def _cmd_ejemplo(self):
+        self.send_ISP_MSL(Msg=f"{c.GREEN}Ejemplo")  # IDE reconoce send_ISP_*
+```
+
+```python
+# mi_modulo/main.py
+from lfs_insim import InSimApp
+from ._commands import _CommandsMixin
+from ._physics import _PhysicsMixin
+
+class MiModulo(_CommandsMixin, _PhysicsMixin, InSimApp):
+    pass
+```
+
+---
+
 ## Utilidades
 
 ```python
@@ -236,7 +293,7 @@ cmd, args = separate_command_args("!", packet)
 
 # Colores en mensajes (importar TextColors as c es la convención)
 self.send_ISP_MSL(Msg=f"{c.RED}Error{c.WHITE} normal")
-# Constantes disponibles: c.RED, c.GREEN, c.YELLOW, c.WHITE, c.BLUE, c.CYAN, c.PURPLE, c.BLACK
+# Constantes: c.RED, c.GREEN, c.YELLOW, c.WHITE, c.BLUE, c.CYAN, c.PURPLE, c.BLACK
 
 # PID con anti-windup (salida clamped a [-1.0, 1.0])
 pid = PIDController(kp=0.5, ki=0.01, kd=0.1)
@@ -245,35 +302,13 @@ output = pid.update(setpoint, measured, dt)
 
 ---
 
-## Módulos con mixins
-
-Para módulos complejos, separa responsabilidades en mixins y combínalos con MRO. `InSimApp` debe ir al final para que los mixins hereden `self.send_*`:
-
-```python
-# mi_modulo/main.py
-from lfs_insim import InSimApp
-from .commands import _CommandsMixin
-from .physics import _PhysicsMixin
-
-class MiModulo(_CommandsMixin, _PhysicsMixin, InSimApp):
-    pass
-```
-
----
-
 ## Stubs de tipo
 
-Los archivos `.pyi` bajo `src/lfs_insim/` se generan automáticamente al hacer commit (via git hook) y proporcionan autocompletado en el IDE. Para instalar el hook:
+Los archivos `.pyi` bajo `src/lfs_insim/` se generan automáticamente al hacer commit (via git hook) y proporcionan autocompletado en el IDE para todos los métodos `send_ISP_*`. Para instalar el hook:
 
 ```bash
 bash scripts/install-git-hooks.sh    # Linux/Mac
 ./scripts/install-git-hooks.ps1      # Windows
-```
-
-Para regenerar manualmente:
-
-```bash
-generate-stubs
 ```
 
 ---
@@ -297,3 +332,4 @@ InSimError
 - Strings en latin-1, terminadas en null; `Size` en la cabecera = bytes totales / 4
 - OutSim/OutGauge vía UDP en el puerto **30000**
 - Documentación oficial del protocolo en `docs/InSim.txt`
+- Tutoriales por paquete en `docs/tutorial/`
