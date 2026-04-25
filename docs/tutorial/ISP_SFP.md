@@ -20,23 +20,20 @@ Solo los siguientes flags ISS pueden establecerse con IS_SFP:
 | Type | byte | ISP_SFP |
 | ReqI | byte | 0 |
 | Zero | byte | 0 |
-| Flag | word | El flag de estado a cambiar (ISS_x) |
-| OffOn | byte | 0 = desactivar / 1 = activar |
+| Flag | ISS_SFP | El flag de estado a cambiar (ISS_SFP_x) |
+| OffOn | OFFON | OFFON.OFF=0 / OFFON.ON=1 |
 | Sp3 | byte | Reservado |
 
 ## Ejemplo de uso
 
 ```python
 from lfs_insim import InSimApp
-
-# Valores de flags ISS (hardcodeados ya que son constantes del protocolo)
-ISS_SOUND_MUTE = 4096
-ISS_SHOW_2D    = 128
+from lfs_insim.insim_enums import ISS_SFP, OFFON
 
 class MiInsim(InSimApp):
     def silenciar_sonido(self, activar: bool):
-        self.send_ISP_SFP(Flag=ISS_SOUND_MUTE, OffOn=1 if activar else 0)
+        self.send_ISP_SFP(Flag=ISS_SFP.SOUND_MUTE, OffOn=OFFON.ON if activar else OFFON.OFF)
 
     def mostrar_display_2d(self, activar: bool):
-        self.send_ISP_SFP(Flag=ISS_SHOW_2D, OffOn=1 if activar else 0)
+        self.send_ISP_SFP(Flag=ISS_SFP.SHOW_2D, OffOn=OFFON.ON if activar else OFFON.OFF)
 ```

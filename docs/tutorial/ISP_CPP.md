@@ -18,10 +18,10 @@ Paquete de posición de cámara completo que funciona en ambas direcciones. LFS 
 | P | word | Pitch |
 | R | word | Roll |
 | ViewPLID | byte | PLID del jugador visto (0 = ninguno; 255 = sin cambio) |
-| InGameCam | byte | Cámara en juego VIEW_x (255 = sin cambio) |
+| InGameCam | VIEW | Cámara en juego VIEW_x (255 = sin cambio) |
 | FOV | float | Campo de visión en grados |
 | Time | word | Tiempo en ms para llegar allí (0 = instantáneo) |
-| Flags | word | Flags ISS (ISS_SHIFTU, ISS_SHIFTU_FOLLOW, ISS_VIEW_OVERRIDE) |
+| Flags | ISS_CPP | Flags ISS (ISS_SHIFTU, ISS_SHIFTU_FOLLOW, ISS_VIEW_OVERRIDE) |
 
 ### Flags ISS aplicables
 | Flag | Valor | Descripción |
@@ -57,11 +57,11 @@ class MiInsim(InSimApp):
             self.send(self._cam_guardada)
 
     def mover_camara_suave(self, x: int, y: int, z: int, tiempo_ms: int):
-        ISS_SHIFTU = 8
+        from lfs_insim.insim_enums import ISS_CPP
         self.send_ISP_CPP(
             Pos=[x, y, z], H=0, P=0, R=0,
             ViewPLID=255, InGameCam=255,
             FOV=60.0, Time=tiempo_ms,
-            Flags=ISS_SHIFTU
+            Flags=ISS_CPP.ISS_SHIFTU
         )
 ```

@@ -24,8 +24,8 @@ Requiere `ISF.OBH` en `set_isi_packet()`.
 | Y | short | Posición Y del objeto (como ObjectInfo) |
 | Zbyte | byte | Zbyte del objeto (si OBH_LAYOUT está activo) |
 | Sp1 | byte | Reservado |
-| Index | byte | AXO_x del objeto o 0 si es desconocido |
-| OBHFlags | byte | Flags del objeto (OBH_x) |
+| Index | AXO_INDEX | AXO_x del objeto o 0 si es desconocido |
+| OBHFlags | OBH | Flags del objeto (OBH_x) |
 
 ### Estructura CarContOBJ (8 bytes)
 | Campo | Tipo | Descripción |
@@ -50,9 +50,7 @@ Requiere `ISF.OBH` en `set_isi_packet()`.
 ```python
 from lfs_insim import InSimApp
 from lfs_insim.packets import ISP_OBH
-from lfs_insim.insim_enums import ISF
-
-OBH_LAYOUT = 1
+from lfs_insim.insim_enums import ISF, OBH
 
 class MiInsim(InSimApp):
     def set_isi_packet(self):
@@ -61,7 +59,7 @@ class MiInsim(InSimApp):
 
     def on_ISP_OBH(self, packet: ISP_OBH):
         vel_ms = packet.C.Speed
-        es_layout = bool(packet.OBHFlags & OBH_LAYOUT)
+        es_layout = bool(packet.OBHFlags & OBH.LAYOUT)
         tipo = f"objeto layout (idx {packet.Index})" if es_layout else "objeto desconocido"
         print(f"PLID {packet.PLID} golpeó {tipo} a {vel_ms} m/s")
 ```

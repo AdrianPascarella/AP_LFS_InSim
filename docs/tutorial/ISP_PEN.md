@@ -13,9 +13,9 @@ LFS envía este paquete cuando a un jugador se le da o se le borra una penalizac
 | Type | byte | ISP_PEN |
 | ReqI | byte | 0 |
 | PLID | byte | ID único del jugador |
-| OldPen | byte | Penalización anterior (PENALTY_x) |
-| NewPen | byte | Nueva penalización (PENALTY_x) |
-| Reason | byte | Motivo de la penalización (PENR_x) |
+| OldPen | PENALTY | Penalización anterior (PENALTY_x) |
+| NewPen | PENALTY | Nueva penalización (PENALTY_x) |
+| Reason | PENR | Motivo de la penalización (PENR_x) |
 | Sp3 | byte | Reservado |
 
 ### Valores PENALTY_x
@@ -45,18 +45,16 @@ LFS envía este paquete cuando a un jugador se le da o se le borra una penalizac
 ```python
 from lfs_insim import InSimApp
 from lfs_insim.packets import ISP_PEN
-
-PENALTY_NONE = 0
-PENR_WRONG_WAY = 2
-PENR_FALSE_START = 3
+from lfs_insim.insim_enums import PENALTY, PENR
 
 class MiInsim(InSimApp):
     def on_ISP_PEN(self, packet: ISP_PEN):
-        if packet.NewPen == PENALTY_NONE:
+        if packet.NewPen == PENALTY.NONE:
             print(f"PLID {packet.PLID}: penalización borrada")
         else:
-            razones = {2: "sentido contrario", 3: "falsa salida",
-                       4: "velocidad en pit", 1: "admin"}
-            razon = razones.get(packet.Reason, f"cod:{packet.Reason}")
-            print(f"PLID {packet.PLID}: penalización {packet.NewPen} por {razon}")
+            try:
+                razon = PENR(packet.Reason).name.lower().replace('_', ' ')
+            except ValueError:
+                razon = f"cod:{packet.Reason}"
+            print(f"PLID {packet.PLID}: penalización {PENALTY(packet.NewPen).name} por {razon}")
 ```

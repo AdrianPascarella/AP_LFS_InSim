@@ -16,9 +16,9 @@ LFS envía este paquete cuando un jugador completa una vuelta. Contiene el tiemp
 | LTime | unsigned | Tiempo de vuelta en ms |
 | ETime | unsigned | Tiempo total transcurrido en ms |
 | LapsDone | word | Laps completados |
-| Flags | word | Flags de jugador (PIF_x) |
+| Flags | PIF | Flags de jugador (PIF_x) |
 | Sp0 | byte | Reservado |
-| Penalty | byte | Penalización actual (PENALTY_x) |
+| Penalty | PENALTY | Penalización actual (PENALTY_x) |
 | NumStops | byte | Número de paradas en pits |
 | Fuel200 | byte | Combustible restante (/showfuel yes: doble del % / no: 255) |
 

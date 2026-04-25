@@ -16,7 +16,7 @@ LFS envía este paquete cuando un jugador pasa por un split (checkpoint de tiemp
 | STime | unsigned | Tiempo del split en ms |
 | ETime | unsigned | Tiempo total transcurrido en ms |
 | Split | byte | Número de split: 1, 2 o 3 |
-| Penalty | byte | Penalización actual (PENALTY_x) |
+| Penalty | PENALTY | Penalización actual (PENALTY_x) |
 | NumStops | byte | Número de paradas en pits |
 | Fuel200 | byte | Combustible restante (/showfuel yes: doble del % / no: 255) |
 

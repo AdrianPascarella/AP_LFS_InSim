@@ -14,17 +14,17 @@ LFS envía este paquete automáticamente cada vez que cambia el estado del juego
 | ReqI | byte | ReqI si es respuesta a una solicitud |
 | Zero | byte | 0 |
 | ReplaySpeed | float | Velocidad del replay (1.0 = normal) |
-| Flags | word | Flags de estado ISS_x |
-| InGameCam | byte | Tipo de cámara seleccionada (VIEW_x) |
+| Flags | ISS | Flags de estado ISS_x |
+| InGameCam | VIEW | Tipo de cámara seleccionada (VIEW_x) |
 | ViewPLID | byte | PLID del jugador visto (0 = ninguno) |
 | NumP | byte | Número de jugadores en carrera |
 | NumConns | byte | Número de conexiones incluyendo host |
 | NumFinished | byte | Número que terminó o calificó |
-| RaceInProg | byte | 0 = sin carrera / 1 = carrera / 2 = calificación |
+| RaceInProg | RAINPR | NO_RACE=0 / RACE=1 / QUALIFYING=2 |
 | QualMins | byte | Minutos de calificación |
 | RaceLaps | byte | Laps de carrera (ver RaceLaps encoding) |
 | Sp2 | byte | Reservado |
-| ServerStatus | byte | 0 = desconocido / 1 = OK / >1 = error |
+| ServerStatus | SERVER | UNKNOWN=0 / SUCCESS=1 / FAILURE>1 |
 | Track | char[6] | Nombre corto del track, ej: "FE2R" |
 | Weather | WEATHER | Condición climática (CLEAR/CLOUDY/RAIN) |
 | Wind | WIND | Viento: OFF / WEAK / STRONG |
@@ -62,10 +62,11 @@ class MiInsim(InSimApp):
         self.send_ISP_TINY(ReqI=1, SubT=TINY.SST)
 
     def on_ISP_STA(self, packet: ISP_STA):
-        en_carrera = bool(packet.Flags & 1)   # ISS_GAME
-        en_pausa = bool(packet.Flags & 4)      # ISS_PAUSED
+        from lfs_insim.insim_enums import ISS, RAINPR
+        en_carrera = bool(packet.Flags & ISS.GAME)
+        en_pausa = bool(packet.Flags & ISS.PAUSED)
         print(f"Track: {packet.Track}  Jugadores: {packet.NumP}")
         print(f"En carrera: {en_carrera}  Pausado: {en_pausa}")
-        if packet.RaceInProg == 2:
+        if packet.RaceInProg == RAINPR.QUALIFYING:
             print(f"Calificación: {packet.QualMins} minutos")
 ```

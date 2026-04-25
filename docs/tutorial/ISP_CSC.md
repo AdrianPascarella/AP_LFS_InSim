@@ -14,7 +14,7 @@ LFS envía este paquete cuando el estado de un coche cambia. Actualmente reporta
 | ReqI | byte | 0 |
 | PLID | byte | ID único del jugador |
 | Sp0 | byte | Reservado |
-| CSCAction | byte | Acción (CSC_x) |
+| CSCAction | CSC | Acción (CSC_x) |
 | Sp2 | byte | Reservado |
 | Sp3 | byte | Reservado |
 | Time | unsigned | Ms desde inicio (como SMALL_RTP) |
@@ -31,13 +31,11 @@ LFS envía este paquete cuando el estado de un coche cambia. Actualmente reporta
 ```python
 from lfs_insim import InSimApp
 from lfs_insim.packets import ISP_CSC
-
-CSC_STOP  = 0
-CSC_START = 1
+from lfs_insim.insim_enums import CSC
 
 class MiInsim(InSimApp):
     def on_ISP_CSC(self, packet: ISP_CSC):
-        estado = "detuvo" if packet.CSCAction == CSC_STOP else "comenzó a moverse"
+        estado = "detuvo" if packet.CSCAction == CSC.STOP else "comenzó a moverse"
         print(f"PLID {packet.PLID}: coche {estado} en t={packet.Time}ms")
         # Útil para detectar coches parados en pista (safety car, etc.)
 ```

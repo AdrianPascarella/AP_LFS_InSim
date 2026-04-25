@@ -13,8 +13,8 @@ LFS envía este paquete cuando un jugador recibe o pierde una bandera (azul o am
 | Type | byte | ISP_FLG |
 | ReqI | byte | 0 |
 | PLID | byte | ID único del jugador que recibe la bandera |
-| OffOn | byte | 0 = bandera quitada / 1 = bandera puesta |
-| Flag | byte | 1 = bandera azul / 2 = causando amarilla |
+| OffOn | OFFON | 0 = bandera quitada (OFFON.OFF) / 1 = bandera puesta (OFFON.ON) |
+| Flag | BYF | BYF.BLUE=1 (bandera azul) / BYF.YELLOW=2 (causando amarilla) |
 | CarBehind | byte | PLID del jugador obstruido (para bandera azul) |
 | Sp3 | byte | Reservado |
 

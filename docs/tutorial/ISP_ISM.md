@@ -13,7 +13,7 @@ LFS envía este paquete cuando se inicia o se une a un host multijugador. Puede 
 | Type | byte | ISP_ISM |
 | ReqI | byte | 0 normalmente / o ReqI recibido en TINY_ISM |
 | Zero | byte | 0 |
-| Host | byte | 0 = guest / 1 = host |
+| Host | HG | HG.GUEST=0 / HG.HOST=1 |
 | Sp1 | byte | Reservado |
 | Sp2 | byte | Reservado |
 | Sp3 | byte | Reservado |

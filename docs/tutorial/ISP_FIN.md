@@ -17,10 +17,10 @@ LFS envía este paquete cuando un jugador cruza la línea de meta. Es una notifi
 | BTime | unsigned | Mejor vuelta en ms |
 | SpA | byte | Reservado |
 | NumStops | byte | Número de paradas en pits |
-| Confirm | byte | Flags de confirmación (CONF_x) |
+| Confirm | CONF | Flags de confirmación (CONF_x) |
 | SpB | byte | Reservado |
 | LapsDone | word | Laps completados |
-| Flags | word | Flags del jugador (PIF_x) |
+| Flags | PIF | Flags del jugador (PIF_x) |
 
 ### Flags CONF_x (confirmación)
 | Flag | Valor | Descripción |
@@ -38,8 +38,7 @@ LFS envía este paquete cuando un jugador cruza la línea de meta. Es una notifi
 ```python
 from lfs_insim import InSimApp
 from lfs_insim.packets import ISP_FIN
-
-CONF_DID_NOT_PIT = 64
+from lfs_insim.insim_enums import CONF
 
 def ms_a_tiempo(ms: int) -> str:
     mins = ms // 60000
@@ -51,7 +50,7 @@ class MiInsim(InSimApp):
         if packet.PLID == 0:
             print("Un jugador terminó pero ya abandonó")
             return
-        dsq = bool(packet.Confirm & CONF_DID_NOT_PIT)
+        dsq = bool(packet.Confirm & CONF.DID_NOT_PIT)
         print(f"PLID {packet.PLID} terminó - Tiempo: {ms_a_tiempo(packet.TTime)}"
               f"{'  [DNP]' if dsq else ''}")
 ```

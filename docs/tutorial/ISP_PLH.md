@@ -31,7 +31,7 @@ Para solicitar la lista actual: enviar `TINY_PLH`.
 ```python
 from lfs_insim import InSimApp
 from lfs_insim.packets import ISP_PLH
-from lfs_insim.insim_enums import TINY
+from lfs_insim.insim_enums import TINY, PHC
 
 class MiInsim(InSimApp):
     def on_connect(self):
@@ -46,7 +46,7 @@ class MiInsim(InSimApp):
         # Flags=3 -> set Mass Y TRes; bit 7 en Flags=silencioso
         hcap = {
             'PLID': plid,
-            'Flags': 3 | 0x80,  # establecer ambos, silencioso
+            'Flags': PHC.MASS | PHC.TRES | PHC.SILENT,
             'H_Mass': masa,
             'H_TRes': restriccion,
         }

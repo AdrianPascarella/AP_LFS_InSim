@@ -12,7 +12,7 @@ Paquete de doble uso para gestionar botones InSim. El InSim lo envía para borra
 | Size | byte | 8 |
 | Type | byte | ISP_BFN |
 | ReqI | byte | 0 |
-| SubT | byte | Subtipo (BFN_x) |
+| SubT | BFN | Subtipo (BFN_x) |
 | UCID | byte | Conexión destino / origen (0 = local / 255 = todas) |
 | ClickID | byte | ID del botón a borrar (o primero del rango si BFN_DEL_BTN) |
 | ClickMax | byte | ID del último botón del rango (si > ClickID borra el rango) |
@@ -34,30 +34,26 @@ Paquete de doble uso para gestionar botones InSim. El InSim lo envía para borra
 ```python
 from lfs_insim import InSimApp
 from lfs_insim.packets import ISP_BFN
-
-BFN_DEL_BTN    = 0
-BFN_CLEAR      = 1
-BFN_USER_CLEAR = 2
-BFN_REQUEST    = 3
+from lfs_insim.insim_enums import BFN
 
 class MiInsim(InSimApp):
     def on_ISP_BFN(self, packet: ISP_BFN):
-        if packet.SubT == BFN_REQUEST:
+        if packet.SubT == BFN.REQUEST:
             # El usuario presionó SHIFT+B/I — mostrar botones
             self._mostrar_interfaz(packet.UCID)
-        elif packet.SubT == BFN_USER_CLEAR:
+        elif packet.SubT == BFN.USER_CLEAR:
             print(f"UCID {packet.UCID} borró los botones")
 
     def borrar_boton(self, click_id: int, ucid: int = 0):
-        self.send_ISP_BFN(SubT=BFN_DEL_BTN, UCID=ucid,
+        self.send_ISP_BFN(SubT=BFN.DEL_BTN, UCID=ucid,
                           ClickID=click_id, ClickMax=click_id)
 
     def borrar_rango(self, desde: int, hasta: int, ucid: int = 0):
-        self.send_ISP_BFN(SubT=BFN_DEL_BTN, UCID=ucid,
+        self.send_ISP_BFN(SubT=BFN.DEL_BTN, UCID=ucid,
                           ClickID=desde, ClickMax=hasta)
 
     def borrar_todos(self, ucid: int = 255):
-        self.send_ISP_BFN(SubT=BFN_CLEAR, UCID=ucid,
+        self.send_ISP_BFN(SubT=BFN.CLEAR, UCID=ucid,
                           ClickID=0, ClickMax=0)
 
     def _mostrar_interfaz(self, ucid: int):

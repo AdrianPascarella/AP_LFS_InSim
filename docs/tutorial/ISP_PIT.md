@@ -14,13 +14,13 @@ LFS envía este paquete cuando un jugador entra al garage para una parada en pit
 | ReqI | byte | 0 |
 | PLID | byte | ID único del jugador |
 | LapsDone | word | Laps completados |
-| Flags | word | Flags de jugador (PIF_x) |
+| Flags | PIF | Flags de jugador (PIF_x) |
 | FuelAdd | byte | Combustible añadido (% si /showfuel yes; 255 si no) |
-| Penalty | byte | Penalización actual (PENALTY_x) |
+| Penalty | PENALTY | Penalización actual (PENALTY_x) |
 | NumStops | byte | Número de paradas en pits |
 | Sp3 | byte | Reservado |
-| Tyres | byte[4] | Neumáticos cambiados (TYRE_x; NOT_CHANGED=255) |
-| Work | unsigned | Trabajo realizado (bitmask PSE_x) |
+| Tyres | TYRE[4] | Neumáticos cambiados (TYRE_x; NOT_CHANGED=255) |
+| Work | PSE | Trabajo realizado (bitmask PSE_x) |
 | Spare | unsigned | Reservado |
 
 ### Bitmask PSE_x (Pit Work Flags)
@@ -34,14 +34,12 @@ LFS envía este paquete cuando un jugador entra al garage para una parada en pit
 ```python
 from lfs_insim import InSimApp
 from lfs_insim.packets import ISP_PIT
-
-NOT_CHANGED = 255
-PSE_REFUEL = 17
+from lfs_insim.insim_enums import PSE, TYRE, NOT_CHANGED
 
 class MiInsim(InSimApp):
     def on_ISP_PIT(self, packet: ISP_PIT):
-        repostaje = bool(packet.Work & (1 << PSE_REFUEL))
-        neumaticos_cambiados = [t for t in packet.Tyres if t != NOT_CHANGED]
+        repostaje = bool(packet.Work & PSE.REFUEL)
+        neumaticos_cambiados = [TYRE(t).name for t in packet.Tyres if t != NOT_CHANGED]
         print(f"PLID {packet.PLID} - Pit #{packet.NumStops}")
         if repostaje and packet.FuelAdd != 255:
             print(f"  Combustible añadido: {packet.FuelAdd}%")

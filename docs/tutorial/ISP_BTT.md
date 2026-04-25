@@ -14,7 +14,7 @@ LFS envía este paquete cuando un usuario termina de escribir en un botón de en
 | ReqI | byte | ReqI del IS_BTN original |
 | UCID | byte | Conexión que escribió (0 si es local) |
 | ClickID | byte | ID del botón (como en IS_BTN) |
-| Inst | byte | Usado internamente por InSim |
+| Inst | INST | Usado internamente por InSim |
 | TypeIn | byte | Valor TypeIn del IS_BTN original |
 | Sp3 | byte | Reservado |
 | Text | char[96] | Texto escrito (hasta TypeIn caracteres especificados en IS_BTN) |
@@ -25,8 +25,7 @@ LFS envía este paquete cuando un usuario termina de escribir en un botón de en
 from lfs_insim import InSimApp
 from lfs_insim.packets import ISP_BTT
 
-ISB_CLICK = 8
-ISB_DARK  = 32
+from lfs_insim.insim_enums import ISB_STYLE
 
 BTN_INPUT_NOMBRE = 20
 BTN_INPUT_SPEED  = 21
@@ -36,7 +35,7 @@ class MiInsim(InSimApp):
         # TypeIn=20 permite hasta 20 caracteres; bit 7 inicializa con texto del botón
         self.send_ISP_BTN(
             ReqI=5, UCID=ucid, ClickID=BTN_INPUT_NOMBRE,
-            BStyle=ISB_DARK, TypeIn=20,
+            BStyle=ISB_STYLE.DARK, TypeIn=20,
             L=10, T=60, W=60, H=8,
             Text="Escribe tu nombre"
         )
@@ -48,7 +47,7 @@ class MiInsim(InSimApp):
             # Responder actualizando el botón con el nombre recibido
             self.send_ISP_BTN(
                 ReqI=5, UCID=packet.UCID, ClickID=BTN_INPUT_NOMBRE,
-                BStyle=ISB_DARK, TypeIn=0,
+                BStyle=ISB_STYLE.DARK, TypeIn=0,
                 L=10, T=60, W=60, H=8,
                 Text=f"^3{texto}"
             )

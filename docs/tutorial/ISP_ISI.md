@@ -17,7 +17,7 @@ No requiere flags previos. Este paquete *define* los flags ISF que activarán ot
 | ReqI | byte | Si no es cero, LFS responde con IS_VER |
 | Zero | byte | 0 |
 | UDPPort | word | Puerto UDP para respuestas de LFS (0-65535) |
-| Flags | word | Bits de opciones (ISF_x) |
+| Flags | ISF | Bits de opciones (ISF_x) |
 | InSimVer | byte | Versión INSIM_VERSION del programa (actualmente 10) |
 | Prefix | byte | Carácter prefijo para mensajes de host |
 | Interval | word | Intervalo en ms entre NLP o MCI (0 = ninguno) |

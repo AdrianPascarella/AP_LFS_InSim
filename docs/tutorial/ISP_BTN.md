@@ -14,8 +14,8 @@ Instrucción para mostrar un botón en la pantalla del host o de un guest. Sopor
 | ReqI | byte | distinto de cero (devuelto en IS_BTC e IS_BTT) |
 | UCID | byte | Conexión donde mostrar el botón (0 = local / 255 = todos) |
 | ClickID | byte | ID del botón (0 a 239) |
-| Inst | byte | Flags extra (INST_ALWAYS_ON=128 para visible en todas las pantallas) |
-| BStyle | byte | Flags de estilo (ISB_x) |
+| Inst | INST | Flags extra (ALWAYS_ON=128 para visible en todas las pantallas) |
+| BStyle | ISB_STYLE | Flags de estilo (ISB_x) |
 | TypeIn | byte | Si distinto de 0: máx caracteres a escribir (0-95) / bit 7: inicializar con texto del botón |
 | L | byte | Izquierda: 0-200 |
 | T | byte | Arriba: 0-200 |
@@ -43,11 +43,7 @@ Instrucción para mostrar un botón en la pantalla del host o de un guest. Sopor
 ```python
 from lfs_insim import InSimApp
 from lfs_insim.packets import ISP_BTN, ISP_BFN
-from lfs_insim.insim_enums import ISF
-
-ISB_CLICK = 8
-ISB_DARK  = 32
-ISB_LEFT  = 64
+from lfs_insim.insim_enums import ISF, ISB_STYLE, BFN
 
 class MiInsim(InSimApp):
     BTN_MENU   = 0
@@ -58,21 +54,20 @@ class MiInsim(InSimApp):
         self.isi.Flags |= ISF.LOCAL  # botones locales, no del host
 
     def on_ISP_BFN(self, packet):
-        # Usuario presionó SHIFT+B para ver botones
-        if packet.SubT == 3:  # BFN_REQUEST
+        if packet.SubT == BFN.REQUEST:
             self._mostrar_menu(packet.UCID)
 
     def _mostrar_menu(self, ucid: int):
         # Título
         self.send_ISP_BTN(
             ReqI=1, UCID=ucid, ClickID=self.BTN_MENU,
-            BStyle=ISB_DARK | ISB_LEFT, TypeIn=0,
+            BStyle=ISB_STYLE.DARK | ISB_STYLE.LEFT, TypeIn=0,
             L=10, T=40, W=50, H=10, Text="^3Mi InSim"
         )
         # Botón clickeable
         self.send_ISP_BTN(
             ReqI=2, UCID=ucid, ClickID=self.BTN_SALIR,
-            BStyle=ISB_CLICK | ISB_DARK, TypeIn=0,
+            BStyle=ISB_STYLE.CLICK | ISB_STYLE.DARK, TypeIn=0,
             L=10, T=55, W=50, H=8, Text="Salir"
         )
 ```

@@ -16,11 +16,11 @@ LFS envía este paquete al inicio de cada carrera o sesión de calificación. Co
 | RaceLaps | byte | 0 si es calificación; número de laps si es carrera |
 | QualMins | byte | 0 si es carrera; minutos de calificación |
 | NumP | byte | Número de jugadores en carrera |
-| Timing | byte | Info de timing de laps (ver abajo) |
+| Timing | RST_TIMING | Info de timing de laps (ver abajo) |
 | Track | char[6] | Nombre corto del track, ej: "FE2R" |
 | Weather | WEATHER | Condición climática (CLEAR/CLOUDY/RAIN) |
 | Wind | WIND | Viento: OFF / WEAK / STRONG |
-| Flags | word | Flags de carrera (HOSTF_x) |
+| Flags | HOSTF | Flags de carrera (HOSTF_x) |
 | NumNodes | word | Número total de nodos en el path |
 | Finish | word | Índice de nodo de la línea de meta |
 | Split1 | word | Índice de nodo del split 1 |

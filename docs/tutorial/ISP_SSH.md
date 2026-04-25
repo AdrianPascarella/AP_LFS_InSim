@@ -12,7 +12,7 @@ Paquete de doble uso para tomar capturas de pantalla. El InSim lo envía para so
 | Size | byte | 40 |
 | Type | byte | ISP_SSH |
 | ReqI | byte | solicitud: distinto de cero / respuesta: mismo valor |
-| Error | byte | 0 = OK / otros valores son errores (ver abajo) |
+| Error | SSH | SSH.OK=0 / otros=error |
 | Sp0 | byte | 0 |
 | Sp1 | byte | 0 |
 | Sp2 | byte | 0 |
@@ -32,6 +32,7 @@ Paquete de doble uso para tomar capturas de pantalla. El InSim lo envía para so
 ```python
 from lfs_insim import InSimApp
 from lfs_insim.packets import ISP_SSH
+from lfs_insim.insim_enums import SSH as SSH_ERR
 import time
 
 class MiInsim(InSimApp):
@@ -46,8 +47,8 @@ class MiInsim(InSimApp):
     def on_ISP_SSH(self, packet: ISP_SSH):
         if packet.ReqI:  # es respuesta
             nombre = packet.Name
-            if packet.Error == 0:
+            if packet.Error == SSH_ERR.OK:
                 print(f"Screenshot guardado: {nombre}")
             else:
-                print(f"Error en screenshot: código {packet.Error}")
+                print(f"Error en screenshot: {SSH_ERR(packet.Error).name}")
 ```

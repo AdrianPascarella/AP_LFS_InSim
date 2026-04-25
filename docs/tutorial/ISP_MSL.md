@@ -12,7 +12,7 @@ Envía un mensaje que aparece solo en el ordenador local (no se muestra a otros 
 | Size | byte | 132 |
 | Type | byte | ISP_MSL |
 | ReqI | byte | 0 |
-| Sound | byte | Efecto de sonido (SND_x) |
+| Sound | SND | Efecto de sonido (SND_x) |
 | Msg | char[128] | Mensaje — el último byte debe ser cero |
 
 ### Valores Sound (SND_x)
@@ -29,10 +29,8 @@ Envía un mensaje que aparece solo en el ordenador local (no se muestra a otros 
 ```python
 from lfs_insim import InSimApp
 from lfs_insim.packets import ISP_MSO
+from lfs_insim.insim_enums import SND
 from lfs_insim.utils import TextColors as c
-
-SND_MESSAGE = 1
-SND_ERROR = 4
 
 class MiInsim(InSimApp):
     def on_ISP_MSO(self, packet: ISP_MSO):
@@ -40,7 +38,7 @@ class MiInsim(InSimApp):
         if "hola" in msg.lower():
             # Responder solo visible en el PC local
             self.send_ISP_MSL(
-                Sound=SND_MESSAGE,
+                Sound=SND.MESSAGE,
                 Msg=f"{c.GREEN}Hola recibido desde InSim!"
             )
 ```

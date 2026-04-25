@@ -12,10 +12,10 @@ Paquete de doble uso para controlar replays. El InSim puede enviarlo para cargar
 | Size | byte | 80 |
 | Type | byte | ISP_RIP |
 | ReqI | byte | solicitud: distinto de cero / respuesta: mismo valor |
-| Error | byte | 0 o 1 = OK / otros valores son errores (ver abajo) |
-| MPR | byte | 0 = SPR (single player) / 1 = MPR (multiplayer) |
-| Paused | byte | solicitud: pausar al llegar / respuesta: estado actual |
-| Options | byte | Opciones (RIPOPT_x) |
+| Error | RIP | RIP.OK=0 / RIP.ALREADY=1 / otros=error |
+| MPR | SMPR | SMPR.SPR=0 / SMPR.MPR=1 |
+| Paused | OFFON | OFFON.OFF=0 / OFFON.ON=1 |
+| Options | RIPOPT | Opciones (RIPOPT_x) |
 | Sp3 | byte | Reservado |
 | CTime | unsigned | (ms) solicitud: destino / respuesta: posición actual |
 | TTime | unsigned | (ms) solicitud: 0 / respuesta: duración del replay |
@@ -49,17 +49,15 @@ Paquete de doble uso para controlar replays. El InSim puede enviarlo para cargar
 ```python
 from lfs_insim import InSimApp
 from lfs_insim.packets import ISP_RIP
-from lfs_insim.insim_enums import TINY
-
-RIPOPT_LOOP = 1
+from lfs_insim.insim_enums import TINY, RIP as RIP_ERR, SMPR, OFFON, RIPOPT
 
 class MiInsim(InSimApp):
     def on_connect(self):
         self.send_ISP_TINY(ReqI=1, SubT=TINY.RIP)
 
     def on_ISP_RIP(self, packet: ISP_RIP):
-        if packet.Error > 1:
-            print(f"Error al cargar replay: código {packet.Error}")
+        if packet.Error not in (RIP_ERR.OK, RIP_ERR.ALREADY):
+            print(f"Error al cargar replay: {RIP_ERR(packet.Error).name}")
             return
         nombre = packet.RName
         if nombre:
@@ -69,7 +67,7 @@ class MiInsim(InSimApp):
 
     def cargar_replay(self, nombre: str, tiempo_ms: int = 0):
         self.send_ISP_RIP(
-            ReqI=1, Error=0, MPR=0, Paused=1,
+            ReqI=1, Error=RIP_ERR.OK, MPR=SMPR.SPR, Paused=OFFON.ON,
             Options=0, CTime=tiempo_ms, TTime=0,
             RName=nombre
         )

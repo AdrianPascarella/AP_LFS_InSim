@@ -13,7 +13,7 @@ Instrucción para cambiar el modo de pantalla de LFS (resolución, frecuencia, v
 | Type | byte | ISP_MOD |
 | ReqI | byte | 0 |
 | Zero | byte | 0 |
-| Bits16 | int | Distinto de cero para elegir modo 16 bits |
+| Bits16 | MOD_BIT | BIT32=0 / BIT16=1 |
 | RR | int | Frecuencia de refresco en Hz (0 = por defecto) |
 | Width | int | Ancho en píxeles (0 = ir a ventana) |
 | Height | int | Alto en píxeles (0 = ir a ventana) |
