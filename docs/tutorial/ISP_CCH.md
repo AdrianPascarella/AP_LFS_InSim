@@ -13,7 +13,7 @@ LFS envía este paquete cuando un jugador existente cambia de cámara. Para rast
 | Type | byte | ISP_CCH |
 | ReqI | byte | 0 |
 | PLID | byte | ID único del jugador |
-| Camera | byte | Identificador de vista (VIEW_x) |
+| Camera | VIEW | Identificador de vista (VIEW_x) |
 | Sp1 | byte | Reservado |
 | Sp2 | byte | Reservado |
 | Sp3 | byte | Reservado |
@@ -33,11 +33,13 @@ LFS envía este paquete cuando un jugador existente cambia de cámara. Para rast
 ```python
 from lfs_insim import InSimApp
 from lfs_insim.packets import ISP_CCH
-
-VIEW_NAMES = {0: "arcade", 1: "helicoptero", 2: "TV", 3: "cockpit", 4: "personalizada"}
+from lfs_insim.insim_enums import VIEW
 
 class MiInsim(InSimApp):
     def on_ISP_CCH(self, packet: ISP_CCH):
-        vista = VIEW_NAMES.get(packet.Camera, f"desconocida ({packet.Camera})")
+        try:
+            vista = VIEW(packet.Camera).name.lower()
+        except ValueError:
+            vista = f"desconocida ({packet.Camera})"
         print(f"PLID {packet.PLID} cambió a vista: {vista}")
 ```

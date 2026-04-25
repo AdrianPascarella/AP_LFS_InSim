@@ -14,8 +14,8 @@ LFS envía este paquete cuando un usuario escribe un comando de administrador. I
 | ReqI | byte | 0 |
 | Zero | byte | 0 |
 | UCID | byte | ID de conexión (0 = host) |
-| Admin | byte | 1 si el usuario es admin |
-| Result | byte | 1 = procesado / 2 = rechazado / 3 = comando desconocido |
+| Admin | AD_NOAD | 1 si el usuario es admin |
+| Result | RESULT | 1 = procesado / 2 = rechazado / 3 = comando desconocido |
 | Sp3 | byte | Reservado |
 | Text | char[64] | Texto del comando (variable, último byte es cero) |
 
@@ -24,12 +24,13 @@ LFS envía este paquete cuando un usuario escribe un comando de administrador. I
 ```python
 from lfs_insim import InSimApp
 from lfs_insim.packets import ISP_ACR
+from lfs_insim.insim_enums import AD_NOAD, RESULT
 
 class MiInsim(InSimApp):
     def on_ISP_ACR(self, packet: ISP_ACR):
         comando = packet.Text
-        resultados = {1: "procesado", 2: "rechazado", 3: "desconocido"}
-        estado = resultados.get(packet.Result, "?")
-        admin = "admin" if packet.Admin else "usuario"
+        estados = {RESULT.PROCESSED: "procesado", RESULT.REJECTED: "rechazado", RESULT.UNKNOWN_COMMAND: "desconocido"}
+        estado = estados.get(packet.Result, "?")
+        admin = "admin" if packet.Admin == AD_NOAD.ADMIN else "usuario"
         print(f"Comando de {admin} UCID {packet.UCID}: '{comando}' -> {estado}")
 ```

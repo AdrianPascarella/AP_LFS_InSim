@@ -14,24 +14,24 @@ LFS envía este paquete cuando un jugador entra a la carrera, o cuando sale de p
 | ReqI | byte | 0, o el ReqI de TINY_NPL |
 | PLID | byte | ID único del jugador (asignado al unirse) |
 | UCID | byte | ID de la conexión del jugador |
-| PType | byte | bit 0: female / bit 1: AI / bit 2: remote |
-| Flags | word | Flags de jugador (PIF_x) |
+| PType | PTYPE | FEMALE / AI / REMOTE |
+| Flags | PIF | Flags de jugador (PIF_x) |
 | PName | char[24] | Nickname |
 | Plate | char[8] | Matrícula (sin terminador nulo) |
 | CName | char[4] | Nombre del coche |
 | SName | char[16] | Nombre del skin |
-| Tyres | byte[4] | Compuestos de neumáticos [rear L, rear R, front L, front R] |
+| Tyres | TYRE[4] | Compuestos de neumáticos [rear L, rear R, front L, front R] |
 | H_Mass | byte | Masa añadida (kg) |
 | H_TRes | byte | Restricción de admisión |
 | Model | byte | Modelo de piloto |
-| Pass | byte | Byte de pasajeros |
+| Pass | PASS | Byte de pasajeros |
 | RWAdj | byte | Reducción de ancho de neumáticos traseros (bits 0-3) |
 | FWAdj | byte | Reducción de ancho de neumáticos delanteros (bits 0-3) |
 | Sp2 | byte | Reservado |
 | Sp3 | byte | Reservado |
-| SetF | byte | Flags de configuración (SETF_x) |
+| SetF | SETF | Flags de configuración (SETF_x) |
 | NumP | byte | Posición en carrera (0 = solicitud de unión) |
-| Config | byte | Configuración del coche |
+| Config | CAR_CONFIG | DEFAULT=0 / ALTERNATE=1 |
 | Fuel | byte | Combustible inicial (% si /showfuel yes; 255 si no) |
 
 ### Flags PIF_x (jugador)
@@ -59,7 +59,7 @@ LFS envía este paquete cuando un jugador entra a la carrera, o cuando sale de p
 ```python
 from lfs_insim import InSimApp
 from lfs_insim.packets import ISP_NPL
-from lfs_insim.insim_enums import TINY
+from lfs_insim.insim_enums import TINY, PTYPE
 
 class MiInsim(InSimApp):
     def __init__(self):
@@ -75,7 +75,7 @@ class MiInsim(InSimApp):
             return
         nombre = packet.PName
         coche = packet.CName
-        es_ai = bool(packet.PType & 2)
+        es_ai = bool(packet.PType & PTYPE.AI)
         self.jugadores[packet.PLID] = {
             'nombre': nombre, 'coche': coche, 'ucid': packet.UCID
         }

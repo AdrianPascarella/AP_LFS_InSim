@@ -21,10 +21,10 @@ LFS envía este paquete con el resultado final confirmado de un jugador (al term
 | BTime | unsigned | (ms) mejor vuelta |
 | SpA | byte | Reservado |
 | NumStops | byte | Número de paradas en pits |
-| Confirm | byte | Flags de confirmación (CONF_x) |
+| Confirm | CONF | Flags de confirmación (CONF_x) |
 | SpB | byte | Reservado |
 | LapsDone | word | Laps completados |
-| Flags | word | Flags del jugador (PIF_x) |
+| Flags | PIF | Flags del jugador (PIF_x) |
 | ResultNum | byte | Posición en resultados (0=1ro / 255=no en tabla) |
 | NumRes | byte | Total de resultados |
 | PSeconds | word | Tiempo de penalización en segundos (ya incluido en TTime) |

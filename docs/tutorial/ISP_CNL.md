@@ -13,7 +13,7 @@ LFS envía este paquete cuando una conexión abandona el host. Incluye el motivo
 | Type | byte | ISP_CNL |
 | ReqI | byte | 0 |
 | UCID | byte | ID de la conexión que abandonó |
-| Reason | byte | Motivo de abandono (LEAVR_x) |
+| Reason | LEAVR | Motivo de abandono (LEAVR_x) |
 | Total | byte | Número total de conexiones restantes (incluyendo host) |
 | Sp2 | byte | Reservado |
 | Sp3 | byte | Reservado |
@@ -37,12 +37,7 @@ LFS envía este paquete cuando una conexión abandona el host. Incluye el motivo
 ```python
 from lfs_insim import InSimApp
 from lfs_insim.packets import ISP_CNL
-
-RAZONES = {
-    0: "desconexión normal", 1: "timeout", 2: "conexión perdida",
-    3: "expulsado", 4: "baneado", 5: "seguridad",
-    6: "cheat protection", 7: "out of sync", 8: "join OOS", 9: "hack"
-}
+from lfs_insim.insim_enums import LEAVR
 
 class MiInsim(InSimApp):
     def __init__(self):
@@ -50,7 +45,10 @@ class MiInsim(InSimApp):
         self.conexiones = {}
 
     def on_ISP_CNL(self, packet: ISP_CNL):
-        razon = RAZONES.get(packet.Reason, f"desconocido ({packet.Reason})")
+        try:
+            razon = LEAVR(packet.Reason).name.lower().replace('_', ' ')
+        except ValueError:
+            razon = f"desconocido ({packet.Reason})"
         nombre = self.conexiones.pop(packet.UCID, f"UCID {packet.UCID}")
         print(f"{nombre} desconectado: {razon} (quedan {packet.Total})")
 ```

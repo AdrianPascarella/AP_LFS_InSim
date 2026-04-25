@@ -15,9 +15,9 @@ LFS envía este paquete cuando un nuevo jugador se conecta al host. También se 
 | UCID | byte | ID único de la nueva conexión (0 = host) |
 | UName | char[24] | Nombre de usuario de LFS |
 | PName | char[24] | Nickname del jugador |
-| Admin | byte | 1 si es admin |
+| Admin | AD_NOAD | AD_NOAD.ADMIN / AD_NOAD.NO_ADMIN |
 | Total | byte | Número total de conexiones (incluyendo host) |
-| Flags | byte | bit 2: remoto (guest) |
+| Flags | NCN_FLAGS | bit 2: NCN_FLAGS.REMOTE (guest) |
 | Sp3 | byte | Reservado |
 
 ## Ejemplo de uso

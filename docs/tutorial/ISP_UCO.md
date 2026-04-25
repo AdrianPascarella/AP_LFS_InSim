@@ -14,7 +14,7 @@ LFS envía este paquete cuando un coche cruza un checkpoint InSim o entra/sale d
 | ReqI | byte | 0 |
 | PLID | byte | ID único del jugador |
 | Sp0 | byte | Reservado |
-| UCOAction | byte | Acción (UCO_x) |
+| UCOAction | UCO | Acción (UCO_x) |
 | Sp2 | byte | Reservado |
 | Sp3 | byte | Reservado |
 | Time | unsigned | Ms desde inicio (como SMALL_RTP) |
@@ -38,23 +38,16 @@ LFS envía este paquete cuando un coche cruza un checkpoint InSim o entra/sale d
 ```python
 from lfs_insim import InSimApp
 from lfs_insim.packets import ISP_UCO
-
-UCO_CIRCLE_ENTER = 0
-UCO_CIRCLE_LEAVE = 1
-UCO_CP_FWD       = 2
-UCO_CP_REV       = 3
-
-MARSH_IS_CP   = 252
-MARSH_IS_AREA = 253
+from lfs_insim.insim_enums import UCO, AXO_INDEX
 
 class MiInsim(InSimApp):
     def on_ISP_UCO(self, packet: ISP_UCO):
         idx = packet.Info.Index
-        if idx == MARSH_IS_CP and packet.UCOAction == UCO_CP_FWD:
+        if idx == AXO_INDEX.MARSH_IS_CP and packet.UCOAction == UCO.CP_FWD:
             cp_idx = packet.Info.Flags & 0x03  # 0=meta, 1=CP1, 2=CP2, 3=CP3
             print(f"PLID {packet.PLID} cruzó checkpoint {cp_idx} en {packet.Time}ms")
-        elif idx == MARSH_IS_AREA:
+        elif idx == AXO_INDEX.MARSH_IS_AREA:
             circulo = packet.Info.Heading
-            accion = "entró" if packet.UCOAction == UCO_CIRCLE_ENTER else "salió"
+            accion = "entró" if packet.UCOAction == UCO.CIRCLE_ENTER else "salió"
             print(f"PLID {packet.PLID} {accion} del círculo {circulo}")
 ```

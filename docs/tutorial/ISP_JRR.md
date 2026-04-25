@@ -17,7 +17,7 @@ Para recibir solicitudes de unión: `ISF.REQ_JOIN` en `set_isi_packet()`.
 | ReqI | byte | 0 |
 | PLID | byte | 0 al responder una solicitud / PLID del coche a mover |
 | UCID | byte | UCID al responder solicitud / ignorado al mover |
-| JRRAction | byte | Acción (JRR_x) |
+| JRRAction | JRR | Acción (JRR_x) |
 | Sp2 | byte | Reservado |
 | Sp3 | byte | Reservado |
 | StartPos | ObjectInfo | Posición de inicio (0 = usar por defecto / Flags=0x80: usar posición) |
@@ -39,10 +39,7 @@ Para especificar posición: X, Y, Zbyte, Heading como en autocross; Flags=0x80; 
 ```python
 from lfs_insim import InSimApp
 from lfs_insim.packets import ISP_NPL
-from lfs_insim.insim_enums import ISF
-
-JRR_REJECT = 0
-JRR_SPAWN  = 1
+from lfs_insim.insim_enums import ISF, JRR
 
 class MiInsim(InSimApp):
     def set_isi_packet(self):
@@ -57,15 +54,13 @@ class MiInsim(InSimApp):
         coches_permitidos = ['XFG', 'XRG', 'FXO']
 
         if coche in coches_permitidos:
-            # Permitir unión con posición por defecto
             self.send_ISP_JRR(
                 PLID=0, UCID=packet.UCID,
-                JRRAction=JRR_SPAWN,
+                JRRAction=JRR.SPAWN,
                 StartPos={'X': 0, 'Y': 0, 'Zbyte': 0, 'Flags': 0, 'Index': 0, 'Heading': 0}
             )
         else:
-            # Rechazar
-            self.send_ISP_JRR(PLID=0, UCID=packet.UCID, JRRAction=JRR_REJECT,
+            self.send_ISP_JRR(PLID=0, UCID=packet.UCID, JRRAction=JRR.REJECT,
                               StartPos={'X': 0, 'Y': 0, 'Zbyte': 0,
                                         'Flags': 0, 'Index': 0, 'Heading': 0})
             self.send_ISP_MTC(UCID=packet.UCID,

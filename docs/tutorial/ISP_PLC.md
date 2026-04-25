@@ -17,7 +17,7 @@ Instrucción para limitar qué coches puede seleccionar una conexión específic
 | Sp1 | byte | Reservado |
 | Sp2 | byte | Reservado |
 | Sp3 | byte | Reservado |
-| Cars | unsigned | Bitmask de coches permitidos (ver CARS) |
+| Cars | CARS | Bitmask de coches permitidos (ver CARS) |
 
 ### Bitmask CARS (coches disponibles)
 | Bit | Valor | Coche |
@@ -48,13 +48,13 @@ Instrucción para limitar qué coches puede seleccionar una conexión específic
 ```python
 from lfs_insim import InSimApp
 from lfs_insim.packets import ISP_NCN
+from lfs_insim.insim_enums import CARS
 
-# Solo coches de calle: XF GTI + XR GT + FXO TURBO + LX4 + LX6
-COCHES_CALLE = 0x1 | 0x2 | 0x10 | 0x20 | 0x40
+# Solo coches de calle
+COCHES_CALLE = CARS.XF_GTI | CARS.XR_GT | CARS.FXO_TURBO | CARS.LX4 | CARS.LX6
 
 class MiInsim(InSimApp):
     def on_ISP_NCN(self, packet: ISP_NCN):
-        # Restringir coches al nuevo jugador
         self.send_ISP_PLC(UCID=packet.UCID, Cars=COCHES_CALLE)
 
     def permitir_todos(self, ucid: int):

@@ -13,8 +13,8 @@ Envía una pulsación de tecla individual a LFS, como si el usuario la hubiera p
 | Type | byte | ISP_SCH |
 | ReqI | byte | 0 |
 | Zero | byte | 0 |
-| CharB | byte | Tecla a pulsar (usar mayúscula para letras estándar) |
-| Flags | byte | bit 0: SHIFT / bit 1: CTRL |
+| CharB | CHARS | Tecla a pulsar (usar mayúscula para letras estándar) |
+| Flags | SCH_FLAGS | SCH_FLAGS.SHIFT / SCH_FLAGS.CTRL |
 | Spare2 | byte | Reservado |
 | Spare3 | byte | Reservado |
 
@@ -33,8 +33,9 @@ class MiInsim(InSimApp):
         self.send_ISP_SCH(CharB=ord('H'), Flags=0)
 
     def presionar_ctrl_c(self):
-        # CTRL + C (Flags bit 1 = CTRL)
-        self.send_ISP_SCH(CharB=ord('C'), Flags=2)
+        # CTRL + C
+        from lfs_insim.insim_enums import SCH_FLAGS
+        self.send_ISP_SCH(CharB=ord('C'), Flags=SCH_FLAGS.CTRL)
 
     def presionar_escape(self):
         # Para teclas especiales usar IS_MST con /press

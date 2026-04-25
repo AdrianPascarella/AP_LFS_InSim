@@ -61,12 +61,7 @@ Valores toggle: 1=toggle / 2=apagar / 3=encender
 
 ```python
 from lfs_insim import InSimApp
-
-CS_MSX      = 0
-CS_THROTTLE = 1
-CS_BRAKE    = 2
-CS_CHUP     = 3
-CS_STOP_CONTROL = 255
+from lfs_insim.insim_enums import CS
 
 class MiInsim(InSimApp):
     def acelerar_ai(self, plid: int, steer: float, throttle: float):
@@ -74,19 +69,19 @@ class MiInsim(InSimApp):
         steer_val = int((steer + 1) / 2 * 65534) + 1
         throttle_val = int(throttle * 65535)
         self.send_ISP_AIC(PLID=plid, Inputs=[
-            {'Input': CS_MSX,      'Time': 0, 'Value': steer_val},
-            {'Input': CS_THROTTLE, 'Time': 0, 'Value': throttle_val},
-            {'Input': CS_BRAKE,    'Time': 0, 'Value': 0},
+            {'Input': CS.STEER,    'Time': 0, 'Value': steer_val},
+            {'Input': CS.THROTTLE, 'Time': 0, 'Value': throttle_val},
+            {'Input': CS.BRAKE,    'Time': 0, 'Value': 0},
         ])
 
     def cambiar_marcha_arriba(self, plid: int):
         # hold por 0.1s (10 centésimas)
         self.send_ISP_AIC(PLID=plid, Inputs=[
-            {'Input': CS_CHUP, 'Time': 10, 'Value': 1},
+            {'Input': CS.CHUP, 'Time': 10, 'Value': 1},
         ])
 
     def detener_ai(self, plid: int):
         self.send_ISP_AIC(PLID=plid, Inputs=[
-            {'Input': CS_STOP_CONTROL, 'Time': 0, 'Value': 0},
+            {'Input': CS.STOP_CONTROL, 'Time': 0, 'Value': 0},
         ])
 ```

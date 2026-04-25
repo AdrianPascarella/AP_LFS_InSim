@@ -18,8 +18,8 @@ Paquete de doble uso para gestionar objetos de autocross (layout). LFS lo envía
 | ReqI | byte | 0, o el ReqI de TINY_AXM o TTC_SEL |
 | NumO | byte | Número de objetos en el paquete |
 | UCID | byte | ID de la conexión que envió el paquete |
-| PMOAction | byte | Acción (PMO_x) |
-| PMOFlags | byte | Flags (PMO_FILE_END, PMO_MOVE_MODIFY, etc.) |
+| PMOAction | PMO | Acción (PMO_x) |
+| PMOFlags | PMOF | Flags (PMO_FILE_END, PMO_MOVE_MODIFY, etc.) |
 | Sp3 | byte | Reservado |
 | Info | ObjectInfo[60] | Info de cada objeto (hasta AXM_MAX_OBJECTS=60) |
 
@@ -59,10 +59,7 @@ Paquete de doble uso para gestionar objetos de autocross (layout). LFS lo envía
 ```python
 from lfs_insim import InSimApp
 from lfs_insim.packets import ISP_AXM
-from lfs_insim.insim_enums import ISF, TINY
-
-PMO_ADD_OBJECTS = 1
-PMO_CLEAR_ALL   = 3
+from lfs_insim.insim_enums import ISF, TINY, PMO, PMOF
 
 class MiInsim(InSimApp):
     def set_isi_packet(self):
@@ -74,12 +71,12 @@ class MiInsim(InSimApp):
         self.send_ISP_TINY(ReqI=1, SubT=TINY.AXM)
 
     def on_ISP_AXM(self, packet: ISP_AXM):
-        print(f"AXM: {packet.NumO} objetos, acción={packet.PMOAction}")
+        print(f"AXM: {packet.NumO} objetos, acción={PMO(packet.PMOAction).name}")
         for i in range(packet.NumO):
             obj = packet.Info[i]
             print(f"  Objeto {obj.Index} en ({obj.X}, {obj.Y})")
 
     def limpiar_layout(self):
-        self.send_ISP_AXM(NumO=0, UCID=0, PMOAction=PMO_CLEAR_ALL,
+        self.send_ISP_AXM(NumO=0, UCID=0, PMOAction=PMO.CLEAR_ALL,
                           PMOFlags=0, Info=[])
 ```

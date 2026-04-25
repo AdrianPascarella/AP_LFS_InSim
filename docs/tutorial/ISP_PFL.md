@@ -13,7 +13,7 @@ LFS envía este paquete cuando cambian las ayudas al conductor de un jugador (fl
 | Type | byte | ISP_PFL |
 | ReqI | byte | 0 |
 | PLID | byte | ID único del jugador |
-| Flags | word | Flags del jugador (PIF_x) — ver ISP_NPL |
+| Flags | PIF | Flags del jugador (PIF_x) — ver ISP_NPL |
 | Spare | word | Reservado |
 
 ### Flags PIF_x principales
@@ -34,19 +34,16 @@ LFS envía este paquete cuando cambian las ayudas al conductor de un jugador (fl
 ```python
 from lfs_insim import InSimApp
 from lfs_insim.packets import ISP_PFL
-
-PIF_AUTOGEARS = 8
-PIF_HELP_B    = 64
-PIF_AUTOCLUTCH = 512
+from lfs_insim.insim_enums import PIF
 
 class MiInsim(InSimApp):
     def on_ISP_PFL(self, packet: ISP_PFL):
         ayudas = []
-        if packet.Flags & PIF_AUTOGEARS:
+        if packet.Flags & PIF.AUTOGEARS:
             ayudas.append("cambios automáticos")
-        if packet.Flags & PIF_HELP_B:
+        if packet.Flags & PIF.HELP_B:
             ayudas.append("ayuda de freno")
-        if packet.Flags & PIF_AUTOCLUTCH:
+        if packet.Flags & PIF.AUTOCLUTCH:
             ayudas.append("embrague automático")
         print(f"PLID {packet.PLID} - Ayudas activas: {', '.join(ayudas) or 'ninguna'}")
 ```

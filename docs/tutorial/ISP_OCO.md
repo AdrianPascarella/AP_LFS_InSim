@@ -13,8 +13,8 @@ Instrucción para controlar objetos del layout desde InSim. Actualmente se usa p
 | Type | byte | ISP_OCO |
 | ReqI | byte | 0 |
 | Zero | byte | 0 |
-| OCOAction | byte | Acción (OCO_x) |
-| Index | byte | Índice del objeto de luces (AXO_x o OCO_INDEX_MAIN=240) |
+| OCOAction | OCO | Acción (OCO_x) |
+| Index | AXO_INDEX | Índice del objeto de luces (AXO_x o OCO_INDEX_MAIN=240) |
 | Identifier | byte | ID de luces temporales (0-63 o 255=todas) |
 | Data | byte | Datos según la acción (bitmask de bombillas) |
 
@@ -40,35 +40,34 @@ Instrucción para controlar objetos del layout desde InSim. Actualmente se usa p
 
 ```python
 from lfs_insim import InSimApp
+from lfs_insim.insim_enums import OCO
 import time
 import threading
 
-OCO_LIGHTS_RESET = 4
-OCO_LIGHTS_SET   = 5
-OCO_INDEX_MAIN   = 240
+OCO_INDEX_MAIN = 240  # luces principales de salida (no es un AXO_INDEX estándar)
 
 class MiInsim(InSimApp):
     def secuencia_salida(self):
         # Simulación de semáforo de F1
         def _run():
             # Rojo 1
-            self.send_ISP_OCO(OCOAction=OCO_LIGHTS_SET,
+            self.send_ISP_OCO(OCOAction=OCO.LIGHTS_SET,
                               Index=OCO_INDEX_MAIN, Identifier=255, Data=0b0001)
             time.sleep(0.5)
             # Rojo 2
-            self.send_ISP_OCO(OCOAction=OCO_LIGHTS_SET,
+            self.send_ISP_OCO(OCOAction=OCO.LIGHTS_SET,
                               Index=OCO_INDEX_MAIN, Identifier=255, Data=0b0011)
             time.sleep(0.5)
             # Rojo 3
-            self.send_ISP_OCO(OCOAction=OCO_LIGHTS_SET,
+            self.send_ISP_OCO(OCOAction=OCO.LIGHTS_SET,
                               Index=OCO_INDEX_MAIN, Identifier=255, Data=0b0111)
             time.sleep(2.0)
             # Verde — ¡go!
-            self.send_ISP_OCO(OCOAction=OCO_LIGHTS_SET,
+            self.send_ISP_OCO(OCOAction=OCO.LIGHTS_SET,
                               Index=OCO_INDEX_MAIN, Identifier=255, Data=0b1000)
             time.sleep(1.0)
             # Ceder control
-            self.send_ISP_OCO(OCOAction=OCO_LIGHTS_RESET,
+            self.send_ISP_OCO(OCOAction=OCO.LIGHTS_RESET,
                               Index=OCO_INDEX_MAIN, Identifier=255, Data=0)
         threading.Thread(target=_run, daemon=True).start()
 ```

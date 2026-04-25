@@ -13,7 +13,7 @@ LFS envía este paquete cuando cambia el modo de interfaz de una conexión (pant
 | Type | byte | ISP_CIM |
 | ReqI | byte | 0 |
 | UCID | byte | ID de conexión (0 = local) |
-| Mode | byte | Identificador de modo (CIM_x) |
+| Mode | CIM | Identificador de modo (CIM_x) |
 | SubMode | byte | Submode según el modo (ver abajo) |
 | SelType | byte | Tipo de objeto seleccionado (AXO_x o constante especial) |
 | Sp3 | byte | Reservado |
@@ -46,17 +46,14 @@ LFS envía este paquete cuando cambia el modo de interfaz de una conexión (pant
 ```python
 from lfs_insim import InSimApp
 from lfs_insim.packets import ISP_CIM
-
-CIM_NORMAL = 0
-CIM_GARAGE = 3
-CIM_CAR_SELECT = 4
+from lfs_insim.insim_enums import CIM
 
 class MiInsim(InSimApp):
     def on_ISP_CIM(self, packet: ISP_CIM):
-        if packet.Mode == CIM_CAR_SELECT:
+        if packet.Mode == CIM.CAR_SELECT:
             print(f"UCID {packet.UCID} está seleccionando coche")
-        elif packet.Mode == CIM_GARAGE:
+        elif packet.Mode == CIM.GARAGE:
             print(f"UCID {packet.UCID} está en el garage (sub: {packet.SubMode})")
-        elif packet.Mode == CIM_NORMAL:
+        elif packet.Mode == CIM.NORMAL:
             print(f"UCID {packet.UCID} está en juego")
 ```

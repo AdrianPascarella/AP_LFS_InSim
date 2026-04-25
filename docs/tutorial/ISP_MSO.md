@@ -35,7 +35,7 @@ Para recibir los mensajes con colores LFS intactos, activar `ISF.MSO_COLS` en `s
 ```python
 from lfs_insim import InSimApp
 from lfs_insim.packets import ISP_MSO
-from lfs_insim.insim_enums import ISF
+from lfs_insim.insim_enums import ISF, MSO
 from lfs_insim.utils import strip_lfs_colors, TextColors as c
 
 class MiInsim(InSimApp):
@@ -49,7 +49,7 @@ class MiInsim(InSimApp):
         texto_real = texto_completo[packet.TextStart:]
         texto_limpio = strip_lfs_colors(texto_real)
 
-        if packet.UserType == 2:  # MSO_PREFIX — mensaje con prefijo
+        if packet.UserType == MSO.PREFIX:  # MSO_PREFIX — mensaje con prefijo
             print(f"Comando de UCID {packet.UCID}: {texto_limpio}")
             if texto_limpio.startswith("hola"):
                 self.send_ISP_MSL(Msg=f"{c.GREEN}Hola desde InSim!")

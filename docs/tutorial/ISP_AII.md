@@ -14,14 +14,14 @@ LFS envía este paquete con información detallada sobre el estado físico de un
 | ReqI | byte | ReqI del SMALL_AII que lo solicitó |
 | PLID | byte | ID del jugador AI |
 | OSData | OSMain | Datos de movimiento principales (ver abajo) |
-| Flags | byte | AIFLAGS_x |
-| Gear | byte | Marcha actual: 0=Reverse, 1=Neutral, 2=Primera... |
+| Flags | AI_FLAGS | Estado motor/palancas de cambio |
+| Gear | GEAR | Marcha actual: REVERSE=0, NEUTRAL=1, FIRST=2... |
 | Sp2 | byte | Reservado |
 | Sp3 | byte | Reservado |
 | RPM | float | RPM del motor |
 | SpF0 | float | Reservado |
 | SpF1 | float | Reservado |
-| ShowLights | unsigned | Luces de dashboard activas (DL_x, como en OutGauge) |
+| ShowLights | DL | Luces de dashboard activas (DL_x, como en OutGauge) |
 | SPU1 | unsigned | Reservado |
 | SPU2 | unsigned | Reservado |
 | SPU3 | unsigned | Reservado |
