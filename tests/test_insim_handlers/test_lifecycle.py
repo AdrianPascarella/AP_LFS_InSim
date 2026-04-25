@@ -13,7 +13,7 @@ class TestInit:
         assert insim.players == {}
 
     def test_cmd_base_value(self, insim):
-        assert insim.cmd_base == "test_insim"
+        assert insim.cmd_base == "test"
 
     def test_cmd_prefix_default(self, insim):
         assert insim.cmd_prefix == "!"

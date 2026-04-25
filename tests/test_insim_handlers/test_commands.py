@@ -54,11 +54,11 @@ class TestOnISP_MSO:
         assert connected._sent == []
 
     def test_known_cmd_dispatched(self, connected):
-        connected.on_ISP_MSO(_mso("!test_insim users"))
+        connected.on_ISP_MSO(_mso("!test users"))
         assert connected._sent != []
 
     def test_unknown_sub_cmd_sends_error(self, connected):
-        connected.on_ISP_MSO(_mso("!test_insim nonexistent"))
+        connected.on_ISP_MSO(_mso("!test nonexistent"))
         msgs = _sent_msgs(connected)
         assert any("no reconocido" in m for m in msgs)
 

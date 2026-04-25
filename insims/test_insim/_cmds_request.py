@@ -4,8 +4,15 @@ y muestran la respuesta cuando LFS la devuelve.
 Cubre: VER, STA, ISM, RST, AXI, NLP, NCI, MAL, PLH, IPB, RIP, PING,
        REO, CPP, AII.
 """
+from __future__ import annotations
+from typing import TYPE_CHECKING
 from lfs_insim.packets import *
 from lfs_insim.utils import CMDManager, TextColors as c
+
+if TYPE_CHECKING:
+    from lfs_insim import InSimApp as _Base
+else:
+    _Base = object
 
 
 def _ms(secs: int) -> str:
@@ -14,7 +21,7 @@ def _ms(secs: int) -> str:
     return f"{m:02d}:{s:02d}.{secs % 1000:03d}"
 
 
-class _RequestMixin:
+class _RequestMixin(_Base):
 
     def _reg_request_cmds(self, cmds: CMDManager) -> None:
         (cmds
