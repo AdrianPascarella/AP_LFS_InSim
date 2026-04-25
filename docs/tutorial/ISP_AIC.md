@@ -62,6 +62,7 @@ Los sub-enums de Value están agrupados en `CSVAL`: `CSVAL.HEADLIGHTS`, `CSVAL.S
 ```python
 from lfs_insim import InSimApp
 from lfs_insim.insim_enums import CS, CSVAL
+from lfs_insim.packets.structures import AIInputVal
 
 class MiInsim(InSimApp):
     def acelerar_ai(self, plid: int, steer: float, throttle: float):
@@ -69,28 +70,28 @@ class MiInsim(InSimApp):
         steer_val = int((steer + 1) / 2 * 65534) + 1
         throttle_val = int(throttle * 65535)
         self.send_ISP_AIC(PLID=plid, Inputs=[
-            {'Input': CS.STEER,    'Time': 0, 'Value': steer_val},
-            {'Input': CS.THROTTLE, 'Time': 0, 'Value': throttle_val},
-            {'Input': CS.BRAKE,    'Time': 0, 'Value': 0},
+            AIInputVal(Input=CS.STEER,    Time=0, Value=steer_val),
+            AIInputVal(Input=CS.THROTTLE, Time=0, Value=throttle_val),
+            AIInputVal(Input=CS.BRAKE,    Time=0, Value=0),
         ])
 
     def cambiar_marcha_arriba(self, plid: int):
         self.send_ISP_AIC(PLID=plid, Inputs=[
-            {'Input': CS.CHUP, 'Time': 10, 'Value': 1},  # hold 0.1s
+            AIInputVal(Input=CS.CHUP, Time=10, Value=1),  # hold 0.1s
         ])
 
     def poner_luces_largas(self, plid: int):
         self.send_ISP_AIC(PLID=plid, Inputs=[
-            {'Input': CS.HEADLIGHTS, 'Time': 0, 'Value': CSVAL.HEADLIGHTS.HIGH},
+            AIInputVal(Input=CS.HEADLIGHTS, Time=0, Value=CSVAL.HEADLIGHTS.HIGH),
         ])
 
     def activar_intermitente_izquierdo(self, plid: int):
         self.send_ISP_AIC(PLID=plid, Inputs=[
-            {'Input': CS.INDICATORS, 'Time': 0, 'Value': CSVAL.INDICATORS.LEFT},
+            AIInputVal(Input=CS.INDICATORS, Time=0, Value=CSVAL.INDICATORS.LEFT),
         ])
 
     def detener_ai(self, plid: int):
         self.send_ISP_AIC(PLID=plid, Inputs=[
-            {'Input': CS.STOP_CONTROL, 'Time': 0, 'Value': 0},
+            AIInputVal(Input=CS.STOP_CONTROL, Time=0, Value=0),
         ])
 ```
