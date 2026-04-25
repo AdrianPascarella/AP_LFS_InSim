@@ -13,7 +13,7 @@ class TestInsim(_RequestMixin, _SendMixin, _EventMixin, InSimApp):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.cmd_prefix: str = self.config.get("prefix", "!")
-        self.cmd_base: str = "test_insim"
+        self.cmd_base: str = "test"
         self.cmds: CMDManager
 
         # UCID -> {"uname": str, "pname": str, "plid": int | None}

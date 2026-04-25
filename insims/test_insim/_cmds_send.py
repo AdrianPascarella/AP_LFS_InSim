@@ -48,6 +48,7 @@ class _SendMixin:
 
     def _cmd_btn(self):
         self.send_ISP_BTN(
+            ReqI=1,
             UCID=0,
             ClickID=_BTN_ID,
             BStyle=ISB_STYLE.DARK,
@@ -61,11 +62,11 @@ class _SendMixin:
         self.send_ISP_MSL(Msg=f"{c.GREEN}[BFN] {c.WHITE}Boton eliminado (ClickID={_BTN_ID})")
 
     def _cmd_scc(self):
-        self.send_ISP_SCC(ViewPLID=0, InGameCam=VIEW.TV1)
-        self.send_ISP_MSL(Msg=f"{c.GREEN}[SCC] {c.WHITE}Camara cambiada a TV1")
+        self.send_ISP_SCC(ViewPLID=0, InGameCam=VIEW.HELI)
+        self.send_ISP_MSL(Msg=f"{c.GREEN}[SCC] {c.WHITE}Camara cambiada a HELI")
 
     def _cmd_ssh(self):
-        self.send_ISP_SSH(Name="test_insim_screenshot")
+        self.send_ISP_SSH(ReqI=1, Name="test_insim_screenshot")
         self.send_ISP_MSL(Msg=f"{c.GREEN}[SSH] {c.WHITE}Screenshot solicitado")
 
     def _cmd_small(self):
@@ -73,15 +74,15 @@ class _SendMixin:
         self.send_ISP_MSL(Msg=f"{c.GREEN}[SMALL] {c.WHITE}SMALL_NLI enviado (intervalo NLP=200ms)")
 
     def _cmd_sch(self):
-        self.send_ISP_SCH(CharB=ord('T'), Flags=SCH_FLAGS.NONE)
-        self.send_ISP_MSL(Msg=f"{c.GREEN}[SCH] {c.WHITE}Tecla 'T' simulada")
+        self.send_ISP_SCH(CharB=ord('9'), Flags=SCH_FLAGS.NONE)
+        self.send_ISP_MSL(Msg=f"{c.GREEN}[SCH] {c.WHITE}Tecla '9' simulada")
 
     def _cmd_sfp(self):
         self.send_ISP_SFP(Flag=ISS_SFP.SHOW_2D, OffOn=OFFON.ON)
         self.send_ISP_MSL(Msg=f"{c.GREEN}[SFP] {c.WHITE}Vista 2D activada (ISS_SHOW_2D ON)")
 
     def _cmd_hcp(self):
-        self.send_ISP_HCP()
+        self.send_ISP_HCP(Info=[CarHCP(30, 30)])
         self.send_ISP_MSL(Msg=f"{c.GREEN}[HCP] {c.WHITE}Handicaps reseteados a 0 para todos los coches")
 
     def _cmd_oco(self):
