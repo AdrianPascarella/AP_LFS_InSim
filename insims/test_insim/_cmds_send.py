@@ -3,13 +3,20 @@ _cmds_send.py - Comandos que envian paquetes de instruccion a LFS.
 Cubre: MSL, MST, MSX, MTC, BTN, BFN, SCC, SSH, SMALL,
        SCH, SFP, HCP, OCO, TTC, PLC.
 """
+from __future__ import annotations
+from typing import TYPE_CHECKING
 from lfs_insim.packets import *
 from lfs_insim.utils import CMDManager, TextColors as c
+
+if TYPE_CHECKING:
+    from lfs_insim import InSimApp as _Base
+else:
+    _Base = object
 
 _BTN_ID = 200  # ClickID reservado para el boton de prueba
 
 
-class _SendMixin:
+class _SendMixin(_Base):
 
     def _reg_send_cmds(self, cmds: CMDManager) -> None:
         (cmds

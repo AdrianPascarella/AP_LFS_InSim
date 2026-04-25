@@ -4,9 +4,15 @@ Guarda el ultimo paquete recibido de cada tipo y lo muestra con un comando.
 Cubre: CPR, LAP, SPX, PIT, PSF, PLA, CCH, PEN, TOC, FLG, PFL, FIN, RES,
        CRS, AXO, CON, OBH, HLV, UCO, SLC, CSC, CIM, VTN, III, ACR, AXM, PLP.
 """
-from typing import Optional
+from __future__ import annotations
+from typing import Optional, TYPE_CHECKING
 from lfs_insim.packets import *
 from lfs_insim.utils import CMDManager, TextColors as c
+
+if TYPE_CHECKING:
+    from lfs_insim import InSimApp as _Base
+else:
+    _Base = object
 
 
 def _ms(ms: int) -> str:
@@ -18,7 +24,7 @@ def _no_event(name: str) -> str:
     return f"{c.YELLOW}[{name}] Sin eventos recibidos aun."
 
 
-class _EventMixin:
+class _EventMixin(_Base):
 
     def _init_event_state(self) -> None:
         self._last_cpr: Optional[ISP_CPR] = None
