@@ -31,7 +31,7 @@ class MiInsim(InSimApp):
         self.send_ISP_TINY(ReqI=1, SubT=TINY.AXI)
 
     def on_ISP_AXI(self, packet: ISP_AXI):
-        nombre = packet.LName.decode('latin-1').rstrip('\x00')
+        nombre = packet.LName
         if nombre:
             print(f"Layout cargado: '{nombre}'")
             print(f"  Objetos: {packet.NumO}  Checkpoints: {packet.NumCP}")

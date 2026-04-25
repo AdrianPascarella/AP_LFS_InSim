@@ -29,7 +29,7 @@ from lfs_insim.utils import TextColors as c
 class MiInsim(InSimApp):
     def on_ISP_III(self, packet: ISP_III):
         # Mensaje privado del usuario al InSim via /i
-        mensaje = packet.Msg.decode('latin-1', errors='replace').rstrip('\x00')
+        mensaje = packet.Msg
         print(f"Mensaje /i de UCID {packet.UCID}: {mensaje}")
 
         # Responder con un mensaje local al remitente

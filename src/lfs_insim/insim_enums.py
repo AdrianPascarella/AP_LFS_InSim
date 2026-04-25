@@ -344,8 +344,8 @@ class CAR_CONFIG(IntEnum):
     ALTERNATE = 1  # Techo abierto (UF1, LX4, LX6) o Carrocería GTR alternativa
 
 class BYF(IntEnum):
-    YELLOW = 1
-    BLUE = 2
+    BLUE = 1    # 1 - given blue flag (you are in the way of a leader)
+    YELLOW = 2  # 2 - causing yellow flag (you are slow/stopped in danger)
 
 class CHARS(IntEnum):
     """
@@ -866,9 +866,9 @@ class OCO(IntEnum):
     Referencia exacta de la documentación (0 a 7).
     """
     ZERO = 0            # 0 - reserved
-    _1 = 1              # 1
-    _2 = 2              # 2
-    _3 = 3              # 3
+    RESERVED_1 = 1      # 1 - reserved
+    RESERVED_2 = 2      # 2 - reserved
+    RESERVED_3 = 3      # 3 - reserved
     LIGHTS_RESET = 4    # 4 - give up control of all lights
     LIGHTS_SET = 5      # 5 - use Data byte to set the bulbs
     LIGHTS_UNSET = 6    # 6 - give up control of the specified lights
@@ -1161,11 +1161,15 @@ class OCO_DATA_AXO(IntFlag):
     AMBER = 1 << 1
     GREEN = 1 << 3
 
-class GWSO(IntEnum):
-    GROUND = 0
-    WALL = 1
-    SPEEDING = 4
-    OUT_OF_BOUNDS = 5
+class HLVC(IntEnum):
+    """
+    HLVC - Health, Limits, Violations, Collisions.
+    Tipo de infracción reportada en ISP_HLV.
+    """
+    GROUND = 0       # 0 - hit the ground
+    WALL = 1         # 1 - hit a wall
+    SPEEDING = 4     # 4 - speeding in pit lane
+    OUT_OF_BOUNDS = 5  # 5 - out of bounds
 
 class AXO_INDEX(IntEnum):
     """
@@ -1292,8 +1296,20 @@ class SERVER(IntEnum):
     SUCCESS = 1
     FAILURE = 2  # Realmente cualquier valor > 1 es fallo
 
+class WEATHER(IntEnum):
+    """
+    WEATHER - Condición meteorológica visual.
+    Se utiliza en: ISP_STA.Weather, ISP_RST.Weather
+    """
+    CLEAR = 0       # 0 - clear sky
+    CLOUDY = 1      # 1 - light cloud / overcast
+    RAIN = 2        # 2 - rain
+
 class WIND(IntEnum):
     """
-    WIND - Estado del clima
-    Se utliza en: ISP_STA.Wind
+    WIND - Estado del viento.
+    Se utiliza en: ISP_STA.Wind, ISP_RST.Wind
     """
+    OFF = 0     # 0 - no wind
+    WEAK = 1    # 1 - weak wind
+    STRONG = 2  # 2 - strong wind

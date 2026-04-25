@@ -49,7 +49,7 @@ class ISP_TINY(PacketFunctions):
 @dataclass
 class ISP_SMALL(PacketFunctions):
     Size: int = field(default=0, metadata={'fmt': 'B'})
-    Type: int = field(default=ISP.SMALL, metadata={'fmt': 'B'})
+    Type: ISP = field(default=ISP.SMALL, metadata={'fmt': 'B'})
     ReqI: int = field(default=0, metadata={'fmt': 'B'})
     SubT: SMALL = field(default=0, metadata={'fmt': 'B'})
     UVal: int = field(default=0, metadata={'fmt': 'I'})
@@ -73,7 +73,7 @@ class ISP_STA(PacketFunctions):
     Sp2: int = field(default=0, metadata={'fmt': 'B'})
     ServerStatus: SERVER = field(default=0, metadata={'fmt': 'B'})
     Track: str = field(default='', metadata={'fmt': '6s'})
-    Weather: int = field(default=0, metadata={'fmt': 'B'})
+    Weather: WEATHER = field(default=0, metadata={'fmt': 'B'})
     Wind: WIND = field(default=0, metadata={'fmt': 'B'})
 
 @dataclass
@@ -213,7 +213,7 @@ class ISP_RST(PacketFunctions):
     NumP: int = field(default=0, metadata={'fmt': 'B'})
     Timing: RST_TIMING = field(default=0, metadata={'fmt': 'B'})
     Track: str = field(default='', metadata={'fmt': '6s'})
-    Weather: int = field(default=0, metadata={'fmt': 'B'})
+    Weather: WEATHER = field(default=0, metadata={'fmt': 'B'})
     Wind: WIND = field(default=0, metadata={'fmt': 'B'})
     Flags: HOSTF = field(default=0, metadata={'fmt': 'H'})
     NumNodes: int = field(default=0, metadata={'fmt': 'H'})
@@ -299,7 +299,7 @@ class ISP_PLL(PacketFunctions):
 @dataclass
 class ISP_LAP(PacketFunctions):
     Size: int = field(default=0, metadata={'fmt': 'B'})
-    Type: int = field(default=ISP.LAP, metadata={'fmt': 'B'})
+    Type: ISP = field(default=ISP.LAP, metadata={'fmt': 'B'})
     ReqI: int = field(default=0, metadata={'fmt': 'B'})
     PLIP: int = field(default=0, metadata={'fmt': 'B'})
     LTime: int = field(default=0, metadata={'fmt': 'I'})
@@ -396,11 +396,11 @@ class ISP_TOC(PacketFunctions):
 @dataclass
 class ISP_FLG(PacketFunctions):
     Size: int = field(default=0, metadata={'fmt': 'B'})
-    Type: int = field(default=32, metadata={'fmt': 'B'})
+    Type: ISP = field(default=ISP.FLG, metadata={'fmt': 'B'})
     ReqI: int = field(default=0, metadata={'fmt': 'B'})
     PLID: int = field(default=0, metadata={'fmt': 'B'})
     OffOn: OFFON = field(default=0, metadata={'fmt': 'B'})
-    Flag: int = field(default=0, metadata={'fmt': 'B'})
+    Flag: BYF = field(default=0, metadata={'fmt': 'B'})
     CarBehind: int = field(default=0, metadata={'fmt': 'B'})
     Sp3: int = field(default=0, metadata={'fmt': 'B'})
 
@@ -453,7 +453,7 @@ class ISP_RES(PacketFunctions):
 @dataclass
 class ISP_REO(PacketFunctions):
     Size: int = field(default=0, metadata={'fmt': 'B'})
-    Type: int = field(default=36, metadata={'fmt': 'B'})
+    Type: ISP = field(default=ISP.REO, metadata={'fmt': 'B'})
     ReqI: int = field(default=0, metadata={'fmt': 'B'})
     NumP: int = field(default=0, metadata={'fmt': 'B'})
     PLID: tuple[int, ...] = field(default_factory=lambda: tuple(0 for _ in range(48)), metadata={'fmt': repeat('B', 48)})
@@ -572,7 +572,7 @@ class ISP_RIP(PacketFunctions):
     ReqI: int = field(default=0, metadata={'fmt': 'B'})
     Error: RIP = field(default=0, metadata={'fmt': 'B'})
     MPR: SMPR = field(default=0, metadata={'fmt': 'B'})
-    Paused: int = field(default=0, metadata={'fmt': 'B'})
+    Paused: OFFON = field(default=0, metadata={'fmt': 'B'})
     Options: RIPOPT = field(default=0, metadata={'fmt': 'B'})
     Sp3: int = field(default=0, metadata={'fmt': 'B'})
     CTime: int = field(default=0, metadata={'fmt': 'I'})
@@ -626,7 +626,7 @@ class ISP_HLV(PacketFunctions):
     Type: ISP = field(default=ISP.HLV, metadata={'fmt': 'B'})
     ReqI: int = field(default=0, metadata={'fmt': 'B'})
     PLID: int = field(default=0, metadata={'fmt': 'B'})
-    HLVC: GWSO = field(default=0, metadata={'fmt': 'B'})
+    HLVC: HLVC = field(default=0, metadata={'fmt': 'B'})
     Sp1: int = field(default=0, metadata={'fmt': 'B'})
     SpW: int = field(default=0, metadata={'fmt': 'H'})
     Time: int = field(default=0, metadata={'fmt': 'I'})

@@ -45,7 +45,7 @@ class MiInsim(InSimApp):
 
     def on_ISP_SSH(self, packet: ISP_SSH):
         if packet.ReqI:  # es respuesta
-            nombre = packet.Name.decode('latin-1').rstrip('\x00')
+            nombre = packet.Name
             if packet.Error == 0:
                 print(f"Screenshot guardado: {nombre}")
             else:

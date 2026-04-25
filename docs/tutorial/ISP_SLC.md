@@ -28,7 +28,7 @@ class MiInsim(InSimApp):
         self.send_ISP_TINY(ReqI=1, SubT=TINY.SLC)
 
     def on_ISP_SLC(self, packet: ISP_SLC):
-        coche = packet.CName.decode('latin-1').rstrip('\x00')
+        coche = packet.CName
         if coche:
             print(f"UCID {packet.UCID} seleccionó: {coche}")
         else:

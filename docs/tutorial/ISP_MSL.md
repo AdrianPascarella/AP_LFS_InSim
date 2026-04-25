@@ -36,7 +36,7 @@ SND_ERROR = 4
 
 class MiInsim(InSimApp):
     def on_ISP_MSO(self, packet: ISP_MSO):
-        msg = packet.Msg.decode('latin-1', errors='replace').rstrip('\x00')
+        msg = packet.Msg
         if "hola" in msg.lower():
             # Responder solo visible en el PC local
             self.send_ISP_MSL(

@@ -61,7 +61,7 @@ class MiInsim(InSimApp):
         if packet.Error > 1:
             print(f"Error al cargar replay: código {packet.Error}")
             return
-        nombre = packet.RName.decode('latin-1').rstrip('\x00')
+        nombre = packet.RName
         if nombre:
             pos_s = packet.CTime / 1000
             dur_s = packet.TTime / 1000

@@ -49,7 +49,7 @@ class MiInsim(InSimApp):
     def on_ISP_RES(self, packet: ISP_RES):
         if packet.PLID == 0:
             return  # jugador abandonó antes del resultado
-        nombre = packet.PName.decode('latin-1').rstrip('\x00')
+        nombre = packet.PName
         posicion = packet.ResultNum + 1  # 0-indexed -> 1-indexed
         print(f"P{posicion} {nombre}: {ms_a_tiempo(packet.TTime)} "
               f"(mejor vuelta: {ms_a_tiempo(packet.BTime)})")

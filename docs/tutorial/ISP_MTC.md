@@ -40,7 +40,7 @@ SND_SYSMESSAGE = 2
 
 class MiInsim(InSimApp):
     def on_ISP_NCN(self, packet: ISP_NCN):
-        nombre = packet.PName.decode('latin-1', errors='replace').rstrip('\x00')
+        nombre = packet.PName
         # Mensaje de bienvenida personal al nuevo jugador
         self.send_ISP_MTC(
             Sound=SND_SYSMESSAGE,

@@ -42,7 +42,7 @@ class MiInsim(InSimApp):
         )
 
     def on_ISP_BTT(self, packet: ISP_BTT):
-        texto = packet.Text.decode('latin-1').rstrip('\x00')
+        texto = packet.Text
         if packet.ClickID == BTN_INPUT_NOMBRE:
             print(f"UCID {packet.UCID} escribió su nombre: '{texto}'")
             # Responder actualizando el botón con el nombre recibido
