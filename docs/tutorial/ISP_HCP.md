@@ -27,23 +27,18 @@ El orden del array sigue el mismo orden que la bitmask CARS (ver ISP_PLC): índi
 
 ```python
 from lfs_insim import InSimApp
+from lfs_insim.packets.structures import CarHCP
 
 class MiInsim(InSimApp):
     def aplicar_handicaps(self):
-        # Array de 32 pares (H_Mass, H_TRes)
+        # Array de 32 CarHCP, uno por modelo de coche
         # Índices: 0=XF GTI, 1=XR GT, 2=XR GT TURBO, ...
-        info = [(0, 0)] * 32
+        info = [CarHCP() for _ in range(32)]
 
         # Añadir 50 kg al XF GTI (índice 0)
-        info[0] = (50, 0)
+        info[0] = CarHCP(H_Mass=50, H_TRes=0)
         # Restricción de 20 al XR GT TURBO (índice 2)
-        info[2] = (0, 20)
+        info[2] = CarHCP(H_Mass=0, H_TRes=20)
 
-        # Aplanar la lista en bytes alternados
-        hcp_flat = []
-        for masa, res in info:
-            hcp_flat.append(masa)
-            hcp_flat.append(res)
-
-        self.send_ISP_HCP(Info=hcp_flat)
+        self.send_ISP_HCP(Info=info)
 ```
