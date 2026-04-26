@@ -31,11 +31,19 @@ Edita `config/settings.py` para ajustar la conexión:
 INSIM_CONFIG = {
     "tcp_host": "127.0.0.1",
     "tcp_port": 29999,
-    "udp_port": 30000,
     "prefix": "!",        # prefijo de comandos en el chat
     "interval": 100,      # ms entre actualizaciones NLP/MCI
     "insim_name": "InSimApp",
     "insim_ver": 10,
+
+    # Puerto UDP en el que este proceso escucha paquetes OutSim/OutGauge de LFS.
+    # Debe coincidir con "OutSim Port" en cfg.txt de LFS.
+    # El socket UDP solo se abre si algún módulo declara outsim_opts en set_outsim().
+    "udp_port": 30000,
+
+    # Puerto UDP para que LFS envíe NLP/MCI por UDP en lugar de por TCP.
+    # 0 (por defecto) → LFS usa TCP, que es el modo seguro y recomendado.
+    "insim_udp_port": 0,
 }
 ```
 
@@ -93,10 +101,16 @@ pytest tests/test_utils.py::TestPIDController::test_zero_dt_returns_zero -v
 
 ## Documentación del protocolo
 
-`docs/tutorial/` contiene **69 archivos Markdown**, uno por tipo de paquete ISP. Cada archivo incluye:
-- Descripción y dirección del paquete
-- Tabla de campos con tipos enum correctos
-- Ejemplo de uso con el framework
+`docs/tutorial/` contiene **72 archivos Markdown** organizados en 4 carpetas:
+
+| Carpeta | Paquetes | Descripción |
+|---------|----------|-------------|
+| `recibir/` | 42 | Paquetes que solo se reciben de LFS |
+| `enviar/` | 16 | Paquetes que solo se envían a LFS |
+| `ambos/` | 11 | Paquetes bidireccionales (TINY, SMALL, CPP, REO…) |
+| `out/` | 3 | Telemetría UDP: OutSimPack, OutSimPack2, OutGaugePack |
+
+Cada archivo incluye: descripción y dirección del paquete, tabla de campos con tipos enum correctos, y ejemplo de uso con el framework.
 
 La fuente de verdad del protocolo binario es `docs/InSim.txt`.
 
@@ -227,10 +241,54 @@ CLI (cli.py)
 
 **Patrón "coup d'état"**: el último módulo cargado se convierte en Master. Los cargados previamente pasan a `modules[]`. El Master fusiona los `isi.Flags` de todos antes de enviar `ISP_ISI`.
 
+**Active Packet Registry**: al arrancar, el framework escanea los handlers `on_ISP_*` declarados en todos los módulos (vía MRO) y construye un registro de tipos activos. El log muestra:
+```
+INFO | Tipos de paquete activos (N): ISP_MCI, ISP_MSO, ISP_NCN, ...
+```
+Los paquetes cuyo tipo no está en el registro se descartan antes de decodificarse, reduciendo el coste de CPU en paquetes de alta frecuencia (MCI, NLP, OutSim).
+
 **Ciclo de un paquete**:
 1. `insim_packet_io.py` recibe bytes por TCP/UDP y ensambla paquetes completos
-2. `insim_packet_decoders.py` mapea el byte de tipo al dataclass correspondiente
-3. `InSimClient` despacha `on_ISP_<TYPE>(packet)` al master y a cada módulo en `modules[]`
+2. Filtro pre-decode: si el tipo no está en el registro activo, se descarta sin deserializar
+3. `insim_packet_decoders.py` mapea el byte de tipo al dataclass correspondiente
+4. `InSimClient` despacha `on_ISP_<TYPE>(packet)` al master y a cada módulo en `modules[]`
+
+---
+
+## OutSim / OutGauge
+
+La telemetría UDP (OutSim y OutGauge) se activa de forma declarativa mediante el hook `set_outsim()`, igual que `set_isi_packet()` gestiona los flags ISF. El socket UDP solo se abre si algún módulo lo requiere.
+
+```python
+from lfs_insim import InSimApp
+from lfs_insim.insim_enums import OSO, SMALL
+
+class MiInsim(InSimApp):
+
+    def set_outsim(self):
+        super().set_outsim()
+        # OutSimPack2 con bloques TIME + MAIN + INPUTS + DRIVE
+        self.outsim_opts = OSO.TIME | OSO.MAIN | OSO.INPUTS | OSO.DRIVE
+
+    def on_connect(self):
+        # OutGauge: activar vía SMALL.SSG
+        self.send_ISP_SMALL(SubT=SMALL.SSG, UVal=50)  # cada 50 ms
+
+    def on_OutSimPack2(self, packet):
+        vx, vy, vz = packet.OSMain.Vel
+        speed_kmh = (vx**2 + vy**2 + vz**2) ** 0.5 * 3.6
+
+    def on_OutGaugePack(self, packet):
+        print(f"{packet.RPM:.0f} RPM | {packet.Speed * 3.6:.0f} km/h")
+```
+
+Al arrancar, el log indica qué poner en `cfg.txt` de LFS:
+```
+INFO | OutSim activo (OSO=0x3c): TIME | MAIN | INPUTS | DRIVE
+INFO |   → cfg.txt requerido: OutSim Opts 3c | OutSim IP 127.0.0.1 | OutSim Port 30000
+```
+
+Consulta `docs/tutorial/out/` para la referencia completa de campos y bloques OSO.
 
 ---
 
@@ -330,6 +388,6 @@ InSimError
 
 - Conexión TCP en el puerto **29999**, protocolo little-endian
 - Strings en latin-1, terminadas en null; `Size` en la cabecera = bytes totales / 4
-- OutSim/OutGauge vía UDP en el puerto **30000**
+- OutSim/OutGauge vía UDP (puerto `udp_port`, por defecto 30000) — solo activo si algún módulo declara `outsim_opts` en `set_outsim()`
 - Documentación oficial del protocolo en `docs/InSim.txt`
-- Tutoriales por paquete en `docs/tutorial/`
+- Tutoriales por paquete en `docs/tutorial/` (4 subcarpetas: `recibir/`, `enviar/`, `ambos/`, `out/`)
