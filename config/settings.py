@@ -29,7 +29,17 @@ class _HighFreqFilter(logging.Filter):
     # Patrones específicos de los logs de alta frecuencia, no nombres de tipo genéricos.
     # 'ISP_MCI'/'ISP_NLP' eran demasiado amplios y filtraban logs legítimos (p.ej.
     # "Tipos de paquete activos: ..., ISP_MCI, ...").
-    _PATTERNS = frozenset({'MCI PLID', 'NLP PLID', 'OutSim', 'OutGauge'})
+    _PATTERNS: set = {'MCI PLID', 'NLP PLID', 'OutSim', 'OutGauge'}
+
+    @classmethod
+    def mute_pattern(cls, *patterns: str) -> None:
+        """Añade patrones al filtro de alta frecuencia (silencia esos logs)."""
+        cls._PATTERNS.update(patterns)
+
+    @classmethod
+    def unmute_pattern(cls, *patterns: str) -> None:
+        """Elimina patrones del filtro (re-activa esos logs)."""
+        cls._PATTERNS.difference_update(patterns)
 
     def filter(self, record: logging.LogRecord) -> bool:
         msg = record.getMessage()
