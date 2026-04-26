@@ -12,8 +12,8 @@ logger = logging.getLogger(__name__)
 _send_lock = threading.Lock()
 
 # Tipos de paquete cuyos logs de envío están silenciados.
-# ISP_AIC se silencia por defecto (alta frecuencia — 1 por IA por tick).
-_MUTED_SEND_TYPES: set[str] = {'ISP_AIC'}
+# Vacío por defecto; cada módulo añade los suyos con mute_send_logs().
+_MUTED_SEND_TYPES: set[str] = set()
 
 
 def mute_send_logs(*packet_types: str) -> None:
