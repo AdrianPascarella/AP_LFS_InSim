@@ -1,10 +1,8 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, make_dataclass
 from .base import PacketFunctions, repeat
 from .structures import Vec, Vector
 from lfs_insim.insim_enums import OSO
 
-# Configuration (Keep as default 509 matching legacy behavior for now)
-oso_opts = 509 
 
 @dataclass
 class OSMain(PacketFunctions):
@@ -16,8 +14,10 @@ class OSMain(PacketFunctions):
     Vel: Vector = field(default_factory=Vector, metadata={'fmt': Vector})
     Pos: Vec = field(default_factory=Vec, metadata={'fmt': Vec})
 
+
 @dataclass
 class OutSimPack(PacketFunctions):
+    """OutSim legacy (formato fijo, activado via SMALL.SSP)."""
     Time: int = field(default=0, metadata={'fmt': 'I'})
     AngVel: Vector = field(default_factory=Vector, metadata={'fmt': Vector})
     Heading: float = field(default=0.0, metadata={'fmt': 'f'})
@@ -28,8 +28,10 @@ class OutSimPack(PacketFunctions):
     Pos: Vec = field(default_factory=Vec, metadata={'fmt': Vec})
     ID: int = field(default=0, metadata={'fmt': 'i'})
 
+
 @dataclass
 class OutGaugePack(PacketFunctions):
+    """OutGauge (formato fijo, activado via SMALL.SSG)."""
     Time: int = field(default=0, metadata={'fmt': 'I'})
     Car: str = field(default="", metadata={'fmt': '4s'})
     Flags: int = field(default=0, metadata={'fmt': 'H'})
@@ -50,6 +52,7 @@ class OutGaugePack(PacketFunctions):
     Display1: str = field(default="", metadata={'fmt': '16s'})
     Display2: str = field(default="", metadata={'fmt': '16s'})
 
+
 @dataclass
 class OutSimMain(PacketFunctions):
     AngVel: Vector = field(default_factory=Vector, metadata={'fmt': Vector})
@@ -60,6 +63,7 @@ class OutSimMain(PacketFunctions):
     Vel: Vector = field(default_factory=Vector, metadata={'fmt': Vector})
     Pos: Vec = field(default_factory=Vec, metadata={'fmt': Vec})
 
+
 @dataclass
 class OutSimInputs(PacketFunctions):
     Throttle: float = field(default=0.0, metadata={'fmt': 'f'})
@@ -67,6 +71,7 @@ class OutSimInputs(PacketFunctions):
     InputSteer: float = field(default=0.0, metadata={'fmt': 'f'})
     Clutch: float = field(default=0.0, metadata={'fmt': 'f'})
     Handbrake: float = field(default=0.0, metadata={'fmt': 'f'})
+
 
 @dataclass
 class OutSimWheel(PacketFunctions):
@@ -84,33 +89,73 @@ class OutSimWheel(PacketFunctions):
     SlipRatio: float = field(default=0.0, metadata={'fmt': 'f'})
     TanSlipAngle: float = field(default=0.0, metadata={'fmt': 'f'})
 
-@dataclass
-class OutSimPack2(PacketFunctions):
+
+def build_outsim_pack2(oso_opts: OSO) -> type:
+    """
+    Construye dinámicamente OutSimPack2 incluyendo solo los campos
+    correspondientes a los flags OSO activos.
+
+    La clase resultante hereda de PacketFunctions y es compatible con
+    el decoder (OUTSIM_PACKETS se indexa por su tamaño).
+
+    El tamaño del paquete resultante debe coincidir con OutSim Opts en cfg.txt.
+    """
+    fields = []
+
     if oso_opts & OSO.HEADER:
-        L: str = field(default="L", metadata={'fmt': 's'})
-        F: str = field(default="F", metadata={'fmt': 's'})
-        S: str = field(default="S", metadata={'fmt': 's'})
-        T: str = field(default="T", metadata={'fmt': 's'})
+        fields += [
+            ('L', str, field(default='L', metadata={'fmt': 's'})),
+            ('F', str, field(default='F', metadata={'fmt': 's'})),
+            ('S', str, field(default='S', metadata={'fmt': 's'})),
+            ('T', str, field(default='T', metadata={'fmt': 's'})),
+        ]
     if oso_opts & OSO.ID:
-        ID: int = field(default=0, metadata={'fmt': 'i'})
+        fields.append(('ID', int, field(default=0, metadata={'fmt': 'i'})))
     if oso_opts & OSO.TIME:
-        Time: int = field(default=0, metadata={'fmt': 'I'})
+        fields.append(('Time', int, field(default=0, metadata={'fmt': 'I'})))
     if oso_opts & OSO.MAIN:
-        OSMain: OutSimMain = field(default_factory=OutSimMain, metadata={'fmt': OutSimMain})
+        fields.append((
+            'OSMain', OutSimMain,
+            field(default_factory=OutSimMain, metadata={'fmt': OutSimMain})
+        ))
     if oso_opts & OSO.INPUTS:
-        OSInputs: OutSimInputs = field(default_factory=OutSimInputs, metadata={'fmt': OutSimInputs})
+        fields.append((
+            'OSInputs', OutSimInputs,
+            field(default_factory=OutSimInputs, metadata={'fmt': OutSimInputs})
+        ))
     if oso_opts & OSO.DRIVE:
-        Gear: int = field(default=0, metadata={'fmt': 'B'})
-        Sp1: int = field(default=0, metadata={'fmt': 'B'})
-        Sp2: int = field(default=0, metadata={'fmt': 'B'})
-        Sp3: int = field(default=0, metadata={'fmt': 'B'})
-        EngineAngVel: float = field(default=0.0, metadata={'fmt': 'f'})
-        MaxTorqueAtVel: float = field(default=0.0, metadata={'fmt': 'f'})
+        fields += [
+            ('Gear',           int,   field(default=0,   metadata={'fmt': 'B'})),
+            ('Sp1',            int,   field(default=0,   metadata={'fmt': 'B'})),
+            ('Sp2',            int,   field(default=0,   metadata={'fmt': 'B'})),
+            ('Sp3',            int,   field(default=0,   metadata={'fmt': 'B'})),
+            ('EngineAngVel',   float, field(default=0.0, metadata={'fmt': 'f'})),
+            ('MaxTorqueAtVel', float, field(default=0.0, metadata={'fmt': 'f'})),
+        ]
     if oso_opts & OSO.DISTANCE:
-        CurrentLapDist: float = field(default=0.0, metadata={'fmt': 'f'})
-        IndexedDistance: float = field(default=0.0, metadata={'fmt': 'f'})
+        fields += [
+            ('CurrentLapDist',  float, field(default=0.0, metadata={'fmt': 'f'})),
+            ('IndexedDistance', float, field(default=0.0, metadata={'fmt': 'f'})),
+        ]
     if oso_opts & OSO.WHEELS:
-        OSWheels: tuple[OutSimWheel, OutSimWheel, OutSimWheel, OutSimWheel] = field(default_factory=lambda: (OutSimWheel(), OutSimWheel(), OutSimWheel(), OutSimWheel()), metadata={'fmt': repeat(OutSimWheel, 4)})
+        fields.append((
+            'OSWheels', tuple,
+            field(
+                default_factory=lambda: (
+                    OutSimWheel(), OutSimWheel(), OutSimWheel(), OutSimWheel()
+                ),
+                metadata={'fmt': repeat(OutSimWheel, 4)}
+            )
+        ))
     if oso_opts & OSO.EXTRA_1:
-        SteerTorque: float = field(default=0.0, metadata={'fmt': 'f'})
-        Spare: float = field(default=0.0, metadata={'fmt': 'f'})
+        fields += [
+            ('SteerTorque', float, field(default=0.0, metadata={'fmt': 'f'})),
+            ('Spare',       float, field(default=0.0, metadata={'fmt': 'f'})),
+        ]
+
+    return make_dataclass('OutSimPack2', fields, bases=(PacketFunctions,))
+
+
+# OutSimPack2 con todos los campos — para type annotations e IDE autocomplete.
+# El decoder registra la versión dinámica construida según los opts declarados.
+OutSimPack2 = build_outsim_pack2(OSO.ALL)

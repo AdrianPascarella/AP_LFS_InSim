@@ -92,6 +92,9 @@ class PacketFunctions:
             elif isinstance(structure, list):
                 for item in structure:
                     s += flatten(item)
+            elif is_dataclass(structure) and isinstance(structure, type):
+                # Tipo de sub-dataclass en una lista de repeat(SubClass, N)
+                s += flatten(structure.metadata_to_dict())
             return s
 
         return "<" + flatten(fmt_dict)

@@ -34,7 +34,7 @@ class _HighFreqFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
         msg = record.getMessage()
         return not any(p in msg for p in self._PATTERNS)
-from lfs_insim.insim_enums import OSO, ISF
+from lfs_insim.insim_enums import ISF
 
 # ═══════════════════════════════════════════════════════════════════════════
 # DIRECTORIOS
@@ -54,40 +54,26 @@ LFS_DIR = 'C:/LFS'
 
 INSIM_CONFIG: Dict[str, Any] = {
     # --- Conexión TCP (InSim Principal) ---
-    'tcp_host': '127.0.0.1',        
-    'tcp_port': 29999,              # Debe coincidir con /insim en LFS
-    'tcp_buffer': 4096,             # 4KB es suficiente para la mayoría de paquetes
-    
-    # --- Conexión UDP (OutSim / NLP) ---
-    'udp_host': '0.0.0.0',          # Escuchar en todas las interfaces
-    'udp_port': 30000,              # Puerto local para recibir UDP (OutSim)
-    'udp_buffer': 4096,
+    'tcp_host':   '127.0.0.1',
+    'tcp_port':   29999,        # Debe coincidir con /insim en LFS
+    'tcp_buffer': 4096,
 
     # --- Configuración del Paquete de Inicialización (ISI) ---
-    'insim_name': 'InSimApp',       # Nombre de la aplicación en LFS
-    'admin_pass': 'abc',               # Contraseña de admin (si se requiere privilegios)
-    
-    # IMPORTANTE: Versión 10 para LFS 0.7F+
-    'insim_ver': 10,                 
-    
-    'prefix': '!',             # Prefijo para comandos de chat (ej: !help)
-    'interval': 10,                 # Intervalo para paquetes NLP/MCI (ms) - 10ms para control fluido
-    'flags': 0,                     # Configurar con ISF
-    
+    'insim_name': 'InSimApp',
+    'admin_pass': 'abc',
+    'insim_ver':  10,           # InSim v10 para LFS 0.7F+
+    'prefix':     '!',          # Prefijo para comandos de chat
+    'interval':   10,           # Intervalo NLP/MCI en ms
+    'flags':      0,
+
     # Configuración de usuario
-    'user_name': 'AdrianPascarella'
-}
+    'user_name': 'AdrianPascarella',
 
-OUT_CONFIG: Dict[str, Any] = {
-    # Opciones de OutSim2 (qué bloques de datos envía LFS por UDP)
-    # Combinación de flags OSO.* — ver insim_enums.OSO
-    'outsim_opts': OSO.MAIN | OSO.INPUTS | OSO.TIME | OSO.DRIVE,
-
-    # ID del OutSim (debe coincidir con "OutSim ID" en cfg.txt)
-    'outsim_id': 1,
-
-    # IP de destino del stream OutSim (normalmente el mismo host)
-    'outsim_ip': '127.0.0.1',
+    # --- UDP (OutSim / OutGauge) ---
+    # No hay udp_port por defecto. El framework abre el socket UDP
+    # automáticamente SOLO si algún módulo declara outsim_opts != OSO.NONE
+    # en set_outsim(). Si se quiere un puerto distinto al 30000 por defecto,
+    # añadir 'udp_port': XXXX aquí o en el config del módulo.
 }
 
 
@@ -162,46 +148,12 @@ def get_logger(name: str, log_filename: str = None, level: int = logging.INFO) -
     return logger
 
 # ═══════════════════════════════════════════════════════════════════════════
-# CONFIGURACIÓN DESEADA DE LFS (Para setup_lfs.py)
-# ═══════════════════════════════════════════════════════════════════════════
-
-# Definimos aquí qué opciones de cfg.txt necesitamos forzar.
-# Usamos los enums para componer los flags hexadecimales.
-
-DESIRED_LFS_CONFIG = {
-    # OutSim (UDP Packet output)
-    "OutSim ID": "1", # Activar OutSim
-    "OutSim Opts": format(
-        # Componer flags usando OSO (OutSim Opts)
-        # OSO.TCP_HTTP (0x40) + OSO.UDP (0x80) suele ser común si queremos OutGauge o similar,
-        # Pero para InSim/OutSim puro, suele bastar con OSO.UDP si usamos NLP.
-        # Ajusta según necesidad. Si '0' deshabilita todo, queremos algo activo.
-        OSO.MAIN | OSO.INPUTS | OSO.TIME | OSO.DRIVE, # STANDARD PACKET
-        'x'
-    ),
-    "OutSim IP": "127.0.0.1",
-    "OutSim Port": str(INSIM_CONFIG['udp_port']), # Debe coincidir con nuestra escucha
-}
-
-
-# ═══════════════════════════════════════════════════════════════════════════
 # FUNCIÓN DE CONFIGURACIÓN CONSOLIDADA
 # ═══════════════════════════════════════════════════════════════════════════
 
 def get_config(custom_config: Dict[str, Any] = None) -> Dict[str, Any]:
-    """
-    Obtiene la configuración combinando INSIM_CONFIG con valores personalizados.
-    
-    Args:
-        custom_config: Diccionario opcional con valores adicionales o de override
-        
-    Returns:
-        Configuración completa combinada
-    """
-    config = {**INSIM_CONFIG, **OUT_CONFIG}
-
-    # Aplicar configuración personalizada
+    """Retorna INSIM_CONFIG fusionado con cualquier override personalizado."""
+    config = dict(INSIM_CONFIG)
     if custom_config:
         config.update(custom_config)
-
     return config
