@@ -53,10 +53,24 @@ class FreeroamMode(AINavModeState):
     # 7. Reglas Especiales activas
     active_special_rules: List[str] = field(default_factory=list)
 
-    _last_radar_time = None
-    _cached_target_speed = 0.0
+    def __post_init__(self):
+        # Radar de tráfico — por instancia para que cada AI tenga su propio intervalo
+        self._last_radar_time: float = 0.0
+        self._cached_target_speed: float = 0.0
+        self._radar_interval: float = 0.1 + random.uniform(0.0, 0.05)
 
-    _radar_interval = 0.1 + random.uniform(0.0, 0.05)
+        # Intermitentes
+        self._blinker_on_time: Optional[float] = None
+        self._blinker_min_duration: float = 3.0
 
-    _blinker_on_time = None       # timestamp cuando se activó el intermitente actual
-    _blinker_min_duration = 3.0   # segundos mínimos que debe permanecer activo
+        # FSM de adelantamiento — inicialización garantizada en construcción
+        self.overtake_state: str = 'IDLE'
+        self.overtake_cooldown: float = 0.0
+        self.overtake_target_plid: Optional[int] = None
+        self.overtake_fast_lane_id: Optional[str] = None
+        self.overtake_return_lane_id: Optional[str] = None
+        self.last_link: Optional[tuple] = None
+        self._passing_start_time: float = 0.0
+        self._returning_start_time: float = 0.0
+        self._entered_fast_lane: bool = False
+        self.blocking_plid: Optional[int] = None
