@@ -70,10 +70,13 @@ INSIM_CONFIG: Dict[str, Any] = {
     'user_name': 'AdrianPascarella',
 
     # --- UDP (OutSim / OutGauge) ---
-    # No hay udp_port por defecto. El framework abre el socket UDP
-    # automáticamente SOLO si algún módulo declara outsim_opts != OSO.NONE
-    # en set_outsim(). Si se quiere un puerto distinto al 30000 por defecto,
-    # añadir 'udp_port': XXXX aquí o en el config del módulo.
+    # Puerto en el que este proceso escucha paquetes UDP de LFS.
+    # Debe coincidir con OutSim Port en cfg.txt de LFS.
+    # El socket UDP solo se abre si algún módulo declara outsim_opts
+    # en set_outsim() — este valor configura el puerto, no lo activa.
+    'udp_port':   30000,
+    'udp_host':   '0.0.0.0',
+    'udp_buffer': 4096,
 }
 
 
