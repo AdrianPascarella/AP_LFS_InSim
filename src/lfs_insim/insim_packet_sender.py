@@ -11,6 +11,21 @@ logger = logging.getLogger(__name__)
 # Lock global para asegurar que los envíos de paquetes sean atómicos por conexión
 _send_lock = threading.Lock()
 
+# Tipos de paquete cuyos logs de envío están silenciados.
+# ISP_AIC se silencia por defecto (alta frecuencia — 1 por IA por tick).
+_MUTED_SEND_TYPES: set[str] = {'ISP_AIC'}
+
+
+def mute_send_logs(*packet_types: str) -> None:
+    """Silencia los logs de envío (DEBUG) para los tipos de paquete indicados."""
+    _MUTED_SEND_TYPES.update(packet_types)
+
+
+def unmute_send_logs(*packet_types: str) -> None:
+    """Re-activa los logs de envío (DEBUG) para los tipos de paquete indicados."""
+    _MUTED_SEND_TYPES.difference_update(packet_types)
+
+
 def send_packet(packet: PacketFunctions, use_udp: bool = False):
     """
     Prepara, valida y envía un paquete a LFS.
@@ -28,15 +43,18 @@ def send_packet(packet: PacketFunctions, use_udp: bool = False):
     
     # Extraemos los valores en el orden exacto del formato
     # Usamos una función auxiliar para aplanar los valores del objeto
+    pkt_name = type(packet).__name__
+    _muted = pkt_name in _MUTED_SEND_TYPES
     values = _extract_values(packet)
-    logger.debug(f"Packing {type(packet).__name__} with fmt={fmt_string}")
-    logger.debug(f"Values to pack: {values}")
-    
+    if not _muted:
+        logger.debug(f"Packing {pkt_name} with fmt={fmt_string}")
+        logger.debug(f"Values to pack: {values}")
+
     try:
         data = struct.pack(fmt_string, *values)
     except Exception as e:
-        raise InSimPacketError(f"Error al empaquetar {type(packet).__name__}: {e}", 
-                              packet_type=type(packet).__name__) from e
+        raise InSimPacketError(f"Error al empaquetar {pkt_name}: {e}",
+                              packet_type=pkt_name) from e
 
     # 4. Envío por el socket correspondiente
     try:
@@ -44,15 +62,16 @@ def send_packet(packet: PacketFunctions, use_udp: bool = False):
         if sock:
             with _send_lock:
                 sock.sendall(data)
-            logger.debug(f"Paquete {type(packet).__name__} enviado con éxito.")
+            if not _muted:
+                logger.debug(f"Paquete {pkt_name} enviado con éxito.")
             return True
         else:
             raise InSimConnectionError("No se pudo enviar el paquete: Socket no disponible (¿desconectado?)", host=None, port=None)
     except Exception as e:
         if isinstance(e, InSimError):
             raise
-        logger.error(f"Error de red al enviar paquete {type(packet).__name__}: {e}")
-        raise InSimConnectionError(f"Error de red al enviar paquete {type(packet).__name__}: {e}") from e
+        logger.error(f"Error de red al enviar paquete {pkt_name}: {e}")
+        raise InSimConnectionError(f"Error de red al enviar paquete {pkt_name}: {e}") from e
 
 def _extract_values(obj):
     from dataclasses import fields
