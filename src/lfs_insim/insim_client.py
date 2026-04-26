@@ -124,7 +124,11 @@ class InSimClient:
         Los módulos hijos pueden extender esto mediante fusión de flags.
         """
         self.isi.ReqI = 0
-        self.isi.UDPPort = self.config.get('udp_port', 0)
+        # UDPPort = 0 → LFS envía NLP/MCI por TCP (camino por defecto y seguro).
+        # Si se pone != 0, LFS redirige NLP/MCI SOLO al UDP indicado, lo que
+        # requiere que el socket UDP esté abierto. Usar 'insim_udp_port' en config
+        # si se quiere NLP/MCI por UDP explícitamente; 'udp_port' es para OutSim.
+        self.isi.UDPPort = self.config.get('insim_udp_port', 0)
         self.isi.Flags = 0 # Se llenará dinámicamente
         self.isi.InSimVer = self.config.get('insim_ver', 10)
 
