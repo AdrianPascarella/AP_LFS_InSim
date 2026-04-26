@@ -12,7 +12,7 @@ from insims.ai_control.nav_modes.freeroam.graph import IntersectionZone, Lateral
 from insims.ai_control.nav_modes.freeroam.geometry import (
     calc_dist_point_to_segment_2d, get_dist_to_polygon_edge_2d, is_point_in_polygon_2d
 )
-from insims.ai_control.nav_modes.freeroam.enums import TrafficRule
+from insims.ai_control.nav_modes.freeroam.enums import TrafficRule, AIManeuverState
 from insims.users_management.main import Coordinates
 from insims.ai_control.base import _MixinBase
 
@@ -110,21 +110,23 @@ class _TrafficMixin(_MixinBase):
                     other_road_id = other_mode.current_id
                     other_node_index = other_mode.node_index
             else:
-                if not hasattr(self, '_radar_human_cache'):
-                    self._radar_human_cache = {} 
-                
                 current_time = time.time()
+                if len(self._radar_human_cache) > 64:
+                    self._radar_human_cache = {
+                        plid: d for plid, d in self._radar_human_cache.items()
+                        if current_time - d[0] < 10.0
+                    }
                 cached_data = self._radar_human_cache.get(other_player.plid)
-                
+
                 if not cached_data or (current_time - cached_data[0]) > 0.1:
                     ctx = self.map_recorder.get_location_context(other_coords.x_m, other_coords.y_m, other_coords.z_m)
                     calc_road_id = ctx.link_id if (ctx.link_id and ctx.link_dist < ctx.road_dist) else ctx.road_id
                     calc_node_index = -1
-                    
+
                     # [!] OPTIMIZACIÓN 4: Solo calculamos el índice exacto del jugador si comparte nuestra calle
                     if calc_road_id == mode.current_id:
                         calc_node_index, _ = self._get_closest_node_index(other_coords.x_m, other_coords.y_m, geom.nodes)
-                    
+
                     self._radar_human_cache[other_player.plid] = (current_time, calc_road_id, calc_node_index)
                     other_road_id = calc_road_id
                     other_node_index = calc_node_index
@@ -219,26 +221,9 @@ class _TrafficMixin(_MixinBase):
         target_x, target_y = target_node.x_m, target_node.y_m
         my_coords = ai.player.telemetry.coordinates
 
-        # --- INICIALIZACIÓN MÁQUINA DE ESTADOS (FSM) ---
-        if not hasattr(mode, 'overtake_state'):
-            mode.overtake_state = 'IDLE'           # Estado actual
-            mode.overtake_cooldown = 0.0           # Temporizador anti-spam
-            mode.overtake_target_plid = None       # A quién estamos adelantando
-            mode.overtake_fast_lane_id = None      # ID de la carretera rápida
-            mode.overtake_return_lane_id = None    # ID de nuestra carretera original
-            mode.last_link = None
-            mode._passing_start_time = 0.0         # Timestamp entrada a PASSING (guard amago)
-            mode._returning_start_time = 0.0       # Timestamp entrada a RETURNING (timeouts)
-            mode._entered_fast_lane = False         # Flag: el AI llegó al carril rápido
-
         # =========================================================
         # 2. CONTROL DE FRECUENCIA Y PATRÓN SENSE-THINK-ACT
         # =========================================================
-        if not getattr(mode, '_last_radar_time', None):
-            mode._last_radar_time = 0.0
-            mode._cached_target_speed = velocidad_base
-            mode._radar_interval = 0.1 + random.uniform(0.0, 0.05) 
-
         current_time = time.time()
         
         if current_time - mode._last_radar_time >= mode._radar_interval:
@@ -264,6 +249,7 @@ class _TrafficMixin(_MixinBase):
                 if mode.overtake_fast_lane_id and mode.overtake_fast_lane_id == mode.current_road_id \
                    and mode.overtake_return_lane_id and mode.overtake_return_lane_id != mode.current_road_id:
                     mode.overtake_state = 'RETURNING'
+                    mode.maneuver_state = AIManeuverState.RETURNING
                     mode._returning_start_time = current_time
                 else:
                     pass  # continúa con lógica IDLE normal abajo
@@ -290,6 +276,7 @@ class _TrafficMixin(_MixinBase):
                     speed_delta = velocidad_base - closest_speed_kmh
                     if not lane_change_blocked and speed_delta > 7.0 and current_time > mode.overtake_cooldown and closest_dist < max_dist_m:
                         mode.overtake_state = 'EVALUATING'
+                        mode.maneuver_state = AIManeuverState.FOLLOWING
                         mode.overtake_target_plid = closest_plid
                         mode.overtake_return_lane_id = mode.current_road_id # Guardamos cómo volver
 
@@ -330,28 +317,33 @@ class _TrafficMixin(_MixinBase):
                             es_seguro = self._is_lane_safe_to_overtake(ai, mode, target_road_id, lat_link, is_opposing, req_dist_m, time_to_overtake_s)
                             
                             if es_seguro:
-                                # ¡LUZ VERDE! 
+                                # ¡LUZ VERDE!
                                 mode.next_link_id = target_lat_id
                                 mode.next_link_type = 'LatLink'
                                 mode.overtake_fast_lane_id = target_road_id
                                 mode.is_driving_opposing = is_opposing
                                 mode.overtake_state = 'PASSING'
+                                mode.maneuver_state = AIManeuverState.OVERTAKING
                                 mode._passing_start_time = current_time
                                 mode._entered_fast_lane = False
                             else:
                                 # Abortamos: Tráfico en contra o falta de asfalto
                                 mode.overtake_state = 'IDLE'
-                                mode.overtake_cooldown = current_time + 4.0 
+                                mode.maneuver_state = AIManeuverState.NORMAL
+                                mode.overtake_cooldown = current_time + 4.0
                         else:
                             # Velocidad delta demasiado pequeña (no compensa)
                             mode.overtake_state = 'IDLE'
+                            mode.maneuver_state = AIManeuverState.NORMAL
                             mode.overtake_cooldown = current_time + 5.0
                     else:
                         mode.overtake_state = 'IDLE'
+                        mode.maneuver_state = AIManeuverState.NORMAL
                         mode.overtake_cooldown = current_time + 2.0
                 else:
                     # No hay conexión lateral válida (ej. línea continua)
                     mode.overtake_state = 'IDLE'
+                    mode.maneuver_state = AIManeuverState.NORMAL
                     mode.overtake_cooldown = current_time + 3.0
 
             # ---------------------------------------------------------
@@ -365,6 +357,7 @@ class _TrafficMixin(_MixinBase):
                 # La navegación ya nos devolvió al carril original DESPUÉS de haber estado en el rápido
                 if mode._entered_fast_lane and mode.current_road_id == mode.overtake_return_lane_id:
                     mode.overtake_state = 'IDLE'
+                    mode.maneuver_state = AIManeuverState.NORMAL
                     mode.overtake_target_plid = None
                     mode.is_driving_opposing = False
                     mode._entered_fast_lane = False
@@ -404,6 +397,7 @@ class _TrafficMixin(_MixinBase):
 
                         if time_to_frontal < ONCOMING_EMERGENCY_S:
                             mode.overtake_state = 'RETURNING'
+                            mode.maneuver_state = AIManeuverState.RETURNING
                             mode._returning_start_time = current_time
                             velocidad_segura = 0
                         elif time_to_frontal < ONCOMING_DANGER_S:
@@ -459,6 +453,7 @@ class _TrafficMixin(_MixinBase):
                     if not closest_player:
                         if _can_return:
                             mode.overtake_state = 'RETURNING'
+                            mode.maneuver_state = AIManeuverState.RETURNING
                             mode._returning_start_time = current_time
                     else:
                         t_coords = closest_player.telemetry.coordinates
@@ -467,6 +462,7 @@ class _TrafficMixin(_MixinBase):
                         dot_product = (dir_x * vec_x) + (dir_y * vec_y)
                         if _can_return and (min_dist > min_dist_m + 5.0 or (dot_product < 0 and min_dist > min_dist_m)):
                             mode.overtake_state = 'RETURNING'
+                            mode.maneuver_state = AIManeuverState.RETURNING
                             mode._returning_start_time = current_time
 
             # ---------------------------------------------------------
@@ -501,11 +497,13 @@ class _TrafficMixin(_MixinBase):
                 # 3. Si la macro navegación ya nos ha devuelto a la vía y se ha estabilizado
                 if mode.current_road_id == mode.overtake_return_lane_id:
                     mode.overtake_state = 'IDLE'
+                    mode.maneuver_state = AIManeuverState.NORMAL
                     mode.overtake_target_plid = None
                     mode.is_driving_opposing = False
                 elif current_time - mode._returning_start_time > 10.0:
                     # Timeout de seguridad: algo salió mal, forzamos IDLE
                     mode.overtake_state = 'IDLE'
+                    mode.maneuver_state = AIManeuverState.NORMAL
                     mode.overtake_target_plid = None
                     mode.is_driving_opposing = False
                     mode.overtake_fast_lane_id = None  # Evita bucle en la recuperación IDLE
@@ -984,8 +982,12 @@ class _TrafficMixin(_MixinBase):
                 if other_mode: other_road_id = other_mode.current_id
             else:
                 # [!] Usamos una caché propia para este escaner: _target_lane_human_cache
-                if not hasattr(self, '_target_lane_human_cache'): self._target_lane_human_cache = {} 
                 current_time = time.time()
+                if len(self._target_lane_human_cache) > 64:
+                    self._target_lane_human_cache = {
+                        plid: d for plid, d in self._target_lane_human_cache.items()
+                        if current_time - d[0] < 10.0
+                    }
                 cached_data = self._target_lane_human_cache.get(other_player.plid)
                 
                 if not cached_data or (current_time - cached_data[0]) > 0.1:
