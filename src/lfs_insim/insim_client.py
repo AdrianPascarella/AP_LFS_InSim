@@ -49,6 +49,42 @@ class InSimClient:
         """
         send_packet(packet)
 
+    def _build_active_handlers(self) -> None:
+        """
+        Escanea master + todos los módulos via MRO y construye dos sets:
+          _active_handler_names: {"on_ISP_MCI", "on_ISP_MSO", ...}
+          _active_type_ids:      {38, 11, ...}  (IDs numéricos de ISP)
+
+        TINY (3) y VER (2) siempre se incluyen: son imprescindibles para
+        el keep-alive y la respuesta al ISI inicial.
+
+        Nota: detecta métodos de clase (incluye mixins via MRO).
+        No detecta handlers añadidos dinámicamente como atributos de instancia.
+        """
+        from .packets import INSIM_PACKETS
+        from .insim_enums import ISP
+
+        handler_names: set[str] = set()
+        for instance in [self] + self.modules:
+            for name in dir(type(instance)):        # MRO walk: incluye mixins
+                if name.startswith('on_ISP_'):
+                    handler_names.add(name)
+
+        # Reverse map: "ISP_MCI" -> 38
+        cls_to_id = {cls.__name__: tid for tid, cls in INSIM_PACKETS.items()}
+        active_ids: set[int] = set()
+        for h in handler_names:
+            tid = cls_to_id.get(h[3:])              # "on_ISP_MCI" -> "ISP_MCI"
+            if tid is not None:
+                active_ids.add(tid)
+
+        # Siempre activos
+        active_ids.update({int(ISP.TINY), int(ISP.VER)})
+        handler_names.update({'on_ISP_TINY', 'on_ISP_VER'})
+
+        self._active_handler_names: set[str] = handler_names
+        self._active_type_ids: set[int] = active_ids
+
     def set_isi_packet(self):
         """
         Configura el paquete de inicialización (ISI) base.
@@ -77,6 +113,16 @@ class InSimClient:
 
         self.running = True
         try:
+            # =================================================================
+            # REGISTRO DE HANDLERS ACTIVOS (Active Packet Registry)
+            # Se construye ANTES de abrir el socket para evitar carrera.
+            # =================================================================
+            self._build_active_handlers()
+            active_names = sorted(h[3:] for h in self._active_handler_names)
+            self.logger.info(
+                f"Tipos de paquete activos ({len(active_names)}): {', '.join(active_names)}"
+            )
+
             # 1. Conexión TCP Física
             host = self.config.get('tcp_host', '127.0.0.1')
             port = self.config.get('tcp_port', 29999)
@@ -180,9 +226,14 @@ class InSimClient:
         if packet is None:
             return
 
-        # Corrección: Usamos el nombre de la CLASE para el evento
         packet_class_name = type(packet).__name__
         handler_name = f"on_{packet_class_name}"
+
+        # Barrera post-decode: si el registro existe y nadie maneja este tipo,
+        # evitar el loop de módulos (segunda línea de defensa tras _process_raw_bytes).
+        if (hasattr(self, '_active_handler_names')
+                and handler_name not in self._active_handler_names):
+            return
 
         # 1. Ejecutar en el cliente principal (self)
         self._execute_handler(self, handler_name, packet)

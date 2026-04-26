@@ -123,12 +123,23 @@ def _udp_listen_loop(sock: socket.socket, buffer_size: int = 4096):
 def _process_raw_bytes(data: bytes):
     """Convierte bytes en objetos y los entrega al cliente orquestador."""
     try:
+        client = get_insim_client()
+        if client is None:
+            return
+
+        # Barrera pre-decode: omite struct.unpack + dataclass para tipos sin handler.
+        # Solo aplica a paquetes InSim TCP (data[0]*4 == len(data)).
+        # UDP OutSim/OutGauge no cumple esa firma y siempre pasa.
+        active_ids = getattr(client, '_active_type_ids', None)
+        if (active_ids is not None
+                and len(data) >= 2
+                and data[0] * 4 == len(data)
+                and data[1] not in active_ids):
+            return
+
         packet = decode_packet(data)
         if packet:
-            client = get_insim_client()
-            if client:
-                # Se envía al cliente para que lo distribuya a los módulos
-                client.on_packet_received(packet)
+            client.on_packet_received(packet)
     except Exception as e:
         logger.error(f"Error decodificando paquete: {e}", exc_info=True)
 
