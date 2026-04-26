@@ -8,11 +8,23 @@ from __future__ import annotations
 from typing import Optional, TYPE_CHECKING
 from lfs_insim.packets import *
 from lfs_insim.utils import CMDManager, TextColors as c
+from lfs_insim.insim_enums import (
+    PITLANE, VIEW, PENALTY, PENR, BYF, OFFON, VOTE,
+    CIM, CSC, UCO, PMO, RESULT, HLVC, AXO_INDEX, OBH,
+)
 
 if TYPE_CHECKING:
     from lfs_insim import InSimApp as _Base
 else:
     _Base = object
+
+
+def _en(enum_cls, val):
+    """Devuelve el nombre del enum o el valor numérico si no existe."""
+    try:
+        return enum_cls(val).name
+    except ValueError:
+        return str(int(val))
 
 
 def _ms(ms: int) -> str:
@@ -110,15 +122,15 @@ class _EventMixin(_Base):
 
     def on_ISP_PLA(self, packet: ISP_PLA):
         self._last_pla = packet
-        self.logger.info(f"PLA: PLID {packet.PLID} | Fact={int(packet.Fact)}")
+        self.logger.info(f"PLA: PLID {packet.PLID} | Fact={_en(PITLANE, packet.Fact)}")
 
     def on_ISP_CCH(self, packet: ISP_CCH):
         self._last_cch = packet
-        self.logger.info(f"CCH: PLID {packet.PLID} | Camera={int(packet.Camera)}")
+        self.logger.info(f"CCH: PLID {packet.PLID} | Camera={_en(VIEW, packet.Camera)}")
 
     def on_ISP_PEN(self, packet: ISP_PEN):
         self._last_pen = packet
-        self.logger.info(f"PEN: PLID {packet.PLID} | {int(packet.OldPen)}->{int(packet.NewPen)} Reason={int(packet.Reason)}")
+        self.logger.info(f"PEN: PLID {packet.PLID} | {_en(PENALTY, packet.OldPen)}->{_en(PENALTY, packet.NewPen)} Reason={_en(PENR, packet.Reason)}")
 
     def on_ISP_TOC(self, packet: ISP_TOC):
         self._last_toc = packet
@@ -126,8 +138,7 @@ class _EventMixin(_Base):
 
     def on_ISP_FLG(self, packet: ISP_FLG):
         self._last_flg = packet
-        flag = "azul" if packet.Flag == 1 else "amarilla"
-        self.logger.info(f"FLG: PLID {packet.PLID} | {flag} {'activada' if packet.OffOn else 'apagada'}")
+        self.logger.info(f"FLG: PLID {packet.PLID} | {_en(BYF, packet.Flag)} {'ON' if packet.OffOn == OFFON.ON else 'OFF'}")
 
     def on_ISP_PFL(self, packet: ISP_PFL):
         self._last_pfl = packet
@@ -155,15 +166,15 @@ class _EventMixin(_Base):
 
     def on_ISP_OBH(self, packet: ISP_OBH):
         self._last_obh = packet
-        self.logger.info(f"OBH: PLID {packet.PLID} golpeo objeto Index={int(packet.Index)}")
+        self.logger.info(f"OBH: PLID {packet.PLID} golpeo objeto Index={_en(AXO_INDEX, packet.Index)}")
 
     def on_ISP_HLV(self, packet: ISP_HLV):
         self._last_hlv = packet
-        self.logger.info(f"HLV: PLID {packet.PLID} | HLVC={int(packet.HLVC)}")
+        self.logger.info(f"HLV: PLID {packet.PLID} | HLVC={_en(HLVC, packet.HLVC)}")
 
     def on_ISP_UCO(self, packet: ISP_UCO):
         self._last_uco = packet
-        self.logger.info(f"UCO: PLID {packet.PLID} | Action={int(packet.UCOAction)}")
+        self.logger.info(f"UCO: PLID {packet.PLID} | Action={_en(UCO, packet.UCOAction)}")
 
     def on_ISP_SLC(self, packet: ISP_SLC):
         self._last_slc = packet
@@ -171,15 +182,15 @@ class _EventMixin(_Base):
 
     def on_ISP_CSC(self, packet: ISP_CSC):
         self._last_csc = packet
-        self.logger.info(f"CSC: UCID {packet.UCID} | Action={int(packet.CSCAction)}")
+        self.logger.info(f"CSC: UCID {packet.UCID} | Action={_en(CSC, packet.CSCAction)}")
 
     def on_ISP_CIM(self, packet: ISP_CIM):
         self._last_cim = packet
-        self.logger.info(f"CIM: UCID {packet.UCID} | Mode={int(packet.Mode)} SubMode={int(packet.SubMode)}")
+        self.logger.info(f"CIM: UCID {packet.UCID} | Mode={_en(CIM, packet.Mode)} SubMode={int(packet.SubMode)}")
 
     def on_ISP_VTN(self, packet: ISP_VTN):
         self._last_vtn = packet
-        self.logger.info(f"VTN: UCID {packet.UCID} | Action={int(packet.Action)}")
+        self.logger.info(f"VTN: UCID {packet.UCID} | Action={_en(VOTE, packet.Action)}")
 
     def on_ISP_III(self, packet: ISP_III):
         self._last_iii = packet
@@ -187,11 +198,11 @@ class _EventMixin(_Base):
 
     def on_ISP_ACR(self, packet: ISP_ACR):
         self._last_acr = packet
-        self.logger.info(f"ACR: UCID {packet.UCID} | Result={int(packet.Result)} | '{packet.Text[:40]}'")
+        self.logger.info(f"ACR: UCID {packet.UCID} | Result={_en(RESULT, packet.Result)} | '{packet.Text[:40]}'")
 
     def on_ISP_AXM(self, packet: ISP_AXM):
         self._last_axm = packet
-        self.logger.info(f"AXM: {packet.NumO} objetos | Action={int(packet.PMOAction)}")
+        self.logger.info(f"AXM: {packet.NumO} objetos | Action={_en(PMO, packet.PMOAction)}")
 
     def on_ISP_PLP(self, packet: ISP_PLP):
         self._last_plp = packet
@@ -227,18 +238,17 @@ class _EventMixin(_Base):
     def _cmd_pla(self):
         p = self._last_pla
         if not p: self.send_ISP_MSL(Msg=_no_event("PLA")); return
-        fact = {0: "Entrada", 1: "Salida", 2: "No pits", 3: "Drive-through", 4: "Pit stop"}.get(int(p.Fact), f"Fact={int(p.Fact)}")
-        self.send_ISP_MSL(Msg=f"{c.GREEN}[PLA] PLID {p.PLID} | {fact}")
+        self.send_ISP_MSL(Msg=f"{c.GREEN}[PLA] PLID {p.PLID} | {_en(PITLANE, p.Fact)}")
 
     def _cmd_cch(self):
         p = self._last_cch
         if not p: self.send_ISP_MSL(Msg=_no_event("CCH")); return
-        self.send_ISP_MSL(Msg=f"{c.GREEN}[CCH] PLID {p.PLID} | Camera={int(p.Camera)}")
+        self.send_ISP_MSL(Msg=f"{c.GREEN}[CCH] PLID {p.PLID} | Camera={_en(VIEW, p.Camera)}")
 
     def _cmd_pen(self):
         p = self._last_pen
         if not p: self.send_ISP_MSL(Msg=_no_event("PEN")); return
-        self.send_ISP_MSL(Msg=f"{c.GREEN}[PEN] PLID {p.PLID} | {int(p.OldPen)}->{int(p.NewPen)} Reason={int(p.Reason)}")
+        self.send_ISP_MSL(Msg=f"{c.GREEN}[PEN] PLID {p.PLID} | {_en(PENALTY, p.OldPen)}->{_en(PENALTY, p.NewPen)} Reason={_en(PENR, p.Reason)}")
 
     def _cmd_toc(self):
         p = self._last_toc
@@ -248,9 +258,7 @@ class _EventMixin(_Base):
     def _cmd_flg(self):
         p = self._last_flg
         if not p: self.send_ISP_MSL(Msg=_no_event("FLG")); return
-        flag = "azul" if p.Flag == 1 else "amarilla"
-        estado = "ON" if p.OffOn else "OFF"
-        self.send_ISP_MSL(Msg=f"{c.GREEN}[FLG] PLID {p.PLID} | {flag} {estado}")
+        self.send_ISP_MSL(Msg=f"{c.GREEN}[FLG] PLID {p.PLID} | {_en(BYF, p.Flag)} {_en(OFFON, p.OffOn)}")
 
     def _cmd_pfl(self):
         p = self._last_pfl
@@ -285,17 +293,17 @@ class _EventMixin(_Base):
     def _cmd_obh(self):
         p = self._last_obh
         if not p: self.send_ISP_MSL(Msg=_no_event("OBH")); return
-        self.send_ISP_MSL(Msg=f"{c.GREEN}[OBH] PLID {p.PLID} | Index={int(p.Index)} | Flags={int(p.OBHFlags):#04x}")
+        self.send_ISP_MSL(Msg=f"{c.GREEN}[OBH] PLID {p.PLID} | Index={_en(AXO_INDEX, p.Index)} | OBHFlags={p.OBHFlags!r}")
 
     def _cmd_hlv(self):
         p = self._last_hlv
         if not p: self.send_ISP_MSL(Msg=_no_event("HLV")); return
-        self.send_ISP_MSL(Msg=f"{c.GREEN}[HLV] PLID {p.PLID} | HLVC={int(p.HLVC)}")
+        self.send_ISP_MSL(Msg=f"{c.GREEN}[HLV] PLID {p.PLID} | HLVC={_en(HLVC, p.HLVC)}")
 
     def _cmd_uco(self):
         p = self._last_uco
         if not p: self.send_ISP_MSL(Msg=_no_event("UCO")); return
-        self.send_ISP_MSL(Msg=f"{c.GREEN}[UCO] PLID {p.PLID} | Action={int(p.UCOAction)}")
+        self.send_ISP_MSL(Msg=f"{c.GREEN}[UCO] PLID {p.PLID} | Action={_en(UCO, p.UCOAction)}")
 
     def _cmd_slc(self):
         p = self._last_slc
@@ -305,17 +313,17 @@ class _EventMixin(_Base):
     def _cmd_csc(self):
         p = self._last_csc
         if not p: self.send_ISP_MSL(Msg=_no_event("CSC")); return
-        self.send_ISP_MSL(Msg=f"{c.GREEN}[CSC] UCID {p.UCID} | Action={int(p.CSCAction)}")
+        self.send_ISP_MSL(Msg=f"{c.GREEN}[CSC] UCID {p.UCID} | Action={_en(CSC, p.CSCAction)}")
 
     def _cmd_cim(self):
         p = self._last_cim
         if not p: self.send_ISP_MSL(Msg=_no_event("CIM")); return
-        self.send_ISP_MSL(Msg=f"{c.GREEN}[CIM] UCID {p.UCID} | Mode={int(p.Mode)} Sub={int(p.SubMode)}")
+        self.send_ISP_MSL(Msg=f"{c.GREEN}[CIM] UCID {p.UCID} | Mode={_en(CIM, p.Mode)} Sub={int(p.SubMode)}")
 
     def _cmd_vtn(self):
         p = self._last_vtn
         if not p: self.send_ISP_MSL(Msg=_no_event("VTN")); return
-        self.send_ISP_MSL(Msg=f"{c.GREEN}[VTN] UCID {p.UCID} | Action={int(p.Action)}")
+        self.send_ISP_MSL(Msg=f"{c.GREEN}[VTN] UCID {p.UCID} | Action={_en(VOTE, p.Action)}")
 
     def _cmd_iii(self):
         p = self._last_iii
@@ -325,12 +333,12 @@ class _EventMixin(_Base):
     def _cmd_acr(self):
         p = self._last_acr
         if not p: self.send_ISP_MSL(Msg=_no_event("ACR")); return
-        self.send_ISP_MSL(Msg=f"{c.GREEN}[ACR] UCID {p.UCID} | Result={int(p.Result)} | '{p.Text[:30]}'")
+        self.send_ISP_MSL(Msg=f"{c.GREEN}[ACR] UCID {p.UCID} | Result={_en(RESULT, p.Result)} | '{p.Text[:30]}'")
 
     def _cmd_axm(self):
         p = self._last_axm
         if not p: self.send_ISP_MSL(Msg=_no_event("AXM")); return
-        self.send_ISP_MSL(Msg=f"{c.GREEN}[AXM] {p.NumO} objetos | Action={int(p.PMOAction)}")
+        self.send_ISP_MSL(Msg=f"{c.GREEN}[AXM] {p.NumO} objetos | Action={_en(PMO, p.PMOAction)}")
 
     def _cmd_plp(self):
         p = self._last_plp

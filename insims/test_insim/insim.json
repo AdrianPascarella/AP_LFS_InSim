@@ -1,8 +1,8 @@
 {
   "name": "test_insim",
   "version": "1.0.0",
-  "description": "InSim test_insim",
-  "author": "",
+  "description": "Módulo de demostración y prueba del protocolo InSim. Cubre todos los tipos de paquete ISP mediante comandos de chat (!test <cmd>). Útil como referencia de uso del framework.",
+  "author": "AdrianPascarella",
   "entry_point": "main.py",
   "insim_dependencies": {},
   "python_dependencies": []

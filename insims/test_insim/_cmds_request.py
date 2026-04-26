@@ -8,6 +8,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from lfs_insim.packets import *
 from lfs_insim.utils import CMDManager, TextColors as c
+from lfs_insim.insim_enums import RAINPR, HG, SMPR, RIP as RIP_ERR, VIEW, GEAR, AI_FLAGS, DL
 
 if TYPE_CHECKING:
     from lfs_insim import InSimApp as _Base
@@ -110,11 +111,14 @@ class _RequestMixin(_Base):
         self.send_ISP_MSL(Msg=f"{c.GREEN}[VER] {packet.Product} v{packet.Version} InSimVer={packet.InSimVer}")
 
     def on_ISP_STA(self, packet: ISP_STA):
-        race = {0: "Sin carrera", 1: "Carrera", 2: "Clasificacion"}.get(int(packet.RaceInProg), "?")
+        try:
+            race = RAINPR(packet.RaceInProg).name
+        except ValueError:
+            race = str(int(packet.RaceInProg))
         self.send_ISP_MSL(Msg=f"{c.GREEN}[STA] {packet.Track} | {race} | {packet.NumP}j {packet.NumConns}c")
 
     def on_ISP_ISM(self, packet: ISP_ISM):
-        role = "Host" if packet.Host else "Guest"
+        role = HG(packet.Host).name.capitalize()
         self.send_ISP_MSL(Msg=f"{c.GREEN}[ISM] {role}: {packet.Hname}")
 
     def on_ISP_RST(self, packet: ISP_RST):
@@ -143,18 +147,31 @@ class _RequestMixin(_Base):
         self.send_ISP_MSL(Msg=f"{c.GREEN}[IPB] {packet.NumB} IPs baneadas")
 
     def on_ISP_RIP(self, packet: ISP_RIP):
-        playing = "reproduciendo" if packet.MPR else "no replay"
-        self.send_ISP_MSL(Msg=f"{c.GREEN}[RIP] {playing} | '{packet.RName}' | Error={int(packet.Error)}")
+        try:
+            playing = SMPR(packet.MPR).name
+            error = RIP_ERR(packet.Error).name
+        except ValueError:
+            playing = str(int(packet.MPR))
+            error = str(int(packet.Error))
+        self.send_ISP_MSL(Msg=f"{c.GREEN}[RIP] {playing} | '{packet.RName}' | Error={error}")
 
     def on_ISP_REO(self, packet: ISP_REO):
         plids = [p for p in packet.PLID[:packet.NumP] if p != 0]
         self.send_ISP_MSL(Msg=f"{c.GREEN}[REO] {packet.NumP} coches | PLIDs: {plids}")
 
     def on_ISP_CPP(self, packet: ISP_CPP):
-        self.send_ISP_MSL(Msg=f"{c.GREEN}[CPP] Cam={int(packet.InGameCam)} PLID={packet.ViewPLID} FOV={packet.FOV:.1f}")
+        try:
+            cam = VIEW(packet.InGameCam).name
+        except ValueError:
+            cam = str(int(packet.InGameCam))
+        self.send_ISP_MSL(Msg=f"{c.GREEN}[CPP] Cam={cam} PLID={packet.ViewPLID} FOV={packet.FOV:.1f}")
 
     def on_ISP_AII(self, packet: ISP_AII):
-        self.send_ISP_MSL(Msg=f"{c.GREEN}[AII] PLID={packet.PLID} RPM={packet.RPM:.0f} Gear={int(packet.Gear)}")
+        try:
+            gear = GEAR(packet.Gear).name
+        except ValueError:
+            gear = str(int(packet.Gear))
+        self.send_ISP_MSL(Msg=f"{c.GREEN}[AII] PLID={packet.PLID} RPM={packet.RPM:.0f} Gear={gear}")
 
     def on_ISP_TINY(self, packet: ISP_TINY):
         if packet.SubT == TINY.REPLY:
