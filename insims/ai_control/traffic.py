@@ -240,297 +240,172 @@ class _TrafficMixin(_MixinBase):
             # =========================================================
             # MÁQUINA DE ESTADOS FINITOS (FSM) DEL ADELANTAMIENTO
             # =========================================================
-            
+
             # ---------------------------------------------------------
             # ESTADO: IDLE (Conducción Normal)
             # ---------------------------------------------------------
             if mode.overtake_state == 'IDLE':
-                # Recuperación: si el AI terminó en IDLE en el carril rápido, forzar retorno
-                if mode.overtake_fast_lane_id and mode.overtake_fast_lane_id == mode.current_road_id \
-                   and mode.overtake_return_lane_id and mode.overtake_return_lane_id != mode.current_road_id:
-                    mode.overtake_state = 'RETURNING'
-                    mode.maneuver_state = AIManeuverState.RETURNING
-                    mode._returning_start_time = current_time
-                else:
-                    pass  # continúa con lógica IDLE normal abajo
-
-            if mode.overtake_state == 'IDLE':
-                mode.last_link = mode.next_link_id, mode.next_link_type
                 vehicles_ahead = self._scan_lane_ahead(ai, mode, max_dist_m + 50.0)
-                
+
                 if vehicles_ahead:
                     closest_dist, closest_speed_kmh, closest_plid = vehicles_ahead[0]
-                    
-                    # 1. Aplicamos Control de Crucero Adaptativo (ACC) siempre
+
+                    # ACC siempre activo
                     velocidad_segura = self._apply_adaptive_cruise_control(
                         velocidad_base, closest_speed_kmh, closest_dist, min_dist_m, max_dist_m
                     )
                     mode.blocking_plid = closest_plid
-                    
-                    # 2. Gatillo del Adelantamiento: Si nos frenan mucho y no hay cooldown
+
+                    # Gatillo: coche delante ≥5% más lento, sin cooldown, sin regla bloqueante
                     lane_change_blocked = any(
                         self.map_recorder.special_rules.get(rid) and
                         self.map_recorder.special_rules[rid].rules.get('no_lane_change', False)
                         for rid in mode.active_special_rules
                     )
-                    speed_delta = velocidad_base - closest_speed_kmh
-                    if not lane_change_blocked and speed_delta > 7.0 and current_time > mode.overtake_cooldown and closest_dist < max_dist_m:
-                        mode.overtake_state = 'EVALUATING'
-                        mode.maneuver_state = AIManeuverState.FOLLOWING
-                        mode.overtake_target_plid = closest_plid
-                        mode.overtake_return_lane_id = mode.current_road_id # Guardamos cómo volver
+                    if (not lane_change_blocked
+                            and closest_speed_kmh < velocidad_base * 0.95
+                            and current_time > mode.overtake_cooldown
+                            and closest_dist < max_dist_m):
+                        # Preservar link actual antes de entrar en evaluación
+                        mode.saved_link_id   = mode.next_link_id
+                        mode.saved_link_type = mode.next_link_type
+                        mode.overtake_state        = 'EVALUATING'
+                        mode.maneuver_state        = AIManeuverState.FOLLOWING
+                        mode.overtake_target_plid  = closest_plid
+                        mode.overtake_return_lane_id = mode.current_road_id
 
             # ---------------------------------------------------------
-            # ESTADO: EVALUATING (Matemática Pesada)
+            # ESTADO: EVALUATING (Análisis de viabilidad)
             # ---------------------------------------------------------
             elif mode.overtake_state == 'EVALUATING':
-                velocidad_segura = mode._cached_target_speed 
-                # Obtenemos la regla de tráfico del segmento actual
-                current_rule = getattr(geom, 'traffic_rule', TrafficRule.LHT) 
-                
-                # 1. ¿HAY PISTA VÁLIDA? (Buscamos la línea discontinua a nuestro favor)
-                target_road_id, target_lat_id = self._find_valid_overtake_lane(mode.current_road_id, current_rule, nodes_list, mode.node_index)
-                
-                if target_road_id:
-                    target_road_geom = self.map_recorder.roads[target_road_id]
-                    
-                    if target_road_geom:
+                velocidad_segura = mode._cached_target_speed
 
-                        lat_link = self.map_recorder.lateral_links[target_lat_id]
-                        # 2. ¿ES SENTIDO CONTRARIO? (¡Leído directamente de tu mapa!)
+                current_rule = getattr(geom, 'traffic_rule', TrafficRule.LHT)
+                target_road_id, target_lat_id = self._find_valid_overtake_lane(
+                    mode.current_road_id, current_rule, nodes_list, mode.node_index
+                )
+
+                if target_road_id:
+                    target_road_geom = self.map_recorder.roads.get(target_road_id)
+                    lat_link = self.map_recorder.lateral_links.get(target_lat_id)
+
+                    if target_road_geom and lat_link:
                         is_opposing = lat_link.opposing
-                        
-                        # 3. ¿CUÁNTO ESPACIO NECESITO? (Física)
-                        vehicles_ahead = self._scan_lane_ahead(ai, mode, max_dist_m + 100.0) 
+
+                        vehicles_ahead = self._scan_lane_ahead(ai, mode, max_dist_m + 100.0)
                         distances_ahead_m = [v[0] for v in vehicles_ahead]
-                        
                         rel_dist_m = self._get_relative_dist_to_cover(distances_ahead_m, extra_dist=7.0)
-                        
-                        # Evaluamos la velocidad del objetivo
+
                         overtake_speed = velocidad_base
-                        target_speed = vehicles_ahead[0][1] if vehicles_ahead else (velocidad_base * 0.5)
-                        
-                        req_dist_m, time_to_overtake_s = self._estimate_overtake_distance(overtake_speed, target_speed, rel_dist_m)
-                        
-                        # 4. ¿ES SEGURO? (Radar Dinámico de Carril Objetivo)
+                        target_speed   = vehicles_ahead[0][1] if vehicles_ahead else velocidad_base * 0.5
+                        req_dist_m, time_to_overtake_s = self._estimate_overtake_distance(
+                            overtake_speed, target_speed, rel_dist_m
+                        )
+
                         if req_dist_m != float('inf'):
-                            es_seguro = self._is_lane_safe_to_overtake(ai, mode, target_road_id, lat_link, is_opposing, req_dist_m, time_to_overtake_s)
-                            
+                            es_seguro = self._is_lane_safe_to_overtake(
+                                ai, mode, target_road_id, lat_link, is_opposing, req_dist_m, time_to_overtake_s
+                            )
                             if es_seguro:
-                                # ¡LUZ VERDE!
-                                mode.next_link_id = target_lat_id
-                                mode.next_link_type = 'LatLink'
+                                # Calcular indicador de cambio al carril rápido
+                                overtake_indicator = self._get_indicator_to_use(
+                                    nodes_list, target_road_geom.nodes, mode.node_index,
+                                    is_opposing=is_opposing
+                                )
+                                # next_link_id queda INTACTO (saved_link_id ya lo guarda)
+                                mode.overtake_lat_link_id  = target_lat_id
                                 mode.overtake_fast_lane_id = target_road_id
-                                mode.is_driving_opposing = is_opposing
-                                mode.overtake_state = 'PASSING'
-                                mode.maneuver_state = AIManeuverState.OVERTAKING
-                                mode._passing_start_time = current_time
-                                mode._entered_fast_lane = False
+                                mode.is_driving_opposing   = is_opposing
+                                mode.overtake_state        = 'OVERTAKING'
+                                mode.maneuver_state        = AIManeuverState.OVERTAKING
+                                mode._passing_start_time   = current_time
+                                mode.blinkers_active       = overtake_indicator
+                                mode.future_indicator      = overtake_indicator
+                                mode._blinker_on_time      = current_time
                             else:
-                                # Abortamos: Tráfico en contra o falta de asfalto
-                                mode.overtake_state = 'IDLE'
-                                mode.maneuver_state = AIManeuverState.NORMAL
+                                mode.overtake_state    = 'IDLE'
+                                mode.maneuver_state    = AIManeuverState.NORMAL
                                 mode.overtake_cooldown = current_time + 4.0
                         else:
-                            # Velocidad delta demasiado pequeña (no compensa)
-                            mode.overtake_state = 'IDLE'
-                            mode.maneuver_state = AIManeuverState.NORMAL
+                            mode.overtake_state    = 'IDLE'
+                            mode.maneuver_state    = AIManeuverState.NORMAL
                             mode.overtake_cooldown = current_time + 5.0
                     else:
-                        mode.overtake_state = 'IDLE'
-                        mode.maneuver_state = AIManeuverState.NORMAL
+                        mode.overtake_state    = 'IDLE'
+                        mode.maneuver_state    = AIManeuverState.NORMAL
                         mode.overtake_cooldown = current_time + 2.0
                 else:
-                    # No hay conexión lateral válida (ej. línea continua)
-                    mode.overtake_state = 'IDLE'
-                    mode.maneuver_state = AIManeuverState.NORMAL
+                    mode.overtake_state    = 'IDLE'
+                    mode.maneuver_state    = AIManeuverState.NORMAL
                     mode.overtake_cooldown = current_time + 3.0
 
             # ---------------------------------------------------------
-            # ESTADO: PASSING (Acelerando en el carril rápido)
+            # ESTADO: OVERTAKING (Maniobra en el carril rápido)
             # ---------------------------------------------------------
-            elif mode.overtake_state == 'PASSING':
-                # Marcar cuando el AI llega al carril rápido por primera vez
-                if not mode._entered_fast_lane and mode.current_road_id == mode.overtake_fast_lane_id:
-                    mode._entered_fast_lane = True
-                    mode._fast_lane_entry_time = current_time
+            elif mode.overtake_state == 'OVERTAKING':
+                in_fast_lane = (mode.current_road_id == mode.overtake_fast_lane_id)
 
-                # La navegación ya nos devolvió al carril original DESPUÉS de haber estado en el rápido
-                if mode._entered_fast_lane and mode.current_road_id == mode.overtake_return_lane_id:
-                    mode.overtake_state = 'IDLE'
-                    mode.maneuver_state = AIManeuverState.NORMAL
-                    mode.overtake_target_plid = None
-                    mode.is_driving_opposing = False
-                    mode._entered_fast_lane = False
-                    mode.overtake_fast_lane_id = None
-                    mode.overtake_cooldown = current_time + 8.0
-                    velocidad_segura = velocidad_base
-                else:
-                    # Si no hay link en el carril rápido, apuntamos al LatLink de retorno para
-                    # que la navegación lo active al pasar físicamente por su posición
-                    if not mode.next_link_id and mode.current_road_id == getattr(mode, 'overtake_fast_lane_id', None):
-                        for _lid, _lat in self.map_recorder.lateral_links.items():
-                            if (_lat.road_a == mode.current_road_id and _lat.road_b == mode.overtake_return_lane_id) or \
-                               (_lat.road_b == mode.current_road_id and _lat.road_a == mode.overtake_return_lane_id):
-                                mode.next_link_id = _lid
-                                mode.next_link_type = 'LatLink'
-                                break
+                # Cuando la navegación cruza el LatLink de entrada, pone overtake_lat_link_id=None.
+                # El FSM lo detecta y asigna el mismo LatLink para el retorno.
+                if in_fast_lane and mode.overtake_lat_link_id is None:
+                    for _lid, _lat in self.map_recorder.lateral_links.items():
+                        if (_lat.road_a == mode.overtake_fast_lane_id and _lat.road_b == mode.overtake_return_lane_id) or \
+                           (_lat.road_b == mode.overtake_fast_lane_id and _lat.road_a == mode.overtake_return_lane_id):
+                            mode.overtake_lat_link_id = _lid
+                            break
 
-                    # Ya no multiplicamos la velocidad, usamos la base
-                    velocidad_segura = velocidad_base
+                # Velocidad: base +5% como máximo
+                velocidad_segura = velocidad_base * 1.05
 
-                    # Radar en el carril rápido por si hay tráfico de frente o lento allí
-                    vehicles_fast_lane = self._scan_lane_ahead(ai, mode, max_dist_m)
-                    if vehicles_fast_lane:
-                        f_dist, f_speed, _ = vehicles_fast_lane[0]
-                        velocidad_segura = min(velocidad_segura, self._apply_adaptive_cruise_control(
-                            velocidad_base, f_speed, f_dist, min_dist_m, max_dist_m
-                        ))
+                # ACC en el carril rápido
+                vehicles_fast_lane = self._scan_lane_ahead(ai, mode, max_dist_m)
+                if vehicles_fast_lane:
+                    f_dist, f_speed, _ = vehicles_fast_lane[0]
+                    velocidad_segura = min(velocidad_segura, self._apply_adaptive_cruise_control(
+                        velocidad_base, f_speed, f_dist, min_dist_m, max_dist_m
+                    ))
 
-                    # =========================================================
-                    # EMERGENCIA FRONTAL (solo en sentido contrario)
-                    # =========================================================
+                # Emergencia frontal (solo en carril contrario y ya dentro)
+                if mode.is_driving_opposing and in_fast_lane and vehicles_fast_lane:
                     ONCOMING_EMERGENCY_S = 2.0
                     ONCOMING_DANGER_S    = 5.0
+                    f_dist, f_speed, _ = vehicles_fast_lane[0]
+                    closing_speed_ms = my_speed_ms + max(f_speed / 3.6, 0.1)
+                    time_to_frontal  = f_dist / closing_speed_ms
+                    if time_to_frontal < ONCOMING_EMERGENCY_S:
+                        self._trigger_return(mode, current_time, velocidad_base)
+                        velocidad_segura = 0
+                    elif time_to_frontal < ONCOMING_DANGER_S:
+                        velocidad_segura = 0
 
-                    if mode.is_driving_opposing and mode._entered_fast_lane and vehicles_fast_lane:
-                        f_dist, f_speed, _ = vehicles_fast_lane[0]
-                        closing_speed_ms = my_speed_ms + max(f_speed / 3.6, 0.1)
-                        time_to_frontal = f_dist / closing_speed_ms
-
-                        if time_to_frontal < ONCOMING_EMERGENCY_S:
-                            mode.overtake_state = 'RETURNING'
-                            mode.maneuver_state = AIManeuverState.RETURNING
-                            mode._returning_start_time = current_time
-                            velocidad_segura = 0
-                        elif time_to_frontal < ONCOMING_DANGER_S:
-                            velocidad_segura = 0
-
-                    # =========================================================
-                    # Buscar el vehículo MÁS CERCANO relevante para decidir retorno
-                    # =========================================================
-                    closest_player = None
-                    min_dist = float('inf')
-
-                    dir_x = target_x - my_coords.x_m
-                    dir_y = target_y - my_coords.y_m
-                    if getattr(mode, 'is_driving_opposing', False):
-                        dir_x = -dir_x
-                        dir_y = -dir_y
-                    dir_mag = math.hypot(dir_x, dir_y)
-                    if dir_mag > 0:
-                        dir_x /= dir_mag
-                        dir_y /= dir_mag
-                    else:
-                        dir_x, dir_y = 1.0, 0.0
-
-                    def es_obstaculo_relevante(t_coords):
-                        vec_x = t_coords.x_m - my_coords.x_m
-                        vec_y = t_coords.y_m - my_coords.y_m
-                        dot_product = (dir_x * vec_x) + (dir_y * vec_y)
-                        distancia_lateral = abs(dir_x * vec_y - dir_y * vec_x)
-                        if dot_product < 0 and distancia_lateral < 2.0:
-                            return False
-                        return True
-
-                    for p in self.user_manager.players.values():
-                        if p.plid == ai.player.plid or not p.telemetry: continue
-                        t_coords = p.telemetry.coordinates
-                        if not es_obstaculo_relevante(t_coords): continue
-                        dist = calc_dist_3d(my_coords.x_m, my_coords.y_m, my_coords.z_m, t_coords.x_m, t_coords.y_m, t_coords.z_m)
-                        if dist < min_dist:
-                            min_dist = dist
-                            closest_player = p
-
-                    for a in self.user_manager.ais.values():
-                        if a.player.plid == ai.player.plid or not a.player.telemetry: continue
-                        t_coords = a.player.telemetry.coordinates
-                        if not es_obstaculo_relevante(t_coords): continue
-                        dist = calc_dist_3d(my_coords.x_m, my_coords.y_m, my_coords.z_m, t_coords.x_m, t_coords.y_m, t_coords.z_m)
-                        if dist < min_dist:
-                            min_dist = dist
-                            closest_player = a.player
-
-                    # Debe estar en el carril rápido Y haber pasado ≥3s desde inicio de PASSING
-                    _can_return = mode._entered_fast_lane and current_time - mode._passing_start_time >= 3.0
-
-                    if _can_return:
-                        # Comprobamos específicamente el coche que estamos adelantando:
-                        # solo volvemos si ya está detrás de nosotros (lo hemos pasado)
-                        target_passed = True
-                        if mode.overtake_target_plid is not None:
-                            t_player = self.user_manager.players.get(mode.overtake_target_plid)
-                            t_telem = t_player.telemetry if t_player else None
-                            if not t_telem:
-                                for _a in self.user_manager.ais.values():
-                                    if _a.player.plid == mode.overtake_target_plid and _a.player.telemetry:
-                                        t_telem = _a.player.telemetry
-                                        break
-                            if t_telem:
-                                tv_x = t_telem.coordinates.x_m - my_coords.x_m
-                                tv_y = t_telem.coordinates.y_m - my_coords.y_m
-                                target_passed = (dir_x * tv_x + dir_y * tv_y) < 0.0
-
-                        if target_passed:
-                            if not closest_player:
-                                mode.overtake_state = 'RETURNING'
-                                mode.maneuver_state = AIManeuverState.RETURNING
-                                mode._returning_start_time = current_time
-                            else:
-                                t_coords = closest_player.telemetry.coordinates
-                                vec_x = t_coords.x_m - my_coords.x_m
-                                vec_y = t_coords.y_m - my_coords.y_m
-                                dot_product = (dir_x * vec_x) + (dir_y * vec_y)
-                                if min_dist > min_dist_m + 5.0 or (dot_product < 0 and min_dist > min_dist_m):
-                                    mode.overtake_state = 'RETURNING'
-                                    mode.maneuver_state = AIManeuverState.RETURNING
-                                    mode._returning_start_time = current_time
+                # Retorno normal: hueco libre en el carril original
+                if in_fast_lane and mode.overtake_state == 'OVERTAKING':
+                    ahead_gap, behind_gap = self._scan_return_lane_gap(ai, mode, max_dist_m)
+                    if ahead_gap >= max_dist_m and behind_gap >= max_dist_m:
+                        self._trigger_return(mode, current_time, velocidad_base)
 
             # ---------------------------------------------------------
-            # ESTADO: RETURNING (Volviendo a casa)
+            # ESTADO: RETURNING (Volviendo al carril original)
             # ---------------------------------------------------------
             elif mode.overtake_state == 'RETURNING':
                 velocidad_segura = velocidad_base
-                
-                # 1. Comprobamos si el next_link actual es el que nos lleva a casa
-                necesita_enlace = True
-                if getattr(mode, 'next_link_type', None) == 'LatLink' and mode.next_link_id:
-                    current_link = self.map_recorder.lateral_links.get(mode.next_link_id)
-                    # Si el enlace actual conecta con nuestra vía original, ya estamos en camino
-                    if current_link and (current_link.road_a == mode.overtake_return_lane_id or current_link.road_b == mode.overtake_return_lane_id):
-                        necesita_enlace = False
-                
-                # 2. Si no tenemos el enlace correcto (ya sea porque está vacío o porque la macro-navegación 
-                # puso un RoadLink para seguir recto), lo SOBREESCRIBIMOS.
-                if necesita_enlace:
-                    _fast_road = self.map_recorder.roads.get(mode.current_road_id)
-                    for link_id, lat_link in self.map_recorder.lateral_links.items():
-                        if (lat_link.road_a == mode.current_road_id and lat_link.road_b == mode.overtake_return_lane_id) or \
-                           (lat_link.road_b == mode.current_road_id and lat_link.road_a == mode.overtake_return_lane_id):
-                            if _fast_road and not _fast_road.is_circular and not self._is_link_reachable_ahead(
-                                _fast_road.nodes, mode.node_index, lat_link.nodes, max_dist=8.0
-                            ):
-                                continue
-                            mode.next_link_id = link_id
-                            mode.next_link_type = 'LatLink'
+
+                # Seguridad: si overtake_lat_link_id se perdió, buscarlo de nuevo
+                if mode.overtake_lat_link_id is None and mode.current_road_id != mode.overtake_return_lane_id:
+                    fast_road = self.map_recorder.roads.get(mode.current_road_id)
+                    for _lid, _lat in self.map_recorder.lateral_links.items():
+                        if (_lat.road_a == mode.current_road_id and _lat.road_b == mode.overtake_return_lane_id) or \
+                           (_lat.road_b == mode.current_road_id and _lat.road_a == mode.overtake_return_lane_id):
+                            if fast_road and not fast_road.is_circular:
+                                if not self._is_link_reachable_ahead(fast_road.nodes, mode.node_index, _lat.nodes, max_dist=8.0):
+                                    continue
+                            mode.overtake_lat_link_id = _lid
                             break
-                
-                # 3. Si la macro navegación ya nos ha devuelto a la vía y se ha estabilizado
+
                 if mode.current_road_id == mode.overtake_return_lane_id:
-                    mode.overtake_state = 'IDLE'
-                    mode.maneuver_state = AIManeuverState.NORMAL
-                    mode.overtake_target_plid = None
-                    mode.is_driving_opposing = False
-                    mode.overtake_fast_lane_id = None
-                    mode.overtake_cooldown = current_time + 8.0
+                    self._finish_overtake(mode, current_time)
                 elif current_time - mode._returning_start_time > 10.0:
-                    # Timeout de seguridad: algo salió mal, forzamos IDLE
-                    mode.overtake_state = 'IDLE'
-                    mode.maneuver_state = AIManeuverState.NORMAL
-                    mode.overtake_target_plid = None
-                    mode.is_driving_opposing = False
-                    mode.overtake_fast_lane_id = None
-                    mode.overtake_cooldown = current_time + 5.0
+                    self._finish_overtake(mode, current_time)
 
             # Guardamos el resultado en caché
             mode._cached_target_speed = velocidad_segura
@@ -1114,3 +989,112 @@ class _TrafficMixin(_MixinBase):
 
         # Si pasamos el filtro físico y el filtro de tráfico, ¡vía libre!
         return True
+
+    # =========================================================
+    # HELPERS DEL FSM DE ADELANTAMIENTO
+    # =========================================================
+
+    def _trigger_return(self, mode: FreeroamMode, current_time: float, velocidad_base: float) -> None:
+        """Activa el estado RETURNING con los intermitentes de regreso."""
+        fast_road_geom = self.map_recorder.roads.get(mode.overtake_fast_lane_id)
+        ret_road_geom  = self.map_recorder.roads.get(mode.overtake_return_lane_id)
+        if fast_road_geom and ret_road_geom:
+            return_indicator = self._get_indicator_to_use(
+                fast_road_geom.nodes, ret_road_geom.nodes, mode.node_index,
+                is_opposing=mode.is_driving_opposing
+            )
+            mode.blinkers_active  = return_indicator
+            mode.future_indicator = None  # forzar recálculo en navegación
+            mode._blinker_on_time = current_time
+        mode.overtake_state        = 'RETURNING'
+        mode.maneuver_state        = AIManeuverState.RETURNING
+        mode._returning_start_time = current_time
+
+    def _finish_overtake(self, mode: FreeroamMode, current_time: float) -> None:
+        """Cierra el adelantamiento y restaura o recalcula el link original."""
+        mode.overtake_state        = 'IDLE'
+        mode.maneuver_state        = AIManeuverState.NORMAL
+        mode.overtake_target_plid  = None
+        mode.is_driving_opposing   = False
+        mode.overtake_fast_lane_id = None
+        mode.overtake_lat_link_id  = None
+        mode.overtake_cooldown     = current_time + 8.0
+
+        if mode.saved_link_id:
+            current_road = self.map_recorder.roads.get(mode.current_road_id)
+            saved_nodes  = None
+            if mode.saved_link_type == 'RoadLink':
+                obj = self.map_recorder.road_links.get(mode.saved_link_id)
+                if obj: saved_nodes = obj.nodes
+            elif mode.saved_link_type == 'LatLink':
+                obj = self.map_recorder.lateral_links.get(mode.saved_link_id)
+                if obj: saved_nodes = obj.nodes
+
+            if current_road and saved_nodes and self._is_link_reachable_ahead(
+                current_road.nodes, mode.node_index, saved_nodes
+            ):
+                mode.next_link_id   = mode.saved_link_id
+                mode.next_link_type = mode.saved_link_type
+            else:
+                self._plan_next_link(mode)
+
+            mode.saved_link_id   = None
+            mode.saved_link_type = None
+
+    def _scan_return_lane_gap(self, ai: 'AI', mode: FreeroamMode, max_dist_m: float) -> tuple[float, float]:
+        """
+        Escanea el carril de retorno desde la posición actual (en el carril rápido).
+        Devuelve (dist_más_cercano_delante, dist_más_cercano_detrás) en ese carril.
+        """
+        if not ai.player.telemetry:
+            return 0.0, 0.0
+
+        my_coords = ai.player.telemetry.coordinates
+        ret_geom  = self.map_recorder.roads.get(mode.overtake_return_lane_id)
+        if not ret_geom or not ret_geom.nodes:
+            return float('inf'), float('inf')
+
+        closest_idx, _ = self._get_closest_node_index(my_coords.x_m, my_coords.y_m, ret_geom.nodes)
+        next_idx = min(closest_idx + 1, len(ret_geom.nodes) - 1)
+        if closest_idx == next_idx:
+            next_idx = max(0, closest_idx - 1)
+        dir_x = ret_geom.nodes[next_idx].x_m - ret_geom.nodes[closest_idx].x_m
+        dir_y = ret_geom.nodes[next_idx].y_m - ret_geom.nodes[closest_idx].y_m
+
+        min_ahead  = float('inf')
+        min_behind = float('inf')
+
+        for other_player, is_ai, other_ai in (
+            [(p, False, None) for p in self.user_manager.players.values()] +
+            [(a.player, True, a) for a in self.user_manager.ais.values()]
+        ):
+            if other_player.plid == ai.player.plid or not other_player.telemetry:
+                continue
+
+            # Filtro topológico: solo coches en el carril de retorno
+            if is_ai and other_ai and 'aic' in other_ai.extra:
+                other_mode = other_ai.extra['aic'].active_mode
+                other_road = other_mode.current_road_id if other_mode else None
+            else:
+                ctx = self.map_recorder.get_location_context(
+                    other_player.telemetry.coordinates.x_m,
+                    other_player.telemetry.coordinates.y_m,
+                    other_player.telemetry.coordinates.z_m
+                )
+                other_road = ctx.road_id
+
+            if other_road != mode.overtake_return_lane_id:
+                continue
+
+            oc   = other_player.telemetry.coordinates
+            dist = calc_dist_3d(my_coords.x_m, my_coords.y_m, my_coords.z_m, oc.x_m, oc.y_m, oc.z_m)
+            if dist > max_dist_m * 2.0:
+                continue
+
+            dot = dir_x * (oc.x_m - my_coords.x_m) + dir_y * (oc.y_m - my_coords.y_m)
+            if dot >= 0:
+                min_ahead  = min(min_ahead, dist)
+            else:
+                min_behind = min(min_behind, dist)
+
+        return min_ahead, min_behind
