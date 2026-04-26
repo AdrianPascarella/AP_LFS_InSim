@@ -166,6 +166,15 @@ class _CommandsMixin(_MixinBase):
         behavior.target_speed_kmh = AdaptiveSpeedConfig(min_speed, max_speed, min_dist, max_dist)
         self.send_ISP_MSL(Msg=f"{TextColors.GREEN}Modo adaptativo configurado para PLID {plid}")
 
+    def _get_oldest_my_ai_plid(self, ucid: int) -> int | None:
+        """Devuelve el PLID de la IA más antigua del usuario, o None si no tiene ninguna."""
+        user = self.user_manager.users.get(ucid)
+        if not user:
+            return None
+        my_plids = user.plids_ais_actives
+        # ais mantiene orden de inserción → primer match = más antigua en pista
+        return next((plid for plid in self.user_manager.ais if plid in my_plids), None)
+
     def _cmd_spec(self, plid: int):
         """Envía a la IA al modo espectadores."""
         if plid not in self.user_manager.ais:
@@ -314,14 +323,13 @@ class _CommandsMixin(_MixinBase):
                 time.sleep(5)
                 continue
             
-            ais = list(self.user_manager.ais.values())
-            
-            # Si nos hemos pasado del límite (40 o más), mandamos a spectate a la última
-            if count_players_ais > 39 and ais:
-                ai_to_remove = ais[-1]
-                self._cmd_spec(ai_to_remove.player.plid)
-                self.logger.info(f"IA {ai_to_remove.ai_name} (PLID {ai_to_remove.player.plid}) removida para hacer espacio")
-                time.sleep(1) # Pequeña pausa para que LFS la procese
+            # Si nos hemos pasado del límite (40 o más), mandamos a spectate la IA más antigua del usuario
+            if count_players_ais > 39:
+                plid_to_remove = self._get_oldest_my_ai_plid(packet.UCID)
+                if plid_to_remove is not None:
+                    self._cmd_spec(plid_to_remove)
+                    self.logger.info(f"IA PLID {plid_to_remove} (más antigua del usuario) removida para hacer espacio")
+                    time.sleep(1)  # Pequeña pausa para que LFS la procese
             
             # Si faltan coches (menos de 39)
             elif count_players_ais < 39:
@@ -393,14 +401,13 @@ class _CommandsMixin(_MixinBase):
                 time.sleep(5)
                 continue
             
-            ais = list(self.user_manager.ais.values())
-            
-            # Si nos hemos pasado del límite, mandamos a spectate a la última IA
-            if count_players_ais > target_num and ais:
-                ai_to_remove = ais[-1]
-                self._cmd_spec(ai_to_remove.player.plid)
-                self.logger.info(f"IA {ai_to_remove.ai_name} removida para ajustar al límite de {target_num}")
-                time.sleep(0.05) # Pequeña pausa para que LFS la procese
+            # Si nos hemos pasado del límite, mandamos a spectate la IA más antigua del usuario
+            if count_players_ais > target_num:
+                plid_to_remove = self._get_oldest_my_ai_plid(packet.UCID)
+                if plid_to_remove is not None:
+                    self._cmd_spec(plid_to_remove)
+                    self.logger.info(f"IA PLID {plid_to_remove} (más antigua del usuario) removida para ajustar al límite de {target_num}")
+                    time.sleep(0.05)  # Pequeña pausa para que LFS la procese
             
             # Si faltan coches (menos del límite actual)
             elif count_players_ais < target_num:
