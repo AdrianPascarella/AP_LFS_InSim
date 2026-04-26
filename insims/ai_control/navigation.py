@@ -283,9 +283,12 @@ class _NavigationMixin(_MixinBase):
             else:
                 mode.current_id = ctx.road_id
                 mode.current_type = 'Road'
-                
+
                 # Smart Spawn al despertar
                 geom = self.map_recorder.roads.get(ctx.road_id)
+                if not geom or not geom.nodes:
+                    behavior.target_speed_kmh = 0.0
+                    return
                 closest_idx = get_closest_node_index(my_coords, geom.nodes, is_waypoint=False)
                 mode.node_index = determine_smart_spawn_index(my_coords, closest_idx, geom.nodes, is_waypoint=False)
                 
@@ -426,9 +429,8 @@ class _NavigationMixin(_MixinBase):
                 if is_opposing:
                     self.logger.warning(f"IA {ai.ai_name} se quedó sin asfalto en sentido contrario. Forzando retorno de emergencia.")
                     mode.is_driving_opposing = False
-                    if hasattr(mode, 'overtake_state'):
-                        mode.overtake_state = 'RETURNING' # Obligamos a la FSM a volver
-                    mode.node_index = 0 # Prevenimos Crash por OutOfIndex mientras la FSM la reincorpora
+                    mode.overtake_state = 'RETURNING'
+                    mode.node_index = 0  # Prevenimos crash por OutOfIndex mientras la FSM reincorpora
                     return
                 
                 # --- CASO NORMAL ---

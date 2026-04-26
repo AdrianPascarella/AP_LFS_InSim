@@ -35,6 +35,12 @@ class AIControl(_CommandsMixin, _PhysicsMixin, _NavigationMixin, _TrafficMixin, 
 
         self.interval_mci_s: float = self.config.get('interval', 100) / 1000
 
+        # Cachés de localización para jugadores humanos en los radares de tráfico.
+        # Claves: PLID. Valores: (timestamp, road_id, [node_index]).
+        # Se limpian automáticamente por TTL en cada ciclo de radar.
+        self._radar_human_cache: dict = {}
+        self._target_lane_human_cache: dict = {}
+
         self.logger.info(f"Módulo {self.name} inicializado con arquitectura de objetos.")
 
     def on_connect(self):
