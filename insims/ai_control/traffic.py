@@ -353,6 +353,7 @@ class _TrafficMixin(_MixinBase):
                 # Marcar cuando el AI llega al carril rápido por primera vez
                 if not mode._entered_fast_lane and mode.current_road_id == mode.overtake_fast_lane_id:
                     mode._entered_fast_lane = True
+                    mode._fast_lane_entry_time = current_time
 
                 # La navegación ya nos devolvió al carril original DESPUÉS de haber estado en el rápido
                 if mode._entered_fast_lane and mode.current_road_id == mode.overtake_return_lane_id:
@@ -448,7 +449,8 @@ class _TrafficMixin(_MixinBase):
                             min_dist = dist
                             closest_player = a.player
 
-                    _can_return = mode._entered_fast_lane and current_time - mode._passing_start_time >= 1.0
+                    # Mínimo 2.5s en el carril rápido desde que se entra físicamente
+                    _can_return = mode._entered_fast_lane and current_time - mode._fast_lane_entry_time >= 2.5
 
                     if not closest_player:
                         if _can_return:
