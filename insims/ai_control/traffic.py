@@ -362,6 +362,8 @@ class _TrafficMixin(_MixinBase):
                     mode.overtake_target_plid = None
                     mode.is_driving_opposing = False
                     mode._entered_fast_lane = False
+                    mode.overtake_fast_lane_id = None
+                    mode.overtake_cooldown = current_time + 8.0
                     velocidad_segura = velocidad_base
                 else:
                     # Si no hay link en el carril rápido, apuntamos al LatLink de retorno para
@@ -449,23 +451,40 @@ class _TrafficMixin(_MixinBase):
                             min_dist = dist
                             closest_player = a.player
 
-                    # Mínimo 3s desde que empieza PASSING — la IA se compromete a adelantar
-                    _can_return = current_time - mode._passing_start_time >= 3.0
+                    # Debe estar en el carril rápido Y haber pasado ≥3s desde inicio de PASSING
+                    _can_return = mode._entered_fast_lane and current_time - mode._passing_start_time >= 3.0
 
-                    if not closest_player:
-                        if _can_return:
-                            mode.overtake_state = 'RETURNING'
-                            mode.maneuver_state = AIManeuverState.RETURNING
-                            mode._returning_start_time = current_time
-                    else:
-                        t_coords = closest_player.telemetry.coordinates
-                        vec_x = t_coords.x_m - my_coords.x_m
-                        vec_y = t_coords.y_m - my_coords.y_m
-                        dot_product = (dir_x * vec_x) + (dir_y * vec_y)
-                        if _can_return and (min_dist > min_dist_m + 5.0 or (dot_product < 0 and min_dist > min_dist_m)):
-                            mode.overtake_state = 'RETURNING'
-                            mode.maneuver_state = AIManeuverState.RETURNING
-                            mode._returning_start_time = current_time
+                    if _can_return:
+                        # Comprobamos específicamente el coche que estamos adelantando:
+                        # solo volvemos si ya está detrás de nosotros (lo hemos pasado)
+                        target_passed = True
+                        if mode.overtake_target_plid is not None:
+                            t_player = self.user_manager.players.get(mode.overtake_target_plid)
+                            t_telem = t_player.telemetry if t_player else None
+                            if not t_telem:
+                                for _a in self.user_manager.ais.values():
+                                    if _a.player.plid == mode.overtake_target_plid and _a.player.telemetry:
+                                        t_telem = _a.player.telemetry
+                                        break
+                            if t_telem:
+                                tv_x = t_telem.coordinates.x_m - my_coords.x_m
+                                tv_y = t_telem.coordinates.y_m - my_coords.y_m
+                                target_passed = (dir_x * tv_x + dir_y * tv_y) < 0.0
+
+                        if target_passed:
+                            if not closest_player:
+                                mode.overtake_state = 'RETURNING'
+                                mode.maneuver_state = AIManeuverState.RETURNING
+                                mode._returning_start_time = current_time
+                            else:
+                                t_coords = closest_player.telemetry.coordinates
+                                vec_x = t_coords.x_m - my_coords.x_m
+                                vec_y = t_coords.y_m - my_coords.y_m
+                                dot_product = (dir_x * vec_x) + (dir_y * vec_y)
+                                if min_dist > min_dist_m + 5.0 or (dot_product < 0 and min_dist > min_dist_m):
+                                    mode.overtake_state = 'RETURNING'
+                                    mode.maneuver_state = AIManeuverState.RETURNING
+                                    mode._returning_start_time = current_time
 
             # ---------------------------------------------------------
             # ESTADO: RETURNING (Volviendo a casa)
@@ -502,13 +521,16 @@ class _TrafficMixin(_MixinBase):
                     mode.maneuver_state = AIManeuverState.NORMAL
                     mode.overtake_target_plid = None
                     mode.is_driving_opposing = False
+                    mode.overtake_fast_lane_id = None
+                    mode.overtake_cooldown = current_time + 8.0
                 elif current_time - mode._returning_start_time > 10.0:
                     # Timeout de seguridad: algo salió mal, forzamos IDLE
                     mode.overtake_state = 'IDLE'
                     mode.maneuver_state = AIManeuverState.NORMAL
                     mode.overtake_target_plid = None
                     mode.is_driving_opposing = False
-                    mode.overtake_fast_lane_id = None  # Evita bucle en la recuperación IDLE
+                    mode.overtake_fast_lane_id = None
+                    mode.overtake_cooldown = current_time + 5.0
 
             # Guardamos el resultado en caché
             mode._cached_target_speed = velocidad_segura
