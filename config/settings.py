@@ -26,7 +26,10 @@ class _InsimRotatingHandler(logging.handlers.RotatingFileHandler):
 class _HighFreqFilter(logging.Filter):
     """Descarta registros generados por paquetes de alta frecuencia (MCI, NLP, OutSim)."""
 
-    _PATTERNS = frozenset({'ISP_MCI', 'ISP_NLP', 'MCI PLID', 'OutSim', 'OutGauge'})
+    # Patrones específicos de los logs de alta frecuencia, no nombres de tipo genéricos.
+    # 'ISP_MCI'/'ISP_NLP' eran demasiado amplios y filtraban logs legítimos (p.ej.
+    # "Tipos de paquete activos: ..., ISP_MCI, ...").
+    _PATTERNS = frozenset({'MCI PLID', 'NLP PLID', 'OutSim', 'OutGauge'})
 
     def filter(self, record: logging.LogRecord) -> bool:
         msg = record.getMessage()
