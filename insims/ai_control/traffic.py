@@ -391,7 +391,7 @@ class _TrafficMixin(_MixinBase):
                     ONCOMING_EMERGENCY_S = 2.0
                     ONCOMING_DANGER_S    = 5.0
 
-                    if mode.is_driving_opposing and vehicles_fast_lane:
+                    if mode.is_driving_opposing and mode._entered_fast_lane and vehicles_fast_lane:
                         f_dist, f_speed, _ = vehicles_fast_lane[0]
                         closing_speed_ms = my_speed_ms + max(f_speed / 3.6, 0.1)
                         time_to_frontal = f_dist / closing_speed_ms
@@ -449,8 +449,8 @@ class _TrafficMixin(_MixinBase):
                             min_dist = dist
                             closest_player = a.player
 
-                    # Mínimo 2.5s en el carril rápido desde que se entra físicamente
-                    _can_return = mode._entered_fast_lane and current_time - mode._fast_lane_entry_time >= 2.5
+                    # Mínimo 3s desde que empieza PASSING — la IA se compromete a adelantar
+                    _can_return = current_time - mode._passing_start_time >= 3.0
 
                     if not closest_player:
                         if _can_return:
