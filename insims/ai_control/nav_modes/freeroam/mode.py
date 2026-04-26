@@ -71,6 +71,7 @@ class FreeroamMode(AINavModeState):
         self.overtake_return_lane_id: Optional[str] = None
         self.last_link: Optional[tuple] = None
         self._passing_start_time: float = 0.0
+        self._fast_lane_entry_time: float = 0.0
         self._returning_start_time: float = 0.0
         self._entered_fast_lane: bool = False
         self.blocking_plid: Optional[int] = None
