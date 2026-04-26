@@ -12,6 +12,7 @@ from typing import Dict, List, Optional, Any, TYPE_CHECKING
 
 from .insim_client import InSimClient
 from .packet_sender_mixin import PacketSenderMixin
+from .insim_enums import OSO
 
 if TYPE_CHECKING:
     from .insim_loader import InSimLoader
@@ -50,6 +51,10 @@ class InSimApp(InSimClient, PacketSenderMixin):
         # Copiar la lista de dependencias para que _load_metadata() no mute
         # el atributo de clase compartido entre todos los módulos.
         self.dependencies = list(self.__class__.dependencies)
+
+        # OutSim: flags OSO que este módulo necesita. Por defecto ninguno.
+        # Override set_outsim() para activar bloques concretos.
+        self.outsim_opts: OSO = OSO.NONE
         
         # 1. Cargar metadatos del archivo insim.json si existe
         if self._insim_path:
@@ -110,5 +115,19 @@ class InSimApp(InSimClient, PacketSenderMixin):
             return self._loader._instances[name]
             
         return None
+
+    def set_outsim(self) -> None:
+        """
+        Hook para declarar qué bloques OutSim2 necesita este módulo.
+        Override para activar flags OSO:
+
+            def set_outsim(self):
+                super().set_outsim()
+                self.outsim_opts |= OSO.TIME | OSO.MAIN | OSO.INPUTS
+
+        InSimClient agrega los opts de todos los módulos en start() y abre
+        el socket UDP solo si el resultado combinado es distinto de OSO.NONE.
+        """
+        pass
 
     # send_ISP_*() y __getattr__ heredados de PacketSenderMixin

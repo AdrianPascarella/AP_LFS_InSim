@@ -4,10 +4,12 @@ from .insim import *
 from .outsim import *
 from .maps import INSIM_PACKETS
 
-OUTSIM_PACKETS = {
+# OutGaugePack y OutSimPack tienen formato fijo: siempre registrados.
+# OutSimPack2 se añade dinámicamente en insim_client._activate_outsim()
+# cuando algún módulo declara outsim_opts != OSO.NONE.
+OUTSIM_PACKETS: dict = {
     OutGaugePack().get_size(): OutGaugePack,
-    OutSimPack().get_size(): OutSimPack,
-    OutSimPack2().get_size(): OutSimPack2,
+    OutSimPack().get_size():   OutSimPack,
 }
 
 class RECEIVE:

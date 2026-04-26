@@ -15,7 +15,7 @@ from .insim_packet_io import connect_tcp_lfs, connect_udp_lfs, stop_all_threads
 from .insim_state import set_insim_client
 from .insim_packet_sender import send_packet
 from .insim_packet_class import ISP_ISI, ISP_TINY
-from .insim_enums import ISF, TINY
+from .insim_enums import ISF, TINY, OSO
 from .exceptions import InSimError
 
 class InSimClient:
@@ -37,6 +37,9 @@ class InSimClient:
         self._executor = ThreadPoolExecutor(
             max_workers=self.config.get('max_workers', 5)
         ) if self.use_thread_pool else None
+
+        # OutSim: opts del master; módulos contribuyen en set_outsim()
+        self.outsim_opts: OSO = OSO.NONE
 
         # Registrar este cliente como el Principal en el estado global
         set_insim_client(self)
@@ -85,6 +88,36 @@ class InSimClient:
         self._active_handler_names: set[str] = handler_names
         self._active_type_ids: set[int] = active_ids
 
+    def set_outsim(self) -> None:
+        """Hook vacío. InSimApp lo sobrescribe para declarar outsim_opts."""
+        pass
+
+    def _activate_outsim(self, combined_oso: OSO) -> None:
+        """
+        Construye OutSimPack2 según combined_oso, lo registra en OUTSIM_PACKETS
+        y abre el socket UDP.
+        """
+        from .packets.outsim import build_outsim_pack2
+        from .packets import OUTSIM_PACKETS
+
+        OutSimPack2 = build_outsim_pack2(combined_oso)
+        OUTSIM_PACKETS[OutSimPack2().get_size()] = OutSimPack2
+
+        udp_port   = self.config.get('udp_port',   30000)
+        udp_host   = self.config.get('udp_host',   '0.0.0.0')
+        udp_buffer = self.config.get('udp_buffer', 4096)
+        connect_udp_lfs(udp_host, udp_port, udp_buffer)
+
+        oso_names = ' | '.join(
+            f.name for f in OSO
+            if f in combined_oso and f.value > 0 and f.name not in ('ALL', 'ALL_NOID')
+        )
+        self.logger.info(f"OutSim activo (OSO={int(combined_oso):#x}): {oso_names}")
+        self.logger.info(
+            f"  → cfg.txt requerido: OutSim Opts {int(combined_oso):x}"
+            f" | OutSim IP 127.0.0.1 | OutSim Port {udp_port}"
+        )
+
     def set_isi_packet(self):
         """
         Configura el paquete de inicialización (ISI) base.
@@ -128,13 +161,6 @@ class InSimClient:
             port = self.config.get('tcp_port', 29999)
             connect_tcp_lfs(host, port)
 
-            # 2. Configuración UDP (Opcional)
-            udp_port = self.config.get('udp_port')
-            if udp_port:
-                udp_host = self.config.get('udp_host', '0.0.0.0')
-                udp_buffer = self.config.get('udp_buffer', 4096)
-                connect_udp_lfs(udp_host, udp_port, udp_buffer)
-
             # =================================================================
             # LÓGICA DE FUSIÓN DE FLAGS (Flag Aggregation)
             # =================================================================
@@ -157,6 +183,19 @@ class InSimClient:
                         added = self.isi.Flags ^ old_flags
                         self.logger.debug(f" -> +Flags de '{module.name}': {added} (Total: {self.isi.Flags})")
 
+            # =================================================================
+            # AGREGACIÓN DE OUTSIM OPTS
+            # =================================================================
+            self.set_outsim()
+            combined_oso: OSO = self.outsim_opts
+            for module in self.modules:
+                module.set_outsim()
+                combined_oso |= module.outsim_opts
+
+            if combined_oso:
+                self._activate_outsim(combined_oso)
+            else:
+                self.logger.debug("OutSim desactivado (ningún módulo lo requiere)")
             # =================================================================
 
             # 3. Enviar el paquete de Inicialización (ISI) DEFINITIVO
