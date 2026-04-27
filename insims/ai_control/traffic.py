@@ -240,6 +240,7 @@ class _TrafficMixin(_MixinBase):
             # =========================================================
             # MÁQUINA DE ESTADOS FINITOS (FSM) DEL ADELANTAMIENTO
             # =========================================================
+            _n = ai.ai_name  # alias corto para logs
 
             # ---------------------------------------------------------
             # ESTADO: IDLE (Conducción Normal)
@@ -273,6 +274,13 @@ class _TrafficMixin(_MixinBase):
                         mode.maneuver_state        = AIManeuverState.FOLLOWING
                         mode.overtake_target_plid  = closest_plid
                         mode.overtake_return_lane_id = mode.current_road_id
+                        self.logger.debug(
+                            f"[OVT:{_n}] IDLE→EVALUATING | target_plid={closest_plid} "
+                            f"dist={closest_dist:.1f}m speed={closest_speed_kmh:.1f} base={velocidad_base:.1f} km/h "
+                            f"road={mode.current_road_id} saved_link={mode.saved_link_id}/{mode.saved_link_type}"
+                        )
+                    elif lane_change_blocked:
+                        pass  # no_lane_change activo — sin log (demasiado frecuente)
 
             # ---------------------------------------------------------
             # ESTADO: EVALUATING (Análisis de viabilidad)
@@ -302,6 +310,12 @@ class _TrafficMixin(_MixinBase):
                             overtake_speed, target_speed, rel_dist_m
                         )
 
+                        self.logger.debug(
+                            f"[OVT:{_n}] EVAL | lane={target_road_id} lat={target_lat_id} "
+                            f"opposing={is_opposing} req={req_dist_m:.1f}m time={time_to_overtake_s:.1f}s "
+                            f"rel_dist={rel_dist_m:.1f}m target_spd={target_speed:.1f} km/h"
+                        )
+
                         if req_dist_m != float('inf'):
                             es_seguro = self._is_lane_safe_to_overtake(
                                 ai, mode, target_road_id, lat_link, is_opposing, req_dist_m, time_to_overtake_s
@@ -325,22 +339,31 @@ class _TrafficMixin(_MixinBase):
                                 mode.blinkers_active       = overtake_indicator
                                 mode.future_indicator      = overtake_indicator
                                 mode._blinker_on_time      = current_time
+                                self.logger.info(
+                                    f"[OVT:{_n}] EVAL→OVERTAKING ✓ | fast_lane={target_road_id} "
+                                    f"lat_link={target_lat_id} opposing={is_opposing} "
+                                    f"req={req_dist_m:.1f}m indicator={overtake_indicator}"
+                                )
                             else:
                                 mode.overtake_state    = 'IDLE'
                                 mode.maneuver_state    = AIManeuverState.NORMAL
                                 mode.overtake_cooldown = current_time + 4.0
+                                self.logger.debug(f"[OVT:{_n}] EVAL→IDLE | lane not safe (req={req_dist_m:.1f}m), cooldown +4s")
                         else:
                             mode.overtake_state    = 'IDLE'
                             mode.maneuver_state    = AIManeuverState.NORMAL
                             mode.overtake_cooldown = current_time + 5.0
+                            self.logger.debug(f"[OVT:{_n}] EVAL→IDLE | speed delta too small (inf dist), cooldown +5s")
                     else:
                         mode.overtake_state    = 'IDLE'
                         mode.maneuver_state    = AIManeuverState.NORMAL
                         mode.overtake_cooldown = current_time + 2.0
+                        self.logger.debug(f"[OVT:{_n}] EVAL→IDLE | road/latlink geom missing (road={target_road_id} lat={target_lat_id}), cooldown +2s")
                 else:
                     mode.overtake_state    = 'IDLE'
                     mode.maneuver_state    = AIManeuverState.NORMAL
                     mode.overtake_cooldown = current_time + 3.0
+                    self.logger.debug(f"[OVT:{_n}] EVAL→IDLE | no valid lateral lane from road={mode.current_road_id}, cooldown +3s")
 
             # ---------------------------------------------------------
             # ESTADO: OVERTAKING (Maniobra en el carril rápido)
@@ -351,13 +374,18 @@ class _TrafficMixin(_MixinBase):
                 # Al entrar al carril rápido, la navegación habrá calculado un nuevo next_link_id.
                 # Asegurar que next_link_id apunte al LatLink de retorno.
                 if in_fast_lane and (not mode.next_link_id or mode.next_link_type != 'LatLink'):
+                    found_return = False
                     for _lid, _lat in self.map_recorder.lateral_links.items():
                         if (_lat.road_a == mode.overtake_fast_lane_id and _lat.road_b == mode.overtake_return_lane_id) or \
                            (_lat.road_b == mode.overtake_fast_lane_id and _lat.road_a == mode.overtake_return_lane_id):
                             mode.next_link_id   = _lid
                             mode.next_link_type = 'LatLink'
-                            mode.future_indicator = None  # forzar recálculo de intermitentes de retorno
+                            mode.future_indicator = None
+                            found_return = True
+                            self.logger.info(f"[OVT:{_n}] OVERTAKING: entered fast_lane={mode.overtake_fast_lane_id}, return_lat={_lid}")
                             break
+                    if not found_return:
+                        self.logger.debug(f"[OVT:{_n}] OVERTAKING: in fast lane but NO return LatLink found! fast={mode.overtake_fast_lane_id} ret={mode.overtake_return_lane_id}")
 
                 # Velocidad: base +5% como máximo
                 velocidad_segura = velocidad_base * 1.05
@@ -378,16 +406,23 @@ class _TrafficMixin(_MixinBase):
                     closing_speed_ms = my_speed_ms + max(f_speed / 3.6, 0.1)
                     time_to_frontal  = f_dist / closing_speed_ms
                     if time_to_frontal < ONCOMING_EMERGENCY_S:
-                        self._trigger_return(mode, current_time, velocidad_base)
+                        self.logger.info(f"[OVT:{_n}] OVERTAKING→RETURNING | ONCOMING EMERGENCY: t={time_to_frontal:.1f}s dist={f_dist:.1f}m")
+                        self._trigger_return(mode, current_time, velocidad_base, _n)
                         velocidad_segura = 0
                     elif time_to_frontal < ONCOMING_DANGER_S:
+                        self.logger.debug(f"[OVT:{_n}] OVERTAKING: oncoming danger braking: t={time_to_frontal:.1f}s")
                         velocidad_segura = 0
 
                 # Retorno normal: hueco libre en el carril original
                 if in_fast_lane and mode.overtake_state == 'OVERTAKING':
                     ahead_gap, behind_gap = self._scan_return_lane_gap(ai, mode, max_dist_m)
+                    self.logger.debug(
+                        f"[OVT:{_n}] OVERTAKING gap check | ahead={ahead_gap:.1f}m behind={behind_gap:.1f}m need={max_dist_m:.1f}m "
+                        f"next_link={mode.next_link_id}/{mode.next_link_type}"
+                    )
                     if ahead_gap >= max_dist_m and behind_gap >= max_dist_m:
-                        self._trigger_return(mode, current_time, velocidad_base)
+                        self.logger.info(f"[OVT:{_n}] OVERTAKING→RETURNING | gap OK (ahead={ahead_gap:.1f}m behind={behind_gap:.1f}m)")
+                        self._trigger_return(mode, current_time, velocidad_base, _n)
 
             # ---------------------------------------------------------
             # ESTADO: RETURNING (Volviendo al carril original)
@@ -399,6 +434,7 @@ class _TrafficMixin(_MixinBase):
                 if mode.current_road_id != mode.overtake_return_lane_id and \
                         (not mode.next_link_id or mode.next_link_type != 'LatLink'):
                     fast_road = self.map_recorder.roads.get(mode.current_road_id)
+                    found = False
                     for _lid, _lat in self.map_recorder.lateral_links.items():
                         if (_lat.road_a == mode.current_road_id and _lat.road_b == mode.overtake_return_lane_id) or \
                            (_lat.road_b == mode.current_road_id and _lat.road_a == mode.overtake_return_lane_id):
@@ -408,12 +444,21 @@ class _TrafficMixin(_MixinBase):
                             mode.next_link_id   = _lid
                             mode.next_link_type = 'LatLink'
                             mode.future_indicator = None
+                            found = True
+                            self.logger.debug(f"[OVT:{_n}] RETURNING: recovery → return_lat={_lid}")
                             break
+                    if not found:
+                        self.logger.debug(
+                            f"[OVT:{_n}] RETURNING: WARNING no return LatLink reachable! "
+                            f"cur={mode.current_road_id} ret={mode.overtake_return_lane_id} node={mode.node_index}"
+                        )
 
                 if mode.current_road_id == mode.overtake_return_lane_id:
-                    self._finish_overtake(mode, current_time)
+                    self.logger.info(f"[OVT:{_n}] RETURNING→IDLE | reached return lane={mode.overtake_return_lane_id}")
+                    self._finish_overtake(mode, current_time, _n)
                 elif current_time - mode._returning_start_time > 10.0:
-                    self._finish_overtake(mode, current_time)
+                    self.logger.info(f"[OVT:{_n}] RETURNING→IDLE | TIMEOUT 10s, cur_road={mode.current_road_id}")
+                    self._finish_overtake(mode, current_time, _n)
 
             # Guardamos el resultado en caché
             mode._cached_target_speed = velocidad_segura
@@ -1002,7 +1047,7 @@ class _TrafficMixin(_MixinBase):
     # HELPERS DEL FSM DE ADELANTAMIENTO
     # =========================================================
 
-    def _trigger_return(self, mode: FreeroamMode, current_time: float, velocidad_base: float) -> None:
+    def _trigger_return(self, mode: FreeroamMode, current_time: float, velocidad_base: float, name: str = '') -> None:
         """Activa el estado RETURNING: intermitentes de regreso y next_link_id al LatLink de vuelta."""
         fast_road_geom = self.map_recorder.roads.get(mode.overtake_fast_lane_id)
         ret_road_geom  = self.map_recorder.roads.get(mode.overtake_return_lane_id)
@@ -1012,10 +1057,11 @@ class _TrafficMixin(_MixinBase):
                 is_opposing=mode.is_driving_opposing
             )
             mode.blinkers_active  = return_indicator
-            mode.future_indicator = None  # forzar recálculo de indicador en navegación
+            mode.future_indicator = None
             mode._blinker_on_time = current_time
 
-        # Apuntar next_link_id al LatLink de retorno para que la navegación lo ejecute
+        # Apuntar next_link_id al LatLink de retorno
+        found_lat = False
         if mode.current_road_id and mode.overtake_return_lane_id:
             curr_road = self.map_recorder.roads.get(mode.current_road_id)
             for _lid, _lat in self.map_recorder.lateral_links.items():
@@ -1026,13 +1072,17 @@ class _TrafficMixin(_MixinBase):
                             continue
                     mode.next_link_id   = _lid
                     mode.next_link_type = 'LatLink'
+                    found_lat = True
                     break
+
+        if not found_lat:
+            self.logger.debug(f"[OVT:{name}] _trigger_return: WARNING no return LatLink found! cur={mode.current_road_id} ret={mode.overtake_return_lane_id}")
 
         mode.overtake_state        = 'RETURNING'
         mode.maneuver_state        = AIManeuverState.RETURNING
         mode._returning_start_time = current_time
 
-    def _finish_overtake(self, mode: FreeroamMode, current_time: float) -> None:
+    def _finish_overtake(self, mode: FreeroamMode, current_time: float, name: str = '') -> None:
         """Cierra el adelantamiento y restaura o recalcula el link original."""
         mode.overtake_state        = 'IDLE'
         mode.maneuver_state        = AIManeuverState.NORMAL
@@ -1057,11 +1107,15 @@ class _TrafficMixin(_MixinBase):
             ):
                 mode.next_link_id   = mode.saved_link_id
                 mode.next_link_type = mode.saved_link_type
+                self.logger.debug(f"[OVT:{name}] FINISH: restored saved_link={mode.next_link_id}/{mode.next_link_type}")
             else:
                 self._plan_next_link(mode)
+                self.logger.debug(f"[OVT:{name}] FINISH: saved_link unreachable → recalculated next_link={mode.next_link_id}/{mode.next_link_type}")
 
             mode.saved_link_id   = None
             mode.saved_link_type = None
+        else:
+            self.logger.debug(f"[OVT:{name}] FINISH: no saved_link, next_link={mode.next_link_id}/{mode.next_link_type}")
 
     def _scan_return_lane_gap(self, ai: 'AI', mode: FreeroamMode, max_dist_m: float) -> tuple[float, float]:
         """
