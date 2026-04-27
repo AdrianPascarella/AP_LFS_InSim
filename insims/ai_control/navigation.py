@@ -303,17 +303,11 @@ class _NavigationMixin(_MixinBase):
         # =========================================================
         # 2. EVALUACIÓN DE TRANSICIONES (Los "Triggers")
         # =========================================================
-        # Durante un adelantamiento (OVERTAKING/RETURNING) la navegación usa
-        # overtake_lat_link_id en lugar de next_link_id, que permanece intacto.
-        _in_overtake    = mode.overtake_state in ('OVERTAKING', 'RETURNING')
-        active_link_id  = mode.overtake_lat_link_id if _in_overtake else mode.next_link_id
-        active_link_type = 'LatLink' if _in_overtake else mode.next_link_type
-
-        if active_link_id:
+        if mode.next_link_id:
 
             # --- CASO A: Tenemos un desvío (RoadLink) a la vista ---
-            if active_link_type == 'RoadLink':
-                next_link_obj = self.map_recorder.road_links[active_link_id]
+            if mode.next_link_type == 'RoadLink':
+                next_link_obj = self.map_recorder.road_links[mode.next_link_id]
                 closest_idx = get_closest_node_index(my_coords, next_link_obj.nodes, is_waypoint=False)
                 target_node = next_link_obj.nodes[closest_idx]
 
@@ -327,16 +321,16 @@ class _NavigationMixin(_MixinBase):
                     mode._blinker_on_time = time.time()
 
                 if dist_to_link < TRIGGER_DIST_M:
-                    mode.current_id   = active_link_id
+                    mode.current_id = mode.next_link_id
                     mode.current_type = 'RoadLink'
-                    mode.node_index   = determine_smart_spawn_index(my_coords, closest_idx, next_link_obj.nodes, is_waypoint=False)
+                    mode.node_index = determine_smart_spawn_index(my_coords, closest_idx, next_link_obj.nodes, is_waypoint=False)
                     self._plan_next_link(mode, on_link=(next_link_obj, ai.player.telemetry.coordinates))
 
             # --- CASO B: Tenemos un cambio de carril (LatLink) a la vista ---
-            elif active_link_type == 'LatLink':
-                lat_link_obj = self.map_recorder.lateral_links[active_link_id]
-                closest_idx  = get_closest_node_index(my_coords, lat_link_obj.nodes, is_waypoint=False)
-                target_node  = lat_link_obj.nodes[closest_idx]
+            elif mode.next_link_type == 'LatLink':
+                lat_link_obj = self.map_recorder.lateral_links[mode.next_link_id]
+                closest_idx = get_closest_node_index(my_coords, lat_link_obj.nodes, is_waypoint=False)
+                target_node = lat_link_obj.nodes[closest_idx]
 
                 dist_to_link = calc_dist_3d(my_coords.x_m, my_coords.y_m, my_coords.z_m, target_node.x_m, target_node.y_m, target_node.z_m)
 
@@ -344,37 +338,31 @@ class _NavigationMixin(_MixinBase):
                 speed_ms = max(current_speed / 3.6, 0.5)
                 time_to_link = dist_to_link / speed_ms
                 if not mode.future_indicator:
-                    target_road_id    = lat_link_obj.road_b if lat_link_obj.road_a == mode.current_road_id else lat_link_obj.road_a
+                    target_road_id = lat_link_obj.road_b if lat_link_obj.road_a == mode.current_road_id else lat_link_obj.road_a
                     target_road_nodes = self.map_recorder.roads[target_road_id].nodes
-                    my_road_nodes     = self.map_recorder.roads[mode.current_road_id].nodes
-                    mode.future_indicator = self._get_indicator_to_use(
-                        my_road_nodes, target_road_nodes, mode.node_index, is_opposing=mode.is_driving_opposing
-                    )
+                    my_road_nodes = self.map_recorder.roads[mode.current_road_id].nodes
+                    mode.future_indicator = self._get_indicator_to_use(my_road_nodes, target_road_nodes, mode.node_index, is_opposing=mode.is_driving_opposing)
 
                 if time_to_link <= behavior.human_safe_gap and mode.blinkers_active != mode.future_indicator:
-                    mode.blinkers_active  = mode.future_indicator
+                    mode.blinkers_active = mode.future_indicator
                     mode._blinker_on_time = time.time()
 
-                if dist_to_link < TRIGGER_DIST_M:
-                    target_road_id  = lat_link_obj.road_b if lat_link_obj.road_a == mode.current_road_id else lat_link_obj.road_a
+                dist_to_door = calc_dist_3d(my_coords.x_m, my_coords.y_m, my_coords.z_m, target_node.x_m, target_node.y_m, target_node.z_m)
+
+                if dist_to_door < TRIGGER_DIST_M:
+                    target_road_id = lat_link_obj.road_b if lat_link_obj.road_a == mode.current_road_id else lat_link_obj.road_a
                     target_road_obj = self.map_recorder.roads[target_road_id]
 
                     mode.previous_road_id = mode.current_road_id
-                    mode.current_road_id  = target_road_id
-                    mode.current_id       = target_road_id
-                    mode.current_type     = 'Road'
+                    mode.current_road_id = target_road_id
+                    mode.current_id = target_road_id
+                    mode.current_type = 'Road'
 
                     new_closest_idx = get_closest_node_index(my_coords, target_road_obj.nodes, is_waypoint=False)
                     mode.node_index = new_closest_idx
 
-                    if _in_overtake:
-                        # Señalar al FSM que cruzamos el LatLink; next_link_id queda intacto
-                        mode.overtake_lat_link_id = None
-                    else:
-                        n_id, n_type = self._calculate_next_link(
-                            mode.current_road_id, mode.previous_road_id, mode.node_index
-                        )
-                        mode.next_link_id, mode.next_link_type = n_id, n_type
+                    n_id, n_type = self._calculate_next_link(mode.current_road_id, mode.previous_road_id, mode.node_index)
+                    mode.next_link_id, mode.next_link_type = n_id, n_type
 
         # =========================================================
         # 3. EXTRACCIÓN Y PROGRESIÓN (Acelerar y Avanzar)

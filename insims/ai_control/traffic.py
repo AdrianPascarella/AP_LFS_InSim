@@ -312,7 +312,10 @@ class _TrafficMixin(_MixinBase):
                                     nodes_list, target_road_geom.nodes, mode.node_index,
                                     is_opposing=is_opposing
                                 )
-                                # next_link_id queda INTACTO (saved_link_id ya lo guarda)
+                                # next_link_id apunta al LatLink para que la navegación lo ejecute;
+                                # el link original ya está guardado en saved_link_id.
+                                mode.next_link_id          = target_lat_id
+                                mode.next_link_type        = 'LatLink'
                                 mode.overtake_lat_link_id  = target_lat_id
                                 mode.overtake_fast_lane_id = target_road_id
                                 mode.is_driving_opposing   = is_opposing
@@ -345,13 +348,15 @@ class _TrafficMixin(_MixinBase):
             elif mode.overtake_state == 'OVERTAKING':
                 in_fast_lane = (mode.current_road_id == mode.overtake_fast_lane_id)
 
-                # Cuando la navegación cruza el LatLink de entrada, pone overtake_lat_link_id=None.
-                # El FSM lo detecta y asigna el mismo LatLink para el retorno.
-                if in_fast_lane and mode.overtake_lat_link_id is None:
+                # Al entrar al carril rápido, la navegación habrá calculado un nuevo next_link_id.
+                # Asegurar que next_link_id apunte al LatLink de retorno.
+                if in_fast_lane and (not mode.next_link_id or mode.next_link_type != 'LatLink'):
                     for _lid, _lat in self.map_recorder.lateral_links.items():
                         if (_lat.road_a == mode.overtake_fast_lane_id and _lat.road_b == mode.overtake_return_lane_id) or \
                            (_lat.road_b == mode.overtake_fast_lane_id and _lat.road_a == mode.overtake_return_lane_id):
-                            mode.overtake_lat_link_id = _lid
+                            mode.next_link_id   = _lid
+                            mode.next_link_type = 'LatLink'
+                            mode.future_indicator = None  # forzar recálculo de intermitentes de retorno
                             break
 
                 # Velocidad: base +5% como máximo
@@ -390,8 +395,9 @@ class _TrafficMixin(_MixinBase):
             elif mode.overtake_state == 'RETURNING':
                 velocidad_segura = velocidad_base
 
-                # Seguridad: si overtake_lat_link_id se perdió, buscarlo de nuevo
-                if mode.overtake_lat_link_id is None and mode.current_road_id != mode.overtake_return_lane_id:
+                # Asegurar que next_link_id apunte al LatLink de retorno
+                if mode.current_road_id != mode.overtake_return_lane_id and \
+                        (not mode.next_link_id or mode.next_link_type != 'LatLink'):
                     fast_road = self.map_recorder.roads.get(mode.current_road_id)
                     for _lid, _lat in self.map_recorder.lateral_links.items():
                         if (_lat.road_a == mode.current_road_id and _lat.road_b == mode.overtake_return_lane_id) or \
@@ -399,7 +405,9 @@ class _TrafficMixin(_MixinBase):
                             if fast_road and not fast_road.is_circular:
                                 if not self._is_link_reachable_ahead(fast_road.nodes, mode.node_index, _lat.nodes, max_dist=8.0):
                                     continue
-                            mode.overtake_lat_link_id = _lid
+                            mode.next_link_id   = _lid
+                            mode.next_link_type = 'LatLink'
+                            mode.future_indicator = None
                             break
 
                 if mode.current_road_id == mode.overtake_return_lane_id:
@@ -995,7 +1003,7 @@ class _TrafficMixin(_MixinBase):
     # =========================================================
 
     def _trigger_return(self, mode: FreeroamMode, current_time: float, velocidad_base: float) -> None:
-        """Activa el estado RETURNING con los intermitentes de regreso."""
+        """Activa el estado RETURNING: intermitentes de regreso y next_link_id al LatLink de vuelta."""
         fast_road_geom = self.map_recorder.roads.get(mode.overtake_fast_lane_id)
         ret_road_geom  = self.map_recorder.roads.get(mode.overtake_return_lane_id)
         if fast_road_geom and ret_road_geom:
@@ -1004,8 +1012,22 @@ class _TrafficMixin(_MixinBase):
                 is_opposing=mode.is_driving_opposing
             )
             mode.blinkers_active  = return_indicator
-            mode.future_indicator = None  # forzar recálculo en navegación
+            mode.future_indicator = None  # forzar recálculo de indicador en navegación
             mode._blinker_on_time = current_time
+
+        # Apuntar next_link_id al LatLink de retorno para que la navegación lo ejecute
+        if mode.current_road_id and mode.overtake_return_lane_id:
+            curr_road = self.map_recorder.roads.get(mode.current_road_id)
+            for _lid, _lat in self.map_recorder.lateral_links.items():
+                if (_lat.road_a == mode.current_road_id and _lat.road_b == mode.overtake_return_lane_id) or \
+                   (_lat.road_b == mode.current_road_id and _lat.road_a == mode.overtake_return_lane_id):
+                    if curr_road and not curr_road.is_circular:
+                        if not self._is_link_reachable_ahead(curr_road.nodes, mode.node_index, _lat.nodes, max_dist=8.0):
+                            continue
+                    mode.next_link_id   = _lid
+                    mode.next_link_type = 'LatLink'
+                    break
+
         mode.overtake_state        = 'RETURNING'
         mode.maneuver_state        = AIManeuverState.RETURNING
         mode._returning_start_time = current_time
