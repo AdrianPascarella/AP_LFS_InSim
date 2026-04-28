@@ -327,12 +327,25 @@ class _NavigationMixin(_MixinBase):
             time_to_link = calc_dist_3d(my_coords.x_m, my_coords.y_m, my_coords.z_m,
                                         target_node.x_m, target_node.y_m, target_node.z_m) / speed_ms
             if not mode.future_indicator:
-                _dest_road_id   = lat_link_obj.road_b if lat_link_obj.road_a == mode.current_road_id else lat_link_obj.road_a
-                mode.future_indicator = self._get_indicator_to_use(
-                    self.map_recorder.roads[mode.current_road_id].nodes,
-                    self.map_recorder.roads[_dest_road_id].nodes,
-                    mode.node_index, is_opposing=mode.is_driving_opposing
-                )
+                _dest_road_id    = lat_link_obj.road_b if lat_link_obj.road_a == mode.current_road_id else lat_link_obj.road_a
+                _is_in_fast_lane = _is_overtake_lat and mode.current_road_id == mode.overtake_fast_lane_id
+
+                if _is_overtake_lat and not _is_in_fast_lane:
+                    # Entrada al carril rápido: calcular desde la perspectiva del carril rápido
+                    # para obtener el mismo resultado consistente que en el retorno
+                    _fast_nodes = self.map_recorder.roads[_dest_road_id].nodes
+                    _fast_idx, _ = self._get_closest_node_index(my_coords.x_m, my_coords.y_m, _fast_nodes)
+                    mode.future_indicator = self._get_indicator_to_use(
+                        _fast_nodes,
+                        self.map_recorder.roads[mode.current_road_id].nodes,
+                        _fast_idx, is_opposing=False
+                    )
+                else:
+                    mode.future_indicator = self._get_indicator_to_use(
+                        self.map_recorder.roads[mode.current_road_id].nodes,
+                        self.map_recorder.roads[_dest_road_id].nodes,
+                        mode.node_index, is_opposing=mode.is_driving_opposing if _is_in_fast_lane else False
+                    )
             if time_to_link <= behavior.human_safe_gap and mode.blinkers_active != mode.future_indicator:
                 mode.blinkers_active = mode.future_indicator
                 mode._blinker_on_time = time.time()
@@ -351,8 +364,14 @@ class _NavigationMixin(_MixinBase):
                     _ni   = min(mode.node_index, len(_curr_geom.nodes) - 2)
                     _fwd_x = _curr_geom.nodes[_ni + 1].x_m - _curr_geom.nodes[_ni].x_m
                     _fwd_y = _curr_geom.nodes[_ni + 1].y_m - _curr_geom.nodes[_ni].y_m
-                _at_side = (_fwd_x * (target_node.x_m - my_coords.x_m) +
-                            _fwd_y * (target_node.y_m - my_coords.y_m)) <= 0
+                _dot = _fwd_x * (target_node.x_m - my_coords.x_m) + _fwd_y * (target_node.y_m - my_coords.y_m)
+                _at_side = _dot <= 0
+                if _is_overtake_lat:
+                    self.logger.debug(
+                        f"[NAV:{ai.ai_name}] LatLink dot={_dot:.2f} at_side={_at_side} "
+                        f"state={mode.overtake_state} cur={mode.current_road_id} "
+                        f"node={mode.node_index} opposing={mode.is_driving_opposing}"
+                    )
 
             if _at_side:
                 target_road_id  = lat_link_obj.road_b if lat_link_obj.road_a == mode.current_road_id else lat_link_obj.road_a

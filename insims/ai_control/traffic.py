@@ -226,8 +226,8 @@ class _TrafficMixin(_MixinBase):
         if current_time - mode._last_radar_time >= mode._radar_interval:
             
             my_speed_ms = max(ai.player.telemetry.speed.speed_kmh / 3.6, 0.1)
-            safe_gap_s = 2.0 
-            warn_gap_s = 4.0 
+            safe_gap_s = 2
+            warn_gap_s = 3.5
             min_dist_m = max(5.0, my_speed_ms * safe_gap_s)
             max_dist_m = max(15.0, my_speed_ms * warn_gap_s)
 
@@ -322,8 +322,16 @@ class _TrafficMixin(_MixinBase):
                                 mode.is_driving_opposing        = is_opposing
                                 mode.overtake_state             = 'OVERTAKING'
                                 mode.maneuver_state             = AIManeuverState.OVERTAKING
+                                mode.future_indicator           = None
+                                # Tiempo hasta estar en paralelo con el target: dist / speed_delta
+                                _our_speed_ms    = (target_road_geom.speed_limit_kmh * mode.speed_limit_bias * 1.05) / 3.6
+                                _target_speed_ms = target_speed / 3.6
+                                _closest_dist_m  = vehicles_ahead[0][0] if vehicles_ahead else 0.0
+                                _speed_delta     = max(_our_speed_ms - _target_speed_ms, 0.1)
+                                _time_to_parallel = _closest_dist_m / _speed_delta
+
                                 mode._passing_start_time        = current_time
-                                mode._overtake_no_return_until  = current_time + time_to_overtake_s
+                                mode._overtake_no_return_until  = current_time + _time_to_parallel
                                 self.logger.info(
                                     f"[OVT:{_n}] EVAL→OVERTAKING ✓ | fast_lane={target_road_id} "
                                     f"lat_link={target_lat_id} opposing={is_opposing} "
@@ -374,7 +382,7 @@ class _TrafficMixin(_MixinBase):
 
                 # Emergencia frontal (solo en carril contrario y ya dentro)
                 if mode.is_driving_opposing and in_fast_lane and vehicles_ahead:
-                    ONCOMING_EMERGENCY_S = 2.0
+                    ONCOMING_EMERGENCY_S = 3.0
                     ONCOMING_DANGER_S    = 5.0
                     f_dist, f_speed, _ = vehicles_ahead[0]
                     closing_speed_ms = my_speed_ms + max(f_speed / 3.6, 0.1)
@@ -394,7 +402,7 @@ class _TrafficMixin(_MixinBase):
                     self.logger.debug(
                         f"[OVT:{_n}] OVERTAKING gap check | ahead={ahead_gap:.1f}m behind={behind_gap:.1f}m need={max_dist_m:.1f}m"
                     )
-                    if ahead_gap >= max_dist_m and behind_gap >= max_dist_m:
+                    if ahead_gap >= min_dist_m and behind_gap >= min_dist_m:
                         self.logger.info(f"[OVT:{_n}] OVERTAKING→RETURNING | gap OK (ahead={ahead_gap:.1f}m behind={behind_gap:.1f}m)")
                         self._trigger_return(mode, current_time)
 
@@ -407,7 +415,7 @@ class _TrafficMixin(_MixinBase):
                 if mode.current_road_id == mode.overtake_return_lane_id:
                     self.logger.info(f"[OVT:{_n}] RETURNING→IDLE | reached return lane={mode.overtake_return_lane_id}")
                     self._finish_overtake(mode, current_time, _n)
-                elif current_time - mode._returning_start_time > 10.0:
+                elif current_time - mode._returning_start_time > 5.0:
                     self.logger.info(f"[OVT:{_n}] RETURNING→IDLE | TIMEOUT 10s, cur_road={mode.current_road_id}")
                     self._finish_overtake(mode, current_time, _n)
 
@@ -934,7 +942,20 @@ class _TrafficMixin(_MixinBase):
         my_speed_ms = my_speed_kmh / 3.6
 
         # =========================================================
-        # 1. COMPROBACIÓN FÍSICA Y DE RUTA (Límites de asfalto)
+        # 1. COMPROBACIÓN DE SALIDA (¿Cabe la maniobra antes de nuestro próximo giro?)
+        # =========================================================
+        if mode.next_link_id and mode.next_link_type == 'RoadLink':
+            road_link = self.map_recorder.road_links.get(mode.next_link_id)
+            if road_link and road_link.nodes:
+                exit_idx, _ = self._get_closest_node_index(my_coords.x_m, my_coords.y_m, road_link.nodes)
+                exit_node = road_link.nodes[exit_idx]
+                dist_to_exit = calc_dist_3d(my_coords.x_m, my_coords.y_m, my_coords.z_m,
+                                             exit_node.x_m, exit_node.y_m, exit_node.z_m)
+                if req_dist_m > dist_to_exit:
+                    return False
+
+        # =========================================================
+        # 2. COMPROBACIÓN FÍSICA Y DE RUTA (Límites de asfalto)
         # =========================================================
         available_dist_m = self._get_available_overtake_distance(mode, my_coords, overtake_lat_link)
         safe_gap_m = my_speed_ms * safe_gap_s
