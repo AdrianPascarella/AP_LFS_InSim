@@ -303,66 +303,92 @@ class _NavigationMixin(_MixinBase):
         # =========================================================
         # 2. EVALUACIÓN DE TRANSICIONES (Los "Triggers")
         # =========================================================
-        if mode.next_link_id:
+        _in_overtake = mode.overtake_state in ('OVERTAKING', 'RETURNING')
 
-            # --- CASO A: Tenemos un desvío (RoadLink) a la vista ---
-            if mode.next_link_type == 'RoadLink':
-                next_link_obj = self.map_recorder.road_links[mode.next_link_id]
-                closest_idx = get_closest_node_index(my_coords, next_link_obj.nodes, is_waypoint=False)
-                target_node = next_link_obj.nodes[closest_idx]
+        # Resolver qué LatLink procesar: adelantamiento (FSM) o navegación normal
+        if _in_overtake and mode.overtake_change_lane and mode.overtake_lat_link_id:
+            _active_lat_id   = mode.overtake_lat_link_id
+            _is_overtake_lat = True
+        elif mode.next_link_id and mode.next_link_type == 'LatLink' and not _in_overtake:
+            _active_lat_id   = mode.next_link_id
+            _is_overtake_lat = False
+        else:
+            _active_lat_id   = None
+            _is_overtake_lat = False
 
-                dist_to_link = calc_dist_3d(my_coords.x_m, my_coords.y_m, my_coords.z_m, target_node.x_m, target_node.y_m, target_node.z_m)
+        # --- CASO LATLINK (adelantamiento o normal) ---
+        if _active_lat_id:
+            lat_link_obj = self.map_recorder.lateral_links[_active_lat_id]
+            closest_idx  = get_closest_node_index(my_coords, lat_link_obj.nodes, is_waypoint=False)
+            target_node  = lat_link_obj.nodes[closest_idx]
 
-                # Intención Predictiva
-                speed_ms = max(current_speed / 3.6, 0.5)
-                time_to_link = dist_to_link / speed_ms
-                if time_to_link <= next_link_obj.time and mode.blinkers_active != next_link_obj.indicators:
-                    mode.blinkers_active = next_link_obj.indicators
-                    mode._blinker_on_time = time.time()
+            # Intención predictiva (blinker)
+            speed_ms    = max(current_speed / 3.6, 0.5)
+            time_to_link = calc_dist_3d(my_coords.x_m, my_coords.y_m, my_coords.z_m,
+                                        target_node.x_m, target_node.y_m, target_node.z_m) / speed_ms
+            if not mode.future_indicator:
+                _dest_road_id   = lat_link_obj.road_b if lat_link_obj.road_a == mode.current_road_id else lat_link_obj.road_a
+                mode.future_indicator = self._get_indicator_to_use(
+                    self.map_recorder.roads[mode.current_road_id].nodes,
+                    self.map_recorder.roads[_dest_road_id].nodes,
+                    mode.node_index, is_opposing=mode.is_driving_opposing
+                )
+            if time_to_link <= behavior.human_safe_gap and mode.blinkers_active != mode.future_indicator:
+                mode.blinkers_active = mode.future_indicator
+                mode._blinker_on_time = time.time()
 
-                if dist_to_link < TRIGGER_DIST_M:
-                    mode.current_id = mode.next_link_id
-                    mode.current_type = 'RoadLink'
-                    mode.node_index = determine_smart_spawn_index(my_coords, closest_idx, next_link_obj.nodes, is_waypoint=False)
-                    self._plan_next_link(mode, on_link=(next_link_obj, ai.player.telemetry.coordinates))
+            # Trigger: dot product — el link está a nuestro lado o ya lo hemos pasado
+            _curr_geom = (self.map_recorder.roads.get(mode.current_id)     if mode.current_type == 'Road'
+                     else self.map_recorder.road_links.get(mode.current_id) if mode.current_type == 'RoadLink'
+                     else None)
+            _at_side = False
+            if _curr_geom and len(_curr_geom.nodes) >= 2:
+                if mode.is_driving_opposing:
+                    _ni   = max(1, min(mode.node_index, len(_curr_geom.nodes) - 1))
+                    _fwd_x = _curr_geom.nodes[_ni - 1].x_m - _curr_geom.nodes[_ni].x_m
+                    _fwd_y = _curr_geom.nodes[_ni - 1].y_m - _curr_geom.nodes[_ni].y_m
+                else:
+                    _ni   = min(mode.node_index, len(_curr_geom.nodes) - 2)
+                    _fwd_x = _curr_geom.nodes[_ni + 1].x_m - _curr_geom.nodes[_ni].x_m
+                    _fwd_y = _curr_geom.nodes[_ni + 1].y_m - _curr_geom.nodes[_ni].y_m
+                _at_side = (_fwd_x * (target_node.x_m - my_coords.x_m) +
+                            _fwd_y * (target_node.y_m - my_coords.y_m)) <= 0
 
-            # --- CASO B: Tenemos un cambio de carril (LatLink) a la vista ---
-            elif mode.next_link_type == 'LatLink':
-                lat_link_obj = self.map_recorder.lateral_links[mode.next_link_id]
-                closest_idx = get_closest_node_index(my_coords, lat_link_obj.nodes, is_waypoint=False)
-                target_node = lat_link_obj.nodes[closest_idx]
+            if _at_side:
+                target_road_id  = lat_link_obj.road_b if lat_link_obj.road_a == mode.current_road_id else lat_link_obj.road_a
+                target_road_obj = self.map_recorder.roads[target_road_id]
 
-                dist_to_link = calc_dist_3d(my_coords.x_m, my_coords.y_m, my_coords.z_m, target_node.x_m, target_node.y_m, target_node.z_m)
+                mode.previous_road_id = mode.current_road_id
+                mode.current_road_id  = target_road_id
+                mode.current_id       = target_road_id
+                mode.current_type     = 'Road'
+                mode.node_index       = get_closest_node_index(my_coords, target_road_obj.nodes, is_waypoint=False)
 
-                # Intención Predictiva
-                speed_ms = max(current_speed / 3.6, 0.5)
-                time_to_link = dist_to_link / speed_ms
-                if not mode.future_indicator:
-                    target_road_id = lat_link_obj.road_b if lat_link_obj.road_a == mode.current_road_id else lat_link_obj.road_a
-                    target_road_nodes = self.map_recorder.roads[target_road_id].nodes
-                    my_road_nodes = self.map_recorder.roads[mode.current_road_id].nodes
-                    mode.future_indicator = self._get_indicator_to_use(my_road_nodes, target_road_nodes, mode.node_index, is_opposing=mode.is_driving_opposing)
-
-                if time_to_link <= behavior.human_safe_gap and mode.blinkers_active != mode.future_indicator:
-                    mode.blinkers_active = mode.future_indicator
-                    mode._blinker_on_time = time.time()
-
-                dist_to_door = calc_dist_3d(my_coords.x_m, my_coords.y_m, my_coords.z_m, target_node.x_m, target_node.y_m, target_node.z_m)
-
-                if dist_to_door < TRIGGER_DIST_M:
-                    target_road_id = lat_link_obj.road_b if lat_link_obj.road_a == mode.current_road_id else lat_link_obj.road_a
-                    target_road_obj = self.map_recorder.roads[target_road_id]
-
-                    mode.previous_road_id = mode.current_road_id
-                    mode.current_road_id = target_road_id
-                    mode.current_id = target_road_id
-                    mode.current_type = 'Road'
-
-                    new_closest_idx = get_closest_node_index(my_coords, target_road_obj.nodes, is_waypoint=False)
-                    mode.node_index = new_closest_idx
-
+                if _is_overtake_lat:
+                    mode.overtake_change_lane = False
+                else:
                     n_id, n_type = self._calculate_next_link(mode.current_road_id, mode.previous_road_id, mode.node_index)
                     mode.next_link_id, mode.next_link_type = n_id, n_type
+
+        # --- CASO ROADLINK ---
+        elif mode.next_link_id and mode.next_link_type == 'RoadLink' and not _in_overtake:
+            next_link_obj = self.map_recorder.road_links[mode.next_link_id]
+            closest_idx   = get_closest_node_index(my_coords, next_link_obj.nodes, is_waypoint=False)
+            target_node   = next_link_obj.nodes[closest_idx]
+
+            dist_to_link = calc_dist_3d(my_coords.x_m, my_coords.y_m, my_coords.z_m,
+                                        target_node.x_m, target_node.y_m, target_node.z_m)
+            speed_ms     = max(current_speed / 3.6, 0.5)
+            time_to_link = dist_to_link / speed_ms
+            if time_to_link <= next_link_obj.time and mode.blinkers_active != next_link_obj.indicators:
+                mode.blinkers_active = next_link_obj.indicators
+                mode._blinker_on_time = time.time()
+
+            if dist_to_link < TRIGGER_DIST_M:
+                mode.current_id  = mode.next_link_id
+                mode.current_type = 'RoadLink'
+                mode.node_index  = determine_smart_spawn_index(my_coords, closest_idx, next_link_obj.nodes, is_waypoint=False)
+                self._plan_next_link(mode, on_link=(next_link_obj, ai.player.telemetry.coordinates))
 
         # =========================================================
         # 3. EXTRACCIÓN Y PROGRESIÓN (Acelerar y Avanzar)
