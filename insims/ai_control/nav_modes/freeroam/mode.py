@@ -43,10 +43,6 @@ class FreeroamMode(AINavModeState):
 
     overtake_target_plids: set[int] = field(default_factory=set)
 
-    # Link preservado antes del adelantamiento (se restaura o recalcula al terminar)
-    saved_link_id: Optional[str] = None
-    saved_link_type: Optional[Literal['RoadLink', 'LatLink']] = None
-
     # Extra
     extra_inputs_to_send: List = field(default_factory=list)
 
@@ -73,9 +69,10 @@ class FreeroamMode(AINavModeState):
         self.overtake_target_plid: Optional[int] = None
         self.overtake_fast_lane_id: Optional[str] = None
         self.overtake_return_lane_id: Optional[str] = None
-        # LatLink activo del adelantamiento: entrada al carril rápido y retorno al original.
-        # Nav lo pone a None al cruzarlo; el FSM lo reassigna para el retorno.
         self.overtake_lat_link_id: Optional[str] = None
+        self.overtake_change_lane: bool = False  # Traffic lo activa; nav ejecuta el cambio y lo desactiva
+        self._overtake_no_return_until: float = 0.0
+        self._fast_lane_logged: bool = False
         self._passing_start_time: float = 0.0
         self._returning_start_time: float = 0.0
         self.blocking_plid: Optional[int] = None
