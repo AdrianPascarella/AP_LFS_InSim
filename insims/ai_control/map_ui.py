@@ -1,15 +1,12 @@
 from __future__ import annotations
 import copy
 import os
-from typing import TYPE_CHECKING, Optional
+from typing import Optional
 
 from lfs_insim.insim_enums import ISB_STYLE, BFN, INST, TYPEIN_FLAGS
 from lfs_insim.packets import ISP_BTC, ISP_BTT, ISP_MSO
 from lfs_insim.utils import TextColors as c
 from insims.ai_control.base import _MixinBase
-
-if TYPE_CHECKING:
-    pass
 
 
 class _FakePkt:
