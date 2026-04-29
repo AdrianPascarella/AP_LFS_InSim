@@ -118,6 +118,10 @@ class _MapUIMixin(_MixinBase):
         self._ui_check_filter: str = "all"   # "all" | "error" | "warn"
         self._ui_check_page: int = 0
         self._ui_check_search: str = ""
+        self._ui_info_roads: bool = False
+        self._ui_roads_filter: str = "all"   # "all" | "open" | "closed"
+        self._ui_roads_page: int = 0
+        self._ui_roads_search: str = ""
 
     # ──────────────────────────────────────────────────────────────────────────
     # Entrada: .map ui
@@ -200,7 +204,7 @@ class _MapUIMixin(_MixinBase):
     # ──────────────────────────────────────────────────────────────────────────
 
     def _map_ui_clear_content(self):
-        self.send_ISP_BFN(SubT=BFN.DEL_BTN, UCID=0, ClickID=108, ClickMax=133)
+        self.send_ISP_BFN(SubT=BFN.DEL_BTN, UCID=0, ClickID=108, ClickMax=160)
 
     def _map_ui_redraw_content(self):
         self._map_ui_clear_content()
@@ -416,9 +420,9 @@ class _MapUIMixin(_MixinBase):
                           BStyle=stats_style, L=2, T=21, W=38, H=8, Text="Stats")
         self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=111,
                           BStyle=check_style, L=42, T=21, W=38, H=8, Text="Check")
+        roads_style = (ISB_STYLE.SELECTED | ISB_STYLE.CLICK) if self._ui_info_roads else (ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK)
         self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=112,
-                          BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
-                          L=82, T=21, W=38, H=8, Text="Roads cerradas")
+                          BStyle=roads_style, L=82, T=21, W=38, H=8, Text="Roads cerradas")
         for cid, label, L in [(113, "Whereami road", 2), (114, "Whereami link", 42), (115, "Whereami zone", 82)]:
             self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=cid,
                               BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
@@ -443,6 +447,10 @@ class _MapUIMixin(_MixinBase):
 
         if self._ui_info_check:
             self._map_ui_draw_check_panel(T)
+            T += 9 + 9 + self._CHECK_ITEMS_PER_PAGE * 8 + 8  # buscar+filtros+items+pag
+
+        if self._ui_info_roads:
+            self._map_ui_draw_roads_panel(T)
 
     def _map_ui_draw_check_panel(self, T: int):
         u = self._ui_ucid
@@ -506,6 +514,72 @@ class _MapUIMixin(_MixinBase):
         self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=131, BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED,
                           L=20, T=pag_T, W=50, H=6, Text=f"Pag {self._ui_check_page + 1}/{total_pages}")
         self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=132, BStyle=next_style, L=72, T=pag_T, W=16, H=6, Text=">")
+
+    _ROADS_ITEMS_PER_PAGE = 6
+
+    def _map_ui_draw_roads_panel(self, T: int):
+        u = self._ui_ucid
+        if not self.map_recorder.active_map_name:
+            self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=133,
+                              BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED,
+                              L=2, T=T, W=180, H=7, Text="Sin mapa activo")
+            return
+
+        search = self._ui_roads_search.lower()
+        all_roads = [(r_id, road.is_closed) for r_id, road in self.map_recorder.roads.items()]
+        if self._ui_roads_filter == "open":
+            all_roads = [(r, c) for r, c in all_roads if not c]
+        elif self._ui_roads_filter == "closed":
+            all_roads = [(r, c) for r, c in all_roads if c]
+        if search:
+            all_roads = [(r, c) for r, c in all_roads if search in r.lower()]
+        all_roads.sort(key=lambda x: x[0])
+
+        n_open   = sum(1 for _, c in self.map_recorder.roads.items() if not c)
+        n_closed = sum(1 for _, c in self.map_recorder.roads.items() if c)
+        total_pages = max(1, (len(all_roads) + self._ROADS_ITEMS_PER_PAGE - 1) // self._ROADS_ITEMS_PER_PAGE)
+        self._ui_roads_page = max(0, min(self._ui_roads_page, total_pages - 1))
+
+        # Buscador (CID 133 TypeIn, 134 botón)
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=133,
+                          BStyle=ISB_STYLE.LIGHT | ISB_STYLE.CLICK,
+                          TypeIn=TYPEIN_FLAGS.INIT_WITH_TEXT | 60,
+                          L=2, T=T, W=132, H=7,
+                          Text=self._ui_roads_search or "Buscar...")
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=134,
+                          BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
+                          L=136, T=T, W=22, H=7, Text="Filtrar")
+        T += 9
+
+        # Filtros tipo (CIDs 135–137)
+        for i, (key, label) in enumerate([("all", f"Todos ({n_open}A {n_closed}C)"), ("open", f"Abiertos ({n_open})"), ("closed", f"Cerrados ({n_closed})")]):
+            active = (self._ui_roads_filter == key)
+            style = (ISB_STYLE.SELECTED | ISB_STYLE.CLICK) if active else (ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK)
+            self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=135 + i, BStyle=style,
+                              L=2 + i * 62, T=T, W=60, H=7, Text=label)
+        T += 9
+
+        # Items (CIDs 138–143)
+        start = self._ui_roads_page * self._ROADS_ITEMS_PER_PAGE
+        page_items = all_roads[start:start + self._ROADS_ITEMS_PER_PAGE]
+        if not page_items:
+            self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=138,
+                              BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED,
+                              L=2, T=T, W=180, H=7, Text="Sin resultados")
+        else:
+            for i, (r_id, is_closed) in enumerate(page_items):
+                style = (ISB_STYLE.CANCEL | ISB_STYLE.DARK | ISB_STYLE.CLICK) if is_closed else (ISB_STYLE.OK | ISB_STYLE.CLICK)
+                self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=138 + i, BStyle=style,
+                                  L=2, T=T + i * 8, W=180, H=7, Text=r_id)
+
+        # Paginación (CIDs 144–146)
+        prev_style = (ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK) if self._ui_roads_page > 0 else (ISB_STYLE.DARK | ISB_STYLE.SELECTED)
+        next_style = (ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK) if self._ui_roads_page < total_pages - 1 else (ISB_STYLE.DARK | ISB_STYLE.SELECTED)
+        pag_T = T + self._ROADS_ITEMS_PER_PAGE * 8
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=144, BStyle=prev_style, L=2,  T=pag_T, W=16, H=6, Text="<")
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=145, BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED,
+                          L=20, T=pag_T, W=50, H=6, Text=f"Pag {self._ui_roads_page + 1}/{total_pages}")
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=146, BStyle=next_style, L=72, T=pag_T, W=16, H=6, Text=">")
 
     # ──────────────────────────────────────────────────────────────────────────
     # Tab: Elementos — dispatcher
@@ -937,7 +1011,48 @@ class _MapUIMixin(_MixinBase):
             if self._ui_check_page < total_pages - 1:
                 self._ui_check_page += 1; self._map_ui_redraw_content()
         elif cid == 112:
-            self.map_recorder._cmd_is_closed_road()
+            self._ui_info_roads = not self._ui_info_roads
+            self._ui_roads_page = 0
+            self._map_ui_redraw_content()
+        elif cid == 134:  # Aplicar buscador roads
+            self._ui_roads_search = self._ui_input_buffer.get(133, "").strip()
+            self._ui_roads_page = 0; self._map_ui_redraw_content()
+        elif cid == 135:
+            self._ui_roads_filter = "all";    self._ui_roads_page = 0; self._map_ui_redraw_content()
+        elif cid == 136:
+            self._ui_roads_filter = "open";   self._ui_roads_page = 0; self._map_ui_redraw_content()
+        elif cid == 137:
+            self._ui_roads_filter = "closed"; self._ui_roads_page = 0; self._map_ui_redraw_content()
+        elif 138 <= cid <= 143:  # Toggle is_closed de un road
+            start = self._ui_roads_page * self._ROADS_ITEMS_PER_PAGE
+            search = self._ui_roads_search.lower()
+            all_roads = [(r_id, road.is_closed) for r_id, road in self.map_recorder.roads.items()]
+            if self._ui_roads_filter == "open":
+                all_roads = [(r, c) for r, c in all_roads if not c]
+            elif self._ui_roads_filter == "closed":
+                all_roads = [(r, c) for r, c in all_roads if c]
+            if search:
+                all_roads = [(r, c) for r, c in all_roads if search in r.lower()]
+            all_roads.sort(key=lambda x: x[0])
+            idx = start + (cid - 138)
+            if idx < len(all_roads):
+                r_id, is_closed = all_roads[idx]
+                self._map_ui_silent_set(r_id, "is_closed", "false" if is_closed else "true")
+                self._map_ui_redraw_content()
+        elif cid == 144 and self._ui_roads_page > 0:
+            self._ui_roads_page -= 1; self._map_ui_redraw_content()
+        elif cid == 146:
+            search = self._ui_roads_search.lower()
+            all_roads = [(r_id, road.is_closed) for r_id, road in self.map_recorder.roads.items()]
+            if self._ui_roads_filter == "open":
+                all_roads = [(r, c) for r, c in all_roads if not c]
+            elif self._ui_roads_filter == "closed":
+                all_roads = [(r, c) for r, c in all_roads if c]
+            if search:
+                all_roads = [(r, c) for r, c in all_roads if search in r.lower()]
+            total_pages = max(1, (len(all_roads) + self._ROADS_ITEMS_PER_PAGE - 1) // self._ROADS_ITEMS_PER_PAGE)
+            if self._ui_roads_page < total_pages - 1:
+                self._ui_roads_page += 1; self._map_ui_redraw_content()
         elif cid == 113:
             self.map_recorder._cmd_whereami(fake, "road")
         elif cid == 114:
