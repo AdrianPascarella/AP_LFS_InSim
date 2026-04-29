@@ -27,7 +27,7 @@ _ELEM_FIELDS: dict[str, list[tuple[str, str]]] = {
         ("speed_limit_kmh",  "float"),
         ("is_circular",      "bool"),
         ("is_closed",        "bool"),
-        ("traffic_rule",     "str"),
+        ("traffic_rule",     "enum_traffic"),
     ],
     "roadlink": [
         ("from_road_id",     "readonly"),
@@ -490,6 +490,14 @@ class _MapUIMixin(_MixinBase):
                                   BStyle=style, L=72, T=T, W=108, H=7,
                                   Text="ON" if is_true else "OFF")
                 self._ui_detail_field_map[val_cid] = (fname, "bool")
+            elif ftype == "enum_traffic":
+                style = ISB_STYLE.OK | ISB_STYLE.CLICK if val_str == "RHT" else (
+                        ISB_STYLE.TITLE | ISB_STYLE.CLICK if val_str == "LHT" else
+                        ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK)
+                self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=val_cid,
+                                  BStyle=style, L=72, T=T, W=108, H=7,
+                                  Text=val_str if val_str else "NONE")
+                self._ui_detail_field_map[val_cid] = (fname, "enum_traffic")
             else:
                 self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=val_cid,
                                   BStyle=ISB_STYLE.LIGHT | ISB_STYLE.CLICK,
@@ -582,7 +590,7 @@ class _MapUIMixin(_MixinBase):
                 and self._ui_elem_detail_id is not None
                 and packet.ClickID in self._ui_detail_field_map):
             fname, ftype = self._ui_detail_field_map[packet.ClickID]
-            if ftype != "bool" and text:
+            if ftype not in ("bool", "enum_traffic") and text:
                 self._map_ui_silent_set(self._ui_elem_detail_id, fname, text)
 
     def _map_ui_handle_click(self, cid: int):
@@ -768,6 +776,14 @@ class _MapUIMixin(_MixinBase):
                     if obj is not None:
                         cur = self._map_ui_elem_field_value_str(obj, fname)
                         new_val = "false" if cur.lower() == "true" else "true"
+                        self._map_ui_silent_set(self._ui_elem_detail_id, fname, new_val)
+                        self._map_ui_redraw_content()
+                elif ftype == "enum_traffic":
+                    obj = self._map_ui_elem_get_obj(self._ui_elem_detail_id)
+                    if obj is not None:
+                        cur = self._map_ui_elem_field_value_str(obj, fname)
+                        cycle = {"RHT": "lht", "LHT": "none", "": "rht"}
+                        new_val = cycle.get(cur, "rht")
                         self._map_ui_silent_set(self._ui_elem_detail_id, fname, new_val)
                         self._map_ui_redraw_content()
             return
