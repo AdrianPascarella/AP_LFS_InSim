@@ -133,10 +133,10 @@ class _MapUIMixin(_MixinBase):
         u = self._ui_ucid
         map_name = self.map_recorder.active_map_name or "(sin mapa)"
         self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=self._UI_CID_LBL_MAP,
-                          BStyle=ISB_STYLE.DARK | ISB_STYLE.LEFT,
+                          BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
                           L=2, T=4, W=76, H=6, Text=f"Mapa: {map_name}")
         self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=self._UI_CID_LBL_REC,
-                          BStyle=ISB_STYLE.DARK | ISB_STYLE.LEFT,
+                          BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
                           L=80, T=4, W=74, H=6, Text=self._map_ui_rec_status())
         self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=self._UI_CID_SAVE,
                           BStyle=ISB_STYLE.OK | ISB_STYLE.CLICK,
@@ -186,7 +186,7 @@ class _MapUIMixin(_MixinBase):
         u = self._ui_ucid
         for cid, tab_name, label, L, W in self._TAB_LAYOUT:
             is_active = (tab_name == self._ui_tab)
-            style = (ISB_STYLE.SELECTED | ISB_STYLE.CLICK) if is_active else (ISB_STYLE.DARK | ISB_STYLE.CLICK)
+            style = (ISB_STYLE.SELECTED | ISB_STYLE.CLICK) if is_active else (ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK)
             self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=cid, BStyle=style,
                               L=L, T=11, W=W, H=7, Text=label)
 
@@ -225,30 +225,30 @@ class _MapUIMixin(_MixinBase):
                           BStyle=ISB_STYLE.OK | ISB_STYLE.CLICK,
                           L=84, T=21, W=32, H=8, Text="Seleccionar")
         self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=111,
-                          BStyle=ISB_STYLE.DARK | ISB_STYLE.CLICK,
+                          BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
                           L=2, T=31, W=40, H=8, Text="Guardar")
         self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=112,
                           BStyle=ISB_STYLE.CANCEL | ISB_STYLE.CLICK,
                           L=44, T=31, W=40, H=8, Text="Borrar mapa")
 
         self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=113,
-                          BStyle=ISB_STYLE.DARK | ISB_STYLE.LEFT,
+                          BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
                           L=2, T=42, W=60, H=5, Text="Mapas en disco:")
         maps = self._map_ui_get_map_list()
         if maps:
             for i, name in enumerate(maps[:6]):
                 is_active = (name == current_map)
-                style = (ISB_STYLE.OK | ISB_STYLE.CLICK) if is_active else (ISB_STYLE.DARK | ISB_STYLE.CLICK)
+                style = (ISB_STYLE.OK | ISB_STYLE.CLICK) if is_active else (ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK)
                 self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=114 + i, BStyle=style,
                                   L=2 + i * 30, T=49, W=28, H=7, Text=name)
         else:
             self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=114,
-                              BStyle=ISB_STYLE.DARK,
+                              BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED,
                               L=2, T=49, W=60, H=7, Text="(sin mapas guardados)")
 
         rule = self.map_recorder.default_traffic_rule
         self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=120,
-                          BStyle=ISB_STYLE.DARK | ISB_STYLE.CLICK,
+                          BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
                           L=2, T=70, W=50, H=8, Text=f"Trafico: {rule.name}")
 
     def _map_ui_get_map_list(self) -> list:
@@ -286,11 +286,11 @@ class _MapUIMixin(_MixinBase):
             (114, "Reg. Especial", 36, 41),
         ]:
             self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=cid,
-                              BStyle=ISB_STYLE.DARK | ISB_STYLE.CLICK,
+                              BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
                               L=L, T=T, W=32, H=8, Text=label)
 
         auto_on = self.map_recorder.auto_recording_enabled
-        style = ISB_STYLE.OK | ISB_STYLE.CLICK if auto_on else ISB_STYLE.DARK | ISB_STYLE.CLICK
+        style = ISB_STYLE.OK | ISB_STYLE.CLICK if auto_on else ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK
         self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=115,
                           BStyle=style, L=2, T=53, W=40, H=8,
                           Text="Auto: ON" if auto_on else "Auto: OFF")
@@ -303,7 +303,7 @@ class _MapUIMixin(_MixinBase):
         action_name = "RoadLink" if is_roadlink else "LatLink"
 
         self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=110,
-                          BStyle=ISB_STYLE.DARK | ISB_STYLE.LEFT,
+                          BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
                           L=2, T=21, W=50, H=6, Text=label_a)
         self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=self._UI_CID_TI1,
                           BStyle=ISB_STYLE.LIGHT | ISB_STYLE.CLICK,
@@ -311,7 +311,7 @@ class _MapUIMixin(_MixinBase):
                           L=2, T=28, W=100, H=8,
                           Text=self._ui_input_buffer.get(self._UI_CID_TI1, ""))
         self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=111,
-                          BStyle=ISB_STYLE.DARK | ISB_STYLE.LEFT,
+                          BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
                           L=2, T=38, W=50, H=6, Text=label_b)
         self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=self._UI_CID_TI2,
                           BStyle=ISB_STYLE.LIGHT | ISB_STYLE.CLICK,
@@ -333,18 +333,18 @@ class _MapUIMixin(_MixinBase):
         n = len(rec.get("nodes", []))
 
         self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=110,
-                          BStyle=ISB_STYLE.DARK | ISB_STYLE.LEFT,
+                          BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
                           L=2, T=21, W=182, H=7,
                           Text=f"Grabando: {rec_type} '{obj_id}'")
         self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=111,
-                          BStyle=ISB_STYLE.DARK | ISB_STYLE.LEFT,
+                          BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
                           L=2, T=29, W=80, H=6,
                           Text=f"Nodos grabados: {n}")
         self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=112,
-                          BStyle=ISB_STYLE.DARK | ISB_STYLE.CLICK,
+                          BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
                           L=2, T=37, W=60, H=8, Text="+ Anadir punto")
         auto_on = self.map_recorder.auto_recording_enabled
-        auto_style = ISB_STYLE.OK | ISB_STYLE.CLICK if auto_on else ISB_STYLE.DARK | ISB_STYLE.CLICK
+        auto_style = ISB_STYLE.OK | ISB_STYLE.CLICK if auto_on else ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK
         self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=113,
                           BStyle=auto_style, L=64, T=37, W=40, H=8,
                           Text="Auto: ON" if auto_on else "Auto: OFF")
@@ -363,11 +363,11 @@ class _MapUIMixin(_MixinBase):
         u = self._ui_ucid
         for cid, label, L in [(110, "Stats", 2), (111, "Check", 42), (112, "Roads cerradas", 82)]:
             self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=cid,
-                              BStyle=ISB_STYLE.DARK | ISB_STYLE.CLICK,
+                              BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
                               L=L, T=21, W=38, H=8, Text=label)
         for cid, label, L in [(113, "Whereami road", 2), (114, "Whereami link", 42), (115, "Whereami zone", 82)]:
             self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=cid,
-                              BStyle=ISB_STYLE.DARK | ISB_STYLE.CLICK,
+                              BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
                               L=L, T=31, W=38, H=8, Text=label)
 
     # ──────────────────────────────────────────────────────────────────────────
@@ -390,7 +390,7 @@ class _MapUIMixin(_MixinBase):
         # Filtros de tipo (CIDs 108–112)
         for i, etype in enumerate(_ELEM_TYPE_LIST):
             is_active = (etype == self._ui_elem_type)
-            style = (ISB_STYLE.SELECTED | ISB_STYLE.CLICK) if is_active else (ISB_STYLE.DARK | ISB_STYLE.CLICK)
+            style = (ISB_STYLE.SELECTED | ISB_STYLE.CLICK) if is_active else (ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK)
             self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=108 + i, BStyle=style,
                               L=2 + i * 38, T=21, W=36, H=7,
                               Text=_ELEM_TYPE_LABELS[etype])
@@ -402,12 +402,12 @@ class _MapUIMixin(_MixinBase):
                           L=2, T=30, W=132, H=7,
                           Text=self._ui_elem_search or "Buscar...")
         self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=113,
-                          BStyle=ISB_STYLE.DARK | ISB_STYLE.CLICK,
+                          BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
                           L=136, T=30, W=22, H=7, Text="Filtrar")
 
         if not self.map_recorder.active_map_name:
             self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=114,
-                              BStyle=ISB_STYLE.DARK,
+                              BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED,
                               L=2, T=39, W=180, H=7, Text="Sin mapa activo")
             return
 
@@ -419,21 +419,21 @@ class _MapUIMixin(_MixinBase):
 
         if not page_items:
             self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=114,
-                              BStyle=ISB_STYLE.DARK,
+                              BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED,
                               L=2, T=39, W=180, H=7, Text="Sin resultados")
         else:
             for i, item_id in enumerate(page_items):
                 self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=114 + i,
-                                  BStyle=ISB_STYLE.DARK | ISB_STYLE.CLICK,
+                                  BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
                                   L=2, T=39 + i * 7, W=180, H=6,
                                   Text=item_id)
 
         # Paginación (CIDs 120–122)
-        prev_style = (ISB_STYLE.DARK | ISB_STYLE.CLICK) if self._ui_elem_page > 0 else ISB_STYLE.DARK
-        next_style = (ISB_STYLE.DARK | ISB_STYLE.CLICK) if self._ui_elem_page < total_pages - 1 else ISB_STYLE.DARK
+        prev_style = (ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK) if self._ui_elem_page > 0 else ISB_STYLE.DARK | ISB_STYLE.SELECTED
+        next_style = (ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK) if self._ui_elem_page < total_pages - 1 else ISB_STYLE.DARK | ISB_STYLE.SELECTED
         self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=120, BStyle=prev_style,
                           L=2, T=82, W=16, H=6, Text="<")
-        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=121, BStyle=ISB_STYLE.DARK,
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=121, BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED,
                           L=20, T=82, W=50, H=6,
                           Text=f"Pag {self._ui_elem_page + 1}/{total_pages}")
         self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=122, BStyle=next_style,
@@ -456,10 +456,10 @@ class _MapUIMixin(_MixinBase):
 
         # Header de detalle
         self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=108,
-                          BStyle=ISB_STYLE.DARK | ISB_STYLE.CLICK,
+                          BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
                           L=2, T=21, W=20, H=6, Text="< Volver")
         self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=109,
-                          BStyle=ISB_STYLE.DARK | ISB_STYLE.LEFT,
+                          BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
                           L=24, T=21, W=118, H=6,
                           Text=f"{obj_type.upper()}: {obj_id}")
         self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=110,
@@ -476,12 +476,12 @@ class _MapUIMixin(_MixinBase):
             val_str = self._map_ui_elem_field_value_str(obj, fname)
 
             self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=label_cid,
-                              BStyle=ISB_STYLE.DARK | ISB_STYLE.LEFT,
+                              BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
                               L=2, T=T, W=68, H=7, Text=f"{fname}:")
 
             if ftype == "readonly":
                 self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=val_cid,
-                                  BStyle=ISB_STYLE.DARK | ISB_STYLE.LEFT,
+                                  BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
                                   L=72, T=T, W=108, H=7, Text=val_str)
             elif ftype == "bool":
                 is_true = val_str.lower() in ("true", "yes", "si", "1")
