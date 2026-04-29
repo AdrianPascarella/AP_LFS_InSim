@@ -589,6 +589,17 @@ class _MapUIMixin(_MixinBase):
                 and packet.ClickID in self._ui_detail_field_map):
             fname, ftype = self._ui_detail_field_map[packet.ClickID]
             if ftype not in ("bool", "enum_traffic") and text:
+                if ftype == "float":
+                    try:
+                        float(text)
+                    except ValueError:
+                        obj = self._map_ui_elem_get_obj(self._ui_elem_detail_id)
+                        prev = self._map_ui_elem_field_value_str(obj, fname) if obj else ""
+                        self.send_ISP_BTN(ReqI=1, UCID=self._ui_ucid,
+                                          ClickID=packet.ClickID,
+                                          BStyle=0, L=0, T=0, W=0, H=0,
+                                          Text=prev if prev else " ")
+                        return
                 self._map_ui_silent_set(self._ui_elem_detail_id, fname, text)
 
     def _map_ui_handle_click(self, cid: int):
