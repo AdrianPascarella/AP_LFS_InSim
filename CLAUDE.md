@@ -37,7 +37,7 @@ bash scripts/install-git-hooks.sh   # Linux/Mac
 python src/lfs_insim/generate_stubs.py
 ```
 
-No test suite exists. No linter/formatter is configured. No external dependencies — pure Python 3.9+ stdlib.
+No linter/formatter is configured. No external dependencies — pure Python 3.9+ stdlib.
 
 ## Architecture
 
@@ -134,12 +134,33 @@ def on_ISP_MSO(self, packet):
             return
 ```
 
-Use `strip_lfs_colors(text)` from `utils.py` to remove LFS color codes (`^0`–`^9`, `^L`, `^h`) from message strings. For sending colored messages, use constants from `TextColors` (e.g. `TextColors.red`, `TextColors.yellow`). For multiple commands with shared whitelist logic, use `CMDManager` instead of chaining `separate_command_args` calls manually.
+Use `strip_lfs_colors(text)` from `utils.py` to remove LFS color codes (`^0`–`^9`, `^L`, `^h`) from message strings. For sending colored messages, use constants from `TextColors` (e.g. `TextColors.RED`, `TextColors.YELLOW`).
+
+`CMDManager` provides a fluent builder for namespaced command trees:
+
+```python
+cmds = CMDManager(self.cmd_prefix, self.cmd_base)
+(cmds
+ .add_cmd("start", "Start the AI", None, self._cmd_start)
+ .add_cmd("speed", "Set speed", (("kmh", int),), self._cmd_speed)
+ .add_cmd("msg",   "Send message", "text", self._cmd_msg, is_mso_required=True)
+)
+self.cmds = cmds.submit()   # prints usage hint in LFS chat
+
+# In on_ISP_MSO:
+cmd, args = separate_command_args(self.cmd_prefix, packet)
+if cmd == self.cmd_base:
+    self.cmds.handle_commands(packet, args)
+```
+
+`is_mso_required=True` passes the raw `ISP_MSO` packet as the first argument to the handler; `False` (default) passes only the typed args. Typing `!base <cmd> ?` in-game shows per-command help.
+
+To suppress noisy send-logs for a specific packet type: `mute_send_logs('ISP_AIC')` (call at module level, from `lfs_insim import mute_send_logs`).
 
 ## Key conventions
 
 - **Binary protocol**: LFS packets are little-endian, strings are latin-1 null-terminated. `Size` in packet header = total bytes / 4.
-- **Packet definitions**: dataclasses in `src/lfs_insim/packets/insim.py`; sub-structures in `packets/structures.py`; OutSim/OutGauge in `packets/outsim.py`. Each field carries `metadata={'fmt': '...'}` for struct serialization.
+- **Packet definitions**: dataclasses in `src/lfs_insim/packets/insim.py`; sub-structures in `packets/structures.py`; OutSim/OutGauge in `packets/outsim.py`. Each field carries `metadata={'fmt': '...'}` for struct serialization. `insim_packet_class.py` is a compatibility facade — always import from `lfs_insim.packets` or `lfs_insim.insim_packet_class` (they are equivalent).
 - **Enums**: all protocol flags and constants live in `src/lfs_insim/insim_enums.py` (ISF, ISP, TINY, SMALL, PTYPE, OSO, etc.).
 - **Global state**: sockets and master reference are singletons in `src/lfs_insim/insim_state.py` — only the first setter wins; do not instantiate these directly.
 - **Config**: `config/settings.py` holds `INSIM_CONFIG` (TCP host/port, prefix, interval) and `OUT_CONFIG` (OutSim options); modules read settings via `self.config.get('key', default)`.
@@ -147,6 +168,7 @@ Use `strip_lfs_colors(text)` from `utils.py` to remove LFS color codes (`^0`–`
 - **PID control**: `PIDController` in `utils.py` has anti-windup and anti-derivative-kick; output is clamped to [-1.0, 1.0] for pedal/steering use.
 - **Exceptions**: raise from the hierarchy in `exceptions.py` — `InSimError` → `InSimConnectionError`, `InSimPacketError`, `InSimModuleError`, `InSimConfigurationError`, `InSimCommandError`.
 - **Requesting initial state**: send `ISP_TINY(SubT=TINY.NCN)` to request all connections and `ISP_TINY(SubT=TINY.NPL)` to request all players during `on_connect()`.
+- **Module-specific state on foreign objects**: attach extra state to `users_management` objects via `ai.extra['my_module_key'] = MyDataclass()`. Check existence with `'key' in ai.extra` before accessing.
 
 ## Existing InSims
 
@@ -154,3 +176,13 @@ Use `strip_lfs_colors(text)` from `utils.py` to remove LFS color codes (`^0`–`
 |---|---|---|
 | `users_management` | `insims/users_management/` | Tracks users/players/AIs in real time (UCIDs, PLIDs, telemetry) |
 | `ai_control` | `insims/ai_control/` | Controls AI cars via PID; two nav modes: RouteMode (recorded waypoints) and FreeroamMode (street graph FSM) |
+| `test_insim` | `insims/test_insim/` | Minimal reference InSim: own user/player tracking, CMDManager example, all handler categories covered — use as a starting template |
+
+### ai_control nav system
+
+`AIBehavior` (in `behavior.py`) is the per-AI state object stored in `ai.extra['aic']`. Its `active_mode` field holds the current `AINavModeState` subclass:
+
+- **`RouteMode`** (`nav_modes/route/`) — follows a list of recorded waypoints; managed by `RouteManager`
+- **`FreeroamMode`** (`nav_modes/freeroam/`) — topology-based FSM; state machine drives AI through a road graph of `RoadLink` / `LateralLink` / `Road` nodes; overtake FSM tracked in `overtake_state`
+
+The road graph lives in `nav_modes/freeroam/graph.py`. `RoadLink` connects two roads; `LateralLink` connects two parallel lanes (used for lane changes and overtakes).
