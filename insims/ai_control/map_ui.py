@@ -315,6 +315,10 @@ class _MapUIMixin(_MixinBase):
                           BStyle=ISB_STYLE.CANCEL | ISB_STYLE.CLICK,
                           L=54, T=39, W=30, H=8, Text="Cancelar")
 
+    # CIDs 118/119 se usan como TypeIn de sufijo en el formulario de dos args
+    _UI_CID_TI_SUF_A = 118
+    _UI_CID_TI_SUF_B = 119
+
     def _map_ui_draw_grabar_two_args(self):
         u = self._ui_ucid
         is_roadlink = (self._ui_pending_action == "rec_roadlink")
@@ -324,20 +328,38 @@ class _MapUIMixin(_MixinBase):
 
         self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=110,
                           BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
-                          L=2, T=21, W=50, H=6, Text=label_a)
+                          L=2, T=21, W=66, H=6, Text=label_a)
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=111,
+                          BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
+                          L=70, T=21, W=42, H=6, Text="sufijo (opcional):")
         self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=self._UI_CID_TI1,
                           BStyle=ISB_STYLE.LIGHT | ISB_STYLE.CLICK,
                           TypeIn=TYPEIN_FLAGS.INIT_WITH_TEXT | 40,
-                          L=2, T=28, W=100, H=8,
+                          L=2, T=28, W=66, H=8,
                           Text=self._ui_input_buffer.get(self._UI_CID_TI1, ""))
-        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=111,
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=self._UI_CID_TI_SUF_A,
+                          BStyle=ISB_STYLE.LIGHT | ISB_STYLE.CLICK,
+                          TypeIn=TYPEIN_FLAGS.INIT_WITH_TEXT | 20,
+                          L=70, T=28, W=42, H=8,
+                          Text=self._ui_input_buffer.get(self._UI_CID_TI_SUF_A, ""))
+
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=112,
                           BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
-                          L=2, T=38, W=50, H=6, Text=label_b)
+                          L=2, T=38, W=66, H=6, Text=label_b)
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=113,
+                          BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
+                          L=70, T=38, W=42, H=6, Text="sufijo (opcional):")
         self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=self._UI_CID_TI2,
                           BStyle=ISB_STYLE.LIGHT | ISB_STYLE.CLICK,
                           TypeIn=TYPEIN_FLAGS.INIT_WITH_TEXT | 40,
-                          L=2, T=45, W=100, H=8,
+                          L=2, T=45, W=66, H=8,
                           Text=self._ui_input_buffer.get(self._UI_CID_TI2, ""))
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=self._UI_CID_TI_SUF_B,
+                          BStyle=ISB_STYLE.LIGHT | ISB_STYLE.CLICK,
+                          TypeIn=TYPEIN_FLAGS.INIT_WITH_TEXT | 20,
+                          L=70, T=45, W=42, H=8,
+                          Text=self._ui_input_buffer.get(self._UI_CID_TI_SUF_B, ""))
+
         self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=116,
                           BStyle=ISB_STYLE.OK | ISB_STYLE.CLICK,
                           L=2, T=57, W=50, H=8, Text=f"Iniciar {action_name}")
@@ -718,12 +740,16 @@ class _MapUIMixin(_MixinBase):
         elif self._ui_pending_action in ("rec_roadlink", "rec_laterallink"):
             if cid == 116:
                 road_a = buf.get(self._UI_CID_TI1, "").strip()
+                suf_a  = buf.get(self._UI_CID_TI_SUF_A, "").strip()
                 road_b = buf.get(self._UI_CID_TI2, "").strip()
+                suf_b  = buf.get(self._UI_CID_TI_SUF_B, "").strip()
                 if road_a and road_b:
+                    arg_a = f"{road_a},{suf_a}" if suf_a else road_a
+                    arg_b = f"{road_b},{suf_b}" if suf_b else road_b
                     if self._ui_pending_action == "rec_roadlink":
-                        self.map_recorder._cmd_rec_roadlink(road_a, road_b)
+                        self.map_recorder._cmd_rec_roadlink(arg_a, arg_b)
                     else:
-                        self.map_recorder._cmd_rec_laterallink(road_a, road_b)
+                        self.map_recorder._cmd_rec_laterallink(arg_a, arg_b)
                     self._ui_pending_action = None
                     self._ui_input_buffer = {}
                     self._map_ui_redraw_content()
