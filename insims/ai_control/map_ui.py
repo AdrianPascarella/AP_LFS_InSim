@@ -535,8 +535,8 @@ class _MapUIMixin(_MixinBase):
             all_roads = [(r, c) for r, c in all_roads if search in r.lower()]
         all_roads.sort(key=lambda x: x[0])
 
-        n_open   = sum(1 for _, c in self.map_recorder.roads.items() if not c)
-        n_closed = sum(1 for _, c in self.map_recorder.roads.items() if c)
+        n_open   = sum(1 for road in self.map_recorder.roads.values() if not road.is_closed)
+        n_closed = sum(1 for road in self.map_recorder.roads.values() if road.is_closed)
         total_pages = max(1, (len(all_roads) + self._ROADS_ITEMS_PER_PAGE - 1) // self._ROADS_ITEMS_PER_PAGE)
         self._ui_roads_page = max(0, min(self._ui_roads_page, total_pages - 1))
 
