@@ -479,7 +479,7 @@ class _MapUIMixin(_MixinBase):
                               L=2, T=T, W=180, H=7, Text="Sin resultados")
         else:
             for i, (sev, msg) in enumerate(page_items):
-                style = ISB_STYLE.CANCEL | ISB_STYLE.SELECTED if sev == "E" else ISB_STYLE.TITLE | ISB_STYLE.SELECTED
+                style = ISB_STYLE.CANCEL | ISB_STYLE.DARK if sev == "E" else ISB_STYLE.TITLE | ISB_STYLE.DARK
                 self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=124 + i, BStyle=style,
                                   L=2, T=T + i * 8, W=180, H=7, Text=msg)
 
