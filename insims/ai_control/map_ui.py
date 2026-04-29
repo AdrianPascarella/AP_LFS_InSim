@@ -44,7 +44,7 @@ class _MapUIMixin(_MixinBase):
     # ──────────────────────────────────────────────────────────────────────────
 
     def _init_ui_state(self):
-        self._ui_ucid: int = 0
+        self._ui_ucid: Optional[int] = None
         self._ui_tab: str = "grabar"
         self._ui_pending_action: Optional[str] = None
         self._ui_input_buffer: dict = {}
@@ -347,12 +347,12 @@ class _MapUIMixin(_MixinBase):
     # ──────────────────────────────────────────────────────────────────────────
 
     def on_ISP_BTC(self, packet: ISP_BTC):
-        if not self._ui_ucid or packet.UCID != self._ui_ucid:
+        if self._ui_ucid is None or packet.UCID != self._ui_ucid:
             return
         self._map_ui_handle_click(packet.ClickID)
 
     def on_ISP_BTT(self, packet: ISP_BTT):
-        if not self._ui_ucid or packet.UCID != self._ui_ucid:
+        if self._ui_ucid is None or packet.UCID != self._ui_ucid:
             return
         self._ui_input_buffer[packet.ClickID] = packet.Text.strip()
 
@@ -555,6 +555,6 @@ class _MapUIMixin(_MixinBase):
 
     def _map_ui_close(self):
         self.send_ISP_BFN(SubT=BFN.CLEAR, UCID=self._ui_ucid)
-        self._ui_ucid = 0
+        self._ui_ucid = None
         self._ui_pending_action = None
         self._ui_input_buffer = {}
