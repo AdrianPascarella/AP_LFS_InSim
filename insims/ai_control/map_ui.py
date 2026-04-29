@@ -117,6 +117,7 @@ class _MapUIMixin(_MixinBase):
         self._ui_info_check: bool = False
         self._ui_check_filter: str = "all"   # "all" | "error" | "warn"
         self._ui_check_page: int = 0
+        self._ui_check_search: str = ""
 
     # ──────────────────────────────────────────────────────────────────────────
     # Entrada: .map ui
@@ -452,45 +453,59 @@ class _MapUIMixin(_MixinBase):
             return
 
         errores, advertencias = self.map_recorder.collect_check_results()
-        items = (
-            [("E", m) for m in errores] + [("W", m) for m in advertencias] if self._ui_check_filter == "all" else
-            [("E", m) for m in errores]  if self._ui_check_filter == "error" else
-            [("W", m) for m in advertencias]
-        )
+        search = self._ui_check_search.lower()
+        all_items = [("E", m) for m in errores] + [("W", m) for m in advertencias]
+        if self._ui_check_filter == "error":
+            all_items = [x for x in all_items if x[0] == "E"]
+        elif self._ui_check_filter == "warn":
+            all_items = [x for x in all_items if x[0] == "W"]
+        if search:
+            all_items = [x for x in all_items if search in x[1].lower()]
 
         n_err, n_warn = len(errores), len(advertencias)
-        total_pages = max(1, (len(items) + self._CHECK_ITEMS_PER_PAGE - 1) // self._CHECK_ITEMS_PER_PAGE)
+        total_pages = max(1, (len(all_items) + self._CHECK_ITEMS_PER_PAGE - 1) // self._CHECK_ITEMS_PER_PAGE)
         self._ui_check_page = max(0, min(self._ui_check_page, total_pages - 1))
 
-        # Fila de filtros (CIDs 121–123)
+        # Buscador (CID 121 TypeIn, CID 122 botón)
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=121,
+                          BStyle=ISB_STYLE.LIGHT | ISB_STYLE.CLICK,
+                          TypeIn=TYPEIN_FLAGS.INIT_WITH_TEXT | 60,
+                          L=2, T=T, W=132, H=7,
+                          Text=self._ui_check_search or "Buscar...")
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=122,
+                          BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
+                          L=136, T=T, W=22, H=7, Text="Filtrar")
+        T += 9
+
+        # Filtros tipo (CIDs 123–125)
         for i, (key, label) in enumerate([("all", f"Todos ({n_err}E {n_warn}W)"), ("error", f"Errores ({n_err})"), ("warn", f"Avisos ({n_warn})")]):
             active = (self._ui_check_filter == key)
             style = (ISB_STYLE.SELECTED | ISB_STYLE.CLICK) if active else (ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK)
-            self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=121 + i, BStyle=style,
+            self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=123 + i, BStyle=style,
                               L=2 + i * 62, T=T, W=60, H=7, Text=label)
         T += 9
 
-        # Items (CIDs 124–127)
+        # Items (CIDs 126–129)
         start = self._ui_check_page * self._CHECK_ITEMS_PER_PAGE
-        page_items = items[start:start + self._CHECK_ITEMS_PER_PAGE]
+        page_items = all_items[start:start + self._CHECK_ITEMS_PER_PAGE]
         if not page_items:
-            self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=124,
+            self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=126,
                               BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED,
                               L=2, T=T, W=180, H=7, Text="Sin resultados")
         else:
             for i, (sev, msg) in enumerate(page_items):
                 style = ISB_STYLE.CANCEL | ISB_STYLE.DARK if sev == "E" else ISB_STYLE.TITLE | ISB_STYLE.DARK
-                self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=124 + i, BStyle=style,
+                self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=126 + i, BStyle=style,
                                   L=2, T=T + i * 8, W=180, H=7, Text=msg)
 
-        # Paginación (CIDs 128–130)
+        # Paginación (CIDs 130–132)
         prev_style = (ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK) if self._ui_check_page > 0 else (ISB_STYLE.DARK | ISB_STYLE.SELECTED)
         next_style = (ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK) if self._ui_check_page < total_pages - 1 else (ISB_STYLE.DARK | ISB_STYLE.SELECTED)
         pag_T = T + self._CHECK_ITEMS_PER_PAGE * 8
-        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=128, BStyle=prev_style, L=2,  T=pag_T, W=16, H=6, Text="<")
-        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=129, BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED,
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=130, BStyle=prev_style, L=2,  T=pag_T, W=16, H=6, Text="<")
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=131, BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED,
                           L=20, T=pag_T, W=50, H=6, Text=f"Pag {self._ui_check_page + 1}/{total_pages}")
-        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=130, BStyle=next_style, L=72, T=pag_T, W=16, H=6, Text=">")
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=132, BStyle=next_style, L=72, T=pag_T, W=16, H=6, Text=">")
 
     # ──────────────────────────────────────────────────────────────────────────
     # Tab: Elementos — dispatcher
@@ -897,21 +912,28 @@ class _MapUIMixin(_MixinBase):
             self._ui_info_check = not self._ui_info_check
             self._ui_check_page = 0
             self._map_ui_redraw_content()
-        elif cid == 121:
-            self._ui_check_filter = "all";  self._ui_check_page = 0; self._map_ui_redraw_content()
-        elif cid == 122:
-            self._ui_check_filter = "error"; self._ui_check_page = 0; self._map_ui_redraw_content()
+        elif cid == 122:  # Aplicar buscador
+            self._ui_check_search = self._ui_input_buffer.get(121, "").strip()
+            self._ui_check_page = 0; self._map_ui_redraw_content()
         elif cid == 123:
+            self._ui_check_filter = "all";   self._ui_check_page = 0; self._map_ui_redraw_content()
+        elif cid == 124:
+            self._ui_check_filter = "error"; self._ui_check_page = 0; self._map_ui_redraw_content()
+        elif cid == 125:
             self._ui_check_filter = "warn";  self._ui_check_page = 0; self._map_ui_redraw_content()
-        elif cid == 128 and self._ui_check_page > 0:
+        elif cid == 130 and self._ui_check_page > 0:
             self._ui_check_page -= 1; self._map_ui_redraw_content()
-        elif cid == 130:
+        elif cid == 132:
             errores, advertencias = self.map_recorder.collect_check_results()
-            items = (
-                errores + advertencias if self._ui_check_filter == "all" else
-                errores if self._ui_check_filter == "error" else advertencias
-            )
-            total_pages = max(1, (len(items) + self._CHECK_ITEMS_PER_PAGE - 1) // self._CHECK_ITEMS_PER_PAGE)
+            search = self._ui_check_search.lower()
+            all_items = [("E", m) for m in errores] + [("W", m) for m in advertencias]
+            if self._ui_check_filter == "error":
+                all_items = [x for x in all_items if x[0] == "E"]
+            elif self._ui_check_filter == "warn":
+                all_items = [x for x in all_items if x[0] == "W"]
+            if search:
+                all_items = [x for x in all_items if search in x[1].lower()]
+            total_pages = max(1, (len(all_items) + self._CHECK_ITEMS_PER_PAGE - 1) // self._CHECK_ITEMS_PER_PAGE)
             if self._ui_check_page < total_pages - 1:
                 self._ui_check_page += 1; self._map_ui_redraw_content()
         elif cid == 112:
