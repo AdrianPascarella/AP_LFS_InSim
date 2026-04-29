@@ -74,6 +74,8 @@ class _CommandsMixin(_MixinBase):
                      args=(('plid_ai', int),), funct=self._cmd_map_freeroam, is_mso_required=True)
             .add_cmd(name='test', description='Spawnea AI\'s hasta el <num> indicado activandoles el modo freeroam',
                      args=(('num', int),), funct=self._test_freeroam, is_mso_required=True)
+            .add_cmd(name='ui', description='Abrir interfaz gráfica del mapa',
+                     args=None, funct=self._map_ui_open, is_mso_required=True)
             .submit()
         )
     

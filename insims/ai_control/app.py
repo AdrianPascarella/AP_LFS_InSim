@@ -19,12 +19,13 @@ from insims.ai_control.commands import _CommandsMixin
 from insims.ai_control.physics import _PhysicsMixin
 from insims.ai_control.navigation import _NavigationMixin
 from insims.ai_control.traffic import _TrafficMixin
+from insims.ai_control.map_ui import _MapUIMixin
 
 if TYPE_CHECKING:
     from insims.users_management.main import UsersManagement, AI, Telemetry, Coordinates
 
 
-class AIControl(_CommandsMixin, _PhysicsMixin, _NavigationMixin, _TrafficMixin, InSimApp):
+class AIControl(_MapUIMixin, _CommandsMixin, _PhysicsMixin, _NavigationMixin, _TrafficMixin, InSimApp):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -34,6 +35,7 @@ class AIControl(_CommandsMixin, _PhysicsMixin, _NavigationMixin, _TrafficMixin, 
         self.user_manager: Optional['UsersManagement'] = None
         self.route_manager: Optional['RouteManager'] = None
         self.map_recorder = MapRecorder(self._get_coords_for_map, self.cmd_prefix)
+        self._init_ui_state()
 
         self.interval_mci_s: float = self.config.get('interval', 100) / 1000
 
