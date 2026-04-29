@@ -238,7 +238,7 @@ class _MapUIMixin(_MixinBase):
         if maps:
             for i, name in enumerate(maps[:6]):
                 is_active = (name == current_map)
-                style = (ISB_STYLE.OK | ISB_STYLE.CLICK) if is_active else (ISB_STYLE.TEXT_STRING | ISB_STYLE.CLICK)
+                style = (ISB_STYLE.OK | ISB_STYLE.CLICK) if is_active else (ISB_STYLE.DARK | ISB_STYLE.CLICK)
                 self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=114 + i, BStyle=style,
                                   L=2 + i * 30, T=49, W=28, H=7, Text=name)
         else:
@@ -424,7 +424,7 @@ class _MapUIMixin(_MixinBase):
         else:
             for i, item_id in enumerate(page_items):
                 self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=114 + i,
-                                  BStyle=ISB_STYLE.TEXT_STRING | ISB_STYLE.CLICK,
+                                  BStyle=ISB_STYLE.DARK | ISB_STYLE.CLICK,
                                   L=2, T=39 + i * 7, W=180, H=6,
                                   Text=item_id)
 
