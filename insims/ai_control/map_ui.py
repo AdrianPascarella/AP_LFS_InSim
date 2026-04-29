@@ -113,6 +113,7 @@ class _MapUIMixin(_MixinBase):
         self._ui_elem_search: str = ""
         self._ui_elem_detail_id: Optional[str] = None
         self._ui_detail_field_map: dict = {}   # {ClickID: (field_name, field_type)}
+        self._ui_info_stats: bool = False
 
     # ──────────────────────────────────────────────────────────────────────────
     # Entrada: .map ui
@@ -403,7 +404,10 @@ class _MapUIMixin(_MixinBase):
 
     def _map_ui_draw_tab_info(self):
         u = self._ui_ucid
-        for cid, label, L in [(110, "Stats", 2), (111, "Check", 42), (112, "Roads cerradas", 82)]:
+        stats_style = (ISB_STYLE.SELECTED | ISB_STYLE.CLICK) if self._ui_info_stats else (ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK)
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=110,
+                          BStyle=stats_style, L=2, T=21, W=38, H=8, Text="Stats")
+        for cid, label, L in [(111, "Check", 42), (112, "Roads cerradas", 82)]:
             self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=cid,
                               BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
                               L=L, T=21, W=38, H=8, Text=label)
@@ -411,6 +415,21 @@ class _MapUIMixin(_MixinBase):
             self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=cid,
                               BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
                               L=L, T=31, W=38, H=8, Text=label)
+
+        if self._ui_info_stats:
+            mr = self.map_recorder
+            counts = [
+                ("Roads",      len(mr.roads)),
+                ("RoadLinks",  len(mr.road_links)),
+                ("LatLinks",   len(mr.lateral_links)),
+                ("Zonas",      len(mr.zones)),
+                ("Reglas",     len(mr.special_rules)),
+            ]
+            for i, (label, n) in enumerate(counts):
+                self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=116 + i,
+                                  BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED,
+                                  L=2 + i * 38, T=42, W=36, H=8,
+                                  Text=f"{label}: {n}")
 
     # ──────────────────────────────────────────────────────────────────────────
     # Tab: Elementos — dispatcher
@@ -811,7 +830,8 @@ class _MapUIMixin(_MixinBase):
     def _map_ui_click_info(self, cid: int):
         fake = _FakePkt(self._ui_ucid)
         if cid == 110:
-            self.map_recorder._cmd_stats()
+            self._ui_info_stats = not self._ui_info_stats
+            self._map_ui_redraw_content()
         elif cid == 111:
             self.map_recorder._cmd_check_map()
         elif cid == 112:
