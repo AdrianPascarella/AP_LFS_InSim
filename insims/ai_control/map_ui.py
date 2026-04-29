@@ -269,21 +269,19 @@ class _MapUIMixin(_MixinBase):
             self._map_ui_draw_grabar_active(rec)
         elif self._ui_pending_action in ("rec_roadlink", "rec_laterallink"):
             self._map_ui_draw_grabar_two_args()
+        elif self._ui_pending_action in ("rec_road", "rec_zona", "rec_rule"):
+            self._map_ui_draw_grabar_one_arg()
         else:
             self._map_ui_draw_grabar_idle()
 
     def _map_ui_draw_grabar_idle(self):
         u = self._ui_ucid
-        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=self._UI_CID_TI1,
-                          BStyle=ISB_STYLE.LIGHT | ISB_STYLE.CLICK,
-                          TypeIn=40, L=2, T=21, W=100, H=8, Text="ID del elemento...")
-
         for cid, label, L, T in [
-            (110, "Road",         2,  31),
-            (111, "RoadLink",    36,  31),
-            (112, "LatLink",     70,  31),
-            (113, "Zona",         2,  41),
-            (114, "Reg. Especial", 36, 41),
+            (110, "Road",          2,  21),
+            (111, "RoadLink",     36,  21),
+            (112, "LatLink",      70,  21),
+            (113, "Zona",          2,  31),
+            (114, "Reg. Especial", 36, 31),
         ]:
             self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=cid,
                               BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
@@ -292,8 +290,30 @@ class _MapUIMixin(_MixinBase):
         auto_on = self.map_recorder.auto_recording_enabled
         style = ISB_STYLE.OK | ISB_STYLE.CLICK if auto_on else ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK
         self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=115,
-                          BStyle=style, L=2, T=53, W=40, H=8,
+                          BStyle=style, L=2, T=43, W=40, H=8,
                           Text="Auto: ON" if auto_on else "Auto: OFF")
+
+    def _map_ui_draw_grabar_one_arg(self):
+        u = self._ui_ucid
+        labels = {"rec_road": "ID de la vía:", "rec_zona": "ID de la zona:", "rec_rule": "ID de la regla:"}
+        names  = {"rec_road": "Road",          "rec_zona": "Zona",           "rec_rule": "Reg. Especial"}
+        label = labels.get(self._ui_pending_action, "ID:")
+        name  = names.get(self._ui_pending_action, "")
+
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=110,
+                          BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
+                          L=2, T=21, W=80, H=6, Text=label)
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=self._UI_CID_TI1,
+                          BStyle=ISB_STYLE.LIGHT | ISB_STYLE.CLICK,
+                          TypeIn=TYPEIN_FLAGS.INIT_WITH_TEXT | 40,
+                          L=2, T=28, W=100, H=8,
+                          Text=self._ui_input_buffer.get(self._UI_CID_TI1, ""))
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=116,
+                          BStyle=ISB_STYLE.OK | ISB_STYLE.CLICK,
+                          L=2, T=39, W=50, H=8, Text=f"Iniciar {name}")
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=117,
+                          BStyle=ISB_STYLE.CANCEL | ISB_STYLE.CLICK,
+                          L=54, T=39, W=30, H=8, Text="Cancelar")
 
     def _map_ui_draw_grabar_two_args(self):
         u = self._ui_ucid
@@ -715,15 +735,32 @@ class _MapUIMixin(_MixinBase):
                 self._ui_input_buffer = {}
                 self._map_ui_redraw_content()
 
-        else:
-            obj_id = buf.get(self._UI_CID_TI1, "").strip()
-            if cid == 110:
+        elif self._ui_pending_action in ("rec_road", "rec_zona", "rec_rule"):
+            if cid == 116:
+                obj_id = buf.get(self._UI_CID_TI1, "").strip()
                 if obj_id:
-                    self.map_recorder._cmd_rec_road(obj_id)
+                    if self._ui_pending_action == "rec_road":
+                        self.map_recorder._cmd_rec_road(obj_id)
+                    elif self._ui_pending_action == "rec_zona":
+                        self.map_recorder._cmd_rec_zone(obj_id)
+                    else:
+                        self.map_recorder._cmd_rec_special_rule(obj_id)
+                    self._ui_pending_action = None
+                    self._ui_input_buffer = {}
                     self._map_ui_redraw_content()
                     self._map_ui_update_header()
                 else:
-                    self.send_ISP_MSL(Msg=f"{c.YELLOW}Escribe el ID del elemento primero.")
+                    self.send_ISP_MSL(Msg=f"{c.RED}Escribe el ID antes de confirmar.")
+            elif cid == 117:
+                self._ui_pending_action = None
+                self._ui_input_buffer = {}
+                self._map_ui_redraw_content()
+
+        else:
+            if cid == 110:
+                self._ui_pending_action = "rec_road"
+                self._ui_input_buffer = {}
+                self._map_ui_redraw_content()
             elif cid == 111:
                 self._ui_pending_action = "rec_roadlink"
                 self._ui_input_buffer = {}
@@ -733,19 +770,13 @@ class _MapUIMixin(_MixinBase):
                 self._ui_input_buffer = {}
                 self._map_ui_redraw_content()
             elif cid == 113:
-                if obj_id:
-                    self.map_recorder._cmd_rec_zone(obj_id)
-                    self._map_ui_redraw_content()
-                    self._map_ui_update_header()
-                else:
-                    self.send_ISP_MSL(Msg=f"{c.YELLOW}Escribe el ID del elemento primero.")
+                self._ui_pending_action = "rec_zona"
+                self._ui_input_buffer = {}
+                self._map_ui_redraw_content()
             elif cid == 114:
-                if obj_id:
-                    self.map_recorder._cmd_rec_special_rule(obj_id)
-                    self._map_ui_redraw_content()
-                    self._map_ui_update_header()
-                else:
-                    self.send_ISP_MSL(Msg=f"{c.YELLOW}Escribe el ID del elemento primero.")
+                self._ui_pending_action = "rec_rule"
+                self._ui_input_buffer = {}
+                self._map_ui_redraw_content()
             elif cid == 115:
                 new = not self.map_recorder.auto_recording_enabled
                 self.map_recorder._cmd_rec_auto("true" if new else "false")
