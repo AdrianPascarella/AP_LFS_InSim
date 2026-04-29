@@ -354,7 +354,13 @@ class _MapUIMixin(_MixinBase):
     def on_ISP_BTT(self, packet: ISP_BTT):
         if self._ui_ucid is None or packet.UCID != self._ui_ucid:
             return
-        self._ui_input_buffer[packet.ClickID] = packet.Text.strip()
+        text = packet.Text.strip()
+        self._ui_input_buffer[packet.ClickID] = text
+        # Actualizar el texto visible del botón TypeIn con el valor escrito
+        self.send_ISP_BTN(ReqI=1, UCID=self._ui_ucid,
+                          ClickID=packet.ClickID,
+                          BStyle=0, L=0, T=0, W=0, H=0,
+                          Text=text if text else " ")
 
     def _map_ui_handle_click(self, cid: int):
         # Header
