@@ -491,12 +491,10 @@ class _MapUIMixin(_MixinBase):
                                   Text="ON" if is_true else "OFF")
                 self._ui_detail_field_map[val_cid] = (fname, "bool")
             elif ftype == "enum_traffic":
-                style = ISB_STYLE.OK | ISB_STYLE.CLICK if val_str == "RHT" else (
-                        ISB_STYLE.TITLE | ISB_STYLE.CLICK if val_str == "LHT" else
-                        ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK)
+                style = ISB_STYLE.OK | ISB_STYLE.CLICK if val_str == "RHT" else ISB_STYLE.TITLE | ISB_STYLE.CLICK
                 self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=val_cid,
                                   BStyle=style, L=72, T=T, W=108, H=7,
-                                  Text=val_str if val_str else "NONE")
+                                  Text=val_str if val_str else "RHT")
                 self._ui_detail_field_map[val_cid] = (fname, "enum_traffic")
             else:
                 self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=val_cid,
@@ -782,7 +780,7 @@ class _MapUIMixin(_MixinBase):
                     obj = self._map_ui_elem_get_obj(self._ui_elem_detail_id)
                     if obj is not None:
                         cur = self._map_ui_elem_field_value_str(obj, fname)
-                        cycle = {"RHT": "lht", "LHT": "none", "": "rht"}
+                        cycle = {"RHT": "lht", "LHT": "rht", "": "rht"}
                         new_val = cycle.get(cur, "rht")
                         self._map_ui_silent_set(self._ui_elem_detail_id, fname, new_val)
                         self._map_ui_redraw_content()
