@@ -122,11 +122,13 @@ class PacketFunctions:
                     if len(new_val) >= limit:
                         new_val = new_val[:limit - 1]
 
-                # 2. Relleno (padding) a bloque de 4 con null bytes
-                remainder = (len(new_val) + 1) % 4  # +1 para contar el null terminator
-                if remainder != 0:
-                    padding_needed = 4 - remainder
-                    new_val += "\x00" * padding_needed
+                # 2. Relleno (padding) a bloque de 4 con null bytes, incluyendo
+                # el null terminator dentro del bloque alineado.
+                if new_val:
+                    new_val += "\x00"
+                    remainder = len(new_val) % 4
+                    if remainder != 0:
+                        new_val += "\x00" * (4 - remainder)
 
                 setattr(self, f.name, new_val)
 
