@@ -1,6 +1,8 @@
 from __future__ import annotations
 import copy
+import math
 import os
+import time
 from typing import Optional
 
 from lfs_insim.insim_enums import ISB_STYLE, BFN, TYPEIN_FLAGS
@@ -37,7 +39,7 @@ _ELEM_FIELDS: dict[str, list[tuple[str, str]]] = {
         ("from_suffix",      "readonly"),
         ("to_suffix",        "readonly"),
         ("by_road_id",       "str"),
-        ("indicators",       "str"),
+        ("indicators",       "enum_indicators"),
     ],
     "latlink": [
         ("road_a",           "readonly"),
@@ -122,6 +124,9 @@ class _MapUIMixin(_MixinBase):
         self._ui_roads_filter: str = "all"   # "all" | "open" | "closed"
         self._ui_roads_page: int = 0
         self._ui_roads_search: str = ""
+        self._ui_whereami: set = set()
+        self._ui_whereami_interval: float = 5.0
+        self._ui_whereami_last_update: float = 0.0
 
     # ──────────────────────────────────────────────────────────────────────────
     # Entrada: .map ui
@@ -204,7 +209,7 @@ class _MapUIMixin(_MixinBase):
     # ──────────────────────────────────────────────────────────────────────────
 
     def _map_ui_clear_content(self):
-        self.send_ISP_BFN(SubT=BFN.DEL_BTN, UCID=0, ClickID=108, ClickMax=160)
+        self.send_ISP_BFN(SubT=BFN.DEL_BTN, UCID=0, ClickID=108, ClickMax=165)
 
     def _map_ui_redraw_content(self):
         self._map_ui_clear_content()
@@ -411,22 +416,30 @@ class _MapUIMixin(_MixinBase):
     # ──────────────────────────────────────────────────────────────────────────
 
     _CHECK_ITEMS_PER_PAGE = 4
+    _WA_TYPES = ["road", "roadlink", "latlink", "zone", "rule"]
+    _WA_CID_BASE = 153
 
     def _map_ui_draw_tab_info(self):
         u = self._ui_ucid
+        # Fila 1: Stats / Check / Roads cerradas
         stats_style = (ISB_STYLE.SELECTED | ISB_STYLE.CLICK) if self._ui_info_stats else (ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK)
         check_style = (ISB_STYLE.SELECTED | ISB_STYLE.CLICK) if self._ui_info_check else (ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK)
-        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=110,
-                          BStyle=stats_style, L=2, T=21, W=38, H=8, Text="Stats")
-        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=111,
-                          BStyle=check_style, L=42, T=21, W=38, H=8, Text="Check")
         roads_style = (ISB_STYLE.SELECTED | ISB_STYLE.CLICK) if self._ui_info_roads else (ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK)
-        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=112,
-                          BStyle=roads_style, L=82, T=21, W=38, H=8, Text="Roads cerradas")
-        for cid, label, L in [(113, "Whereami road", 2), (114, "Whereami link", 42), (115, "Whereami zone", 82)]:
-            self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=cid,
-                              BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
-                              L=L, T=31, W=38, H=8, Text=label)
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=110, BStyle=stats_style, L=2,  T=21, W=38, H=8, Text="Stats")
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=111, BStyle=check_style, L=42, T=21, W=38, H=8, Text="Check")
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=112, BStyle=roads_style, L=82, T=21, W=38, H=8, Text="Roads cerradas")
+
+        # Fila 2: Whereami toggles (5 tipos) + TypeIn intervalo
+        for i, label in enumerate(["WA Road", "WA RLink", "WA LLink", "WA Zone", "WA Regla"]):
+            active = self._WA_TYPES[i] in self._ui_whereami
+            style = (ISB_STYLE.SELECTED | ISB_STYLE.CLICK) if active else (ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK)
+            self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=113 + i, BStyle=style,
+                              L=2 + i * 34, T=31, W=30, H=8, Text=label)
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=147,
+                          BStyle=ISB_STYLE.LIGHT | ISB_STYLE.CLICK,
+                          TypeIn=TYPEIN_FLAGS.INIT_WITH_TEXT | 8,
+                          L=172, T=31, W=14, H=8,
+                          Text=str(self._ui_whereami_interval))
 
         T = 42
         if self._ui_info_stats:
@@ -439,7 +452,7 @@ class _MapUIMixin(_MixinBase):
                 ("Reglas",    len(mr.special_rules)),
             ]
             for i, (label, n) in enumerate(counts):
-                self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=116 + i,
+                self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=148 + i,
                                   BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED,
                                   L=2 + i * 38, T=T, W=36, H=8,
                                   Text=f"{label}: {n}")
@@ -447,10 +460,13 @@ class _MapUIMixin(_MixinBase):
 
         if self._ui_info_check:
             self._map_ui_draw_check_panel(T)
-            T += 9 + 9 + self._CHECK_ITEMS_PER_PAGE * 8 + 8  # buscar+filtros+items+pag
+            T += 9 + 9 + self._CHECK_ITEMS_PER_PAGE * 8 + 8
 
         if self._ui_info_roads:
             self._map_ui_draw_roads_panel(T)
+            T += 9 + 9 + self._ROADS_ITEMS_PER_PAGE * 8 + 6
+
+        self._map_ui_draw_whereami_panels(T)
 
     def _map_ui_draw_check_panel(self, T: int):
         u = self._ui_ucid
@@ -581,6 +597,84 @@ class _MapUIMixin(_MixinBase):
                           L=20, T=pag_T, W=50, H=6, Text=f"Pag {self._ui_roads_page + 1}/{total_pages}")
         self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=146, BStyle=next_style, L=72, T=pag_T, W=16, H=6, Text=">")
 
+    def _map_ui_draw_whereami_panels(self, T: int) -> int:
+        u = self._ui_ucid
+        for i, wa_type in enumerate(self._WA_TYPES):
+            if wa_type not in self._ui_whereami:
+                continue
+            result = self._map_ui_compute_whereami(wa_type)
+            self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=self._WA_CID_BASE + i,
+                              BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
+                              L=2, T=T, W=180, H=7, Text=result)
+            T += 8
+        return T
+
+    def _map_ui_compute_whereami(self, target: str) -> str:
+        mr = self.map_recorder
+        if not mr.active_map_name:
+            return "Sin mapa activo"
+        coords = mr.get_coords_fn(self._ui_ucid)
+        if not coords:
+            return "Sin telemetria"
+        px, py, pz = coords.x_m, coords.y_m, coords.z_m
+
+        if target == "road":
+            if not mr.roads:
+                return "WA Road: Sin roads"
+            res = mr.get_closest_geometry(px, py, pz, mr.roads.items(), lambda r: r.nodes)
+            if res['id'] is None:
+                return "WA Road: Sin datos"
+            status = "TOCANDO" if res['dist'] <= 3.0 else f"{res['dist']:.1f}m"
+            return f"WA Road: {res['id']} | {status}"
+
+        elif target == "roadlink":
+            if not mr.road_links:
+                return "WA RLink: Sin links"
+            res = mr.get_closest_geometry(px, py, pz, mr.road_links.items(), lambda l: l.nodes)
+            if res['id'] is None:
+                return "WA RLink: Sin datos"
+            status = "TOCANDO" if res['dist'] <= 2.0 else f"{res['dist']:.1f}m"
+            return f"WA RLink: {res['id']} | {status}"
+
+        elif target == "latlink":
+            if not mr.lateral_links:
+                return "WA LLink: Sin links"
+            res = mr.get_closest_geometry(px, py, pz, mr.lateral_links.items(), lambda l: l.nodes)
+            if res['id'] is None:
+                return "WA LLink: Sin datos"
+            status = "TOCANDO" if res['dist'] <= 2.0 else f"{res['dist']:.1f}m"
+            return f"WA LLink: {res['id']} | {status}"
+
+        elif target == "zone":
+            ctx = mr.get_location_context(px, py, pz, find_roads=False, find_links=False, find_zones=True)
+            if ctx.zone_id is None:
+                return "WA Zona: Sin zonas"
+            status = "DENTRO" if ctx.zone_dist <= ctx.zone_radius else f"{ctx.zone_dist:.1f}m"
+            return f"WA Zona: {ctx.zone_id} | {status}"
+
+        elif target == "rule":
+            if not mr.special_rules:
+                return "WA Regla: Sin reglas"
+            best_id = None
+            best_dist = float('inf')
+            best_node_idx = 0
+            best_radius = 8.0
+            for rule_id, rule in mr.special_rules.items():
+                for n_idx, node in enumerate(rule.nodes[:2]):
+                    d = math.sqrt((px - node.x_m)**2 + (py - node.y_m)**2 + (pz - node.z_m)**2)
+                    if d < best_dist:
+                        best_dist = d
+                        best_id = rule_id
+                        best_node_idx = n_idx
+                        best_radius = rule.radius_m
+            if best_id is None:
+                return "WA Regla: Sin datos"
+            node_label = "ACTIVAR" if best_node_idx == 0 else "DESACTIVAR"
+            status = "TOCANDO" if best_dist <= best_radius else f"{best_dist:.1f}m"
+            return f"WA Regla: {best_id} [{node_label}] | {status}"
+
+        return "WA: tipo desconocido"
+
     # ──────────────────────────────────────────────────────────────────────────
     # Tab: Elementos — dispatcher
     # ──────────────────────────────────────────────────────────────────────────
@@ -677,9 +771,9 @@ class _MapUIMixin(_MixinBase):
                           BStyle=ISB_STYLE.CANCEL | ISB_STYLE.CLICK,
                           L=144, T=21, W=22, H=6, Text="Borrar")
 
-        # Filas de campos (máx. 7 filas)
+        # Filas de campos (máx. 8 filas)
         self._ui_detail_field_map = {}
-        for row, (fname, ftype) in enumerate(fields_def[:7]):
+        for row, (fname, ftype) in enumerate(fields_def[:8]):
             T = 29 + row * 8
             label_cid = 111 + row * 2
             val_cid   = 112 + row * 2
@@ -707,6 +801,15 @@ class _MapUIMixin(_MixinBase):
                                   BStyle=style, L=72, T=T, W=108, H=7,
                                   Text=val_str if val_str else "RHT")
                 self._ui_detail_field_map[val_cid] = (fname, "enum_traffic")
+            elif ftype == "enum_indicators":
+                ind_styles = {"OFF": ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
+                              "LEFT": ISB_STYLE.TITLE | ISB_STYLE.CLICK,
+                              "RIGHT": ISB_STYLE.OK | ISB_STYLE.CLICK}
+                style = ind_styles.get(val_str, ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK)
+                self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=val_cid,
+                                  BStyle=style, L=72, T=T, W=108, H=7,
+                                  Text=val_str if val_str else "OFF")
+                self._ui_detail_field_map[val_cid] = (fname, "enum_indicators")
             else:
                 self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=val_cid,
                                   BStyle=ISB_STYLE.LIGHT | ISB_STYLE.CLICK,
@@ -780,6 +883,21 @@ class _MapUIMixin(_MixinBase):
     # Handlers de eventos
     # ──────────────────────────────────────────────────────────────────────────
 
+    def on_tick(self):
+        super().on_tick()
+        if self._ui_ucid is None or self._ui_tab != "info" or not self._ui_whereami:
+            return
+        now = time.time()
+        if now - self._ui_whereami_last_update < self._ui_whereami_interval:
+            return
+        self._ui_whereami_last_update = now
+        for i, wa_type in enumerate(self._WA_TYPES):
+            if wa_type in self._ui_whereami:
+                result = self._map_ui_compute_whereami(wa_type)
+                self.send_ISP_BTN(ReqI=1, UCID=self._ui_ucid,
+                                  ClickID=self._WA_CID_BASE + i,
+                                  BStyle=0, L=0, T=0, W=0, H=0, Text=result)
+
     def on_ISP_BTC(self, packet: ISP_BTC):
         if self._ui_ucid is None or packet.UCID != self._ui_ucid:
             return
@@ -794,12 +912,25 @@ class _MapUIMixin(_MixinBase):
                           ClickID=packet.ClickID,
                           BStyle=0, L=0, T=0, W=0, H=0,
                           Text=text if text else " ")
+        # Intervalo de refresco whereami
+        if self._ui_tab == "info" and packet.ClickID == 147:
+            try:
+                val = float(text)
+                if val > 0:
+                    self._ui_whereami_interval = val
+                    self._ui_whereami_last_update = 0.0
+            except ValueError:
+                self.send_ISP_BTN(ReqI=1, UCID=self._ui_ucid,
+                                  ClickID=147, BStyle=0, L=0, T=0, W=0, H=0,
+                                  Text=str(self._ui_whereami_interval))
+            return
+
         # En la vista detalle de Elementos, aplicar cambio inmediatamente
         if (self._ui_tab == "elementos"
                 and self._ui_elem_detail_id is not None
                 and packet.ClickID in self._ui_detail_field_map):
             fname, ftype = self._ui_detail_field_map[packet.ClickID]
-            if ftype not in ("bool", "enum_traffic") and text:
+            if ftype not in ("bool", "enum_traffic", "enum_indicators") and text:
                 if ftype == "float":
                     try:
                         float(text)
@@ -1053,12 +1184,13 @@ class _MapUIMixin(_MixinBase):
             total_pages = max(1, (len(all_roads) + self._ROADS_ITEMS_PER_PAGE - 1) // self._ROADS_ITEMS_PER_PAGE)
             if self._ui_roads_page < total_pages - 1:
                 self._ui_roads_page += 1; self._map_ui_redraw_content()
-        elif cid == 113:
-            self.map_recorder._cmd_whereami(fake, "road")
-        elif cid == 114:
-            self.map_recorder._cmd_whereami(fake, "link")
-        elif cid == 115:
-            self.map_recorder._cmd_whereami(fake, "zone")
+        elif 113 <= cid <= 117:
+            wa_type = self._WA_TYPES[cid - 113]
+            if wa_type in self._ui_whereami:
+                self._ui_whereami.discard(wa_type)
+            else:
+                self._ui_whereami.add(wa_type)
+            self._map_ui_redraw_content()
 
     def _map_ui_click_elementos(self, cid: int):
         # ── Vista detalle ──────────────────────────────────────────────────
@@ -1087,6 +1219,14 @@ class _MapUIMixin(_MixinBase):
                         cur = self._map_ui_elem_field_value_str(obj, fname)
                         cycle = {"RHT": "lht", "LHT": "rht", "": "rht"}
                         new_val = cycle.get(cur, "rht")
+                        self._map_ui_silent_set(self._ui_elem_detail_id, fname, new_val)
+                        self._map_ui_redraw_content()
+                elif ftype == "enum_indicators":
+                    obj = self._map_ui_elem_get_obj(self._ui_elem_detail_id)
+                    if obj is not None:
+                        cur = self._map_ui_elem_field_value_str(obj, fname)
+                        cycle = {"OFF": "left", "LEFT": "right", "RIGHT": "off", "": "off"}
+                        new_val = cycle.get(cur, "off")
                         self._map_ui_silent_set(self._ui_elem_detail_id, fname, new_val)
                         self._map_ui_redraw_content()
             return
