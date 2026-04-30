@@ -1127,20 +1127,11 @@ class MapRecorder(PacketSenderMixin):
             else:
                 self.send(ISP_MSL(Msg=f"{TextColors.YELLOW}No hay zonas creadas."))
 
-    def _cmd_check_map(self):
-        """Busca errores lógicos exhaustivos en el mapa según la nueva topología de grafos."""
-        if not self.active_map_name:
-            self.send(ISP_MSL(Msg=f"{TextColors.RED}Error: No hay ningun mapa activo."))
-            return
-            
-        self.send(ISP_MSL(Msg=f"{TextColors.CYAN}--- Chequeando integridad de: {self.active_map_name} ---"))
-        
+    def collect_check_results(self) -> tuple[list, list]:
+        """Devuelve (errores, advertencias) sin enviar nada por chat."""
         errores = []
         advertencias = []
 
-        # ==========================================
-        # 1. CHEQUEO DE ROADLINKS (Enlaces Longitudinales)
-        # ==========================================
         for link_id, link in self.road_links.items():
             if not link.nodes:
                 errores.append(f"[RoadLink {link_id}] Sin geometria (0 nodos).")
@@ -1148,24 +1139,18 @@ class MapRecorder(PacketSenderMixin):
                 errores.append(f"[RoadLink {link_id}] Origen '{link.from_road_id}' no existe.")
             if link.to_road_id not in self.roads:
                 errores.append(f"[RoadLink {link_id}] Destino '{link.to_road_id}' no existe.")
-            
             if link.by_road_id:
                 if link.by_road_id not in self.roads:
                     advertencias.append(f"[RoadLink {link_id}] 'by_road_id' apunta a via fantasma '{link.by_road_id}'.")
                 elif link.from_road_id in self.roads:
-                    # NUEVA LOGICA: Chequeo topologico buscando en los LateralLinks
-                    es_vecino = False
-                    for lat_link in self.lateral_links.values():
-                        if (lat_link.road_a == link.from_road_id and lat_link.road_b == link.by_road_id) or \
-                           (lat_link.road_b == link.from_road_id and lat_link.road_a == link.by_road_id):
-                            es_vecino = True
-                            break
+                    es_vecino = any(
+                        (ll.road_a == link.from_road_id and ll.road_b == link.by_road_id) or
+                        (ll.road_b == link.from_road_id and ll.road_a == link.by_road_id)
+                        for ll in self.lateral_links.values()
+                    )
                     if not es_vecino:
                         advertencias.append(f"[RoadLink {link_id}] '{link.by_road_id}' no esta enlazado lateralmente con '{link.from_road_id}'.")
 
-        # ==========================================
-        # 2. CHEQUEO DE LATERALLINKS (Cambios de Carril)
-        # ==========================================
         for ll_id, llink in self.lateral_links.items():
             if not llink.nodes or len(llink.nodes) < 2:
                 errores.append(f"[LatLink {ll_id}] Sin geometria (< 2 nodos).")
@@ -1174,15 +1159,11 @@ class MapRecorder(PacketSenderMixin):
             if llink.road_b not in self.roads:
                 errores.append(f"[LatLink {ll_id}] 'road_b' ({llink.road_b}) no existe.")
 
-        # ==========================================
-        # 3. CHEQUEO DE ZONAS (IntersectionZone)
-        # ==========================================
         for z_id, zone in self.zones.items():
             if not zone.nodes:
                 errores.append(f"[Zona {z_id}] No tiene nodos de delimitacion.")
             if zone.radius_m is None or zone.radius_m <= 0:
                 errores.append(f"[Zona {z_id}] 'radius_m' invalido ({zone.radius_m}).")
-
             if not zone.priority_rules:
                 advertencias.append(f"[Zona {z_id}] 'priority_rules' esta vacio.")
             else:
@@ -1190,52 +1171,46 @@ class MapRecorder(PacketSenderMixin):
                     if len(rule) != 2:
                         errores.append(f"[Zona {z_id}] Regla mal formada.")
                         continue
-                    
                     via_pref, via_cede = rule
                     if via_pref not in self.roads:
                         advertencias.append(f"[Zona {z_id}] Regla usa via preferente fantasma '{via_pref}'.")
                     if via_cede not in self.roads:
                         advertencias.append(f"[Zona {z_id}] Regla obliga a ceder a via fantasma '{via_cede}'.")
 
-        # ==========================================
-        # 4. CHEQUEO DE VIAS (RoadSegment)
-        # ==========================================
         for r_id, road in self.roads.items():
             if road.speed_limit_kmh is None or road.speed_limit_kmh <= 0:
                 errores.append(f"[Via {r_id}] 'speed_limit_kmh' invalido.")
             if not road.nodes or len(road.nodes) < 2:
                 errores.append(f"[Via {r_id}] Demasiado corta (< 2 nodos).")
-            
-            # --- CHEQUEO DE ENTRADAS (Inaccesibles) ---
             has_entry_link = any(link.to_road_id == r_id for link in self.road_links.values())
             has_lateral_entry = any(
-                (lat.road_b == r_id and lat.allow_a_to_b) or 
+                (lat.road_b == r_id and lat.allow_a_to_b) or
                 (lat.road_a == r_id and lat.allow_b_to_a)
                 for lat in self.lateral_links.values()
             )
-            
             if not has_entry_link and not has_lateral_entry:
                 advertencias.append(f"[Via {r_id}] Inaccesible (No hay RoadLinks ni LatLinks que apunten hacia ella).")
-
-            # --- CHEQUEO DE SALIDAS (Callejones sin salida) ---
             if not road.is_circular:
                 has_exit_link = any(l.from_road_id == r_id for l in self.road_links.values())
-                
-                # Comprobamos si se puede escapar cambiando de carril
                 has_lateral_exit = any(
-                    (lat.road_a == r_id and lat.allow_a_to_b) or 
+                    (lat.road_a == r_id and lat.allow_a_to_b) or
                     (lat.road_b == r_id and lat.allow_b_to_a)
                     for lat in self.lateral_links.values()
                 )
-                
                 if not has_exit_link and not has_lateral_exit:
                     advertencias.append(f"[Via {r_id}] Callejon sin salida (Faltan enlaces directos o LatLinks para salir).")
 
-        # ==========================================
-        # 5. RESUMEN FINAL Y ANTI-FLOOD
-        # ==========================================
-        tot_err = len(errores)
-        tot_adv = len(advertencias)
+        return errores, advertencias
+
+    def _cmd_check_map(self):
+        """Busca errores lógicos exhaustivos en el mapa según la nueva topología de grafos."""
+        if not self.active_map_name:
+            self.send(ISP_MSL(Msg=f"{TextColors.RED}Error: No hay ningun mapa activo."))
+            return
+
+        self.send(ISP_MSL(Msg=f"{TextColors.CYAN}--- Chequeando integridad de: {self.active_map_name} ---"))
+        errores, advertencias = self.collect_check_results()
+        tot_err, tot_adv = len(errores), len(advertencias)
 
         if tot_err == 0 and tot_adv == 0:
             self.send(ISP_MSL(Msg=f"{TextColors.GREEN}[OK] Mapa perfecto! La topologia es 100% solida."))
@@ -1244,13 +1219,11 @@ class MapRecorder(PacketSenderMixin):
         msg_color = TextColors.RED if tot_err > 0 else TextColors.YELLOW
         self.send(ISP_MSL(Msg=f"{msg_color}Chequeo finalizado: {TextColors.WHITE}{tot_err} errores {msg_color}y {TextColors.WHITE}{tot_adv} avisos."))
 
-        # Mostrar Errores (Max 4 para no saturar)
         for err in errores[:4]:
             self.send(ISP_MSL(Msg=f"{TextColors.RED}ERR: {TextColors.WHITE}{err[:80]}"))
         if tot_err > 4:
             self.send(ISP_MSL(Msg=f"{TextColors.RED}... y {tot_err - 4} errores mas."))
 
-        # Mostrar Advertencias (Max 4 para no saturar)
         if tot_err == 0 or tot_err <= 4:
             for adv in advertencias[:4]:
                 self.send(ISP_MSL(Msg=f"{TextColors.YELLOW}AVISO: {TextColors.WHITE}{adv[:80]}"))

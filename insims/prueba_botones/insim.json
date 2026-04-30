@@ -1,0 +1,9 @@
+{
+  "name": "prueba_botones",
+  "version": "1.0.0",
+  "description": "InSim prueba_botones",
+  "author": "",
+  "entry_point": "main.py",
+  "insim_dependencies": {},
+  "python_dependencies": []
+}
