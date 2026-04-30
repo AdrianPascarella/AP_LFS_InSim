@@ -1046,6 +1046,7 @@ class _MapUIMixin(_MixinBase):
                 if road_a and road_b:
                     arg_a = f"{road_a},{suf_a}" if suf_a else road_a
                     arg_b = f"{road_b},{suf_b}" if suf_b else road_b
+                    self.map_recorder._current_cmd_ucid = self._ui_ucid
                     if self._ui_pending_action == "rec_roadlink":
                         self.map_recorder._cmd_rec_roadlink(arg_a, arg_b)
                     else:
@@ -1065,6 +1066,7 @@ class _MapUIMixin(_MixinBase):
             if cid == 116:
                 obj_id = buf.get(self._UI_CID_TI1, "").strip()
                 if obj_id:
+                    self.map_recorder._current_cmd_ucid = self._ui_ucid
                     if self._ui_pending_action == "rec_road":
                         self.map_recorder._cmd_rec_road(obj_id)
                     elif self._ui_pending_action == "rec_zona":

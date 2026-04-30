@@ -62,6 +62,7 @@ class AIControl(_MapUIMixin, _CommandsMixin, _PhysicsMixin, _NavigationMixin, _T
         elif self.user_manager.user_autorized_cmd(self.user_manager.cmds_white_list, 'route', cmd, packet.UCID):
             self.cmds_route.handle_commands(packet, args)
         elif self.user_manager.user_autorized_cmd(self.user_manager.cmds_white_list, 'map', cmd, packet.UCID):
+            self.map_recorder._current_cmd_ucid = packet.UCID
             self.map_recorder.cmd_manager.handle_commands(packet, args)
 
     def _generate_random_pid(self, pid_type: Literal['speed', 'direction']) -> PIDController:
@@ -158,7 +159,8 @@ class AIControl(_MapUIMixin, _CommandsMixin, _PhysicsMixin, _NavigationMixin, _T
             if not telemetry:
                 continue
 
-            if player:
+            rec_ucid = self.map_recorder.recording_ucid
+            if player and (rec_ucid is None or player.ucid == rec_ucid):
                 self.map_recorder.update_recording(
                     telemetry.coordinates,
                     telemetry.speed.speed_kmh
