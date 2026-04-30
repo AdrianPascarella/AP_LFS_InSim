@@ -771,10 +771,10 @@ class _MapUIMixin(_MixinBase):
                           BStyle=ISB_STYLE.CANCEL | ISB_STYLE.CLICK,
                           L=144, T=21, W=22, H=6, Text="Borrar")
 
-        # Filas de campos (máx. 8 filas)
+        # Filas de campos (máx. 8 filas, spacing=7 para que row7 quede en T=78)
         self._ui_detail_field_map = {}
         for row, (fname, ftype) in enumerate(fields_def[:8]):
-            T = 29 + row * 8
+            T = 29 + row * 7
             label_cid = 111 + row * 2
             val_cid   = 112 + row * 2
 
@@ -782,23 +782,23 @@ class _MapUIMixin(_MixinBase):
 
             self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=label_cid,
                               BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
-                              L=2, T=T, W=68, H=7, Text=f"{fname}:")
+                              L=2, T=T, W=68, H=6, Text=f"{fname}:")
 
             if ftype == "readonly":
                 self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=val_cid,
                                   BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
-                                  L=72, T=T, W=108, H=7, Text=val_str)
+                                  L=72, T=T, W=108, H=6, Text=val_str)
             elif ftype == "bool":
                 is_true = val_str.lower() in ("true", "yes", "si", "1")
                 style = (ISB_STYLE.OK | ISB_STYLE.CLICK) if is_true else (ISB_STYLE.CANCEL | ISB_STYLE.CLICK)
                 self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=val_cid,
-                                  BStyle=style, L=72, T=T, W=108, H=7,
+                                  BStyle=style, L=72, T=T, W=108, H=6,
                                   Text="ON" if is_true else "OFF")
                 self._ui_detail_field_map[val_cid] = (fname, "bool")
             elif ftype == "enum_traffic":
                 style = ISB_STYLE.OK | ISB_STYLE.CLICK if val_str == "RHT" else ISB_STYLE.TITLE | ISB_STYLE.CLICK
                 self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=val_cid,
-                                  BStyle=style, L=72, T=T, W=108, H=7,
+                                  BStyle=style, L=72, T=T, W=108, H=6,
                                   Text=val_str if val_str else "RHT")
                 self._ui_detail_field_map[val_cid] = (fname, "enum_traffic")
             elif ftype == "enum_indicators":
@@ -807,14 +807,14 @@ class _MapUIMixin(_MixinBase):
                               "RIGHT": ISB_STYLE.OK | ISB_STYLE.CLICK}
                 style = ind_styles.get(val_str, ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK)
                 self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=val_cid,
-                                  BStyle=style, L=72, T=T, W=108, H=7,
+                                  BStyle=style, L=72, T=T, W=108, H=6,
                                   Text=val_str if val_str else "OFF")
                 self._ui_detail_field_map[val_cid] = (fname, "enum_indicators")
             else:
                 self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=val_cid,
                                   BStyle=ISB_STYLE.LIGHT | ISB_STYLE.CLICK,
                                   TypeIn=TYPEIN_FLAGS.INIT_WITH_TEXT | 48,
-                                  L=72, T=T, W=108, H=7, Text=val_str)
+                                  L=72, T=T, W=108, H=6, Text=val_str)
                 self._ui_detail_field_map[val_cid] = (fname, ftype)
 
     # ──────────────────────────────────────────────────────────────────────────
