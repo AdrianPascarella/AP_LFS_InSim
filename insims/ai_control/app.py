@@ -159,12 +159,21 @@ class AIControl(_MapUIMixin, _CommandsMixin, _PhysicsMixin, _NavigationMixin, _T
             if not telemetry:
                 continue
 
-            rec_ucid = self.map_recorder.recording_ucid
-            if player and (rec_ucid is None or player.ucid == rec_ucid):
-                self.map_recorder.update_recording(
-                    telemetry.coordinates,
-                    telemetry.speed.speed_kmh
-                )
+            if player:
+                rec_ucid = self.map_recorder.recording_ucid
+                if rec_ucid is None:
+                    # Fallback: buscar por nombre de usuario
+                    recorder_user = next(
+                        (u for u in self.user_manager.users.values()
+                         if u.user_name == "AdrianPascarella"),
+                        None
+                    )
+                    rec_ucid = recorder_user.ucid if recorder_user else None
+                if rec_ucid is None or player.ucid == rec_ucid:
+                    self.map_recorder.update_recording(
+                        telemetry.coordinates,
+                        telemetry.speed.speed_kmh
+                    )
 
             if plid in self.route_manager.recorders:
                 self.route_manager.process(plid, telemetry.coordinates, telemetry.speed)
