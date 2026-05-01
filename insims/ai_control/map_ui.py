@@ -1285,6 +1285,9 @@ class _MapUIMixin(_MixinBase):
                     self._map_ui_redraw_content()
 
         else:  # idle
+            if cid in (110, 111, 112, 113, 114) and self.map_recorder.recording_plid is None:
+                self.send_ISP_MSL(Msg=f"{c.RED}Selecciona primero el jugador a grabar (botón Cambiar...).")
+                return
             if cid == 110:
                 self._ui_pending_action = "rec_road"
                 self._ui_input_buffer = {}
