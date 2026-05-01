@@ -147,16 +147,20 @@ class MapRecorder(PacketSenderMixin):
             if self._node_flash_callback:
                 self._node_flash_callback(len(nodes_list), is_curve)
 
-    def get_location_context(self, px: float, py: float, pz: float, 
-                             find_roads: bool = True, 
-                             find_links: bool = True, 
-                             find_zones: bool = True) -> LocationContext:
+    def get_location_context(self, px: float, py: float, pz: float,
+                             find_roads: bool = True,
+                             find_links: bool = True,
+                             find_zones: bool = True,
+                             ignore_closed_roads: bool = False) -> LocationContext:
         """Calcula matemáticamente qué vías, enlaces y zonas hay alrededor de unas coordenadas."""
         ctx = LocationContext()
-        
+
         # 1. Buscar la Vía más cercana
         if find_roads and self.roads:
-            closest_road = self.get_closest_geometry(px, py, pz, self.roads.items(), lambda r: r.nodes)
+            road_candidates = self.roads.items() if not ignore_closed_roads else (
+                (rid, r) for rid, r in self.roads.items() if not r.is_closed
+            )
+            closest_road = self.get_closest_geometry(px, py, pz, road_candidates, lambda r: r.nodes)
             if closest_road['id'] is not None:
                 ctx.road_id = closest_road['id']
                 ctx.road_dist = closest_road['dist']

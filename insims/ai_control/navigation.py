@@ -267,7 +267,7 @@ class _NavigationMixin(_MixinBase):
         # 1. LOCALIZACIÓN INICIAL (El Despertar)
         # =========================================================
         if not mode.freeroam_road_started:
-            ctx: LocationContext = self.map_recorder.get_location_context(my_coords.x_m, my_coords.y_m, my_coords.z_m, find_zones=False)
+            ctx: LocationContext = self.map_recorder.get_location_context(my_coords.x_m, my_coords.y_m, my_coords.z_m, find_zones=False, ignore_closed_roads=True)
             
             if not ctx.road_id:
                 behavior.target_speed_kmh = 0.0
