@@ -125,7 +125,7 @@ class _MapUIMixin(_MixinBase):
         self._ui_roads_page: int = 0
         self._ui_roads_search: str = ""
         self._ui_whereami: set = set()
-        self._ui_whereami_interval: float = 5.0
+        self._ui_whereami_interval: float = 0.5
         self._ui_whereami_last_update: float = 0.0
         self._ui_road_picker_page: int = 0
         self._ui_road_picker_slot: str = "a"  # "a" | "b"
