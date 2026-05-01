@@ -4,7 +4,7 @@ import logging
 from typing import TYPE_CHECKING, Optional, Literal
 
 from lfs_insim import InSimApp, mute_send_logs
-from lfs_insim.insim_packet_class import ISP_MCI, ISP_RST, ISP_CRS, ISP_MSO, AIInputVal as AIV, CS, SND
+from lfs_insim.insim_packet_class import ISP_MCI, ISP_RST, ISP_CRS, ISP_MSO, ISP_PLL, AIInputVal as AIV, CS, SND
 from lfs_insim.utils import PIDController, separate_command_args, TextColors
 
 mute_send_logs('ISP_AIC')
@@ -139,6 +139,12 @@ class AIControl(_MapUIMixin, _CommandsMixin, _PhysicsMixin, _NavigationMixin, _T
             if isinstance(behavior.active_mode, RouteMode):
                 behavior.active_mode.route_wp_index = 0
                 behavior.active_mode.route_started = False
+
+    def on_ISP_PLL(self, packet: ISP_PLL):
+        """Se ejecuta cuando un jugador va a espectadores o se desconecta."""
+        if self.map_recorder.recording_plid == packet.PLID:
+            self.map_recorder.recording_plid = None
+            self.send_ISP_MSL(Msg=f"{TextColors.YELLOW}[Grabación] PLID {packet.PLID} ha salido. Selecciona un nuevo PLID para grabar.", Sound=SND.SYSMESSAGE)
 
     def on_ISP_MCI(self, packet: ISP_MCI):
         """Bucle principal de telemetría."""
