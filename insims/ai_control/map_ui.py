@@ -539,12 +539,12 @@ class _MapUIMixin(_MixinBase):
 
         self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=110,
                           BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
-                          L=2, T=21, W=182, H=7,
+                          L=2, T=21, W=125, H=7,
                           Text=f"Grabando: {rec_type} '{obj_id}'")
         self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=111,
-                          BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
-                          L=2, T=29, W=80, H=6,
-                          Text=f"Nodos grabados: {n}")
+                          BStyle=ISB_STYLE.DARK | ISB_STYLE.LEFT,
+                          L=129, T=21, W=55, H=7,
+                          Text=f"● {n} nodos")
         self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=112,
                           BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
                           L=2, T=37, W=60, H=8, Text="+ Anadir punto")
@@ -833,21 +833,15 @@ class _MapUIMixin(_MixinBase):
         self._map_ui_clear_content()
         self._map_ui_draw_tab_elementos()
 
-    _UI_CID_NODE_FLASH = 166
-
     def _map_ui_node_flash(self, node_count: int, is_curve: bool):
-        """Muestra un botón flash breve al añadir un nodo durante la grabación."""
+        """Actualiza el contador de nodos en el tab Grabar con color flash."""
         import time
         if not getattr(self, '_ui_ucid', None):
             return
         color = "^3" if is_curve else "^2"
-        label = f"{color}● {node_count} nodo{'s' if node_count != 1 else ''}"
-        self.send_ISP_BTN(
-            ReqI=1, UCID=self._ui_ucid, ClickID=self._UI_CID_NODE_FLASH,
-            T=93, L=2, W=40, H=5,
-            BStyle=ISB_STYLE.DARK | ISB_STYLE.LEFT,
-            Text=label,
-        )
+        self.send_ISP_BTN(ReqI=1, UCID=self._ui_ucid, ClickID=111,
+                          T=0, L=0, W=0, H=0, BStyle=0,
+                          Text=f"{color}● {node_count} nodos")
         self._ui_node_flash_time = time.time()
 
     # ──────────────────────────────────────────────────────────────────────────
@@ -1079,8 +1073,11 @@ class _MapUIMixin(_MixinBase):
 
         if self._ui_node_flash_time and now - self._ui_node_flash_time >= 0.5:
             self._ui_node_flash_time = 0.0
-            self.send_ISP_BTN(ReqI=1, UCID=self._ui_ucid, ClickID=self._UI_CID_NODE_FLASH,
-                              T=0, L=0, W=0, H=0, BStyle=0, Text="")
+            rec = self.map_recorder.current_recording
+            if rec:
+                n = len(rec.get("nodes", []))
+                self.send_ISP_BTN(ReqI=1, UCID=self._ui_ucid, ClickID=111,
+                                  T=0, L=0, W=0, H=0, BStyle=0, Text=f"● {n} nodos")
 
     def on_ISP_BTC(self, packet: ISP_BTC):
         # UCID=0 en BTC/BTT significa "local" (InSim en la misma máquina que LFS)
