@@ -843,7 +843,7 @@ class _MapUIMixin(_MixinBase):
         color = "^3" if is_curve else "^2"
         label = f"{color}● {node_count} nodo{'s' if node_count != 1 else ''}"
         self.send_ISP_BTN(
-            UCID=self._ui_ucid, ClickID=self._UI_CID_NODE_FLASH,
+            ReqI=1, UCID=self._ui_ucid, ClickID=self._UI_CID_NODE_FLASH,
             T=93, L=2, W=40, H=5,
             BStyle=ISB_STYLE.DARK | ISB_STYLE.LEFT,
             Text=label,
@@ -1079,7 +1079,7 @@ class _MapUIMixin(_MixinBase):
 
         if self._ui_node_flash_time and now - self._ui_node_flash_time >= 0.5:
             self._ui_node_flash_time = 0.0
-            self.send_ISP_BTN(UCID=self._ui_ucid, ClickID=self._UI_CID_NODE_FLASH,
+            self.send_ISP_BTN(ReqI=1, UCID=self._ui_ucid, ClickID=self._UI_CID_NODE_FLASH,
                               T=0, L=0, W=0, H=0, BStyle=0, Text="")
 
     def on_ISP_BTC(self, packet: ISP_BTC):
