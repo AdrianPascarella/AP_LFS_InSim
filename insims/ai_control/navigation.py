@@ -273,10 +273,15 @@ class _NavigationMixin(_MixinBase):
                 behavior.target_speed_kmh = 0.0
                 return
                 
+            link_from_open = False
             if ctx.link_dist < ctx.road_dist and ctx.link_type == 'RoadLink':
+                link_obj = self.map_recorder.road_links.get(ctx.link_id)
+                from_road = self.map_recorder.roads.get(link_obj.from_road_id) if link_obj else None
+                link_from_open = bool(link_obj and from_road and not from_road.is_closed)
+
+            if link_from_open:
                 mode.current_id = ctx.link_id
                 mode.current_type = ctx.link_type
-                link_obj = self.map_recorder.road_links[ctx.link_id]
                 mode.current_road_id = link_obj.from_road_id
                 mode.node_index = closest_idx = get_closest_node_index(my_coords, link_obj.nodes, is_waypoint=False)
                 self._plan_next_link(mode, on_link=(link_obj, my_coords))

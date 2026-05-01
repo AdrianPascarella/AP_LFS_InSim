@@ -127,6 +127,8 @@ class AIControl(_MapUIMixin, _CommandsMixin, _PhysicsMixin, _NavigationMixin, _T
                 if isinstance(behavior.active_mode, RouteMode):
                     behavior.active_mode.route_wp_index = 0
                     behavior.active_mode.route_started = False
+                elif isinstance(behavior.active_mode, FreeroamMode):
+                    behavior.active_mode.freeroam_road_started = False
 
     def on_ISP_CRS(self, packet: ISP_CRS):
         """Se ejecuta cuando un coche individual se reinicia."""
@@ -140,6 +142,8 @@ class AIControl(_MapUIMixin, _CommandsMixin, _PhysicsMixin, _NavigationMixin, _T
             if isinstance(behavior.active_mode, RouteMode):
                 behavior.active_mode.route_wp_index = 0
                 behavior.active_mode.route_started = False
+            elif isinstance(behavior.active_mode, FreeroamMode):
+                behavior.active_mode.freeroam_road_started = False
 
     def on_ISP_PLL(self, packet: ISP_PLL):
         """Se ejecuta cuando un jugador va a espectadores o se desconecta."""
