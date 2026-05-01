@@ -1037,12 +1037,13 @@ class _MapUIMixin(_MixinBase):
                                   BStyle=0, L=0, T=0, W=0, H=0, Text=result)
 
     def on_ISP_BTC(self, packet: ISP_BTC):
-        if self._ui_ucid is None or packet.UCID != self._ui_ucid:
+        # UCID=0 en BTC/BTT significa "local" (InSim en la misma máquina que LFS)
+        if self._ui_ucid is None or (packet.UCID != self._ui_ucid and packet.UCID != 0):
             return
         self._map_ui_handle_click(packet.ClickID)
 
     def on_ISP_BTT(self, packet: ISP_BTT):
-        if self._ui_ucid is None or packet.UCID != self._ui_ucid:
+        if self._ui_ucid is None or (packet.UCID != self._ui_ucid and packet.UCID != 0):
             return
         text = packet.Text.strip()
         self._ui_input_buffer[packet.ClickID] = text
