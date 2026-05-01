@@ -129,6 +129,7 @@ class _MapUIMixin(_MixinBase):
         self._ui_whereami_last_update: float = 0.0
         self._ui_road_picker_page: int = 0
         self._ui_road_picker_slot: str = "a"  # "a" | "b"
+        self._ui_grabar_player_page: int = 0
 
     # ──────────────────────────────────────────────────────────────────────────
     # Entrada: .map ui
@@ -287,8 +288,12 @@ class _MapUIMixin(_MixinBase):
             self._map_ui_draw_grabar_two_args()
         elif self._ui_pending_action in ("rec_road", "rec_zona", "rec_rule"):
             self._map_ui_draw_grabar_one_arg()
+        elif self._ui_pending_action == "select_recorder_plid":
+            self._map_ui_draw_grabar_select_plid()
         else:
             self._map_ui_draw_grabar_idle()
+
+    _UI_GRABAR_PLAYER_ITEMS = 8
 
     def _map_ui_draw_grabar_idle(self):
         u = self._ui_ucid
@@ -308,6 +313,90 @@ class _MapUIMixin(_MixinBase):
         self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=115,
                           BStyle=style, L=2, T=43, W=40, H=8,
                           Text="Auto: ON" if auto_on else "Auto: OFF")
+
+        # Selección de jugador a grabar
+        rec_plid = self.map_recorder.recording_plid
+        if rec_plid is not None:
+            sel_name = self._map_ui_grabar_plid_label(rec_plid)
+            sel_text = f"Grabando PLID {rec_plid}: {sel_name}"
+        else:
+            sel_text = "Grabando: (ninguno seleccionado)"
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=116,
+                          BStyle=ISB_STYLE.DARK | ISB_STYLE.LEFT,
+                          L=2, T=54, W=130, H=8, Text=sel_text)
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=117,
+                          BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
+                          L=134, T=54, W=50, H=8, Text="Cambiar...")
+
+    def _map_ui_grabar_plid_label(self, plid: int) -> str:
+        """Devuelve 'NombreJugador' o 'NombreAI (dueño)' para un PLID."""
+        player = self.user_manager.players.get(plid)
+        if player:
+            user = self.user_manager.users.get(player.ucid)
+            return user.player_name if user else f"UCID {player.ucid}"
+        ai = self.user_manager.ais.get(plid)
+        if ai:
+            owner = self.user_manager.users.get(ai.player.ucid)
+            owner_name = owner.player_name if owner else f"UCID {ai.player.ucid}"
+            return f"{ai.ai_name} ({owner_name})"
+        return "desconocido"
+
+    def _map_ui_draw_grabar_select_plid(self):
+        """Pantalla de selección de PLID para grabar."""
+        u = self._ui_ucid
+
+        # Construir lista de todos los coches en pista
+        all_cars = []
+        for p in self.user_manager.players.values():
+            user = self.user_manager.users.get(p.ucid)
+            name = user.player_name if user else f"UCID {p.ucid}"
+            all_cars.append((p.plid, f"[H] PLID {p.plid}  {name}"))
+        for ai in self.user_manager.ais.values():
+            owner = self.user_manager.users.get(ai.player.ucid)
+            owner_name = owner.player_name if owner else f"UCID {ai.player.ucid}"
+            all_cars.append((ai.player.plid, f"[AI] PLID {ai.player.plid}  {ai.ai_name} ({owner_name})"))
+        all_cars.sort(key=lambda x: x[0])
+
+        per_page = self._UI_GRABAR_PLAYER_ITEMS
+        total = len(all_cars)
+        max_page = max(0, (total - 1) // per_page) if total else 0
+        page = min(self._ui_grabar_player_page, max_page)
+        self._ui_grabar_player_page = page
+        items = all_cars[page * per_page:(page + 1) * per_page]
+
+        rec_plid = self.map_recorder.recording_plid
+
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=108,
+                          BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
+                          L=2, T=21, W=36, H=7, Text="<- Volver")
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=109,
+                          BStyle=ISB_STYLE.TITLE | ISB_STYLE.LEFT,
+                          L=40, T=21, W=144, H=7, Text="Selecciona el PLID a grabar:")
+
+        if not all_cars:
+            self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=110,
+                              BStyle=ISB_STYLE.DARK | ISB_STYLE.LEFT,
+                              L=2, T=30, W=182, H=7, Text="No hay coches en pista")
+        else:
+            for i, (plid, label) in enumerate(items):
+                active = (plid == rec_plid)
+                style = (ISB_STYLE.OK | ISB_STYLE.CLICK | ISB_STYLE.LEFT) if active else (ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK | ISB_STYLE.LEFT)
+                self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=110 + i,
+                                  BStyle=style, L=2, T=30 + i * 8, W=182, H=7, Text=label)
+            for i in range(len(items), per_page):
+                self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=110 + i,
+                                  BStyle=ISB_STYLE.DARK, L=2, T=30 + i * 8, W=182, H=7, Text="")
+
+        T_pag = 30 + per_page * 8
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=120,
+                          BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
+                          L=2, T=T_pag, W=20, H=7, Text="<")
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=121,
+                          BStyle=ISB_STYLE.DARK | ISB_STYLE.LEFT,
+                          L=24, T=T_pag, W=30, H=7, Text=f"{page+1}/{max_page+1}")
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=122,
+                          BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
+                          L=56, T=T_pag, W=20, H=7, Text=">")
 
     def _map_ui_draw_grabar_one_arg(self):
         u = self._ui_ucid
@@ -1165,7 +1254,37 @@ class _MapUIMixin(_MixinBase):
                 self._ui_input_buffer = {}
                 self._map_ui_redraw_content()
 
-        else:
+        elif self._ui_pending_action == "select_recorder_plid":
+            if cid == 108:  # Volver
+                self._ui_pending_action = None
+                self._ui_grabar_player_page = 0
+                self._map_ui_redraw_content()
+            elif 110 <= cid <= 117:  # items de la lista
+                all_cars = []
+                for p in self.user_manager.players.values():
+                    all_cars.append(p.plid)
+                for ai in self.user_manager.ais.values():
+                    all_cars.append(ai.player.plid)
+                all_cars.sort()
+                per_page = self._UI_GRABAR_PLAYER_ITEMS
+                idx = self._ui_grabar_player_page * per_page + (cid - 110)
+                if idx < len(all_cars):
+                    self.map_recorder.recording_plid = all_cars[idx]
+                    self._ui_pending_action = None
+                    self._ui_grabar_player_page = 0
+                    self._map_ui_redraw_content()
+            elif cid == 120:  # página anterior
+                if self._ui_grabar_player_page > 0:
+                    self._ui_grabar_player_page -= 1
+                    self._map_ui_redraw_content()
+            elif cid == 122:  # página siguiente
+                all_cars_count = len(self.user_manager.players) + len(self.user_manager.ais)
+                max_page = max(0, (all_cars_count - 1) // self._UI_GRABAR_PLAYER_ITEMS)
+                if self._ui_grabar_player_page < max_page:
+                    self._ui_grabar_player_page += 1
+                    self._map_ui_redraw_content()
+
+        else:  # idle
             if cid == 110:
                 self._ui_pending_action = "rec_road"
                 self._ui_input_buffer = {}
@@ -1189,6 +1308,10 @@ class _MapUIMixin(_MixinBase):
             elif cid == 115:
                 new = not self.map_recorder.auto_recording_enabled
                 self.map_recorder._cmd_rec_auto("true" if new else "false")
+                self._map_ui_redraw_content()
+            elif cid == 117:  # Cambiar jugador
+                self._ui_pending_action = "select_recorder_plid"
+                self._ui_grabar_player_page = 0
                 self._map_ui_redraw_content()
 
     def _map_ui_click_info(self, cid: int):

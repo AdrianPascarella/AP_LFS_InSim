@@ -50,7 +50,7 @@ class MapRecorder(PacketSenderMixin):
         self.MAX_DYNAMIC_DIST_m = 60.0    
         self.ANGLE_DELTA_degrees = 15.0   
         
-        self.recording_ucid: Optional[int] = None  # UCID del jugador que inició la grabación actual
+        self.recording_plid: Optional[int] = None  # PLID del jugador cuya telemetría se graba
         self._current_cmd_ucid: Optional[int] = None  # UCID del emisor del comando en curso
 
         self.cmd_manager = CMDManager(cmd_prefix, "map")
@@ -518,7 +518,7 @@ class MapRecorder(PacketSenderMixin):
 
     def _cmd_rec_road(self, road_id: str):
         """Inicia la grabación de los nodos de una vía (crea una nueva o re-graba una existente de forma segura)."""
-        self.recording_ucid = self._current_cmd_ucid
+        pass  # recording_plid se fija desde la UI antes de iniciar la grabación
         # 1. Escudo: Necesitamos un mapa activo
         if not self.active_map_name:
             self.send(ISP_MSL(Msg=f"{TextColors.RED}Error: Selecciona un mapa primero con {TextColors.WHITE}!map set_map <nombre>", Sound=SND.INVALIDKEY))
@@ -556,7 +556,7 @@ class MapRecorder(PacketSenderMixin):
 
     def _cmd_rec_roadlink(self, origen: str, destino: str):
         """Inicia la grabación de un enlace longitudinal entre dos vías."""
-        self.recording_ucid = self._current_cmd_ucid
+        pass  # recording_plid se fija desde la UI antes de iniciar la grabación
         # Escudos básicos
         if not self.active_map_name:
             self.send(ISP_MSL(Msg=f"{TextColors.RED}Error: Selecciona un mapa primero con {TextColors.WHITE}!map set_map <nombre>", Sound=SND.INVALIDKEY))
@@ -597,7 +597,7 @@ class MapRecorder(PacketSenderMixin):
 
     def _cmd_rec_laterallink(self, road_a: str, road_b: str):
         """Inicia la grabación de un enlace lateral (cambio de carril) entre dos vías paralelas."""
-        self.recording_ucid = self._current_cmd_ucid
+        pass  # recording_plid se fija desde la UI antes de iniciar la grabación
         # Escudos básicos
         if not self.active_map_name:
             self.send(ISP_MSL(Msg=f"{TextColors.RED}Error: Selecciona un mapa primero con {TextColors.WHITE}!map set_map", Sound=SND.INVALIDKEY))
@@ -638,7 +638,7 @@ class MapRecorder(PacketSenderMixin):
     
     def _cmd_rec_zone(self, zone_id: str):
         """Inicia la grabación de los nodos que delimitan una zona de intersección (punto, línea o polígono)."""
-        self.recording_ucid = self._current_cmd_ucid
+        pass  # recording_plid se fija desde la UI antes de iniciar la grabación
         # Escudos básicos
         if not self.active_map_name:
             self.send(ISP_MSL(Msg=f"{TextColors.RED}Error: Selecciona un mapa primero con {TextColors.WHITE}!map set_map", Sound=SND.INVALIDKEY))
@@ -670,7 +670,7 @@ class MapRecorder(PacketSenderMixin):
 
     def _cmd_rec_special_rule(self, rule_id: str):
         """Inicia la grabación de una regla especial (2 nodos: inicio y fin)."""
-        self.recording_ucid = self._current_cmd_ucid
+        pass  # recording_plid se fija desde la UI antes de iniciar la grabación
         if not self.active_map_name:
             self.send(ISP_MSL(Msg=f"{TextColors.RED}Error: Selecciona un mapa primero con {TextColors.WHITE}!map set_map", Sound=SND.INVALIDKEY))
             return
