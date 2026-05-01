@@ -248,8 +248,8 @@ class _TrafficMixin(_MixinBase):
         if current_time - mode._last_radar_time >= mode._radar_interval:
             
             my_speed_ms = max(ai.player.telemetry.speed.speed_kmh / 3.6, 0.1)
-            safe_gap_s = 2
-            warn_gap_s = 3.5
+            safe_gap_s = behavior.human_safe_gap
+            warn_gap_s = behavior.human_warn_gap
             min_dist_m = max(5.0, my_speed_ms * safe_gap_s)
             max_dist_m = max(15.0, my_speed_ms * warn_gap_s)
 

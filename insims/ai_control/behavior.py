@@ -62,10 +62,6 @@ class AIBehavior:
     human_speed_factor: float = 1.0       # Multiplicador de la velocidad asignada
     human_safe_gap: float = 2.0           # Radar: Segundos de frenada de emergencia
     human_warn_gap: float = 3.5           # Radar: Segundos de precaución
-    human_wander_amp: float = 0.0         # Volante: Grados máximos de despiste lateral
-    human_wander_freq: float = 1.0        # Volante: Velocidad del despiste
-    human_wander_offset: float = 0.0      # Volante: Desfase para desincronizar IAs
-    human_curve_factor: float = 1.0
 
     def reset_mode(self):
         """Apaga la navegación borrando el modo activo."""

@@ -98,10 +98,6 @@ class AIControl(_MapUIMixin, _CommandsMixin, _PhysicsMixin, _NavigationMixin, _T
             behavior.human_speed_factor = random.uniform(0.92, 1.05)
             behavior.human_safe_gap = random.uniform(1.2, 2.5)
             behavior.human_warn_gap = behavior.human_safe_gap + 1.5
-            behavior.human_wander_amp = random.uniform(0.3, 1.2)
-            behavior.human_wander_freq = random.uniform(0.5, 2.0)
-            behavior.human_wander_offset = random.uniform(0, 100)
-            behavior.human_curve_factor = random.uniform(0.6, 1.4)
             ai.extra['aic'] = behavior
             self.logger.info(f"Asignados PIDs y Personalidad única a la IA {plid}")
 
