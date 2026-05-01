@@ -144,25 +144,6 @@ class AIControl(_MapUIMixin, _CommandsMixin, _PhysicsMixin, _NavigationMixin, _T
         if not self.route_manager or not self.user_manager:
             return
 
-        # Auto-grabación: coger coords del PLID humano del usuario que inició la grabación
-        if self.map_recorder.auto_recording_enabled and self.map_recorder.current_recording:
-            rec_ucid = self.map_recorder.recording_ucid
-            if rec_ucid is not None:
-                rec_user = self.user_manager.users.get(rec_ucid)
-            else:
-                rec_user = next(
-                    (u for u in self.user_manager.users.values()
-                     if u.user_name == "AdrianPascarella"),
-                    None
-                )
-            if rec_user and rec_user.plid:
-                rec_player = self.user_manager.players.get(rec_user.plid)
-                if rec_player and rec_player.telemetry:
-                    self.map_recorder.update_recording(
-                        rec_player.telemetry.coordinates,
-                        rec_player.telemetry.speed.speed_kmh
-                    )
-
         for car_info in packet.Info:
             plid = car_info.PLID
 
@@ -180,6 +161,11 @@ class AIControl(_MapUIMixin, _CommandsMixin, _PhysicsMixin, _NavigationMixin, _T
 
             if plid in self.route_manager.recorders:
                 self.route_manager.process(plid, telemetry.coordinates, telemetry.speed)
+
+            if (plid == self.map_recorder.recording_plid
+                    and self.map_recorder.auto_recording_enabled
+                    and self.map_recorder.current_recording):
+                self.map_recorder.update_recording(telemetry.coordinates, telemetry.speed.speed_kmh)
 
             if ai and 'aic' in ai.extra:
                 behavior: AIBehavior = ai.extra['aic']

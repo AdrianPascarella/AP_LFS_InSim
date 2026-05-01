@@ -125,8 +125,11 @@ class _MapUIMixin(_MixinBase):
         self._ui_roads_page: int = 0
         self._ui_roads_search: str = ""
         self._ui_whereami: set = set()
-        self._ui_whereami_interval: float = 5.0
+        self._ui_whereami_interval: float = 0.5
         self._ui_whereami_last_update: float = 0.0
+        self._ui_road_picker_page: int = 0
+        self._ui_road_picker_slot: str = "a"  # "a" | "b"
+        self._ui_grabar_player_page: int = 0
 
     # ──────────────────────────────────────────────────────────────────────────
     # Entrada: .map ui
@@ -285,8 +288,12 @@ class _MapUIMixin(_MixinBase):
             self._map_ui_draw_grabar_two_args()
         elif self._ui_pending_action in ("rec_road", "rec_zona", "rec_rule"):
             self._map_ui_draw_grabar_one_arg()
+        elif self._ui_pending_action == "select_recorder_plid":
+            self._map_ui_draw_grabar_select_plid()
         else:
             self._map_ui_draw_grabar_idle()
+
+    _UI_GRABAR_PLAYER_ITEMS = 8
 
     def _map_ui_draw_grabar_idle(self):
         u = self._ui_ucid
@@ -306,6 +313,90 @@ class _MapUIMixin(_MixinBase):
         self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=115,
                           BStyle=style, L=2, T=43, W=40, H=8,
                           Text="Auto: ON" if auto_on else "Auto: OFF")
+
+        # Selección de jugador a grabar
+        rec_plid = self.map_recorder.recording_plid
+        if rec_plid is not None:
+            sel_name = self._map_ui_grabar_plid_label(rec_plid)
+            sel_text = f"Grabando PLID {rec_plid}: {sel_name}"
+        else:
+            sel_text = "Grabando: (ninguno seleccionado)"
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=116,
+                          BStyle=ISB_STYLE.DARK | ISB_STYLE.LEFT,
+                          L=2, T=54, W=130, H=8, Text=sel_text)
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=117,
+                          BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
+                          L=134, T=54, W=50, H=8, Text="Cambiar...")
+
+    def _map_ui_grabar_plid_label(self, plid: int) -> str:
+        """Devuelve 'NombreJugador' o 'NombreAI (dueño)' para un PLID."""
+        player = self.user_manager.players.get(plid)
+        if player:
+            user = self.user_manager.users.get(player.ucid)
+            return user.player_name if user else f"UCID {player.ucid}"
+        ai = self.user_manager.ais.get(plid)
+        if ai:
+            owner = self.user_manager.users.get(ai.player.ucid)
+            owner_name = owner.player_name if owner else f"UCID {ai.player.ucid}"
+            return f"{ai.ai_name} ({owner_name})"
+        return "desconocido"
+
+    def _map_ui_draw_grabar_select_plid(self):
+        """Pantalla de selección de PLID para grabar."""
+        u = self._ui_ucid
+
+        # Construir lista de todos los coches en pista
+        all_cars = []
+        for p in self.user_manager.players.values():
+            user = self.user_manager.users.get(p.ucid)
+            name = user.player_name if user else f"UCID {p.ucid}"
+            all_cars.append((p.plid, f"[H] PLID {p.plid}  {name}"))
+        for ai in self.user_manager.ais.values():
+            owner = self.user_manager.users.get(ai.player.ucid)
+            owner_name = owner.player_name if owner else f"UCID {ai.player.ucid}"
+            all_cars.append((ai.player.plid, f"[AI] PLID {ai.player.plid}  {ai.ai_name} ({owner_name})"))
+        all_cars.sort(key=lambda x: x[0])
+
+        per_page = self._UI_GRABAR_PLAYER_ITEMS
+        total = len(all_cars)
+        max_page = max(0, (total - 1) // per_page) if total else 0
+        page = min(self._ui_grabar_player_page, max_page)
+        self._ui_grabar_player_page = page
+        items = all_cars[page * per_page:(page + 1) * per_page]
+
+        rec_plid = self.map_recorder.recording_plid
+
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=108,
+                          BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
+                          L=2, T=21, W=36, H=7, Text="<- Volver")
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=109,
+                          BStyle=ISB_STYLE.TITLE | ISB_STYLE.LEFT,
+                          L=40, T=21, W=144, H=7, Text="Selecciona el PLID a grabar:")
+
+        if not all_cars:
+            self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=110,
+                              BStyle=ISB_STYLE.DARK | ISB_STYLE.LEFT,
+                              L=2, T=30, W=182, H=7, Text="No hay coches en pista")
+        else:
+            for i, (plid, label) in enumerate(items):
+                active = (plid == rec_plid)
+                style = (ISB_STYLE.OK | ISB_STYLE.CLICK | ISB_STYLE.LEFT) if active else (ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK | ISB_STYLE.LEFT)
+                self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=110 + i,
+                                  BStyle=style, L=2, T=30 + i * 8, W=182, H=7, Text=label)
+            for i in range(len(items), per_page):
+                self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=110 + i,
+                                  BStyle=ISB_STYLE.DARK, L=2, T=30 + i * 8, W=182, H=7, Text="")
+
+        T_pag = 30 + per_page * 8
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=120,
+                          BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
+                          L=2, T=T_pag, W=20, H=7, Text="<")
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=121,
+                          BStyle=ISB_STYLE.DARK | ISB_STYLE.LEFT,
+                          L=24, T=T_pag, W=30, H=7, Text=f"{page+1}/{max_page+1}")
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=122,
+                          BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
+                          L=56, T=T_pag, W=20, H=7, Text=">")
 
     def _map_ui_draw_grabar_one_arg(self):
         u = self._ui_ucid
@@ -333,6 +424,8 @@ class _MapUIMixin(_MixinBase):
     _UI_CID_TI_SUF_A = 118
     _UI_CID_TI_SUF_B = 119
 
+    _UI_ROAD_PICKER_ITEMS = 6  # items visibles en el picker
+
     def _map_ui_draw_grabar_two_args(self):
         u = self._ui_ucid
         is_roadlink = (self._ui_pending_action == "rec_roadlink")
@@ -340,46 +433,91 @@ class _MapUIMixin(_MixinBase):
         label_b = "Road destino:" if is_roadlink else "Road B:"
         action_name = "RoadLink" if is_roadlink else "LatLink"
 
+        # ── Columna izquierda: picker de roads (L=2, W=68) ──────────────────
+        all_roads = sorted(self.map_recorder.roads.keys())
+        total = len(all_roads)
+        per_page = self._UI_ROAD_PICKER_ITEMS
+        max_page = max(0, (total - 1) // per_page) if total else 0
+        page = min(self._ui_road_picker_page, max_page)
+        self._ui_road_picker_page = page
+        items = all_roads[page * per_page:(page + 1) * per_page]
+
+        # Toggle slot A / B
+        slot = self._ui_road_picker_slot
+        style_a = (ISB_STYLE.OK | ISB_STYLE.CLICK) if slot == "a" else (ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK)
+        style_b = (ISB_STYLE.OK | ISB_STYLE.CLICK) if slot == "b" else (ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK)
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=120,
+                          BStyle=style_a, L=2, T=21, W=32, H=6, Text=f"→ A")
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=121,
+                          BStyle=style_b, L=36, T=21, W=32, H=6, Text=f"→ B")
+
+        if not all_roads:
+            self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=122,
+                              BStyle=ISB_STYLE.DARK | ISB_STYLE.LEFT,
+                              L=2, T=28, W=68, H=6, Text="Sin roads")
+        else:
+            for i, road_id in enumerate(items):
+                self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=122 + i,
+                                  BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK | ISB_STYLE.LEFT,
+                                  L=2, T=28 + i * 7, W=68, H=6,
+                                  Text=road_id)
+            # Rellena slots vacíos para no dejar botones huérfanos
+            for i in range(len(items), per_page):
+                self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=122 + i,
+                                  BStyle=ISB_STYLE.DARK, L=2, T=28 + i * 7, W=68, H=6, Text="")
+
+        # Paginación picker
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=128,
+                          BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
+                          L=2, T=71, W=20, H=6, Text="<")
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=129,
+                          BStyle=ISB_STYLE.DARK | ISB_STYLE.LEFT,
+                          L=24, T=71, W=24, H=6, Text=f"{page+1}/{max_page+1}")
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=132,
+                          BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
+                          L=50, T=71, W=20, H=6, Text=">")
+
+        # ── Columna derecha: formulario (L=72) ──────────────────────────────
         self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=110,
                           BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
-                          L=2, T=21, W=66, H=6, Text=label_a)
+                          L=72, T=21, W=66, H=6, Text=label_a)
         self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=111,
                           BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
-                          L=70, T=21, W=42, H=6, Text="sufijo (opcional):")
+                          L=140, T=21, W=44, H=6, Text="sufijo:")
         self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=self._UI_CID_TI1,
                           BStyle=ISB_STYLE.LIGHT | ISB_STYLE.CLICK,
                           TypeIn=TYPEIN_FLAGS.INIT_WITH_TEXT | 40,
-                          L=2, T=28, W=66, H=8,
+                          L=72, T=28, W=66, H=8,
                           Text=self._ui_input_buffer.get(self._UI_CID_TI1, ""))
         self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=self._UI_CID_TI_SUF_A,
                           BStyle=ISB_STYLE.LIGHT | ISB_STYLE.CLICK,
                           TypeIn=TYPEIN_FLAGS.INIT_WITH_TEXT | 20,
-                          L=70, T=28, W=42, H=8,
+                          L=140, T=28, W=44, H=8,
                           Text=self._ui_input_buffer.get(self._UI_CID_TI_SUF_A, ""))
 
         self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=112,
                           BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
-                          L=2, T=38, W=66, H=6, Text=label_b)
+                          L=72, T=39, W=66, H=6, Text=label_b)
         self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=113,
                           BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
-                          L=70, T=38, W=42, H=6, Text="sufijo (opcional):")
+                          L=140, T=39, W=44, H=6, Text="sufijo:")
         self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=self._UI_CID_TI2,
                           BStyle=ISB_STYLE.LIGHT | ISB_STYLE.CLICK,
                           TypeIn=TYPEIN_FLAGS.INIT_WITH_TEXT | 40,
-                          L=2, T=45, W=66, H=8,
+                          L=72, T=46, W=66, H=8,
                           Text=self._ui_input_buffer.get(self._UI_CID_TI2, ""))
         self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=self._UI_CID_TI_SUF_B,
                           BStyle=ISB_STYLE.LIGHT | ISB_STYLE.CLICK,
                           TypeIn=TYPEIN_FLAGS.INIT_WITH_TEXT | 20,
-                          L=70, T=45, W=42, H=8,
+                          L=140, T=46, W=44, H=8,
                           Text=self._ui_input_buffer.get(self._UI_CID_TI_SUF_B, ""))
 
         self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=116,
                           BStyle=ISB_STYLE.OK | ISB_STYLE.CLICK,
-                          L=2, T=57, W=50, H=8, Text=f"Iniciar {action_name}")
+                          L=72, T=58, W=56, H=8, Text=f"Iniciar {action_name}")
         self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=117,
                           BStyle=ISB_STYLE.CANCEL | ISB_STYLE.CLICK,
-                          L=54, T=57, W=30, H=8, Text="Cancelar")
+                          L=130, T=58, W=34, H=8, Text="Cancelar")
 
     def _map_ui_draw_grabar_active(self, rec: dict):
         u = self._ui_ucid
@@ -899,12 +1037,13 @@ class _MapUIMixin(_MixinBase):
                                   BStyle=0, L=0, T=0, W=0, H=0, Text=result)
 
     def on_ISP_BTC(self, packet: ISP_BTC):
-        if self._ui_ucid is None or packet.UCID != self._ui_ucid:
+        # UCID=0 en BTC/BTT significa "local" (InSim en la misma máquina que LFS)
+        if self._ui_ucid is None or (packet.UCID != self._ui_ucid and packet.UCID != 0):
             return
         self._map_ui_handle_click(packet.ClickID)
 
     def on_ISP_BTT(self, packet: ISP_BTT):
-        if self._ui_ucid is None or packet.UCID != self._ui_ucid:
+        if self._ui_ucid is None or (packet.UCID != self._ui_ucid and packet.UCID != 0):
             return
         text = packet.Text.strip()
         self._ui_input_buffer[packet.ClickID] = text
@@ -1038,7 +1177,35 @@ class _MapUIMixin(_MixinBase):
                 self._map_ui_update_header()
 
         elif self._ui_pending_action in ("rec_roadlink", "rec_laterallink"):
-            if cid == 116:
+            if cid == 120:  # toggle slot A
+                self._ui_road_picker_slot = "a"
+                self._map_ui_redraw_content()
+            elif cid == 121:  # toggle slot B
+                self._ui_road_picker_slot = "b"
+                self._map_ui_redraw_content()
+            elif 122 <= cid <= 127:  # seleccionar road del picker
+                all_roads = sorted(self.map_recorder.roads.keys())
+                per_page = self._UI_ROAD_PICKER_ITEMS
+                idx = self._ui_road_picker_page * per_page + (cid - 122)
+                if idx < len(all_roads):
+                    road_id = all_roads[idx]
+                    if self._ui_road_picker_slot == "a":
+                        buf[self._UI_CID_TI1] = road_id
+                        self._ui_road_picker_slot = "b"  # avanza al slot B automáticamente
+                    else:
+                        buf[self._UI_CID_TI2] = road_id
+                    self._map_ui_redraw_content()
+            elif cid == 128:  # página anterior picker
+                if self._ui_road_picker_page > 0:
+                    self._ui_road_picker_page -= 1
+                    self._map_ui_redraw_content()
+            elif cid == 132:  # página siguiente picker
+                all_roads = sorted(self.map_recorder.roads.keys())
+                max_page = max(0, (len(all_roads) - 1) // self._UI_ROAD_PICKER_ITEMS)
+                if self._ui_road_picker_page < max_page:
+                    self._ui_road_picker_page += 1
+                    self._map_ui_redraw_content()
+            elif cid == 116:
                 road_a = buf.get(self._UI_CID_TI1, "").strip()
                 suf_a  = buf.get(self._UI_CID_TI_SUF_A, "").strip()
                 road_b = buf.get(self._UI_CID_TI2, "").strip()
@@ -1053,6 +1220,8 @@ class _MapUIMixin(_MixinBase):
                         self.map_recorder._cmd_rec_laterallink(arg_a, arg_b)
                     self._ui_pending_action = None
                     self._ui_input_buffer = {}
+                    self._ui_road_picker_page = 0
+                    self._ui_road_picker_slot = "a"
                     self._map_ui_redraw_content()
                     self._map_ui_update_header()
                 else:
@@ -1060,6 +1229,8 @@ class _MapUIMixin(_MixinBase):
             elif cid == 117:
                 self._ui_pending_action = None
                 self._ui_input_buffer = {}
+                self._ui_road_picker_page = 0
+                self._ui_road_picker_slot = "a"
                 self._map_ui_redraw_content()
 
         elif self._ui_pending_action in ("rec_road", "rec_zona", "rec_rule"):
@@ -1084,7 +1255,40 @@ class _MapUIMixin(_MixinBase):
                 self._ui_input_buffer = {}
                 self._map_ui_redraw_content()
 
-        else:
+        elif self._ui_pending_action == "select_recorder_plid":
+            if cid == 108:  # Volver
+                self._ui_pending_action = None
+                self._ui_grabar_player_page = 0
+                self._map_ui_redraw_content()
+            elif 110 <= cid <= 117:  # items de la lista
+                all_cars = []
+                for p in self.user_manager.players.values():
+                    all_cars.append(p.plid)
+                for ai in self.user_manager.ais.values():
+                    all_cars.append(ai.player.plid)
+                all_cars.sort()
+                per_page = self._UI_GRABAR_PLAYER_ITEMS
+                idx = self._ui_grabar_player_page * per_page + (cid - 110)
+                if idx < len(all_cars):
+                    self.map_recorder.recording_plid = all_cars[idx]
+                    self._ui_pending_action = None
+                    self._ui_grabar_player_page = 0
+                    self._map_ui_redraw_content()
+            elif cid == 120:  # página anterior
+                if self._ui_grabar_player_page > 0:
+                    self._ui_grabar_player_page -= 1
+                    self._map_ui_redraw_content()
+            elif cid == 122:  # página siguiente
+                all_cars_count = len(self.user_manager.players) + len(self.user_manager.ais)
+                max_page = max(0, (all_cars_count - 1) // self._UI_GRABAR_PLAYER_ITEMS)
+                if self._ui_grabar_player_page < max_page:
+                    self._ui_grabar_player_page += 1
+                    self._map_ui_redraw_content()
+
+        else:  # idle
+            if cid in (110, 111, 112, 113, 114) and self.map_recorder.recording_plid is None:
+                self.send_ISP_MSL(Msg=f"{c.RED}Selecciona primero el jugador a grabar (botón Cambiar...).")
+                return
             if cid == 110:
                 self._ui_pending_action = "rec_road"
                 self._ui_input_buffer = {}
@@ -1108,6 +1312,10 @@ class _MapUIMixin(_MixinBase):
             elif cid == 115:
                 new = not self.map_recorder.auto_recording_enabled
                 self.map_recorder._cmd_rec_auto("true" if new else "false")
+                self._map_ui_redraw_content()
+            elif cid == 117:  # Cambiar jugador
+                self._ui_pending_action = "select_recorder_plid"
+                self._ui_grabar_player_page = 0
                 self._map_ui_redraw_content()
 
     def _map_ui_click_info(self, cid: int):
