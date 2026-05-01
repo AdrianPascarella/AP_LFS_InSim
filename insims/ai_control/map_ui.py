@@ -9,6 +9,7 @@ from lfs_insim.insim_enums import ISB_STYLE, BFN, TYPEIN_FLAGS
 from lfs_insim.packets import ISP_BTC, ISP_BTT, ISP_MSO
 from lfs_insim.utils import TextColors as c
 from insims.ai_control.base import _MixinBase
+from insims.ai_control.nav_modes.freeroam.mode import FreeroamMode
 
 
 class _FakePkt:
@@ -95,6 +96,7 @@ class _MapUIMixin(_MixinBase):
     _UI_CID_TAB_GRAB = 105
     _UI_CID_TAB_INFO = 106
     _UI_CID_TAB_ELEM = 107
+    _UI_CID_TAB_DBG  = 99
     # 108-129: área de contenido (se limpian y redibujan en cada cambio de tab)
     _UI_CID_TI1      = 130   # TypeIn primario
     _UI_CID_TI2      = 131   # TypeIn secundario
@@ -130,6 +132,10 @@ class _MapUIMixin(_MixinBase):
         self._ui_road_picker_page: int = 0
         self._ui_road_picker_slot: str = "a"  # "a" | "b"
         self._ui_grabar_player_page: int = 0
+        self._ui_debug_plid: Optional[int] = None
+        self._ui_debug_interval: float = 1.0
+        self._ui_debug_last_update: float = 0.0
+        self._ui_debug_page: int = 0
 
     # ──────────────────────────────────────────────────────────────────────────
     # Entrada: .map ui
@@ -190,13 +196,15 @@ class _MapUIMixin(_MixinBase):
         (_UI_CID_TAB_MAPA, "mapa",      "Mapa",      2,   34),
         (_UI_CID_TAB_GRAB, "grabar",    "Grabar",    38,  34),
         (_UI_CID_TAB_INFO, "info",      "Info",      74,  34),
-        (_UI_CID_TAB_ELEM, "elementos", "Elementos", 110, 44),
+        (_UI_CID_TAB_ELEM, "elementos", "Elementos", 110, 40),
+        (_UI_CID_TAB_DBG,  "debug",     "Debug",     152, 32),
     ]
     _TAB_CID_TO_NAME = {
         _UI_CID_TAB_MAPA: "mapa",
         _UI_CID_TAB_GRAB: "grabar",
         _UI_CID_TAB_INFO: "info",
         _UI_CID_TAB_ELEM: "elementos",
+        _UI_CID_TAB_DBG:  "debug",
     }
 
     def _map_ui_draw_tabs(self):
@@ -224,6 +232,8 @@ class _MapUIMixin(_MixinBase):
             self._map_ui_draw_tab_info()
         elif self._ui_tab == "elementos":
             self._map_ui_draw_tab_elementos()
+        elif self._ui_tab == "debug":
+            self._map_ui_draw_tab_debug()
 
     # ──────────────────────────────────────────────────────────────────────────
     # Tab: Mapa
@@ -1023,18 +1033,22 @@ class _MapUIMixin(_MixinBase):
 
     def on_tick(self):
         super().on_tick()
-        if self._ui_ucid is None or self._ui_tab != "info" or not self._ui_whereami:
+        if getattr(self, '_ui_ucid', None) is None:
             return
         now = time.time()
-        if now - self._ui_whereami_last_update < self._ui_whereami_interval:
-            return
-        self._ui_whereami_last_update = now
-        for i, wa_type in enumerate(self._WA_TYPES):
-            if wa_type in self._ui_whereami:
-                result = self._map_ui_compute_whereami(wa_type)
-                self.send_ISP_BTN(ReqI=1, UCID=self._ui_ucid,
-                                  ClickID=self._WA_CID_BASE + i,
-                                  BStyle=0, L=0, T=0, W=0, H=0, Text=result)
+        if self._ui_tab == "info" and self._ui_whereami:
+            if now - self._ui_whereami_last_update >= self._ui_whereami_interval:
+                self._ui_whereami_last_update = now
+                for i, wa_type in enumerate(self._WA_TYPES):
+                    if wa_type in self._ui_whereami:
+                        result = self._map_ui_compute_whereami(wa_type)
+                        self.send_ISP_BTN(ReqI=1, UCID=self._ui_ucid,
+                                          ClickID=self._WA_CID_BASE + i,
+                                          BStyle=0, L=0, T=0, W=0, H=0, Text=result)
+        elif self._ui_tab == "debug" and self._ui_debug_plid is not None:
+            if now - self._ui_debug_last_update >= self._ui_debug_interval:
+                self._ui_debug_last_update = now
+                self._map_ui_refresh_debug_detail()
 
     def on_ISP_BTC(self, packet: ISP_BTC):
         # UCID=0 en BTC/BTT significa "local" (InSim en la misma máquina que LFS)
@@ -1051,17 +1065,22 @@ class _MapUIMixin(_MixinBase):
                           ClickID=packet.ClickID,
                           BStyle=0, L=0, T=0, W=0, H=0,
                           Text=text if text else " ")
-        # Intervalo de refresco whereami
-        if self._ui_tab == "info" and packet.ClickID == 147:
+        # Intervalo de refresco (whereami / debug) — CID 147 compartido
+        if packet.ClickID == 147:
             try:
                 val = float(text)
                 if val > 0:
-                    self._ui_whereami_interval = val
-                    self._ui_whereami_last_update = 0.0
+                    if self._ui_tab == "info":
+                        self._ui_whereami_interval = val
+                        self._ui_whereami_last_update = 0.0
+                    elif self._ui_tab == "debug":
+                        self._ui_debug_interval = val
+                        self._ui_debug_last_update = 0.0
             except ValueError:
+                interval = self._ui_whereami_interval if self._ui_tab == "info" else self._ui_debug_interval
                 self.send_ISP_BTN(ReqI=1, UCID=self._ui_ucid,
                                   ClickID=147, BStyle=0, L=0, T=0, W=0, H=0,
-                                  Text=str(self._ui_whereami_interval))
+                                  Text=str(interval))
             return
 
         # En la vista detalle de Elementos, aplicar cambio inmediatamente
@@ -1108,6 +1127,8 @@ class _MapUIMixin(_MixinBase):
             self._map_ui_click_info(cid)
         elif self._ui_tab == "elementos":
             self._map_ui_click_elementos(cid)
+        elif self._ui_tab == "debug":
+            self._map_ui_click_debug(cid)
 
     # ──────────────────────────────────────────────────────────────────────────
     # Click handlers por tab
@@ -1401,6 +1422,178 @@ class _MapUIMixin(_MixinBase):
             else:
                 self._ui_whereami.add(wa_type)
             self._map_ui_redraw_content()
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # Tab: Debug
+    # ──────────────────────────────────────────────────────────────────────────
+
+    _UI_DEBUG_ITEMS = 6
+
+    def _map_ui_draw_tab_debug(self):
+        if self._ui_debug_plid is None:
+            self._map_ui_draw_debug_list()
+        else:
+            self._map_ui_draw_debug_detail()
+
+    def _map_ui_get_freeroam_ais(self) -> list:
+        """Devuelve lista de (plid, ai_name, behavior) de AIs en FreeroamMode."""
+        result = []
+        for plid, ai in self.user_manager.ais.items():
+            if 'aic' not in ai.extra:
+                continue
+            behavior = ai.extra['aic']
+            if isinstance(behavior.active_mode, FreeroamMode):
+                result.append((plid, ai.ai_name, behavior))
+        return sorted(result, key=lambda x: x[0])
+
+    def _map_ui_build_debug_lines(self, plid: int) -> list[str]:
+        """Genera las líneas de estado de una AI (equivalente a ai_state)."""
+        ai = self.user_manager.ais.get(plid)
+        if not ai or 'aic' not in ai.extra:
+            return [f"PLID {plid} no encontrado o sin AIBehavior"]
+        behavior = ai.extra['aic']
+        mode = behavior.active_mode
+
+        t_speed = behavior.target_speed_kmh if isinstance(behavior.target_speed_kmh, (int, float)) else 0.0
+        gear = getattr(behavior.gear_mode, "name", str(behavior.gear_mode))
+
+        if not isinstance(mode, FreeroamMode):
+            modo_str = type(mode).__name__ if mode else "Parada"
+            return [
+                f"Vel. Obj: {t_speed:.1f} km/h  |  Marcha: {gear}",
+                f"Modo activo: {modo_str}",
+                "", "", "", "",
+            ]
+
+        maneuver  = getattr(mode.maneuver_state,  "name", str(mode.maneuver_state))
+        ov_state  = getattr(mode, 'overtake_state', 'N/A')
+        c_type    = mode.current_type  or "–"
+        c_id      = mode.current_id   or "N/A"
+        n_type    = mode.next_link_type or "–"
+        n_id      = mode.next_link_id  or "N/A"
+        blinkers  = getattr(mode.blinkers_active, "name", str(mode.blinkers_active))
+        opposing  = mode.is_driving_opposing
+        p_road    = mode.previous_road_id or "N/A"
+        c_road    = mode.current_road_id  or "N/A"
+
+        return [
+            f"Vel. Obj: {t_speed:.1f} km/h  |  Marcha: {gear}",
+            f"Maniobra: {maneuver}  |  Estado OT: {ov_state}",
+            f"Loc: {c_type} ({c_id})  |  Nodo: {mode.node_index}",
+            f"Proximo: {n_type} ({n_id})",
+            f"Intermi: {blinkers}  |  Contrario: {opposing}",
+            f"Viene de: {p_road}  |  Via: {c_road}",
+        ]
+
+    def _map_ui_draw_debug_list(self):
+        u = self._ui_ucid
+        ais = self._map_ui_get_freeroam_ais()
+        per_page = self._UI_DEBUG_ITEMS
+        total = len(ais)
+        max_page = max(0, (total - 1) // per_page) if total else 0
+        page = min(self._ui_debug_page, max_page)
+        self._ui_debug_page = page
+        items = ais[page * per_page:(page + 1) * per_page]
+
+        # Cabecera + TypeIn intervalo
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=108,
+                          BStyle=ISB_STYLE.DARK | ISB_STYLE.LEFT,
+                          L=2, T=21, W=130, H=7,
+                          Text=f"AIs en FreeroamMode: {total}")
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=109,
+                          BStyle=ISB_STYLE.DARK | ISB_STYLE.LEFT,
+                          L=134, T=21, W=20, H=7, Text="Int:")
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=147,
+                          BStyle=ISB_STYLE.LIGHT | ISB_STYLE.CLICK,
+                          TypeIn=TYPEIN_FLAGS.INIT_WITH_TEXT | 6,
+                          L=156, T=21, W=28, H=7,
+                          Text=str(self._ui_debug_interval))
+
+        if not ais:
+            self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=110,
+                              BStyle=ISB_STYLE.DARK | ISB_STYLE.LEFT,
+                              L=2, T=30, W=182, H=7, Text="Ninguna AI en modo Freeroam")
+        else:
+            for i, (plid, ai_name, behavior) in enumerate(items):
+                maneuver = getattr(behavior.active_mode.maneuver_state, "name",
+                                   str(behavior.active_mode.maneuver_state))
+                label = f"PLID {plid}   {ai_name}   [{maneuver}]"
+                self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=110 + i,
+                                  BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK | ISB_STYLE.LEFT,
+                                  L=2, T=30 + i * 8, W=182, H=7, Text=label)
+            for i in range(len(items), per_page):
+                self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=110 + i,
+                                  BStyle=ISB_STYLE.DARK, L=2, T=30 + i * 8, W=182, H=7, Text="")
+
+        T_pag = 30 + per_page * 8
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=120,
+                          BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
+                          L=2, T=T_pag, W=20, H=7, Text="<")
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=121,
+                          BStyle=ISB_STYLE.DARK | ISB_STYLE.LEFT,
+                          L=24, T=T_pag, W=30, H=7, Text=f"{page+1}/{max_page+1}")
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=122,
+                          BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
+                          L=56, T=T_pag, W=20, H=7, Text=">")
+
+    def _map_ui_draw_debug_detail(self):
+        u = self._ui_ucid
+        plid = self._ui_debug_plid
+        ai = self.user_manager.ais.get(plid)
+        ai_name = ai.ai_name if ai else f"PLID {plid}"
+
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=108,
+                          BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
+                          L=2, T=21, W=30, H=7, Text="<- Volver")
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=109,
+                          BStyle=ISB_STYLE.TITLE | ISB_STYLE.LEFT,
+                          L=34, T=21, W=100, H=7, Text=f"{ai_name} (PLID {plid})")
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=147,
+                          BStyle=ISB_STYLE.LIGHT | ISB_STYLE.CLICK,
+                          TypeIn=TYPEIN_FLAGS.INIT_WITH_TEXT | 6,
+                          L=156, T=21, W=28, H=7,
+                          Text=str(self._ui_debug_interval))
+
+        lines = self._map_ui_build_debug_lines(plid)
+        for i, line in enumerate(lines[:8]):
+            self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=110 + i,
+                              BStyle=ISB_STYLE.DARK | ISB_STYLE.LEFT,
+                              L=2, T=30 + i * 8, W=182, H=7, Text=line)
+
+    def _map_ui_refresh_debug_detail(self):
+        """Actualiza en-place las líneas de estado sin redibujar toda la UI."""
+        plid = self._ui_debug_plid
+        if plid is None:
+            return
+        lines = self._map_ui_build_debug_lines(plid)
+        for i, line in enumerate(lines[:8]):
+            self.send_ISP_BTN(ReqI=1, UCID=self._ui_ucid, ClickID=110 + i,
+                              BStyle=0, L=0, T=0, W=0, H=0, Text=line)
+
+    def _map_ui_click_debug(self, cid: int):
+        if self._ui_debug_plid is not None:
+            if cid == 108:  # Volver
+                self._ui_debug_plid = None
+                self._ui_debug_last_update = 0.0
+                self._map_ui_redraw_content()
+        else:
+            if 110 <= cid <= 115:
+                ais = self._map_ui_get_freeroam_ais()
+                idx = self._ui_debug_page * self._UI_DEBUG_ITEMS + (cid - 110)
+                if idx < len(ais):
+                    self._ui_debug_plid = ais[idx][0]
+                    self._ui_debug_last_update = 0.0
+                    self._map_ui_redraw_content()
+            elif cid == 120:
+                if self._ui_debug_page > 0:
+                    self._ui_debug_page -= 1
+                    self._map_ui_redraw_content()
+            elif cid == 122:
+                ais = self._map_ui_get_freeroam_ais()
+                max_page = max(0, (len(ais) - 1) // self._UI_DEBUG_ITEMS) if ais else 0
+                if self._ui_debug_page < max_page:
+                    self._ui_debug_page += 1
+                    self._map_ui_redraw_content()
 
     def _map_ui_click_elementos(self, cid: int):
         # ── Vista detalle ──────────────────────────────────────────────────
