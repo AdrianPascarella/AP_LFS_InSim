@@ -136,29 +136,47 @@ class _TrafficMixin(_MixinBase):
             # ---------------------------------------------------------
             # FILTROS ESTRICTOS DE CARRIL
             # ---------------------------------------------------------
-            if not other_road_id or other_road_id != mode.current_id:
+            if not other_road_id:
+                continue
+
+            same_segment = (other_road_id == mode.current_id)
+
+            # Si estamos en un Road y el otro ya está en nuestro próximo RoadLink,
+            # lo tratamos como obstáculo adelante (evita pileup en la entrada del link)
+            in_our_next_link = (
+                not same_segment
+                and mode.current_type == 'Road'
+                and mode.next_link_id
+                and mode.next_link_type == 'RoadLink'
+                and other_road_id == mode.next_link_id
+            )
+
+            if not same_segment and not in_our_next_link:
                 continue
                 
-            idx_diff = mode.node_index - other_node_index if is_opposing else other_node_index - mode.node_index
+            if same_segment:
+                idx_diff = mode.node_index - other_node_index if is_opposing else other_node_index - mode.node_index
 
-            if idx_diff < -3:
-                continue
-                
-            # Tu lógica de EMPATE DE NODOS, ahora súper rápida
-            if idx_diff == 0:
-                su_dist_al_nodo = math.hypot(target_node.x_m - other_coords.x_m, target_node.y_m - other_coords.y_m)
-                if su_dist_al_nodo > mi_dist_al_nodo:
-                    continue
-                # Tiebreaker: si las distancias son casi iguales (pileup en mismo nodo),
-                # el PLID más bajo tiene prioridad y no cede al otro
-                if abs(su_dist_al_nodo - mi_dist_al_nodo) < 0.3 and ai.player.plid < other_player.plid:
+                if idx_diff < -3:
                     continue
 
-            # Tu lógica de PRODUCTO PUNTO, ahora solo es suma y multiplicación
-            elif idx_diff <= 3:
+                if idx_diff == 0:
+                    su_dist_al_nodo = math.hypot(target_node.x_m - other_coords.x_m, target_node.y_m - other_coords.y_m)
+                    if su_dist_al_nodo > mi_dist_al_nodo:
+                        continue
+                    if abs(su_dist_al_nodo - mi_dist_al_nodo) < 0.3 and ai.player.plid < other_player.plid:
+                        continue
+
+                elif idx_diff <= 3:
+                    vec_x = other_coords.x_m - my_coords.x_m
+                    vec_y = other_coords.y_m - my_coords.y_m
+                    if (dir_x * vec_x) + (dir_y * vec_y) <= 0:
+                        continue
+            # in_our_next_link: el otro ya está en el RoadLink que vamos a entrar.
+            # Solo necesitamos verificar que está delante (dot product positivo).
+            else:
                 vec_x = other_coords.x_m - my_coords.x_m
                 vec_y = other_coords.y_m - my_coords.y_m
-                
                 if (dir_x * vec_x) + (dir_y * vec_y) <= 0:
                     continue
 
