@@ -52,6 +52,7 @@ class MapRecorder(PacketSenderMixin):
         
         self.recording_plid: Optional[int] = None  # PLID del jugador cuya telemetría se graba
         self._current_cmd_ucid: Optional[int] = None  # UCID del emisor del comando en curso
+        self._post_record_callback: Optional[Callable[[str], None]] = None
 
         self.cmd_manager = CMDManager(cmd_prefix, "map")
         self._register_commands()
@@ -878,6 +879,9 @@ class MapRecorder(PacketSenderMixin):
             # 3. Feedback final
             accion = "CREADO/A" if is_new else "ACTUALIZADO/A"
             self.send(ISP_MSL(Msg=f"{TextColors.GREEN}{msg_tipo} '{TextColors.WHITE}{obj_id}{TextColors.GREEN}' {accion} con {len(nodes)} nodos.{mensaje_extra}"))
+
+            if self._post_record_callback:
+                self._post_record_callback(obj_id)
 
         except Exception as e:
             logger.error(f"Error al finalizar la grabación: {e}")

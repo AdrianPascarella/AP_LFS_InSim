@@ -823,6 +823,15 @@ class _MapUIMixin(_MixinBase):
 
         return "WA: tipo desconocido"
 
+    def _map_ui_navigate_to_element(self, obj_id: str):
+        """Navega al detalle del objeto recién grabado en el tab Elementos."""
+        if not getattr(self, '_ui_ucid', None):
+            return
+        self._ui_tab = 'elementos'
+        self._ui_elem_detail_id = obj_id
+        self._map_ui_clear_content()
+        self._map_ui_draw_tab_elementos()
+
     # ──────────────────────────────────────────────────────────────────────────
     # Tab: Elementos — dispatcher
     # ──────────────────────────────────────────────────────────────────────────

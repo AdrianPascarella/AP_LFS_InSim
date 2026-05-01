@@ -51,6 +51,7 @@ class AIControl(_MapUIMixin, _CommandsMixin, _PhysicsMixin, _NavigationMixin, _T
         self.user_manager = self.get_insim("users_management")
         self.route_manager = RouteManager()
         self._init_commands()
+        self.map_recorder._post_record_callback = self._map_ui_navigate_to_element
 
     def on_ISP_MSO(self, packet: ISP_MSO):
         """Filtra y redirige comandos de chat a los managers correspondientes."""
