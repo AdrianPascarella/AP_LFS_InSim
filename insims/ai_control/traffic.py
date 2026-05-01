@@ -149,6 +149,10 @@ class _TrafficMixin(_MixinBase):
                 su_dist_al_nodo = math.hypot(target_node.x_m - other_coords.x_m, target_node.y_m - other_coords.y_m)
                 if su_dist_al_nodo > mi_dist_al_nodo:
                     continue
+                # Tiebreaker: si las distancias son casi iguales (pileup en mismo nodo),
+                # el PLID más bajo tiene prioridad y no cede al otro
+                if abs(su_dist_al_nodo - mi_dist_al_nodo) < 0.3 and ai.player.plid < other_player.plid:
+                    continue
 
             # Tu lógica de PRODUCTO PUNTO, ahora solo es suma y multiplicación
             elif idx_diff <= 3:
