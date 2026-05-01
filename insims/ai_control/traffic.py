@@ -352,7 +352,7 @@ class _TrafficMixin(_MixinBase):
                                 mode.overtake_state    = 'IDLE'
                                 mode.maneuver_state    = AIManeuverState.NORMAL
                                 mode.overtake_cooldown = current_time + 4.0
-                                    else:
+                        else:
                             mode.overtake_state    = 'IDLE'
                             mode.maneuver_state    = AIManeuverState.NORMAL
                             mode.overtake_cooldown = current_time + 5.0
