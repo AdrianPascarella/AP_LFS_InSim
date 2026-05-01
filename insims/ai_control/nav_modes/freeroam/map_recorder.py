@@ -224,8 +224,10 @@ class MapRecorder(PacketSenderMixin):
                      (('map_name', str),), self._cmd_set_map)
             .add_cmd('save', 'Guarda el mapa activo en el disco duro', 
                      None, self._cmd_save_map)
-            .add_cmd('del_map', '¡Elimina un mapa entero del disco duro!', 
+            .add_cmd('del_map', '¡Elimina un mapa entero del disco duro!',
                      (('map_name', str),), self._cmd_del_map)
+            .add_cmd('merge', 'Fusiona otro fichero de mapa en el mapa activo (no sobreescribe IDs existentes)',
+                     (('map_name', str),), self._cmd_merge_map)
                      
             # ==========================================
             # 2. CREACIÓN Y GRABACIÓN GEOMÉTRICA
@@ -516,6 +518,65 @@ class MapRecorder(PacketSenderMixin):
                 self.send(ISP_MSL(Msg=f"{TextColors.RED}Error de sistema al borrar el archivo. Revisa la consola.", Sound=SND.INVALIDKEY))
         else:
             self.send(ISP_MSL(Msg=f"{TextColors.RED}Error: No se encontró el archivo '{map_name}.json'.", Sound=SND.INVALIDKEY))
+
+    def _cmd_merge_map(self, map_name: str):
+        """Fusiona otro fichero de mapa en el mapa activo sin sobreescribir IDs existentes."""
+        if not self.active_map_name:
+            self.send(ISP_MSL(Msg=f"{TextColors.RED}Activa un mapa primero con !map set_map <nombre>.", Sound=SND.INVALIDKEY))
+            return
+
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        full_path = os.path.join(base_dir, "maps", f"{map_name}.json")
+
+        if not os.path.exists(full_path):
+            self.send(ISP_MSL(Msg=f"{TextColors.RED}No se encontró '{map_name}.json'.", Sound=SND.INVALIDKEY))
+            return
+
+        try:
+            with open(full_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+        except Exception as e:
+            logger.error(f"Error leyendo {map_name}: {e}")
+            self.send(ISP_MSL(Msg=f"{TextColors.RED}El archivo está corrupto. Revisa la consola.", Sound=SND.INVALIDKEY))
+            return
+
+        mapeo = [
+            ("roads",          self.roads,          RoadSegment),
+            ("zones",          self.zones,           IntersectionZone),
+            ("road_links",     self.road_links,      RoadLink),
+            ("lateral_links",  self.lateral_links,   LateralLink),
+            ("special_rules",  self.special_rules,   SpecialRule),
+        ]
+
+        added = 0
+        skipped = 0
+        skipped_ids = []
+
+        for json_key, target_dict, dataclass_type in mapeo:
+            valid_fields = {f.name for f in fields(dataclass_type)}
+            for item_id, item_data in data.get(json_key, {}).items():
+                if item_id in target_dict:
+                    skipped += 1
+                    skipped_ids.append(item_id)
+                    continue
+
+                if "nodes" in item_data:
+                    item_data["nodes"] = [Coordinates(**n) for n in item_data["nodes"]]
+                if "traffic_rule" in item_data and item_data["traffic_rule"] is not None:
+                    item_data["traffic_rule"] = TrafficRule(item_data["traffic_rule"])
+                if "indicators" in item_data and item_data["indicators"] is not None:
+                    item_data["indicators"] = CSVAL.INDICATORS(item_data["indicators"])
+
+                filtered = {k: v for k, v in item_data.items() if k in valid_fields}
+                target_dict[item_id] = dataclass_type(**filtered)
+                added += 1
+
+        self.send(ISP_MSL(Msg=f"{TextColors.GREEN}Merge completado: {TextColors.WHITE}{added}{TextColors.GREEN} objetos añadidos, {TextColors.YELLOW}{skipped}{TextColors.GREEN} omitidos (ID ya existía)."))
+        if skipped_ids:
+            preview = ', '.join(skipped_ids[:5])
+            suffix = f'... (+{len(skipped_ids)-5} más)' if len(skipped_ids) > 5 else ''
+            self.send(ISP_MSL(Msg=f"{TextColors.YELLOW}IDs omitidos: {TextColors.WHITE}{preview}{suffix}"))
+        logger.info(f"Merge de '{map_name}' en '{self.active_map_name}': +{added} añadidos, {skipped} omitidos.")
 
     # ==========================================
     # 2. CREACIÓN Y GRABACIÓN GEOMÉTRICA
