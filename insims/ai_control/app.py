@@ -52,6 +52,7 @@ class AIControl(_MapUIMixin, _CommandsMixin, _PhysicsMixin, _NavigationMixin, _T
         self.route_manager = RouteManager()
         self._init_commands()
         self.map_recorder._post_record_callback = self._map_ui_navigate_to_element
+        self.map_recorder._node_flash_callback = self._map_ui_node_flash
 
     def on_ISP_MSO(self, packet: ISP_MSO):
         """Filtra y redirige comandos de chat a los managers correspondientes."""

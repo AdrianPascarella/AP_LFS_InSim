@@ -136,6 +136,7 @@ class _MapUIMixin(_MixinBase):
         self._ui_debug_interval: float = 1.0
         self._ui_debug_last_update: float = 0.0
         self._ui_debug_page: int = 0
+        self._ui_node_flash_time: float = 0.0  # timestamp del último flash de nodo
 
     # ──────────────────────────────────────────────────────────────────────────
     # Entrada: .map ui
@@ -832,6 +833,23 @@ class _MapUIMixin(_MixinBase):
         self._map_ui_clear_content()
         self._map_ui_draw_tab_elementos()
 
+    _UI_CID_NODE_FLASH = 166
+
+    def _map_ui_node_flash(self, node_count: int, is_curve: bool):
+        """Muestra un botón flash breve al añadir un nodo durante la grabación."""
+        import time
+        if not getattr(self, '_ui_ucid', None):
+            return
+        color = "^3" if is_curve else "^2"
+        label = f"{color}● {node_count} nodo{'s' if node_count != 1 else ''}"
+        self.send_ISP_BTN(
+            UCID=self._ui_ucid, ClickID=self._UI_CID_NODE_FLASH,
+            T=93, L=2, W=40, H=5,
+            BStyle=ISB_STYLE.DARK | ISB_STYLE.LEFT,
+            Text=label,
+        )
+        self._ui_node_flash_time = time.time()
+
     # ──────────────────────────────────────────────────────────────────────────
     # Tab: Elementos — dispatcher
     # ──────────────────────────────────────────────────────────────────────────
@@ -1058,6 +1076,11 @@ class _MapUIMixin(_MixinBase):
             if now - self._ui_debug_last_update >= self._ui_debug_interval:
                 self._ui_debug_last_update = now
                 self._map_ui_refresh_debug_detail()
+
+        if self._ui_node_flash_time and now - self._ui_node_flash_time >= 0.5:
+            self._ui_node_flash_time = 0.0
+            self.send_ISP_BTN(UCID=self._ui_ucid, ClickID=self._UI_CID_NODE_FLASH,
+                              T=0, L=0, W=0, H=0, BStyle=0, Text="")
 
     def on_ISP_BTC(self, packet: ISP_BTC):
         # UCID=0 en BTC/BTT significa "local" (InSim en la misma máquina que LFS)

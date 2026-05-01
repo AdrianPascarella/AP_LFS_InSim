@@ -53,6 +53,7 @@ class MapRecorder(PacketSenderMixin):
         self.recording_plid: Optional[int] = None  # PLID del jugador cuya telemetría se graba
         self._current_cmd_ucid: Optional[int] = None  # UCID del emisor del comando en curso
         self._post_record_callback: Optional[Callable[[str], None]] = None
+        self._node_flash_callback: Optional[Callable[[int, bool], None]] = None
 
         self.cmd_manager = CMDManager(cmd_prefix, "map")
         self._register_commands()
@@ -79,7 +80,8 @@ class MapRecorder(PacketSenderMixin):
         if not nodes_list:
             nodes_list.append(current_node)
             logger.info(f"[Auto-Rec] Nodo #1 guardado (Motivo: Punto de Origen).")
-            self.send(ISP_MSL(Msg=f"{TextColors.CYAN}Nodo #1: {TextColors.WHITE}Punto de Origen"))
+            if self._node_flash_callback:
+                self._node_flash_callback(1, False)
             return
             
         # 3. Distancia 3D actual respecto al último punto guardado
@@ -105,7 +107,8 @@ class MapRecorder(PacketSenderMixin):
             if dist_m >= dynamic_dist_threshold:
                 nodes_list.append(current_node)
                 logger.info(f"[Auto-Rec] Nodo #2 guardado (Motivo: Distancia inicial {dist_m:.1f}m).")
-                self.send(ISP_MSL(Msg=f"{TextColors.GREEN}Nodo #2: {TextColors.WHITE}Distancia inicial ({dist_m:.1f}m)"))
+                if self._node_flash_callback:
+                    self._node_flash_callback(2, False)
             return
             
         # 6. Cálculo del ángulo de desvío (Detección de Curvas)
@@ -139,13 +142,10 @@ class MapRecorder(PacketSenderMixin):
         if should_save:
             nodes_list.append(current_node)
             
-            # --- DEBUG EN CONSOLA ---
             logger.info(f"[Auto-Rec] Nodo #{len(nodes_list)} guardado | {debug_reason}")
-            
-            # --- DEBUG EN JUEGO (Descomentar para usar) ---
-            # CUIDADO: Si grabas a alta velocidad, esto puede saturar el chat de LFS.
-            color = TextColors.GREEN if "Distancia" in debug_reason else TextColors.YELLOW
-            self.send(ISP_MSL(Msg=f"{color}Nodo #{len(nodes_list)}: {TextColors.WHITE}{debug_reason}"))
+            is_curve = "Ángulo" in debug_reason
+            if self._node_flash_callback:
+                self._node_flash_callback(len(nodes_list), is_curve)
 
     def get_location_context(self, px: float, py: float, pz: float, 
                              find_roads: bool = True, 
@@ -721,7 +721,10 @@ class MapRecorder(PacketSenderMixin):
         count = len(self.current_recording["nodes"])
         tipo = self.current_recording.get("type", "objeto").upper()
         
-        self.send(ISP_MSL(Msg=f"{TextColors.GREEN}Punto de {tipo} añadido {TextColors.WHITE}(Nodo/Vértice {count}){TextColors.GREEN}."))
+        if self._node_flash_callback:
+            self._node_flash_callback(count, False)
+        else:
+            self.send(ISP_MSL(Msg=f"{TextColors.GREEN}Punto de {tipo} añadido {TextColors.WHITE}(Nodo/Vértice {count}){TextColors.GREEN}."))
 
     def _cmd_rec_auto(self, state_str: str):
         """Activa o desactiva la captura automática de coordenadas en movimiento."""
