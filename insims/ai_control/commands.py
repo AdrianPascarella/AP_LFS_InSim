@@ -436,7 +436,7 @@ class _CommandsMixin(_MixinBase):
                 self.logger.info(f"IA {ai_nueva.ai_name} (PLID {ai_nueva.player.plid}) iniciada en Freeroam")
                 
                 # Dejamos que la AI recorra camino antes de sacar otra
-                time.sleep(2)
+                time.sleep(getattr(self, '_freeroam_spawn_interval', 2.0))
 
 
 

@@ -139,6 +139,7 @@ class _MapUIMixin(_MixinBase):
         self._ui_debug_page: int = 0
         self._ui_node_flash_time: float = 0.0  # timestamp del último flash de nodo
         self._ui_run_target: int = getattr(self, '_target_freeroam_count', 1)
+        self._ui_run_interval: float = getattr(self, '_freeroam_spawn_interval', 2.0)
 
     # ──────────────────────────────────────────────────────────────────────────
     # Entrada: .map ui
@@ -1100,6 +1101,21 @@ class _MapUIMixin(_MixinBase):
                           ClickID=packet.ClickID,
                           BStyle=0, L=0, T=0, W=0, H=0,
                           Text=text if text else " ")
+        # Intervalo de spawn de AIs (Run tab) — CID 119
+        if packet.ClickID == 119:
+            try:
+                val = float(text)
+                if val > 0:
+                    self._ui_run_interval = val
+                    self._freeroam_spawn_interval = val
+                else:
+                    raise ValueError
+            except ValueError:
+                self.send_ISP_BTN(ReqI=1, UCID=self._ui_ucid,
+                                  ClickID=119, BStyle=0, L=0, T=0, W=0, H=0,
+                                  Text=str(self._ui_run_interval))
+            return
+
         # Intervalo de refresco (whereami / debug) — CID 147 compartido
         if packet.ClickID == 147:
             try:
@@ -1736,16 +1752,26 @@ class _MapUIMixin(_MixinBase):
                           BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
                           L=100, T=40, W=14, H=8, Text="+")
 
+        # Intervalo entre spawns
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=118,
+                          BStyle=ISB_STYLE.DARK | ISB_STYLE.LEFT,
+                          L=2, T=51, W=70, H=6, Text="Intervalo entre AIs (s):")
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=119,
+                          BStyle=ISB_STYLE.LIGHT | ISB_STYLE.CLICK,
+                          TypeIn=TYPEIN_FLAGS.INIT_WITH_TEXT | 8,
+                          L=74, T=51, W=40, H=6,
+                          Text=str(self._ui_run_interval))
+
         # Botones acción
         start_style = ISB_STYLE.DARK | ISB_STYLE.SELECTED if running else ISB_STYLE.OK | ISB_STYLE.CLICK
         stop_style  = ISB_STYLE.CANCEL | ISB_STYLE.CLICK if running else ISB_STYLE.DARK | ISB_STYLE.SELECTED
         self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=115,
-                          BStyle=start_style, L=2,   T=52, W=58, H=9, Text="Iniciar")
+                          BStyle=start_style, L=2,   T=60, W=58, H=9, Text="Iniciar")
         self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=116,
-                          BStyle=stop_style,  L=62,  T=52, W=58, H=9, Text="Detener")
+                          BStyle=stop_style,  L=62,  T=60, W=58, H=9, Text="Detener")
         self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=117,
                           BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
-                          L=122, T=52, W=64, H=9, Text="Limpiar AIs")
+                          L=122, T=60, W=64, H=9, Text="Limpiar AIs")
 
     def _map_ui_click_run(self, cid: int):
         if cid == 112:  # -
