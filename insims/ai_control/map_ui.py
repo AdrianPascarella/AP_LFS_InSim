@@ -97,6 +97,7 @@ class _MapUIMixin(_MixinBase):
     _UI_CID_TAB_INFO = 106
     _UI_CID_TAB_ELEM = 107
     _UI_CID_TAB_DBG  = 99
+    _UI_CID_TAB_RUN  = 98
     # 108-129: área de contenido (se limpian y redibujan en cada cambio de tab)
     _UI_CID_TI1      = 130   # TypeIn primario
     _UI_CID_TI2      = 131   # TypeIn secundario
@@ -137,6 +138,7 @@ class _MapUIMixin(_MixinBase):
         self._ui_debug_last_update: float = 0.0
         self._ui_debug_page: int = 0
         self._ui_node_flash_time: float = 0.0  # timestamp del último flash de nodo
+        self._ui_run_target: int = getattr(self, '_target_freeroam_count', 1)
 
     # ──────────────────────────────────────────────────────────────────────────
     # Entrada: .map ui
@@ -194,11 +196,12 @@ class _MapUIMixin(_MixinBase):
     # ──────────────────────────────────────────────────────────────────────────
 
     _TAB_LAYOUT = [
-        (_UI_CID_TAB_MAPA, "mapa",      "Mapa",      2,   34),
-        (_UI_CID_TAB_GRAB, "grabar",    "Grabar",    38,  34),
-        (_UI_CID_TAB_INFO, "info",      "Info",      74,  34),
-        (_UI_CID_TAB_ELEM, "elementos", "Elementos", 110, 40),
-        (_UI_CID_TAB_DBG,  "debug",     "Debug",     152, 32),
+        (_UI_CID_TAB_MAPA, "mapa",      "Mapa",      2,   28),
+        (_UI_CID_TAB_GRAB, "grabar",    "Grabar",    32,  28),
+        (_UI_CID_TAB_INFO, "info",      "Info",      62,  24),
+        (_UI_CID_TAB_ELEM, "elementos", "Elementos", 88,  34),
+        (_UI_CID_TAB_DBG,  "debug",     "Debug",     124, 26),
+        (_UI_CID_TAB_RUN,  "run",       "Run",       152, 32),
     ]
     _TAB_CID_TO_NAME = {
         _UI_CID_TAB_MAPA: "mapa",
@@ -206,6 +209,7 @@ class _MapUIMixin(_MixinBase):
         _UI_CID_TAB_INFO: "info",
         _UI_CID_TAB_ELEM: "elementos",
         _UI_CID_TAB_DBG:  "debug",
+        _UI_CID_TAB_RUN:  "run",
     }
 
     def _map_ui_draw_tabs(self):
@@ -235,6 +239,8 @@ class _MapUIMixin(_MixinBase):
             self._map_ui_draw_tab_elementos()
         elif self._ui_tab == "debug":
             self._map_ui_draw_tab_debug()
+        elif self._ui_tab == "run":
+            self._map_ui_draw_tab_run()
 
     # ──────────────────────────────────────────────────────────────────────────
     # Tab: Mapa
@@ -1158,6 +1164,8 @@ class _MapUIMixin(_MixinBase):
             self._map_ui_click_elementos(cid)
         elif self._ui_tab == "debug":
             self._map_ui_click_debug(cid)
+        elif self._ui_tab == "run":
+            self._map_ui_click_run(cid)
 
     # ──────────────────────────────────────────────────────────────────────────
     # Click handlers por tab
@@ -1690,6 +1698,79 @@ class _MapUIMixin(_MixinBase):
             if self._ui_elem_page < total_pages - 1:
                 self._ui_elem_page += 1
                 self._map_ui_redraw_content()
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # Tab: Run
+    # ──────────────────────────────────────────────────────────────────────────
+
+    def _map_ui_draw_tab_run(self):
+        u = self._ui_ucid
+        running = getattr(self, '_is_freeroam_loop_running', False)
+        target  = self._ui_run_target
+        n_ais     = len(self.user_manager.ais)
+        n_players = len(self.user_manager.players)
+        n_total   = n_ais + n_players
+
+        # Estado general
+        status_style = ISB_STYLE.OK if running else ISB_STYLE.DARK | ISB_STYLE.SELECTED
+        status_text  = "^2● Activo" if running else "^7● Inactivo"
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=110,
+                          BStyle=status_style | ISB_STYLE.LEFT,
+                          L=2, T=21, W=184, H=7, Text=status_text)
+
+        # Coches en pista
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=111,
+                          BStyle=ISB_STYLE.DARK | ISB_STYLE.LEFT,
+                          L=2, T=30, W=184, H=6,
+                          Text=f"En pista: {n_total}  ({n_ais} AIs + {n_players} jugadores)")
+
+        # Selector de objetivo
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=112,
+                          BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
+                          L=2, T=40, W=14, H=8, Text="-")
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=113,
+                          BStyle=ISB_STYLE.DARK | ISB_STYLE.LEFT,
+                          L=18, T=40, W=80, H=8,
+                          Text=f"Objetivo: {target} coches")
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=114,
+                          BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
+                          L=100, T=40, W=14, H=8, Text="+")
+
+        # Botones acción
+        start_style = ISB_STYLE.DARK | ISB_STYLE.SELECTED if running else ISB_STYLE.OK | ISB_STYLE.CLICK
+        stop_style  = ISB_STYLE.CANCEL | ISB_STYLE.CLICK if running else ISB_STYLE.DARK | ISB_STYLE.SELECTED
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=115,
+                          BStyle=start_style, L=2,   T=52, W=58, H=9, Text="Iniciar")
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=116,
+                          BStyle=stop_style,  L=62,  T=52, W=58, H=9, Text="Detener")
+        self.send_ISP_BTN(ReqI=1, UCID=u, ClickID=117,
+                          BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
+                          L=122, T=52, W=64, H=9, Text="Limpiar AIs")
+
+    def _map_ui_click_run(self, cid: int):
+        if cid == 112:  # -
+            self._ui_run_target = max(0, self._ui_run_target - 1)
+            self._target_freeroam_count = self._ui_run_target
+            self._map_ui_redraw_content()
+        elif cid == 114:  # +
+            self._ui_run_target += 1
+            self._target_freeroam_count = self._ui_run_target
+            self._map_ui_redraw_content()
+        elif cid == 115:  # Iniciar
+            if not getattr(self, '_is_freeroam_loop_running', False):
+                self._target_freeroam_count = self._ui_run_target
+                # Reutilizamos _test_freeroam pasando un packet simulado con el UCID actual
+                class _FakePacket:
+                    UCID = self._ui_ucid
+                self._test_freeroam(_FakePacket(), self._ui_run_target)
+            self._map_ui_redraw_content()
+        elif cid == 116:  # Detener
+            self._is_freeroam_loop_running = False
+            self._map_ui_redraw_content()
+        elif cid == 117:  # Limpiar AIs
+            for plid in list(self.user_manager.ais.keys()):
+                self._cmd_spec(plid)
+            self._map_ui_redraw_content()
 
     # ──────────────────────────────────────────────────────────────────────────
     # Cierre
