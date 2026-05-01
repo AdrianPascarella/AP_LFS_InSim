@@ -229,8 +229,6 @@ class _CommandsMixin(_MixinBase):
         behavior.reset_direction()
         behavior.reset_speed()
         behavior.active_mode = FreeroamMode(speed_limit_bias=random.uniform(-0.05, 1.05))
-        
-        self.send_ISP_MSL(Msg=f"{TextColors.CYAN}Modo Explorador activado para {TextColors.WHITE}{ai.ai_name} {TextColors.CYAN}(PLID {plid_ai})")
 
     def _cmd_ai_state(self, packet: ISP_MSO, ai_plid: int):
         """Comando para ver el estado interno y decisiones de navegación de una IA."""

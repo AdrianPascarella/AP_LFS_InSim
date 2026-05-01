@@ -367,12 +367,6 @@ class _NavigationMixin(_MixinBase):
                     _fwd_y = _curr_geom.nodes[_ni + 1].y_m - _curr_geom.nodes[_ni].y_m
                 _dot = _fwd_x * (target_node.x_m - my_coords.x_m) + _fwd_y * (target_node.y_m - my_coords.y_m)
                 _at_side = _dot <= 0
-                if _is_overtake_lat:
-                    self.logger.debug(
-                        f"[NAV:{ai.ai_name}] LatLink dot={_dot:.2f} at_side={_at_side} "
-                        f"state={mode.overtake_state} cur={mode.current_road_id} "
-                        f"node={mode.node_index} opposing={mode.is_driving_opposing}"
-                    )
 
             if _at_side:
                 target_road_id  = lat_link_obj.road_b if lat_link_obj.road_a == mode.current_road_id else lat_link_obj.road_a
