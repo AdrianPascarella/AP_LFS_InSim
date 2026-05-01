@@ -565,11 +565,13 @@ class _TrafficMixin(_MixinBase):
         # =========================================================
         my_speed_ms = ai.player.telemetry.speed.speed_kmh / 3.6
         lookahead_m = max(5.0, my_speed_ms * 0.4)
+        _reverse_lookahead = (getattr(mode, 'is_driving_opposing', False)
+                              and mode.current_road_id == getattr(mode, 'overtake_fast_lane_id', None))
         la_x, la_y = self._get_lookahead_point(
             my_coords.x_m, my_coords.y_m,
             mode.node_index, nodes_list,
             lookahead_m,
-            reverse=getattr(mode, 'is_driving_opposing', False),
+            reverse=_reverse_lookahead,
         )
         behavior.target_point_m = (la_x, la_y)
         behavior.target_speed_kmh = velocidad_final
@@ -734,27 +736,30 @@ class _TrafficMixin(_MixinBase):
 
 
         connected_lateral_ids: List[Tuple[str, str]] = []
-        
+
         # 2. Definimos el lado objetivo
         for lat_link in self.map_recorder.lateral_links.values():
             if lat_link.road_a == current_road_id: connected_lateral_ids.append((lat_link.road_b, lat_link.link_id))
             elif lat_link.road_b == current_road_id: connected_lateral_ids.append((lat_link.road_a, lat_link.link_id))
-        
+
         target_side = CSVAL.INDICATORS.LEFT if current_road_traffic_rule == TrafficRule.RHT else CSVAL.INDICATORS.RIGHT
 
         # 3. Evaluamos los carriles vecinos
         for info_id in connected_lateral_ids:
             road_id = info_id[0]
             link_id = info_id[1]
-            road_geom = self.map_recorder.roads[road_id]        
-                
-            # Reutilizamos tu lógica matemática exacta para saber el lado real del carril
-            side = self._get_indicator_to_use(current_road_nodes, road_geom.nodes, node_index)
-            
-            # Si el carril está físicamente en el lado legal de adelantamiento, es nuestro candidato
+            road_geom = self.map_recorder.roads.get(road_id)
+            lat_link = self.map_recorder.lateral_links.get(link_id)
+            if not road_geom or not lat_link:
+                continue
+
+            side = self._get_indicator_to_use(
+                current_road_nodes, road_geom.nodes, node_index
+            )
+
             if side == target_side:
                 return road_id, link_id
-                
+
         return None, None
     
     def _get_relative_dist_to_cover(self, distances_ahead_m: list[float], extra_dist: float = 5) -> float:
@@ -791,7 +796,7 @@ class _TrafficMixin(_MixinBase):
         target_speed_ms = max(target_speed_kmh / 3.6, 0.1)
         
         speed_delta_ms = my_overtake_speed_ms - target_speed_ms
-        
+
         if speed_delta_ms <= 0.1:
             return float('inf'), float('inf')
             
@@ -980,7 +985,6 @@ class _TrafficMixin(_MixinBase):
                         return False
                     continue
 
-                # Va más lento. ¿Lo alcanzaremos antes de terminar de adelantar al otro?
                 dist_they_travel_m = other_speed_ms * time_to_overtake_s
                 their_future_pos_m = dist_m + dist_they_travel_m
                 if their_future_pos_m - req_dist_m < safe_gap_m:
@@ -990,14 +994,9 @@ class _TrafficMixin(_MixinBase):
                 # =========================================================
                 # CASO B: CARRIL SENTIDO CONTRARIO (Carretera convencional)
                 # =========================================================
-                # En sentido contrario, CUALQUIER coche es peligroso, no importa su velocidad.
-                
-                # Velocidad de cierre (nos acercamos mutuamente)
                 closing_speed_ms = my_speed_ms + other_speed_ms
-                
-                # Distancia física que "desaparecerá" entre ambos durante la maniobra
                 dist_consumed_m = closing_speed_ms * time_to_overtake_s
-                
+
                 if dist_m < dist_consumed_m + safe_gap_m * 2.0:
                     return False
 

@@ -331,17 +331,11 @@ class _NavigationMixin(_MixinBase):
                 _is_in_fast_lane = _is_overtake_lat and mode.current_road_id == mode.overtake_fast_lane_id
 
                 if _is_overtake_lat and not _is_in_fast_lane:
-                    _raw = self._get_indicator_to_use(
+                    mode.future_indicator = self._get_indicator_to_use(
                         self.map_recorder.roads[mode.current_road_id].nodes,
                         self.map_recorder.roads[_dest_road_id].nodes,
                         mode.node_index, is_opposing=False
                     )
-                    if _raw == CSVAL.INDICATORS.LEFT:
-                        mode.future_indicator = CSVAL.INDICATORS.RIGHT
-                    elif _raw == CSVAL.INDICATORS.RIGHT:
-                        mode.future_indicator = CSVAL.INDICATORS.LEFT
-                    else:
-                        mode.future_indicator = _raw
                 else:
                     mode.future_indicator = self._get_indicator_to_use(
                         self.map_recorder.roads[mode.current_road_id].nodes,
