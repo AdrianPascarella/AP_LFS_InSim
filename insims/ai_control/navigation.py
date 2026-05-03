@@ -87,7 +87,6 @@ class _NavigationMixin(_MixinBase):
             
             # En una ruta estricta, si se atasca 3 segundos, lo quitamos de en medio
             if segundos_atascado > 3.0:
-                self.logger.info(f"IA {ai.ai_name} atascada en ruta durante {segundos_atascado:.1f}s. A espectadores.")
                 self._cmd_spec(ai.player.plid)
                 
                 # Reseteamos por seguridad, aunque la IA ya vaya a spec
@@ -253,7 +252,6 @@ class _NavigationMixin(_MixinBase):
             
         elif behavior.stuck_start_time > 0.0 and (time.time() - behavior.stuck_start_time) >= 3.0:
             # La IA quiere ir a más de 5 km/h, pero lleva 3 segundos clavada. ¡Está atascada de verdad!
-            self.logger.info(f"IA {ai.ai_name} (PLID {ai.player.plid}) atascada por 3s. Enviando a espectadores...")
             self._cmd_spec(ai.player.plid)
             return  # Cortamos la ejecución de este tick
 

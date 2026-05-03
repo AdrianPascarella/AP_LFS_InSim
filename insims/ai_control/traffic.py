@@ -343,11 +343,6 @@ class _TrafficMixin(_MixinBase):
 
                                 mode._passing_start_time        = current_time
                                 mode._overtake_no_return_until  = current_time + _time_to_parallel
-                                self.logger.info(
-                                    f"[OVT:{_n}] EVAL→OVERTAKING ✓ | fast_lane={target_road_id} "
-                                    f"lat_link={target_lat_id} opposing={is_opposing} "
-                                    f"req={req_dist_m:.1f}m"
-                                )
                             else:
                                 mode.overtake_state    = 'IDLE'
                                 mode.maneuver_state    = AIManeuverState.NORMAL
@@ -375,7 +370,6 @@ class _TrafficMixin(_MixinBase):
                 if in_fast_lane and not mode.overtake_change_lane and not mode._fast_lane_logged:
                     mode._fast_lane_logged = True
                     mode.future_indicator  = None
-                    self.logger.info(f"[OVT:{_n}] OVERTAKING: entered fast_lane={mode.overtake_fast_lane_id}, return_lat={mode.overtake_lat_link_id}")
 
                 # Velocidad: base +5% como máximo
                 velocidad_segura = velocidad_base * 1.05
@@ -395,7 +389,6 @@ class _TrafficMixin(_MixinBase):
                     closing_speed_ms = my_speed_ms + max(f_speed / 3.6, 0.1)
                     time_to_frontal  = f_dist / closing_speed_ms
                     if time_to_frontal < ONCOMING_EMERGENCY_S:
-                        self.logger.info(f"[OVT:{_n}] OVERTAKING→RETURNING | ONCOMING EMERGENCY: t={time_to_frontal:.1f}s dist={f_dist:.1f}m")
                         self._trigger_return(mode, current_time)
                         velocidad_segura = 0
                     elif time_to_frontal < ONCOMING_DANGER_S:
@@ -406,7 +399,6 @@ class _TrafficMixin(_MixinBase):
                         and current_time >= mode._overtake_no_return_until:
                     ahead_gap, behind_gap = self._scan_return_lane_gap(ai, mode, max_dist_m)
                     if ahead_gap >= min_dist_m and behind_gap >= min_dist_m:
-                        self.logger.info(f"[OVT:{_n}] OVERTAKING→RETURNING | gap OK (ahead={ahead_gap:.1f}m behind={behind_gap:.1f}m)")
                         self._trigger_return(mode, current_time)
 
             # ---------------------------------------------------------
@@ -416,10 +408,8 @@ class _TrafficMixin(_MixinBase):
                 velocidad_segura = velocidad_base
 
                 if mode.current_road_id == mode.overtake_return_lane_id:
-                    self.logger.info(f"[OVT:{_n}] RETURNING→IDLE | reached return lane={mode.overtake_return_lane_id}")
                     self._finish_overtake(mode, current_time, _n)
                 elif current_time - mode._returning_start_time > 5.0:
-                    self.logger.info(f"[OVT:{_n}] RETURNING→IDLE | TIMEOUT 10s, cur_road={mode.current_road_id}")
                     self._finish_overtake(mode, current_time, _n)
 
             # Guardamos el resultado en caché
@@ -1028,7 +1018,6 @@ class _TrafficMixin(_MixinBase):
         mode.overtake_change_lane    = False
         mode._fast_lane_logged       = False
         mode.overtake_cooldown       = current_time + 8.0
-        self.logger.info(f"[OVT:{name}] FINISH | next_link={mode.next_link_id}/{mode.next_link_type}")
 
     def _scan_return_lane_gap(self, ai: 'AI', mode: FreeroamMode, max_dist_m: float) -> tuple[float, float]:
         """
