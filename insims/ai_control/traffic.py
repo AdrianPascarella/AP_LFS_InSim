@@ -157,7 +157,8 @@ class _TrafficMixin(_MixinBase):
             if same_segment:
                 idx_diff = mode.node_index - other_node_index if is_opposing else other_node_index - mode.node_index
 
-                if idx_diff < -3:
+                # Vehículo en nodo inferior = detrás de nosotros → nunca es bloqueante
+                if idx_diff < 0:
                     continue
 
                 if idx_diff == 0:
