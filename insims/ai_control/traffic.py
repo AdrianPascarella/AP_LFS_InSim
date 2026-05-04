@@ -238,6 +238,7 @@ class _TrafficMixin(_MixinBase):
                 min_vel = min(min_vel, override / 2.0)
 
         velocidad_base = min_vel + (limite_vel - min_vel) * getattr(mode, 'speed_limit_bias', 0.5)
+        mode._debug_speed_base = velocidad_base
         my_coords = ai.player.telemetry.coordinates
 
         # =========================================================

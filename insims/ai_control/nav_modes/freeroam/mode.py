@@ -58,6 +58,7 @@ class FreeroamMode(AINavModeState):
         self._last_radar_time: float = 0.0
         self._cached_target_speed: float = 0.0
         self._radar_interval: float = 0.1 + random.uniform(0.0, 0.05)
+        self._debug_speed_base: float = 0.0
 
         # Intermitentes
         self._blinker_on_time: Optional[float] = None

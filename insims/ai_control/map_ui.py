@@ -1528,9 +1528,31 @@ class _MapUIMixin(_MixinBase):
         opposing  = mode.is_driving_opposing
         p_road    = mode.previous_road_id or "N/A"
         c_road    = mode.current_road_id  or "N/A"
+        v_base    = getattr(mode, '_debug_speed_base', 0.0)
+
+        # Motivo de reducción de velocidad respecto a la base
+        reduccion = ""
+        if abs(t_speed - v_base) > 0.5:
+            if getattr(mode, 'yield_active', False):
+                reduccion = "Ceda el paso"
+            elif ov_state == 'OVERTAKING':
+                reduccion = "Adelantando"
+            elif ov_state == 'RETURNING':
+                reduccion = "Volviendo al carril"
+            elif maneuver == 'FOLLOWING':
+                bp = mode.blocking_plid
+                reduccion = f"ACC{f' (PLID {bp})' if bp else ''}"
+            elif mode.active_special_rules:
+                reduccion = f"Reg. especial"
+            else:
+                reduccion = "Reducida"
+
+        vel_line = f"Vel. Obj: {t_speed:.1f}  |  Base: {v_base:.1f} km/h"
+        if reduccion:
+            vel_line += f"  |  ^3{reduccion}"
 
         return [
-            f"Vel. Obj: {t_speed:.1f} km/h  |  Marcha: {gear}",
+            vel_line,
             f"Maniobra: {maneuver}  |  Estado OT: {ov_state}",
             f"Loc: {c_type} ({c_id})  |  Nodo: {mode.node_index}",
             f"Proximo: {n_type} ({n_id})",
