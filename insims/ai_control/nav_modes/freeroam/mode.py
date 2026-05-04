@@ -77,3 +77,4 @@ class FreeroamMode(AINavModeState):
         self._passing_start_time: float = 0.0
         self._returning_start_time: float = 0.0
         self.blocking_plid: Optional[int] = None
+        self.blocking_dist: float = 0.0

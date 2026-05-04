@@ -1541,7 +1541,18 @@ class _MapUIMixin(_MixinBase):
                 reduccion = "Volviendo al carril"
             elif maneuver == 'FOLLOWING':
                 bp = mode.blocking_plid
-                reduccion = f"ACC{f' (PLID {bp})' if bp else ''}"
+                bd = getattr(mode, 'blocking_dist', 0.0)
+                if bp is not None:
+                    p = self.user_manager.players.get(bp)
+                    a = self.user_manager.ais.get(bp)
+                    bname = (p.telemetry and self.user_manager.users.get(p.ucid) and
+                             self.user_manager.users[p.ucid].player_name) if p else None
+                    if not bname and a:
+                        bname = a.ai_name
+                    bname = bname or f"PLID {bp}"
+                    reduccion = f"ACC: {bname} ({bp}) a {bd:.1f}m"
+                else:
+                    reduccion = "ACC"
             elif mode.active_special_rules:
                 reduccion = f"Reg. especial"
             else:
