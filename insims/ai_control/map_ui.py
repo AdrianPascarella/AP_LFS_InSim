@@ -1532,6 +1532,8 @@ class _MapUIMixin(_MixinBase):
 
         # Motivo de reducción de velocidad respecto a la base
         reduccion = ""
+        bp  = mode.blocking_plid
+        bd  = getattr(mode, 'blocking_dist', 0.0)
         if abs(t_speed - v_base) > 0.5:
             if getattr(mode, 'yield_active', False):
                 reduccion = "Ceda el paso"
@@ -1539,28 +1541,25 @@ class _MapUIMixin(_MixinBase):
                 reduccion = "Adelantando"
             elif ov_state == 'RETURNING':
                 reduccion = "Volviendo al carril"
-            elif maneuver == 'FOLLOWING':
-                bp = mode.blocking_plid
-                bd = getattr(mode, 'blocking_dist', 0.0)
-                if bp is not None:
-                    p = self.user_manager.players.get(bp)
-                    a = self.user_manager.ais.get(bp)
-                    bname = (p.telemetry and self.user_manager.users.get(p.ucid) and
-                             self.user_manager.users[p.ucid].player_name) if p else None
-                    if not bname and a:
-                        bname = a.ai_name
-                    bname = bname or f"PLID {bp}"
-                    reduccion = f"ACC: {bname} ({bp}) a {bd:.1f}m"
-                else:
-                    reduccion = "ACC"
+            elif bp is not None:
+                p = self.user_manager.players.get(bp)
+                a = self.user_manager.ais.get(bp)
+                bname = None
+                if p:
+                    u2 = self.user_manager.users.get(p.ucid)
+                    bname = u2.player_name if u2 else None
+                if not bname and a:
+                    bname = a.ai_name
+                bname = bname or f"PLID {bp}"
+                reduccion = f"ACC: {bname} ({bp}) a {bd:.1f}m"
             elif mode.active_special_rules:
-                reduccion = f"Reg. especial"
+                reduccion = "Reg. especial"
             else:
                 reduccion = "Reducida"
 
-        vel_line = f"Vel. Obj: {t_speed:.1f}  |  Base: {v_base:.1f} km/h"
+        vel_line = f"Vel: {t_speed:.1f}  Base: {v_base:.1f} km/h"
         if reduccion:
-            vel_line += f"  |  ^3{reduccion}"
+            vel_line += f"  ^3{reduccion}"
 
         return [
             vel_line,

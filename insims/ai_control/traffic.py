@@ -279,6 +279,9 @@ class _TrafficMixin(_MixinBase):
                     )
                     mode.blocking_plid = closest_plid
                     mode.blocking_dist = closest_dist
+                else:
+                    mode.blocking_plid = None
+                    mode.blocking_dist = 0.0
 
                     # Gatillo: coche delante ≥5% más lento, sin cooldown, sin regla bloqueante
                     lane_change_blocked = any(
