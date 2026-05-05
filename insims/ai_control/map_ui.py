@@ -110,7 +110,7 @@ class _MapUIMixin(_MixinBase):
 
     def _init_ui_state(self):
         self._ui_ucid: Optional[int] = None
-        self._ui_tab: str = "grabar"
+        self._ui_tab: str = "mapa"
         self._ui_pending_action: Optional[str] = None
         self._ui_input_buffer: dict = {}
         self._ui_elem_type: str = "road"
