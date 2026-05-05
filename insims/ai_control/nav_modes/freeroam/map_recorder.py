@@ -79,7 +79,6 @@ class MapRecorder(PacketSenderMixin):
         # 2. Si es el primer punto de la grabación, lo metemos directo
         if not nodes_list:
             nodes_list.append(current_node)
-            logger.info(f"[Auto-Rec] Nodo #1 guardado (Motivo: Punto de Origen).")
             if self._node_flash_callback:
                 self._node_flash_callback(1, False)
             return
@@ -106,7 +105,6 @@ class MapRecorder(PacketSenderMixin):
         if len(nodes_list) < 2:
             if dist_m >= dynamic_dist_threshold:
                 nodes_list.append(current_node)
-                logger.info(f"[Auto-Rec] Nodo #2 guardado (Motivo: Distancia inicial {dist_m:.1f}m).")
                 if self._node_flash_callback:
                     self._node_flash_callback(2, False)
             return
@@ -142,7 +140,6 @@ class MapRecorder(PacketSenderMixin):
         if should_save:
             nodes_list.append(current_node)
             
-            logger.info(f"[Auto-Rec] Nodo #{len(nodes_list)} guardado | {debug_reason}")
             is_curve = "Ángulo" in debug_reason
             if self._node_flash_callback:
                 self._node_flash_callback(len(nodes_list), is_curve)
