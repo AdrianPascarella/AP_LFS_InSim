@@ -833,7 +833,7 @@ class _MapUIMixin(_MixinBase):
 
     def _map_ui_navigate_to_element(self, obj_id: str):
         """Navega al detalle del objeto recién grabado en el tab Elementos."""
-        if not getattr(self, '_ui_ucid', None):
+        if getattr(self, '_ui_ucid', None) is None:
             return
         self._ui_tab = 'elementos'
         self._ui_elem_detail_id = obj_id
@@ -843,7 +843,7 @@ class _MapUIMixin(_MixinBase):
     def _map_ui_node_flash(self, node_count: int, is_curve: bool):
         """Actualiza el contador de nodos en el tab Grabar con color flash."""
         import time
-        if not getattr(self, '_ui_ucid', None):
+        if getattr(self, '_ui_ucid', None) is None:
             return
         color = "^3" if is_curve else "^2"
         self.send_ISP_BTN(ReqI=1, UCID=self._ui_ucid, ClickID=111,
