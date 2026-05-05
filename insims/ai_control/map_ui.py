@@ -845,6 +845,10 @@ class _MapUIMixin(_MixinBase):
         import time
         if getattr(self, '_ui_ucid', None) is None:
             return
+        if getattr(self, '_ui_tab', None) != "grabar":
+            return
+        if not self.map_recorder.current_recording:
+            return
         color = "^3" if is_curve else "^2"
         self.send_ISP_BTN(ReqI=1, UCID=self._ui_ucid, ClickID=111,
                           T=0, L=0, W=0, H=0, BStyle=0,
