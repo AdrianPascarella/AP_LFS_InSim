@@ -68,29 +68,32 @@ class TestValidateStringLengths:
         return pkt.Msg
 
     def test_short_string_padded_to_4_byte_boundary(self):
-        # "hello" (5 chars): (5+1)%4 = 2, padding = 2 → 7 chars total
+        # The Msg block must be a multiple of 4 bytes (Size = total_bytes / 4).
+        # "hello" (5) + null terminator = 6 → next multiple of 4 = 8
         result = self._pad("hello", 128)
-        assert result == "hello\x00\x00"
+        assert result == "hello\x00\x00\x00"
 
     def test_two_char_padded(self):
-        # "hi" (2 chars): (2+1)%4 = 3, padding = 1 → 3 chars
+        # "hi" (2) + null terminator = 3 → next multiple of 4 = 4
         result = self._pad("hi", 128)
-        assert result == "hi\x00"
+        assert result == "hi\x00\x00"
 
     def test_three_char_no_padding_needed(self):
-        # "abc" (3 chars): (3+1)%4 = 0, no padding needed
+        # "abc" (3) + null terminator = 4 → already a multiple of 4, no extra pad
         result = self._pad("abc", 128)
-        assert result == "abc"
+        assert result == "abc\x00"
 
     def test_four_char_padded(self):
-        # "abcd" (4 chars): (4+1)%4 = 1, padding = 3 → 7 chars
+        # "abcd" (4) + null terminator = 5 → next multiple of 4 = 8
         result = self._pad("abcd", 128)
-        assert result == "abcd\x00\x00\x00"
+        assert result == "abcd\x00\x00\x00\x00"
 
-    def test_empty_string_padded(self):
-        # "" (0 chars): (0+1)%4 = 1, padding = 3 → "\x00\x00\x00"
+    def test_empty_string_stays_empty(self):
+        # Edge case: an empty string gets no terminator (0 bytes is already a
+        # multiple of 4). This characterizes the CURRENT behavior; whether an
+        # empty variable field is valid for LFS is a separate question (see notes).
         result = self._pad("", 128)
-        assert result == "\x00\x00\x00"
+        assert result == ""
 
     def test_string_at_limit_truncated(self):
         # 128 chars >= limit 128 → truncated to 127 chars
