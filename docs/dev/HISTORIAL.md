@@ -32,8 +32,8 @@
 - `interval:10` en settings contradice los 100 ms documentados.
 
 **Estado del repo:** partimos de `main` limpia (commit `131c966`). Creada la rama
-`refactor/estabilizacion`; los archivos nuevos de `docs/dev/` y la edición de `CLAUDE.md`
-están en el working tree de esa rama, **sin commitear** (a la espera de que el usuario
-decida commitear).
+`refactor/estabilizacion` y **commiteado** el sistema de contexto + enganche de `CLAUDE.md`
+en **`52729c3`** (`chore(docs): sistema de contexto persistente y flujo de rama de refactor`).
+Working tree limpio.
 
 **Próximo paso:** ver `ESTADO_ACTUAL.md` → montar `.venv`, instalar deps, correr `pytest`.

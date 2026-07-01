@@ -7,9 +7,9 @@
 
 ## Estado
 
-Sistema de contexto persistente **creado**. Escaneo y diagnóstico inicial **completados**
-(ver `DIAGNOSTICO.md`). Plan por fases **definido** (ver `PLAN.md`). Working tree limpio
-salvo los archivos nuevos de `docs/dev/` y el enganche en `CLAUDE.md`. **No hay trabajo a medias.**
+Sistema de contexto persistente **creado y commiteado** (`52729c3`). Escaneo y diagnóstico
+inicial **completados** (ver `DIAGNOSTICO.md`). Plan por fases **definido** (ver `PLAN.md`).
+Working tree limpio. **No hay trabajo a medias.**
 
 ## Fase activa
 
@@ -37,3 +37,5 @@ Ninguno.
   empezamos por Fase 0; red de seguridad = tests de caracterización.
 - Aún **no** se ha ejecutado la suite ni una sola vez en este entorno: el primer `pytest`
   verde es el hito que valida toda la Fase 0.
+- Sistema de contexto + enganche de `CLAUDE.md` commiteados en `52729c3`; la próxima sesión
+  arranca con working tree limpio directamente en Fase 0.
