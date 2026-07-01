@@ -23,6 +23,9 @@
 3. Red de seguridad para refactorizar = **tests de caracterización primero**.
 4. Todo el refactor va en la rama **`refactor/estabilizacion`**; **merge a `main` solo
    cuando esté todo estable** (suite verde + validación en LFS).
+5. **Sincronización por GitHub:** `git pull` al iniciar y `git push` al cerrar cada sesión
+   (para continuar desde otro dispositivo). Push de la rama de refactor autorizado de forma
+   permanente; merge/push a `main` sigue requiriendo permiso.
 
 **Hallazgos clave:**
 - Core sano; deuda concentrada en `ai_control`.

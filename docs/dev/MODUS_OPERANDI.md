@@ -11,11 +11,13 @@ escrito, no existe.
 ## 1. Protocolo de INICIO de sesión
 
 Antes de tocar nada:
-1. Leer `ESTADO_ACTUAL.md` (dónde quedé, próximo paso).
-2. Leer la última entrada de `HISTORIAL.md`.
-3. Leer la fase activa en `PLAN.md`.
-4. Verificar con `git status` y `git log --oneline -5` que el repo coincide con lo escrito.
-5. Resumir al usuario en 2-3 líneas dónde estamos y qué propongo. Luego actuar.
+1. Estar en la rama de refactor (`git branch --show-current`; si no, `git checkout refactor/estabilizacion`).
+2. **`git pull`** para traer cambios hechos desde otro dispositivo (los `.md` o el código pueden haber cambiado).
+3. Leer `ESTADO_ACTUAL.md` (dónde quedé, próximo paso).
+4. Leer la última entrada de `HISTORIAL.md`.
+5. Leer la fase activa en `PLAN.md`.
+6. Verificar con `git status` y `git log --oneline -5` que el repo coincide con lo escrito.
+7. Resumir al usuario en 2-3 líneas dónde estamos y qué propongo. Luego actuar.
 
 ## 2. Protocolo de CIERRE de sesión (o de hito)
 
@@ -24,6 +26,8 @@ Antes de terminar, SIEMPRE:
 2. Añadir entrada a `HISTORIAL.md` (fecha, qué se hizo, decisiones tomadas, commits si los hubo).
 3. Marcar en `PLAN.md` lo completado; reflejar tareas nuevas descubiertas.
 4. Si hubo una decisión de diseño relevante, dejarla registrada con su porqué.
+5. **Commit + `git push`** a `origin/refactor/estabilizacion`: no terminar nunca con trabajo
+   local sin subir (permite continuar desde otro dispositivo).
 
 > Si el usuario cierra de golpe, hacer este cierre en cuanto se detecte un buen punto de parada.
 
@@ -60,15 +64,18 @@ Antes de terminar, SIEMPRE:
 - Recomendar una opción, no enumerar exhaustivamente. Cuando haya información suficiente, actuar.
 - Reportar resultados con honestidad: si un test falla, decirlo con la salida real.
 
-## 7. Flujo de Git — rama de refactor → merge a `main`
+## 7. Flujo de Git — sincronización con GitHub y merge a `main`
 
 - **Todo el trabajo de refactorización se hace en la rama `refactor/estabilizacion`.**
   `main` permanece estable e intacta hasta el merge.
-- **No se mergea a `main` hasta que TODO esté estable:** fases del `PLAN.md` completadas
-  hasta el punto acordado **y suite de tests en verde**. Definición de "estable" =
-  `pytest` verde **+** el usuario ha validado el comportamiento en LFS.
-- Al **iniciar** sesión, verificar la rama con `git branch --show-current`; si no es la de
-  refactor, hacer `git checkout refactor/estabilizacion` antes de trabajar.
+- **Sincronización multi-dispositivo (GitHub es la fuente de verdad entre equipos):**
+  - Al **iniciar** sesión: estar en la rama de refactor y hacer **`git pull`** (puede haber
+    cambios subidos desde otro dispositivo).
+  - Al **cerrar** sesión o hito: **commit + `git push`** a `origin/refactor/estabilizacion`.
+    Nunca terminar con trabajo local sin subir. Commitear y pushear los avances de esta rama
+    es flujo normal y está **autorizado de forma permanente**.
+  - La rama tiene upstream `origin/refactor/estabilizacion` (`git push -u` la primera vez).
 - Commits pequeños y temáticos dentro de la rama (`tipo(scope): ...`).
-- **No commitear, mergear ni pushear sin que el usuario lo pida.** El merge a `main` lo
-  decide el usuario cuando se cumple el criterio de estabilidad.
+- **Requiere permiso explícito del usuario:** mergear a `main` (y cualquier push a `main`).
+  El merge se hace solo cuando el proyecto esté estable: `pytest` verde **+** el usuario ha
+  validado el comportamiento en LFS.

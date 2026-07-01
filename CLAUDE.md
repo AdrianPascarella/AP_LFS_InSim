@@ -5,18 +5,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## ⚠️ Contexto de trabajo persistente — LEER PRIMERO
 
 **IMPORTANTE:** Este proyecto usa un sistema de contexto que vive en archivos, no en la
-sesión de chat. **Al iniciar CUALQUIER sesión, antes de tocar nada, lee `docs/dev/` en este orden:**
+sesión de chat, y se **sincroniza por GitHub** para poder continuar desde otro dispositivo.
 
-1. `docs/dev/ESTADO_ACTUAL.md` — dónde se quedó el trabajo y cuál es el próximo paso. **Empieza aquí.**
-2. `docs/dev/HISTORIAL.md` — última entrada (contexto reciente).
-3. `docs/dev/PLAN.md` — fase activa y su checklist.
-4. `docs/dev/MODUS_OPERANDI.md` — reglas de trabajo de obligado cumplimiento.
-5. `docs/dev/DIAGNOSTICO.md` — problemas conocidos (consultar según haga falta).
+**Al iniciar CUALQUIER sesión, antes de tocar nada:**
+1. Sitúate en la rama de refactor y sincroniza: `git checkout refactor/estabilizacion` y `git pull`
+   (puede haber cambios subidos desde otro dispositivo).
+2. Lee `docs/dev/` en este orden:
+   1. `docs/dev/ESTADO_ACTUAL.md` — dónde se quedó el trabajo y cuál es el próximo paso. **Empieza aquí.**
+   2. `docs/dev/HISTORIAL.md` — última entrada (contexto reciente).
+   3. `docs/dev/PLAN.md` — fase activa y su checklist.
+   4. `docs/dev/MODUS_OPERANDI.md` — reglas de trabajo de obligado cumplimiento.
+   5. `docs/dev/DIAGNOSTICO.md` — problemas conocidos (consultar según haga falta).
 
 Punto de entrada e índice: `docs/dev/00_INDEX.md`.
 
-**Al terminar la sesión o alcanzar un hito**, actualiza `ESTADO_ACTUAL.md`, añade una entrada
-a `HISTORIAL.md` y marca lo completado en `PLAN.md` (protocolo en `MODUS_OPERANDI.md`).
+**Al terminar la sesión o alcanzar un hito:** actualiza `ESTADO_ACTUAL.md`, añade una entrada
+a `HISTORIAL.md`, marca lo completado en `PLAN.md`, y **haz commit + `git push`** para
+sincronizar (no dejes trabajo local sin subir). Protocolo completo en `MODUS_OPERANDI.md`.
 
 ## Commands
 

@@ -2,8 +2,8 @@
 
 > Actualizado: **2026-07-01** — sesión inaugural (S01)
 > **Rama de trabajo: `refactor/estabilizacion`.** Todo el refactor ocurre aquí; `main`
-> queda intacta hasta el merge final (cuando el proyecto esté estable). Al arrancar,
-> confirmar que estás en esta rama (`git branch --show-current`).
+> queda intacta hasta el merge final (cuando el proyecto esté estable). **Sync por GitHub:**
+> `git pull` al arrancar y `git push` al cerrar (permite continuar desde otro dispositivo).
 
 ## Estado
 
@@ -17,6 +17,7 @@ Working tree limpio. **No hay trabajo a medias.**
 
 ## ▶️ Próximo paso concreto (empezar AQUÍ la próxima sesión)
 
+0. **Sincronizar:** estar en `refactor/estabilizacion` y `git pull` (puede haber cambios de otro dispositivo).
 1. **Montar entorno reproducible:**
    - `python -m venv .venv` → activar (`.venv\Scripts\Activate.ps1` en Windows) → `pip install -e ".[dev]"`
    - El Python del sistema es 3.14 y **no** tiene el paquete ni `pytest` instalados.
