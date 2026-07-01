@@ -13,9 +13,9 @@
 **Objetivo:** entorno reproducible, suite corriendo y deuda de bajo riesgo eliminada.
 Sin esto no se puede refactorizar con seguridad. Riesgo casi nulo.
 
-- [ ] Crear `.venv` e instalar `pip install -e ".[dev]"` (**P1**)
-- [ ] Ejecutar `pytest`; registrar cuántos de los 221 tests pasan (**P1**)
-- [ ] Dejar los tests en verde (arreglar fallos de entorno/import si los hay)
+- [x] Crear `.venv` e instalar `pip install -e ".[dev]"` (**P1**) — S02, Python 3.14.6 + pytest 9.1.1
+- [x] Ejecutar `pytest`; registrar cuántos de los 221 tests pasan (**P1**) — S02, 216/221 en el primer run
+- [x] Dejar los tests en verde — S02, corregidos 5 tests de padding erróneos (no el código) → **221/221** (ver P8)
 - [ ] Eliminar `src/lfs_insim/utils_temp.py` (verificar antes que ningún test lo use) (**P6**)
 - [ ] Limpiar `config/settings.py`: quitar import muerto de `ISF`; mover `admin_pass` y
       `LFS_DIR` a config local / env; **decidir y alinear** el valor de `interval` con la

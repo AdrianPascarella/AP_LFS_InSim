@@ -29,11 +29,15 @@ refactorizar.
 
 ## 🔴 Problemas de severidad ALTA
 
-### P1 — Entorno no reproducible; la suite no corre
+### P1 — Entorno no reproducible; la suite no corre  ✅ RESUELTO (S02)
 - `import lfs_insim` falla y `pytest` no está instalado en el Python del sistema (3.14).
 - Hay **221 tests** que no se pueden ejecutar → inversión grande inutilizada; imposible
   refactorizar con seguridad sin ellos.
 - **Acción:** venv + `pip install -e ".[dev]"` (Fase 0).
+- **Resuelto (S02, 2026-07-01):** creado `.venv` (Python 3.14.6, ignorado por git),
+  `pip install -e ".[dev]"` OK (pytest 9.1.1). Al correr por primera vez: **216/221 verdes**,
+  5 rojos en `tests/test_packet_base.py::TestValidateStringLengths`. Investigado: **los tests
+  estaban mal, no el código** (ver P8). Corregidos → **221/221 verde**.
 
 ### P2 — Lógica frágil en traffic / navigation / radar
 - Los últimos ~15 commits son casi todos *fixes* de los mismos ficheros (radar, traffic,
@@ -91,6 +95,19 @@ protocolo. No cuentan como deuda.)
 - Comentarios residuales dirigidos a uno mismo: `# En tu dataclass o clase AIBehavior:`
   (`behavior.py:49`), marcadores `[!] NUEVO` / `[!] OPTIMIZACIÓN`. Ruido a limpiar durante
   el refactor de cada zona (no en bloque).
+
+### P8 — Caso borde: string variable vacío no recibe padding (`packets/base.py`)
+- `validate_string_lengths` (`base.py:127`) hace el padding bajo `if new_val:`, así que un
+  string vacío se queda en **0 bytes** (sin terminador null). 0 es múltiplo de 4, así que el
+  paquete no queda malformado, pero **no está verificado** si LFS acepta un campo de texto
+  variable de longitud 0 (p. ej. `ISP_MST` con `Msg=""`).
+- Descubierto en S02 al corregir los tests de `TestValidateStringLengths`: esos 5 tests
+  codificaban una fórmula de padding equivocada (esperaban longitudes NO múltiplo de 4, uno
+  incluso sin terminador null) y **nunca se habían ejecutado**. El código es correcto según
+  el protocolo (`Size = bytes/4` obliga a bloques múltiplo de 4). Tests corregidos para
+  caracterizar el comportamiento real; el caso vacío queda documentado en el propio test.
+- **Acción:** decisión pendiente — confirmar contra `docs/InSim.txt` si el vacío debe
+  rellenarse a 4 bytes (`"\x00\x00\x00\x00"`) o dejarse en 0. Riesgo bajo; no urgente.
 
 ---
 

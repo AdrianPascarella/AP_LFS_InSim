@@ -1,32 +1,38 @@
 # 📍 Estado actual
 
-> Actualizado: **2026-07-01** — sesión inaugural (S01)
+> Actualizado: **2026-07-01** — sesión S02
 > **Rama de trabajo: `refactor/estabilizacion`.** Todo el refactor ocurre aquí; `main`
 > queda intacta hasta el merge final (cuando el proyecto esté estable). **Sync por GitHub:**
 > `git pull` al arrancar y `git push` al cerrar (permite continuar desde otro dispositivo).
 
 ## Estado
 
-Sistema de contexto persistente **creado y commiteado** (`52729c3`). Escaneo y diagnóstico
-inicial **completados** (ver `DIAGNOSTICO.md`). Plan por fases **definido** (ver `PLAN.md`).
-Working tree limpio. **No hay trabajo a medias.**
+**Entorno reproducible montado y suite en verde (hito de Fase 0 alcanzado).**
+`.venv` creado (Python 3.14.6, ignorado por git) + `pip install -e ".[dev]"` (pytest 9.1.1).
+Primera ejecución: 216/221; 5 tests de padding estaban mal (no el código) → corregidos.
+Ahora **`pytest` = 221/221 verde**. Ver P1 (resuelto) y P8 en `DIAGNOSTICO.md`.
+
+Working tree: cambios en `tests/test_packet_base.py` (pendiente de commit al cerrar el hito).
 
 ## Fase activa
 
-**Fase 0 — Cimientos** (ver `PLAN.md`). No iniciada todavía.
+**Fase 0 — Cimientos** (ver `PLAN.md`). **En curso**: entorno + suite verde ✅ hechos;
+falta la limpieza de deuda de bajo riesgo (utils_temp, settings, ruta de rutas).
 
 ## ▶️ Próximo paso concreto (empezar AQUÍ la próxima sesión)
 
-0. **Sincronizar:** estar en `refactor/estabilizacion` y `git pull` (puede haber cambios de otro dispositivo).
-1. **Montar entorno reproducible:**
-   - `python -m venv .venv` → activar (`.venv\Scripts\Activate.ps1` en Windows) → `pip install -e ".[dev]"`
-   - El Python del sistema es 3.14 y **no** tiene el paquete ni `pytest` instalados.
-2. **Ejecutar `pytest`** y confirmar cuántos de los **221 tests** pasan realmente.
-3. **Registrar el resultado** en `HISTORIAL.md` y anotar el estado real de la suite
-   (verde / rojo y qué falla).
+Continuar la limpieza de bajo riesgo de Fase 0 (checklist en `PLAN.md`), en este orden:
 
-Solo con la suite corriendo se continúa con la limpieza de deuda de bajo riesgo de Fase 0
-(ver checklist en `PLAN.md`).
+1. **Eliminar `src/lfs_insim/utils_temp.py`** (solo `class DummyNode: pass`). Verificar antes
+   con grep que ningún test/módulo lo importe (**P6**).
+2. **Limpiar `config/settings.py`** (**P5**): quitar el import muerto de `ISF`; mover
+   `admin_pass` y `LFS_DIR` a config local/env; **decidir y alinear** `interval` (hoy `10`)
+   con los 100 ms de README/CLAUDE.md.
+3. **Anclar la ruta de `rutas_grabadas.txt`** al proyecto (absoluta, no relativa al CWD) y
+   decidir si el fichero de datos sigue versionado (**P6**).
+
+Recordatorio de flujo: activar el venv (`.venv\Scripts\Activate.ps1`) o invocar
+`.venv\Scripts\python.exe -m pytest`. Mantener la suite verde tras cada cambio.
 
 ## Bloqueos / esperando
 
@@ -34,9 +40,7 @@ Ninguno.
 
 ## Notas para la próxima sesión
 
-- Decisiones de esta sesión (ver S01 en `HISTORIAL.md`): contexto versionado en `docs/dev/`;
-  empezamos por Fase 0; red de seguridad = tests de caracterización.
-- Aún **no** se ha ejecutado la suite ni una sola vez en este entorno: el primer `pytest`
-  verde es el hito que valida toda la Fase 0.
-- Sistema de contexto + enganche de `CLAUDE.md` commiteados en `52729c3`; la próxima sesión
-  arranca con working tree limpio directamente en Fase 0.
+- El comando para correr tests en este entorno: `.venv\Scripts\python.exe -m pytest -q`.
+- P8 (nuevo): caso borde de string vacío sin padding — decisión de diseño pendiente, riesgo
+  bajo; no bloquea. Confirmar contra `docs/InSim.txt` cuando se aborde.
+- Al cerrar S02: commit del fix de tests + `git push` (ver `HISTORIAL.md`).
