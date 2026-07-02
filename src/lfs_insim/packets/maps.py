@@ -16,7 +16,8 @@ INSIM_PACKETS = {
     50: ISP_CON, 51: ISP_OBH, 52: ISP_HLV, 53: ISP_PLC, 54: ISP_AXM,
     55: ISP_ACR, 56: ISP_HCP, 57: ISP_NCI, 58: ISP_JRR, 59: ISP_UCO,
     60: ISP_OCO, 61: ISP_TTC, 62: ISP_SLC, 63: ISP_CSC, 64: ISP_CIM,
-    65: ISP_MAL, 66: ISP_PLH, 67: ISP_IPB, 68: ISP_AIC, 69: ISP_AII
+    65: ISP_MAL, 66: ISP_PLH, 67: ISP_IPB, 68: ISP_AIC, 69: ISP_AII,
+    70: ISP_SET
 }
 
 # OUTSIM_PACKETS se define en packets/__init__.py usando los tamaños reales de cada clase.

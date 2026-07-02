@@ -12,7 +12,7 @@ class LFS_LIMITS:
     # Límites de Conexiones y Jugadores
     PLH_MAX_PLAYERS = 48    # Máximo de jugadores en un paquete PLH
     REO_MAX_PLAYERS = 48    # Máximo de jugadores en un paquete REO
-    NLP_MAX_CARS = 40       # Máximo de coches en un paquete NLP (Node and Lap)
+    NLP_MAX_CARS = 48       # Máximo de coches en un paquete NLP (Node and Lap)
     MCI_MAX_CARS = 16       # Máximo de coches en un paquete MCI (Multi Car Info)
 
     # Límites de Contenido y Seguridad
@@ -30,7 +30,7 @@ NOT_CHANGED = 255
 class ISP(IntEnum):
     """
     Packet Types - El segundo byte de cualquier paquete es uno de estos.
-    Referencia exacta del archivo proporcionado (0 a 69).
+    Referencia exacta del archivo proporcionado (0 a 70).
     """
     NONE = 0         # not used
     ISI = 1          # instruction : insim initialise
@@ -102,6 +102,7 @@ class ISP(IntEnum):
     IPB = 67         # both ways   : set IP bans
     AIC = 68         # instruction : set AI control value
     AII = 69         # info        : info about AI car
+    SET = 70         # info        : output a sent setup
 
 class TINY(IntEnum):
     """
@@ -247,8 +248,8 @@ class ISF(IntFlag):
     """
     ISF - InSim Flags.
     Configuración de la sesión InSim enviada en el paquete IS_ISI.
-    Referencia exacta de la documentación (Bits 0 a 11).
-    
+    Referencia exacta de la documentación (Bits 0 a 12).
+
     Se utiliza en: ISP_ISI.Flags
     """
     RES_0 = 1 << 0          # bit 0: spare
@@ -263,6 +264,7 @@ class ISF(IntFlag):
     AXM_LOAD = 1 << 9       # bit 9: receive AXM when loading a layout
     AXM_EDIT = 1 << 10      # bit 10: receive AXM when changing objects
     REQ_JOIN = 1 << 11      # bit 11: process join requests
+    SET = 1 << 12           # bit 12: receive SET packets from guests who send their setup
 
 class ISS(IntFlag):
     """
@@ -521,7 +523,7 @@ class HOSTF(IntFlag):
     """
     HOSTF - Host Flags.
     Define las reglas y opciones activas en el servidor/host.
-    Referencia exacta de la documentación (Bits 0 a 9).
+    Referencia exacta de la documentación (Bits 0 a 15).
     """
     CAN_VOTE = 1 << 0       # 1   - Los jugadores pueden votar (kick/ban/etc)
     CAN_SELECT = 1 << 1     # 2   - Los jugadores pueden seleccionar pista/coche
@@ -530,6 +532,12 @@ class HOSTF(IntFlag):
     CAN_RESET = 1 << 7      # 128 - Permitido resetear el coche
     FCV = 1 << 8            # 256 - Force Cockpit View (Vista forzada de cabina)
     CRUISE = 1 << 9         # 512 - Modo Cruise (sin sentido de carrera, tráfico libre)
+    SHOW_FUEL = 1 << 10     # 0x400  - Mostrar combustible de los jugadores
+    CAN_REFUEL = 1 << 11    # 0x800  - Permitido repostar
+    ALLOW_MODS = 1 << 12    # 0x1000 - Mods permitidos
+    UNAPPROVED = 1 << 13    # 0x2000 - Mods no aprobados permitidos
+    TEAMARROWS = 1 << 14    # 0x4000 - Flechas de equipo
+    NO_FLOOD = 1 << 15      # 0x8000 - Protección anti-flood
 
 class PENALTY(IntEnum):
     """
@@ -606,8 +614,9 @@ class CCI(IntFlag):
     """
     BLUE = 1 << 0           # 1   - Blue flag: car is in the way of a leader
     YELLOW = 1 << 1         # 2   - Yellow flag: car is slow/stopped in danger
-    OOB = 1 << 2            # 4   - Out of Bounds: car is outside the track path
-    
+    OOB = 1 << 2            # 4   - Out of Bounds: car is outside the path
+    RETIRED = 1 << 3        # 8   - This car has been retired
+
     LAG = 1 << 5            # 32  - Lagging: missing or delayed position packets
     
     FIRST = 1 << 6          # 64  - First compcar in this set of MCI packets
@@ -743,6 +752,35 @@ class PIF(IntFlag):
     KB_NO_HELP = 1 << 11       # 2048  - Keyboard (no help)
     KB_STABILISED = 1 << 12    # 4096  - Keyboard (stabilised)
     CUSTOM_VIEW = 1 << 13      # 8192  - Using a custom view
+
+class RIF(IntFlag):
+    """
+    RIF - Racer Info Flags.
+    Información extra del jugador (soporte de objetos inamovibles desde 0.8B36).
+
+    Se utiliza en: ISP_NPL.RIFlags
+    SAIType = (RIFlags & RIF.SAI_MASK) >> RIF_SAI_SHIFTS  (ver enum SAI)
+    """
+    LATE_START = 1 << 0        # 1  - joined after race started
+    RESERVED_2 = 1 << 1        # 2  - (reserved)
+    RESERVED_4 = 1 << 2        # 4  - (reserved)
+    SAI_NON_SOLID = 1 << 3     # 8  - unmovable object without collision
+    SAI_0 = 1 << 4             # 16 - bit 0 del SAIType
+    SAI_1 = 1 << 5             # 32 - bit 1 del SAIType
+    SAI_MASK = SAI_0 | SAI_1
+
+RIF_SAI_SHIFTS = 4  # SAIType = (RIFlags & RIF.SAI_MASK) >> RIF_SAI_SHIFTS
+
+class SAI(IntEnum):
+    """
+    SAI - SAIType (como en el comando /sai).
+    Tipo de objeto inamovible, derivado de ISP_NPL.RIFlags (ver RIF).
+    """
+    MOVE = 0        # 0 - movable
+    FLOAT = 1       # 1 - unmovable / floating
+    GROUND = 2      # 2 - unmovable / ground level
+    ANGLE = 3       # 3 - unmovable / ground level / ground angle
+    NUM = 4
 
 class AI_HELP:
     AUTOGEARS=PIF.AUTOGEARS

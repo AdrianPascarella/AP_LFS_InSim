@@ -275,7 +275,7 @@ class ISP_NPL(PacketFunctions):
     Pass: PASS = field(default=0, metadata={'fmt': 'B'})
     RWAdj: int = field(default=0, metadata={'fmt': 'B'})
     FWAdj: int = field(default=0, metadata={'fmt': 'B'})
-    Sp2: int = field(default=0, metadata={'fmt': 'B'})
+    RIFlags: RIF = field(default=0, metadata={'fmt': 'B'})
     Sp3: int = field(default=0, metadata={'fmt': 'B'})
     SetF: SETF = field(default=0, metadata={'fmt': 'B'})
     NumP: int = field(default=0, metadata={'fmt': 'B'})
@@ -827,3 +827,24 @@ class ISP_AII(PacketFunctions):
     SPU1: int = field(default=0, metadata={'fmt': 'I'})
     SPU2: int = field(default=0, metadata={'fmt': 'I'})
     SPU3: int = field(default=0, metadata={'fmt': 'I'})
+
+@dataclass
+class ISP_SET(PacketFunctions):
+    """
+    SETup - recibido cuando un guest envía su setup (requiere ISF.SET en el ISI).
+
+    Setup: 120 bytes crudos, casi igual que un fichero de setup sin los primeros
+    12 bytes. OJO: el orden de las marchas difiere del fichero — aquí (RAM) son
+    las 7 marchas y después la FDR.
+    """
+    Size: int = field(default=0, metadata={'fmt': 'B'})
+    Type: ISP = field(default=ISP.SET, metadata={'fmt': 'B'})
+    ReqI: int = field(default=0, metadata={'fmt': 'B'})
+    PLID: int = field(default=0, metadata={'fmt': 'B'})
+    CName: str = field(default='', metadata={'fmt': '4s'})
+    Spare: int = field(default=0, metadata={'fmt': 'I'})
+    FuelLoad: int = field(default=0, metadata={'fmt': 'B'})
+    Sp1: int = field(default=0, metadata={'fmt': 'B'})
+    Sp2: int = field(default=0, metadata={'fmt': 'B'})
+    Sp3: int = field(default=0, metadata={'fmt': 'B'})
+    Setup: list[int] = field(default_factory=lambda: [0] * 120, metadata={'fmt': ('B', 120)})
