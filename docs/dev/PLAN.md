@@ -43,10 +43,15 @@ a remover todo). Sin LFS: sockets falsos y bytes de oro.
       spec) → dataclass esperado, para los paquetes info más usados (STA, NCN, NPL, MCI,
       MSO, VER...) (**P19**) — S05: `tests/test_golden_bytes_decode.py` (20 tests: VER/STA/
       NCN/CNL/MSO/NPL/MCI/NLP-con-padding/CON/OBH/HLV/BTC/BTT + enrutado de decode_packet)
-- [ ] Tests del **dispatch** de `InSimClient`: registro de handlers activos, orden
-      master→módulos, aislamiento de errores por handler
-- [ ] Tests del **loader**: carga con dependencias, coup d'état actual (caracterizar),
-      fallos (módulo inexistente, sin clase InSimApp, versión insuficiente) (**P20**)
+- [x] Tests del **dispatch** de `InSimClient`: registro de handlers activos, orden
+      master→módulos, aislamiento de errores por handler — S05:
+      `tests/test_client_dispatch.py` (14 tests: orden, aislamiento, keep-alive reactivo,
+      lifecycle, ruta thread-pool; el registro activo ya estaba en
+      `test_active_packet_registry.py`)
+- [x] Tests del **loader**: carga con dependencias, coup d'état actual (caracterizar),
+      fallos (módulo inexistente, sin clase InSimApp, versión insuficiente) (**P20**) —
+      S05: `tests/test_loader.py` (29 tests con InSims sintéticos en tmp_path; caracterizado
+      el tragado de dependencias rotas de P20 y el requisito no documentado de `__init__.py`)
 - [ ] Tests de **packet_io** con socket falso: reensamblado TCP (paquetes fragmentados /
       pegados), byte Size=0, cierre de conexión
 - [ ] Infra: fixture de "LFS falso" (servidor TCP loopback que reproduce trazas) reutilizable

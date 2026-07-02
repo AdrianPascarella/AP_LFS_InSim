@@ -7,12 +7,17 @@
 
 ## Estado
 
-**Golden-bytes de Fase 1 hechos** (suite **316/316 verde**): la ruta de encode
-(`prepare→pack`, 63 tests sobre los 27 paquetes enviables) y la de decode
-(`decode_packet`, 20 tests con bytes construidos según spec 0.8C5) quedan congeladas
-byte a byte. Descubierto y registrado **P21**: enviar ISP_REO, ISP_HCP o ISP_IPB con
-bans **falla siempre** (`_extract_values` no aplana listas de formato fijo); queda
-caracterizado con `pytest.raises` hasta que se arregle en P19/Fase 3.
+**Fase 1 al 67 % (4 de 6 ítems), suite 359/359 verde.** Congelado por tests:
+- **Encode** (`test_golden_bytes_send.py`, 63): bytes exactos de los 27 paquetes enviables.
+- **Decode** (`test_golden_bytes_decode.py`, 20): bytes según spec 0.8C5 → dataclass.
+- **Dispatch** (`test_client_dispatch.py`, 14): orden master→módulos, aislamiento de
+  errores, keep-alive reactivo, lifecycle, thread-pool.
+- **Loader** (`test_loader.py`, 29): dependencias, coup d'état + aplanado, caché,
+  rollback del master, fallos.
+
+Hallazgos nuevos registrados en `DIAGNOSTICO.md`: **P21** (enviar ISP_REO/ISP_HCP/
+ISP_IPB-con-bans falla siempre: `_extract_values` no aplana listas fijas) y ampliación
+de **P20** (un InSim sin `__init__.py` muere con error críptico).
 
 **Contexto del plan (S04):** llevar el **framework a nivel profesional**; romper los
 insims existentes es aceptable. Auditoría del core → **P11–P21** en `DIAGNOSTICO.md`
@@ -21,15 +26,15 @@ P14 core acoplado a `config/` del CWD). Fases 1–4 = core; Fases 5–6 = ai_con
 
 ## Fase activa
 
-**Fase 1 — Red de seguridad del CORE** (ver `PLAN.md`). 2 de 6 ítems completados
-(golden-bytes de serialización y de decodificación).
+**Fase 1 — Red de seguridad del CORE** (ver `PLAN.md`). Quedan 2 ítems: packet_io
+con socket falso y la fixture de "LFS falso".
 
 ## ▶️ Próximo paso concreto (empezar AQUÍ la próxima sesión)
 
-Seguir la Fase 1 con los tests de **dispatch de `InSimClient`** (registro de handlers
-activos, orden master→módulos, aislamiento de errores por handler) y del **loader**
-(dependencias, coup d'état, fallos). Después: **packet_io** con socket falso
-(reensamblado TCP fragmentado/pegado, Size=0, cierre) y la fixture de "LFS falso".
+Terminar la Fase 1: tests de **packet_io** con socket falso — reensamblado TCP
+(paquetes fragmentados y pegados), byte Size=0, cierre de conexión — y la fixture
+reutilizable de **"LFS falso"** (servidor TCP loopback que reproduce trazas).
+Leer `src/lfs_insim/insim_packet_io.py` antes de empezar.
 
 ## Bloqueos / esperando
 

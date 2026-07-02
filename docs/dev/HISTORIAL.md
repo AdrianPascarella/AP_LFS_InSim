@@ -5,9 +5,27 @@
 
 ---
 
-## S05 — 2026-07-02 — Fase 1: golden-bytes de serialización y decodificación
+## S05 — 2026-07-02 — Fase 1: golden-bytes + tests de dispatch y loader (4/6 ítems)
 
-**Qué se hizo:**
+**Qué se hizo (segundo bloque, misma sesión):**
+- **Tests de dispatch de `InSimClient`** (`tests/test_client_dispatch.py`, 14 tests):
+  orden de entrega master→módulos, aislamiento de errores por handler (uno que explota
+  no corta a los demás), keep-alive reactivo (TINY.NONE se contesta con TINY.NONE),
+  `_dispatch_lifecycle` (orden, aislamiento, módulos sin hook) y enrutado según
+  `use_thread_pool` (inline vs executor.submit).
+- **Tests del loader** (`tests/test_loader.py`, 29 tests) con InSims sintéticos generados
+  en `tmp_path` (insim.json + app.py, sin sockets): carga simple, entry point `__init__.py`,
+  caché, discover; **coup d'état caracterizado** (dependencia degradada a módulo, cadena de
+  3 aplanada a `[n1, n0]`, master anterior limpiado); fallos (inexistente, sin entry point,
+  sin clase InSimApp → error envuelto, rollback del trono tras fallo, versión insuficiente);
+  **P20 caracterizado**: una dependencia rota se loguea y se SIGUE (el dependiente carga
+  igualmente y `get_insim` devuelve None). Helpers `_parse_version`/`_check_version`
+  parametrizados.
+- **Hallazgo (ampliación de P20 en `DIAGNOSTICO.md`):** un InSim **sin `__init__.py`**
+  (con entry point aparte) muere con error críptico — `spec_from_file_location(name, None)`
+  devuelve None. Requisito no documentado; caracterizado en `test_sin_init_py_falla`.
+
+**Qué se hizo (primer bloque):**
 - Arranque según protocolo: rama al día, working tree limpio, suite base 233/233.
 - **Golden-bytes de serialización** (`tests/test_golden_bytes_send.py`, 63 tests): fija los
   bytes exactos que produce la ruta real de encode de `send_packet()` (prepare →
@@ -38,11 +56,12 @@
 2. P21 se caracteriza como excepción, no se arregla ahora (Fase 1 no cambia comportamiento);
    el arreglo va con P19 en Fase 3.
 
-**Estado del repo:** rama `refactor/estabilizacion`, suite **316/316 verde**
-(233 + 63 + 20). Fase 1: 2/6 ítems completados.
+**Estado del repo:** rama `refactor/estabilizacion`, suite **359/359 verde**
+(233 + 63 golden-send + 20 golden-decode + 14 dispatch + 29 loader).
+Fase 1: **4/6 ítems completados**.
 
-**Próximo paso:** ver `ESTADO_ACTUAL.md` → tests de dispatch de `InSimClient` y del loader;
-después packet_io con socket falso + fixture "LFS falso".
+**Próximo paso:** ver `ESTADO_ACTUAL.md` → terminar Fase 1: packet_io con socket falso
+(reensamblado TCP fragmentado/pegado, Size=0, cierre) + fixture "LFS falso".
 
 ---
 
