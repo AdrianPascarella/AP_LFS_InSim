@@ -223,6 +223,17 @@ protocolo. No cuentan como deuda.)
 - **Acción:** fail-fast con excepción encadenada; si se quieren constraints serios, usar
   `packaging` (o documentar el subset soportado).
 
+### P21 — Envío de ISP_REO / ISP_HCP / ISP_IPB-con-bans roto (MEDIA, funcional) — descubierto en S05
+- `_extract_values()` (insim_packet_sender.py) solo aplana listas cuando el `fmt` es una
+  **tupla variable** `(fmt, límite)`. Con listas de formato **fijo** (`repeat('B', 48)` en
+  `ISP_REO.PLID`, `repeat(CarHCP, 32)` en `ISP_HCP.Info`) y con tuplas anidadas
+  (`ISP_IPB.BanIPs`, fmt `('4B', None)`) el valor llega a `struct.pack` sin aplanar →
+  `struct.error: pack expected N items (got M)`. **Enviar IS_REO, IS_HCP o IS_IPB con
+  bans falla siempre.** Nadie los usa hoy (por eso no se había notado).
+- Caracterizado en `tests/test_golden_bytes_send.py::TestEnviosRotos`.
+- **Acción:** arreglar al unificar la ruta de serialización (P19, Fase 3); entonces
+  sustituir los tests de excepción por golden-bytes reales.
+
 ---
 
 ## Mapa de zonas de `ai_control` (para orientarse)
