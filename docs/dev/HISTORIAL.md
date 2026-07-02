@@ -5,6 +5,42 @@
 
 ---
 
+## S06 — 2026-07-02 — Fase 1 COMPLETADA: packet_io + fixture "LFS falso"
+
+**Qué se hizo:**
+- **Tests de packet_io** (`tests/test_packet_io.py`, 28 tests), sin LFS real:
+  - `_tcp_listen_loop` con socket guionizado: reensamblado del flujo TCP (paquete
+    completo, dos pegados, fragmentado en dos y byte a byte, pegado+fragmento del
+    siguiente, ráfaga de 10); byte **Size=0** se descarta de uno en uno (resincronización
+    byte a byte); cierre (recv vacío corta el bucle; **un resto incompleto en el buffer
+    se pierde en silencio**); excepción en recv termina el hilo sin propagar (sin
+    reconexión — P12); STOP_EVENT previo impide leer.
+  - `_udp_listen_loop`: un datagrama = un paquete (sin reensamblado), datagrama vacío
+    se ignora sin cortar, excepción termina el bucle.
+  - `stop_all_threads`: cierra y resetea ambos sockets, traga errores de cierre y deja
+    STOP_EVENT limpio.
+  - `connect_tcp_lfs`/`connect_udp_lfs`: puerto cerrado/ocupado → `InSimConnectionError`.
+  - **Integración real por loopback** (7 tests, con `fake_lfs`): conectar registra el
+    socket y arranca el hilo receptor; trazas completas y fragmentadas llegan
+    decodificadas al cliente; el FakeLFS registra lo que envía el cliente; la caída de
+    LFS termina el hilo receptor (y NO se reconecta — P12); `stop_all_threads` lo
+    termina y resetea; UDP end-to-end con datagrama real.
+- **Fixture "LFS falso"** (`tests/conftest.py`, nuevo): clase `FakeLFS` — servidor TCP
+  loopback que acepta una conexión, reproduce trazas de bytes hacia el cliente y
+  registra lo recibido — expuesta como fixture `fake_lfs` para toda la suite.
+
+**Decisiones tomadas:** ninguna nueva; los tests congelan el comportamiento actual,
+incluidas las carencias ya registradas (P12 sin reconexión, pérdida silenciosa del
+resto del buffer al cerrar).
+
+**Estado del repo:** rama `refactor/estabilizacion`, suite **387/387 verde** (359 + 28
+packet_io). **Fase 1: 6/6 ítems — COMPLETADA.** Fase 2 pasa a activa.
+
+**Próximo paso:** ver `ESTADO_ACTUAL.md` → Fase 2 (P11, invertir herencia); antes,
+decidir con el usuario el idioma de la API pública del core.
+
+---
+
 ## S05 — 2026-07-02 — Fase 1: golden-bytes + tests de dispatch y loader (4/6 ítems)
 
 **Qué se hizo (segundo bloque, misma sesión):**

@@ -30,7 +30,7 @@ CCI_RETIRED, NLP_MAX_CARS=48, HOSTF nuevos) con 12 tests; spec completa restaura
 
 ---
 
-## Fase 1 — Red de seguridad del CORE  ◀️ ACTIVA
+## Fase 1 — Red de seguridad del CORE  ✅ COMPLETADA (S06, 2026-07-02)
 
 **Objetivo:** congelar el comportamiento del core antes de refactorizarlo (P11–P14 lo van
 a remover todo). Sin LFS: sockets falsos y bytes de oro.
@@ -52,16 +52,20 @@ a remover todo). Sin LFS: sockets falsos y bytes de oro.
       fallos (módulo inexistente, sin clase InSimApp, versión insuficiente) (**P20**) —
       S05: `tests/test_loader.py` (29 tests con InSims sintéticos en tmp_path; caracterizado
       el tragado de dependencias rotas de P20 y el requisito no documentado de `__init__.py`)
-- [ ] Tests de **packet_io** con socket falso: reensamblado TCP (paquetes fragmentados /
-      pegados), byte Size=0, cierre de conexión
-- [ ] Infra: fixture de "LFS falso" (servidor TCP loopback que reproduce trazas) reutilizable
+- [x] Tests de **packet_io** con socket falso: reensamblado TCP (paquetes fragmentados /
+      pegados), byte Size=0, cierre de conexión — S06: `tests/test_packet_io.py` (28 tests:
+      framing TCP con socket guionizado, Size=0 con resincronización byte a byte, cierre y
+      errores de recv, bucle UDP, stop_all_threads, fallos de conexión, integración loopback)
+- [x] Infra: fixture de "LFS falso" (servidor TCP loopback que reproduce trazas) reutilizable —
+      S06: clase `FakeLFS` + fixture `fake_lfs` en `tests/conftest.py`, usada por los 6 tests
+      de integración TCP de packet_io
 
 **Criterio de aceptación:** el comportamiento actual del core queda descrito por tests que
 fallarían ante una regresión; base para refactorizar con confianza.
 
 ---
 
-## Fase 2 — Arquitectura del core (composición y API)
+## Fase 2 — Arquitectura del core (composición y API)  ◀️ ACTIVA
 
 **Objetivo:** eliminar los defectos estructurales de raíz. **Rompe la API de los insims**
 (aceptado por el usuario en S04).
