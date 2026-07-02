@@ -29,7 +29,9 @@ generate-stubs = "lfs_insim.generate_stubs:main"
 update-all = "lfs_insim.update_all:main"
 
 [project.optional-dependencies]
-dev = ["pytest>=7.0"]
+# matplotlib no es del core: lo necesita el InSim ai_control (map_renderer);
+# va en dev para que el entorno de desarrollo/tests sea reproducible.
+dev = ["pytest>=7.0", "matplotlib"]
 
 # Detección automática de paquetes en src/
 [tool.setuptools.packages.find]
