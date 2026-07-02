@@ -5,7 +5,19 @@
 
 ---
 
-## S06 — 2026-07-02 — Fase 1 COMPLETADA; P11 (composición) y P13 (transporte)
+## S06 — 2026-07-02 — Fase 1 COMPLETADA; P11 (composición), P13 (transporte) y P21
+
+**Qué se hizo (cuarto bloque, misma sesión) — fix de P21, adelantado de Fase 3:**
+- Validando P13 en vivo, el usuario pisó P21 con `!test hcp` (`struct.error: pack
+  expected 68 items (got 5)` en el log; el aislamiento de `_execute_handler` contuvo
+  el fallo y el cliente siguió vivo — P13 se comportó bien).
+- Fix en `_extract_values`: rama nueva para secuencias de formato fijo (`repeat(...)`
+  devuelve una lista de fmts por hueco) que aplana y **rellena con defaults** hasta la
+  longitud fija (sub-structs → instancia por defecto; primitivos → 0); en listas
+  variables, los items tuple/list (p. ej. IPs `'4B'`) se expanden con `extend`.
+- `TestEnviosRotos` → `TestGoldenSecuenciasFijas` (5 golden-bytes reales de REO/HCP/
+  IPB); REO y HCP reincorporados al test estructural. Suite **391/391**.
+- Queda que el usuario re-pruebe `!test hcp` en LFS.
 
 **Qué se hizo (tercer bloque, misma sesión) — Fase 2, P13** (tras validar el usuario
 P11 en LFS):

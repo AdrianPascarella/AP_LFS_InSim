@@ -123,8 +123,28 @@ def _extract_values(obj):
                 for item in items_to_process:
                     if hasattr(item, 'get_fmt'):
                         extracted.extend(_extract_values(item))
+                    elif isinstance(item, (tuple, list)):
+                        # Multi-value item (e.g. an IP as (192,168,1,1) for '4B')
+                        extracted.extend(item)
                     else:
                         extracted.append(item)
+
+        # --- FIXED-FORMAT SEQUENCES (repeat(...): one fmt per slot) ---
+        # The struct format always expands to the full fixed length, so the
+        # value list must too: missing slots are padded with defaults.
+        elif isinstance(fmt_meta, list):
+            items = list(val) if val is not None else []
+            for i, slot_fmt in enumerate(fmt_meta):
+                item = items[i] if i < len(items) else None
+                if isinstance(slot_fmt, type):
+                    # Sub-struct slot (e.g. CarHCP in ISP_HCP)
+                    extracted.extend(_extract_values(item if item is not None else slot_fmt()))
+                elif item is None:
+                    extracted.append(0)
+                elif hasattr(item, 'value'):   # Enum
+                    extracted.append(int(item.value))
+                else:
+                    extracted.append(item)
 
         # --- SUBPAQUETES ---
         elif hasattr(val, 'get_fmt'):

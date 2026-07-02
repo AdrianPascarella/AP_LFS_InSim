@@ -21,8 +21,14 @@ TCP/UDP, hilos receptores, stop y lock **por instancia**; el cliente lo posee
 (Command/CMDManager/RouteManager). **Dos clientes coexisten en un proceso** (test de
 aceptación en `test_transport.py`). Smoke: `ai_control` carga, CLI OK.
 
-**⚠️ Pendiente del usuario:** validar P13 en LFS (`lfs-insim run test_insim` /
-`ai_control`) — el envío/recepción cambió de ruta interna (no bloquea seguir).
+**P21 arreglado (S06, adelantado de Fase 3):** validando P13 en vivo, el usuario pisó
+P21 con `!test hcp` (el envío de REO/HCP/IPB-con-bans estaba roto desde siempre; el
+aislamiento de errores contuvo el fallo). `_extract_values` aplana ya secuencias fijas
+(con relleno de defaults) e items multi-valor; golden-bytes reales en
+`TestGoldenSecuenciasFijas`. Suite **391/391**.
+
+**⚠️ Pendiente del usuario:** terminar de validar P13 en LFS, incluyendo re-probar
+`!test hcp` (debería resetear handicaps sin error en el log).
 
 **Contexto del plan (S04):** framework a nivel profesional; romper insims aceptable.
 P11–P21 en `DIAGNOSTICO.md`. Quedan gordos: P12 (reconexión, Fase 3) y P14 (config

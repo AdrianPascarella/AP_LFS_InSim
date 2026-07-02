@@ -16,7 +16,6 @@ NOTA: desde P13 `encode` ES la función real (`encode_packet`), extraída de
 """
 import pytest
 
-from lfs_insim.exceptions import InSimPacketError
 from lfs_insim.insim_packet_sender import encode_packet as encode
 from lfs_insim.packets import (
     ALLOWED_PACKETS,
@@ -24,16 +23,11 @@ from lfs_insim.packets import (
     ISP_JRR, ISP_MAL, ISP_MOD, ISP_MSL, ISP_MST, ISP_MSX, ISP_MTC, ISP_OCO,
     ISP_PLC, ISP_PLH, ISP_REO, ISP_RIP, ISP_SCC, ISP_SCH, ISP_SFP, ISP_SMALL,
     ISP_SSH, ISP_TINY, ISP_TTC,
-    AIInputVal, ObjectInfo, PlayerHCap, Vec,
+    AIInputVal, CarHCP, ObjectInfo, PlayerHCap, Vec,
 )
 from lfs_insim.insim_enums import (
     BFN, CS, ISF, JRR, SMALL, SND, TINY, TTC, VIEW,
 )
-
-
-# Paquetes cuyo envío está ROTO hoy (ver P21 en DIAGNOSTICO.md): sus listas de
-# formato fijo / tuplas anidadas llegan a struct.pack sin aplanar.
-BROKEN_SEND = (ISP_REO, ISP_HCP)
 
 
 class TestInvarianteEstructural:
@@ -41,7 +35,7 @@ class TestInvarianteEstructural:
 
     @pytest.mark.parametrize(
         "cls",
-        [c for c in ALLOWED_PACKETS if c not in BROKEN_SEND],
+        list(ALLOWED_PACKETS),
         ids=lambda c: c.__name__,
     )
     def test_defaults_encajan_con_cabecera(self, cls):
@@ -254,27 +248,31 @@ class TestGoldenPantalla:
             b'\n1\x01\x00\x00\x00\x00\x00' + b'captura' + b'\x00' * 25
 
 
-class TestEnviosRotos:
+class TestGoldenSecuenciasFijas:
     """
-    Caracterización de P21 (DIAGNOSTICO.md): el envío de REO, HCP e IPB-con-bans
-    está ROTO hoy porque `_extract_values` no aplana listas de formato fijo
-    (`repeat(...)`) ni tuplas anidadas — struct.pack recibe menos valores de los
-    que el formato exige. Cuando se arregle (P19/P21), estos tests deben
-    sustituirse por golden-bytes reales.
+    Golden-bytes de REO, HCP e IPB-con-bans (P21 ARREGLADO en S06): las listas
+    de formato fijo (`repeat(...)`) se aplanan y rellenan con defaults hasta su
+    longitud fija, y los items multi-valor ('4B') se expanden.
     """
 
-    def test_reo_roto(self):
-        with pytest.raises(InSimPacketError):
-            encode(ISP_REO())
+    def test_reo_con_dos_plids(self):
+        # 4 cabecera + PLID[48] = 52 bytes (Size 13); Type REO = 36
+        assert encode(ISP_REO(ReqI=1, NumP=2, PLID=(9, 5))) == \
+            bytes([13, 36, 1, 2, 9, 5]) + bytes(46)
 
-    def test_hcp_roto(self):
-        with pytest.raises(InSimPacketError):
-            encode(ISP_HCP())
+    def test_reo_defaults(self):
+        assert encode(ISP_REO()) == bytes([13, 36, 0, 0]) + bytes(48)
+
+    def test_hcp_un_coche(self):
+        # 4 cabecera + 32×CarHCP(2B) = 68 bytes (Size 17); Type HCP = 56.
+        # El resto de coches se rellena con CarHCP() por defecto (0, 0).
+        assert encode(ISP_HCP(Info=[CarHCP(30, 30)])) == \
+            bytes([17, 56, 0, 0, 30, 30]) + bytes(62)
 
     def test_ipb_sin_bans_funciona(self):
-        # Con la lista vacía sí encodea (no hay tuplas que aplanar)
         assert encode(ISP_IPB()) == b'\x02C\x00\x00\x00\x00\x00\x00'
 
-    def test_ipb_con_bans_roto(self):
-        with pytest.raises(InSimPacketError):
-            encode(ISP_IPB(NumB=1, BanIPs=[(192, 168, 1, 1)]))
+    def test_ipb_con_un_ban(self):
+        # 8 cabecera + 1 IP ('4B') = 12 bytes (Size 3); Type IPB = 67
+        assert encode(ISP_IPB(NumB=1, BanIPs=[(192, 168, 1, 1)])) == \
+            bytes([3, 67, 0, 1, 0, 0, 0, 0, 192, 168, 1, 1])
