@@ -32,5 +32,8 @@ logs/
 .DS_Store
 Thumbs.db
 
+# --- Config local por máquina (secretos / rutas) ---
+config/settings_local.py
+
 # claude
 .claude

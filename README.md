@@ -32,7 +32,7 @@ INSIM_CONFIG = {
     "tcp_host": "127.0.0.1",
     "tcp_port": 29999,
     "prefix": "!",        # prefijo de comandos en el chat
-    "interval": 100,      # ms entre actualizaciones NLP/MCI
+    "interval": 10,       # ms entre actualizaciones NLP/MCI (valor real del proyecto)
     "insim_name": "InSimApp",
     "insim_ver": 10,
 

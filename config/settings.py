@@ -44,7 +44,7 @@ class _HighFreqFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
         msg = record.getMessage()
         return not any(p in msg for p in self._PATTERNS)
-from lfs_insim.insim_enums import ISF
+
 
 # ═══════════════════════════════════════════════════════════════════════════
 # DIRECTORIOS
@@ -56,7 +56,8 @@ LOGS_DIR = BASE_DIR / 'logs'             # Carpeta de logs
 # Crear carpeta si no existe
 LOGS_DIR.mkdir(exist_ok=True)
 
-LFS_DIR = 'C:/LFS'
+# Instalación local de LFS. Valor por máquina: variable de entorno o settings_local.py.
+LFS_DIR = os.environ.get('LFS_DIR', 'C:/LFS')
 
 # ═══════════════════════════════════════════════════════════════════════════
 # CONFIGURACIÓN DE InSim (Conexión a LFS)
@@ -70,10 +71,11 @@ INSIM_CONFIG: Dict[str, Any] = {
 
     # --- Configuración del Paquete de Inicialización (ISI) ---
     'insim_name': 'InSimApp',
-    'admin_pass': 'abc',
+    # Contraseña de admin de LFS: por máquina (env o settings_local.py), nunca versionada.
+    'admin_pass': os.environ.get('LFS_ADMIN_PASS', ''),
     'insim_ver':  10,           # InSim v10 para LFS 0.7F+
     'prefix':     '!',          # Prefijo para comandos de chat
-    'interval':   10,           # Intervalo NLP/MCI en ms
+    'interval':   10,           # Intervalo NLP/MCI en ms (el hot-loop de IA corre a este ritmo)
     'flags':      0,
 
     # Configuración de usuario
@@ -170,3 +172,17 @@ def get_config(custom_config: Dict[str, Any] = None) -> Dict[str, Any]:
     if custom_config:
         config.update(custom_config)
     return config
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# OVERRIDES LOCALES (config/settings_local.py — NO versionado)
+# ═══════════════════════════════════════════════════════════════════════════
+# Valores por máquina (admin_pass, LFS_DIR, user_name...). Ver settings_local.example.py.
+
+try:
+    from config import settings_local
+except ImportError:
+    pass
+else:
+    INSIM_CONFIG.update(getattr(settings_local, 'INSIM_CONFIG_OVERRIDES', {}))
+    LFS_DIR = getattr(settings_local, 'LFS_DIR', LFS_DIR)
