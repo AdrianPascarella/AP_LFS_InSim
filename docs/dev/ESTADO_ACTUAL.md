@@ -7,37 +7,39 @@
 
 ## Estado
 
-**Fase 1 COMPLETADA. Fase 2 en curso: P11 hecho. Suite 391/391 verde.**
+**Fase 1 COMPLETADA. Fase 2 en curso: P11 y P13 hechos. Suite 388/388 verde.**
 
-**P11 (composición) resuelto:** `InSimApp(PacketSenderMixin)` ya no hereda de
-`InSimClient`. Un cliente, N apps: `client.register(app)`; el loader crea el cliente
-de forma perezosa (`loader.client`, inyectable) y registra las apps en **orden de
-dependencias**. Sin coup d'état ni aplanado de `modules[]` (ahora `apps`). Cambio
-deliberado: el orden de dispatch pasa a ser dependencias→dependientes (antes era el
-inverso, un bug latente). Core reescrito en **inglés** (decisión S06). Los 3 insims
-cargan sin cambios (superficie de `InSimApp` conservada); smoke tests hechos:
-`ai_control` se registra tras `users_management`, CLI `list` funciona.
+**P11 (composición, ✅ validado por el usuario en LFS):** `InSimApp(PacketSenderMixin)`
+ya no hereda de `InSimClient`; `client.register(app)`; loader con cliente perezoso e
+inyectable; dispatch en orden de dependencias. Core en **inglés** (decisión S06).
 
-**✅ P11 validado por el usuario en LFS** (mismo día): los insims corren
-correctamente en vivo con la nueva arquitectura.
+**P13 (transporte, hecho en S06 tras validar P11):** `InSimTransport` posee sockets
+TCP/UDP, hilos receptores, stop y lock **por instancia**; el cliente lo posee
+(inyectable) y hace barrera+decode en `_on_raw_bytes`; `client.send = encode_packet
+(puro) + transport.send`. `insim_packet_io.py` y el `send_packet` global eliminados.
+`insim_state` queda como azúcar: "cliente por defecto" para helpers del mixin
+(Command/CMDManager/RouteManager). **Dos clientes coexisten en un proceso** (test de
+aceptación en `test_transport.py`). Smoke: `ai_control` carga, CLI OK.
+
+**⚠️ Pendiente del usuario:** validar P13 en LFS (`lfs-insim run test_insim` /
+`ai_control`) — el envío/recepción cambió de ruta interna (no bloquea seguir).
 
 **Contexto del plan (S04):** framework a nivel profesional; romper insims aceptable.
-P11–P21 en `DIAGNOSTICO.md`. Quedan gordos: P12 (reconexión), P13 (singletons),
-P14 (config del CWD).
+P11–P21 en `DIAGNOSTICO.md`. Quedan gordos: P12 (reconexión, Fase 3) y P14 (config
+del CWD).
 
 ## Fase activa
 
 **Fase 2 — Arquitectura del core** (composición y API); ver `PLAN.md`.
-Hecho: P11 + decisión de idioma. Siguen: P13, P14, P15, P17/P20, migración/validación
+Hecho: P11, P13 y decisión de idioma. Siguen: P14, P15, P17/P20, migración/validación
 de insims.
 
 ## ▶️ Próximo paso concreto (empezar AQUÍ la próxima sesión)
 
-**P13**: encapsular la conexión — objeto transporte TCP/UDP inyectado en el cliente;
-eliminar los singletons de `insim_state` (cliente y sockets globales); `send` viaja por
-el cliente (`app.client.send`), no por globals. Criterio: dos clientes pueden coexistir
-en un proceso (test). Leer antes `insim_state.py`, `insim_packet_io.py`,
-`insim_packet_sender.py` y `packet_sender_mixin.py`.
+**P14**: config del paquete con defaults internos (`InSimConfig` o similar) — el core
+deja de importar `config.settings` del CWD (hoy lo hacen `InSimClient.__init__` e
+`InSimApp.__init__`); el CLI carga la config de proyecto/env si existe. Leer antes
+`config/settings.py`, `cli.py` y los dos `__init__` citados.
 
 ## Bloqueos / esperando
 

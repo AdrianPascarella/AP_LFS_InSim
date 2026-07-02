@@ -77,8 +77,11 @@ fallarían ante una regresión; base para refactorizar con confianza.
       en el loader, `_resolve_dependencies` muerto eliminado (parte de P17). El orden de
       dispatch pasa a ser el de dependencias (cambio deliberado; antes era el inverso).
       Core reescrito en inglés. Suite 391/391
-- [ ] **P13**: encapsular la conexión (objeto transporte TCP/UDP inyectado); eliminar los
-      singletons de `insim_state`; `send` viaja por el cliente, no por globals
+- [x] **P13**: encapsular la conexión (objeto transporte TCP/UDP inyectado); eliminar los
+      singletons de `insim_state`; `send` viaja por el cliente, no por globals — S06:
+      `InSimTransport` por instancia; `encode_packet` puro extraído (adelanta parte de P19);
+      `insim_state` reducido a "cliente por defecto" (azúcar del mixin); test de dos
+      clientes coexistiendo. Suite 388/388
 - [ ] **P14**: config del paquete con defaults internos (`InSimConfig` o similar); el CLI
       carga config de proyecto/env; el core no importa `config.settings` del CWD
 - [ ] **P15**: definir API pública — exports en `lfs_insim/__init__.py`, `__all__` por

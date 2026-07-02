@@ -5,7 +5,29 @@
 
 ---
 
-## S06 — 2026-07-02 — Fase 1 COMPLETADA: packet_io + fixture "LFS falso"; P11 (composición)
+## S06 — 2026-07-02 — Fase 1 COMPLETADA; P11 (composición) y P13 (transporte)
+
+**Qué se hizo (tercer bloque, misma sesión) — Fase 2, P13** (tras validar el usuario
+P11 en LFS):
+- **`encode_packet` puro extraído** de `send_packet` (commit propio): una sola ruta de
+  serialización sin socket; los golden-send ejercitan ahora la función real (los tests
+  de P21 esperan `InSimPacketError`, el envoltorio real).
+- **`insim_transport.py` (nuevo): `InSimTransport`** — sockets TCP/UDP, hilos
+  receptores, stop event y lock de envío **por instancia**; entrega paquetes crudos al
+  callback `on_raw`. Framing TCP idéntico al caracterizado en Fase 1.
+- **`InSimClient` posee su transporte** (inyectable); barrera pre-decode + decode en
+  `_on_raw_bytes`; `send(packet) = encode_packet + transport.send`.
+- **Eliminados:** `insim_packet_io.py`, el `send_packet` global y los sockets/force_set/
+  oso_opts (muerto) de `insim_state`, que queda como azúcar: **cliente por defecto**
+  (primero creado), fallback del mixin para helpers sin `client` (Command, CMDManager,
+  RouteManager, MapRecorder).
+- **Tests:** `test_packet_io.py` → `test_transport.py` (32, incluido el **criterio de
+  aceptación de Fase 2: dos clientes coexistiendo** con recepción y envío
+  independientes); registry adaptado a `_on_raw_bytes`; `test_insim_state` adelgazado;
+  fixtures de handlers registran la app en un cliente real con `client.send` parcheado;
+  `conftest` con `fake_lfs_factory`. Suite **388/388** (el recuento baja por tests de
+  sockets globales que ya no aplican). CLAUDE.md actualizado (transporte y estado global).
+- Pendiente del usuario: validar P13 en LFS (la ruta interna de envío/recepción cambió).
 
 **Qué se hizo (segundo bloque, misma sesión) — Fase 2, P11:**
 - **Decisión de idioma resuelta con el usuario:** inglés en el core (identificadores,
@@ -66,12 +88,12 @@
    internacional y eventual PyPI. El código viejo se traduce al tocarlo, sin pasadas
    masivas. Registrado en `MODUS_OPERANDI.md` § 5 y `PLAN.md` Fase 2.
 
-**Estado del repo:** rama `refactor/estabilizacion`, suite **391/391 verde**.
-**Fase 1: COMPLETADA (387/387 al cierre del primer bloque). Fase 2: P11 hecho.**
+**Estado del repo:** rama `refactor/estabilizacion`, suite **388/388 verde**.
+**Fase 1: COMPLETADA. Fase 2: P11 (✅ validado en LFS por el usuario) y P13 hechos.**
 
-**Próximo paso:** ver `ESTADO_ACTUAL.md` → P13 (encapsular conexión, eliminar
-singletons de `insim_state`). **P11 validado por el usuario en LFS el mismo día**
-(los insims corren correctamente en vivo).
+**Próximo paso:** ver `ESTADO_ACTUAL.md` → P14 (config del paquete con defaults
+internos; el core deja de importar `config.settings` del CWD). Pendiente del
+usuario: validar P13 en LFS.
 
 ---
 

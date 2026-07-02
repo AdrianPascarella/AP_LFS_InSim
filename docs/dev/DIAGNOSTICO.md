@@ -168,12 +168,18 @@ protocolo. No cuentan como deuda.)
 - **Acción:** detectar desconexión → notificar (`on_disconnect`) → reintentos con backoff
   (configurable) → re-enviar ISI y re-solicitar estado (`TINY_NCN/NPL`) → `on_reconnect`.
 
-### P13 — Estado global de módulo: sockets y cliente como singletons (ALTA, diseño)
+### P13 — Estado global de módulo: sockets y cliente como singletons (ALTA, diseño) ✅ RESUELTO (S06)
 - `insim_state.py` guarda sockets y cliente en variables globales; `send_packet()` los lee.
   Impide 2 conexiones en un proceso (LFS admite 8 programas InSim), obliga a los tests a
   hacer `reset_*()` en cada setup/teardown y esconde el ciclo de vida de la conexión.
 - **Acción:** encapsular en un objeto conexión/transporte inyectado en el cliente; las apps
   envían a través de su cliente. `insim_state` desaparece o queda como azúcar opcional.
+- **Resolución (S06):** `InSimTransport` (nuevo) posee sockets/hilos/stop/lock por
+  instancia; el cliente lo posee (inyectable) y hace barrera+decode en `_on_raw_bytes`;
+  `client.send = encode_packet + transport.send` (`insim_packet_io.py` y el `send_packet`
+  global eliminados). `insim_state` queda como azúcar: solo el "cliente por defecto"
+  (fallback del mixin para Command/CMDManager/RouteManager sin `client`). Test de
+  aceptación: dos clientes coexisten en un proceso con recepción y envío independientes.
 
 ### P14 — El core importa `config.settings` del CWD (MEDIA, packaging)
 - `InSimClient.__init__` hace `from config.settings import get_config` y `cli.py` hace
