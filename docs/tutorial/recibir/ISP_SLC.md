@@ -13,7 +13,7 @@ LFS envía este paquete cuando una conexión selecciona un coche (o lo deselecci
 | Type | byte | ISP_SLC |
 | ReqI | byte | 0, o el ReqI de la solicitud TINY_SLC |
 | UCID | byte | ID de conexión (0 = host) |
-| CName | char[4] | Nombre del coche seleccionado (vacío si no hay coche) |
+| CName | char[4] | Prefijo del skin del coche seleccionado (vacío si no hay coche) |
 
 ## Ejemplo de uso
 

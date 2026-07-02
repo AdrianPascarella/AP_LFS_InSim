@@ -16,7 +16,7 @@ Requiere `ISF.NLP` en `set_isi_packet()` y un `Interval` mayor que 0 en el ISI. 
 | Type | byte | ISP_NLP |
 | ReqI | byte | 0, o el ReqI de TINY_NLP |
 | NumP | byte | Número de jugadores en carrera |
-| Info | NodeLap[40] | Info de cada jugador (hasta NLP_MAX_CARS=40) |
+| Info | NodeLap[48] | Info de cada jugador (hasta NLP_MAX_CARS=48) |
 
 ### Estructura NodeLap (6 bytes)
 | Campo | Tipo | Descripción |

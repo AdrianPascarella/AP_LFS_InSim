@@ -37,6 +37,7 @@ No requiere flags previos. Este paquete *define* los flags ISF que activarán ot
 | ISF_AXM_LOAD | 512 | Recibir AXM al cargar un layout |
 | ISF_AXM_EDIT | 1024 | Recibir AXM al editar objetos |
 | ISF_REQ_JOIN | 2048 | Procesar solicitudes de unión al servidor |
+| ISF_SET | 4096 | Recibir IS_SET cuando un guest envía su setup (0.8C3+) |
 
 ## Ejemplo de uso
 

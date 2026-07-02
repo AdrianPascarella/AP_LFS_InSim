@@ -3,6 +3,8 @@
 ## Descripción
 Paquete detallado de posiciones de coches en carrera. Se envía a intervalos regulares cuando se activa `ISF_MCI` en el ISI. Si hay más de 16 coches, se envían múltiples paquetes MCI. Contiene posición 3D, velocidad, dirección y heading de cada coche. Puede solicitarse un paquete puntual con `TINY_MCI`.
 
+**Nota (0.8C5+):** los MCI regulares **excluyen** a los jugadores que son objetos inamovibles (`/sai`); los MCI solicitados con `TINY_MCI` sí los incluyen.
+
 ## Dirección
 **LFS → InSim**
 
@@ -41,6 +43,7 @@ Requiere `ISF.MCI` en `set_isi_packet()` y un `Interval` mayor que 0 en el ISI.
 | CCI_BLUE | 1 | En camino de un coche a una vuelta más |
 | CCI_YELLOW | 2 | Lento/parado en zona peligrosa |
 | CCI_OOB | 4 | Fuera del path |
+| CCI_RETIRED | 8 | Coche retirado (0.8C5+) |
 | CCI_LAG | 32 | Con lag (paquetes perdidos o retrasados) |
 | CCI_FIRST | 64 | Primer CompCar de este set de MCI |
 | CCI_LAST | 128 | Último CompCar de este set de MCI |
