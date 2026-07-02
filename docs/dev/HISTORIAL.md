@@ -5,6 +5,47 @@
 
 ---
 
+## S05 — 2026-07-02 — Fase 1: golden-bytes de serialización y decodificación
+
+**Qué se hizo:**
+- Arranque según protocolo: rama al día, working tree limpio, suite base 233/233.
+- **Golden-bytes de serialización** (`tests/test_golden_bytes_send.py`, 63 tests): fija los
+  bytes exactos que produce la ruta real de encode de `send_packet()` (prepare →
+  get_struct_string → `_extract_values` → struct.pack) para los **27 paquetes enviables**,
+  con casos representativos (strings fijos/variables, truncado, padding a bloque de 4,
+  sub-structs, listas variables, límite de 20 inputs en AIC...). Los bytes esperados se
+  generaron con el código actual y se contrastaron contra la spec 0.8C5 (tamaños, Size,
+  Type, offsets). Incluye test estructural parametrizado (Size=bytes/4, Type correcto).
+- **Descubierto P21** (registrado en `DIAGNOSTICO.md`): el envío de **ISP_REO, ISP_HCP e
+  ISP_IPB con bans está roto** — `_extract_values` no aplana listas de formato fijo
+  (`repeat(...)`) ni tuplas anidadas y `struct.pack` recibe menos valores de los exigidos.
+  Nadie los usa hoy, por eso no se había notado. Caracterizado con `pytest.raises`
+  (`TestEnviosRotos`); se arreglará al unificar la serialización (P19, Fase 3).
+- **Golden-bytes de decodificación** (`tests/test_golden_bytes_decode.py`, 20 tests): bytes
+  construidos a mano según la spec → dataclass esperado para VER, TINY, SMALL, STA, NCN,
+  CNL, MSO, BTC, BTT, NPL, MCI (2 CompCar), NLP (con padding a múltiplo de 4), CON, OBH,
+  HLV, más el enrutado de `decode_packet` (vacío/tipo desconocido/Size incoherente → None)
+  y un roundtrip encode→decode. Pasaron a la primera: el layout del código es fiel a la spec.
+- Caracterizados de paso tres comportamientos actuales del decoder (documentados en el
+  docstring del test): `.strip()` come espacios finales significativos (P19), las listas
+  fijas se decodifican como `list` aunque el dataclass declare `tuple`, y los enums llegan
+  como int crudo.
+
+**Decisiones tomadas:**
+1. Los golden-bytes **congelan el comportamiento actual** (incluso el discutible, como el
+   string variable vacío de 0 bytes — P8 — o el strip del decoder): cambiarlo será un acto
+   deliberado que actualice el test correspondiente, no un efecto colateral de un refactor.
+2. P21 se caracteriza como excepción, no se arregla ahora (Fase 1 no cambia comportamiento);
+   el arreglo va con P19 en Fase 3.
+
+**Estado del repo:** rama `refactor/estabilizacion`, suite **316/316 verde**
+(233 + 63 + 20). Fase 1: 2/6 ítems completados.
+
+**Próximo paso:** ver `ESTADO_ACTUAL.md` → tests de dispatch de `InSimClient` y del loader;
+después packet_io con socket falso + fixture "LFS falso".
+
+---
+
 ## S04 — 2026-07-02 — Protocolo 0.8C5 + auditoría del core y plan profesional
 
 **Qué se hizo:**

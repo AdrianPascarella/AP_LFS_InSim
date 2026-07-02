@@ -35,11 +35,14 @@ CCI_RETIRED, NLP_MAX_CARS=48, HOSTF nuevos) con 12 tests; spec completa restaura
 **Objetivo:** congelar el comportamiento del core antes de refactorizarlo (P11–P14 lo van
 a remover todo). Sin LFS: sockets falsos y bytes de oro.
 
-- [ ] **Golden-bytes de serialización**: para cada paquete enviable, test que fija los bytes
-      exactos que produce `prepare()+pack` (captura el layout binario actual) (**P19**)
-- [ ] **Golden-bytes de decodificación**: bytes reales (capturados de LFS o construidos según
+- [x] **Golden-bytes de serialización**: para cada paquete enviable, test que fija los bytes
+      exactos que produce `prepare()+pack` (captura el layout binario actual) (**P19**) —
+      S05: `tests/test_golden_bytes_send.py` (63 tests, los 27 enviables); descubierto **P21**
+      (envío de REO/HCP/IPB-con-bans roto, caracterizado con `pytest.raises`)
+- [x] **Golden-bytes de decodificación**: bytes reales (capturados de LFS o construidos según
       spec) → dataclass esperado, para los paquetes info más usados (STA, NCN, NPL, MCI,
-      MSO, VER...) (**P19**)
+      MSO, VER...) (**P19**) — S05: `tests/test_golden_bytes_decode.py` (20 tests: VER/STA/
+      NCN/CNL/MSO/NPL/MCI/NLP-con-padding/CON/OBH/HLV/BTC/BTT + enrutado de decode_packet)
 - [ ] Tests del **dispatch** de `InSimClient`: registro de handlers activos, orden
       master→módulos, aislamiento de errores por handler
 - [ ] Tests del **loader**: carga con dependencias, coup d'état actual (caracterizar),
