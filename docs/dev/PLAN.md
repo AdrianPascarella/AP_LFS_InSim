@@ -82,9 +82,9 @@ fallarían ante una regresión; base para refactorizar con confianza.
 - [ ] **P17/P20 (de paso)**: borrar `_resolve_dependencies` muerto, alinear comentarios,
       fail-fast en el loader
 - [ ] Migrar `users_management`, `ai_control` y `test_insim` a la nueva API
-- [ ] Decisión de diseño: idioma de la API pública del core (identificadores ya en inglés;
-      ¿docstrings/errores en inglés para comunidad LFS internacional?) — **recomendación:
-      inglés en el core, español en docs/dev** — decidir con el usuario
+- [x] Decisión de diseño: idioma de la API pública del core — S06, decidido con el usuario:
+      **inglés en el core** (identificadores, docstrings y errores del código nuevo/refactorizado);
+      español en docs/dev, tests, insims y comunicación. El código viejo se traduce al tocarlo
 
 **Criterio de aceptación:** cero estado global obligatorio; dos clientes pueden coexistir en
 un proceso (test); los 3 insims corren con la nueva API; tests de Fase 1 adaptados y verdes.

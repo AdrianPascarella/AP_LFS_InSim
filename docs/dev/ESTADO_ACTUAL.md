@@ -32,17 +32,16 @@ de los insims** (aceptado por el usuario en S04).
 
 ## ▶️ Próximo paso concreto (empezar AQUÍ la próxima sesión)
 
-1. **Resolver con el usuario el idioma de la API pública del core** (recomendación:
-   inglés en código/docstrings del core, español en docs/dev) — condiciona todo el
-   código nuevo de la fase.
-2. Empezar **P11**: invertir la herencia — `InSimApp` deja de heredar de `InSimClient`;
-   un cliente, N apps (`client.register(app)`); eliminar coup d'état y aplanado de
-   `modules[]`. Leer antes `insim_client.py`, `insim_app.py` e `insim_loader.py`.
+Empezar **P11**: invertir la herencia — `InSimApp` deja de heredar de `InSimClient`;
+un cliente, N apps (`client.register(app)`); eliminar coup d'état y aplanado de
+`modules[]`. Leer antes `insim_client.py`, `insim_app.py` e `insim_loader.py`.
+
+**Decisión de idioma resuelta (S06):** el código nuevo del core va en **inglés**
+(identificadores, docstrings, errores/log); español en docs/dev, tests, insims y
+comunicación. Ver `MODUS_OPERANDI.md` § 5.
 
 ## Bloqueos / esperando
 
-- Decisión pendiente del usuario (Fase 2): **idioma de la API pública del core**
-  (recomendación: inglés en código/docstrings del core, español en docs/dev).
 - Decisión pendiente (Fase 4): ¿publicar en PyPI?
 
 ## Notas para la próxima sesión

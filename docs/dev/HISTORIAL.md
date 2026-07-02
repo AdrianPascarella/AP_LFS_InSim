@@ -29,9 +29,14 @@
   loopback que acepta una conexión, reproduce trazas de bytes hacia el cliente y
   registra lo recibido — expuesta como fixture `fake_lfs` para toda la suite.
 
-**Decisiones tomadas:** ninguna nueva; los tests congelan el comportamiento actual,
-incluidas las carencias ya registradas (P12 sin reconexión, pérdida silenciosa del
-resto del buffer al cerrar).
+**Decisiones tomadas:**
+1. Los tests de packet_io congelan el comportamiento actual, incluidas las carencias
+   ya registradas (P12 sin reconexión, pérdida silenciosa del resto del buffer al cerrar).
+2. **Idioma de la API pública del core (pendiente desde S04): inglés en el core** —
+   identificadores, docstrings y mensajes de error/log del código nuevo/refactorizado;
+   español en docs/dev, tests, insims, commits y comunicación. Porqué: comunidad LFS
+   internacional y eventual PyPI. El código viejo se traduce al tocarlo, sin pasadas
+   masivas. Registrado en `MODUS_OPERANDI.md` § 5 y `PLAN.md` Fase 2.
 
 **Estado del repo:** rama `refactor/estabilizacion`, suite **387/387 verde** (359 + 28
 packet_io). **Fase 1: 6/6 ítems — COMPLETADA.** Fase 2 pasa a activa.

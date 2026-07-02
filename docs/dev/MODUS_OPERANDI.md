@@ -51,7 +51,11 @@ Antes de terminar, SIEMPRE:
 
 ## 5. Convenciones del proyecto
 
-- Idioma: **español** en todo (código, comentarios, docs, mensajes de commit y de chat en LFS).
+- Idioma: **español** en docs/dev, commits, tests, insims y chat (LFS y con el usuario).
+  **Excepción (decidida en S06):** el código nuevo del **core** (`src/lfs_insim/`) se escribe
+  en **inglés** — identificadores, docstrings y mensajes de error/log — pensando en la
+  comunidad LFS internacional y una eventual publicación en PyPI. El código viejo del core
+  se traduce al tocarlo en el refactor, no en pasadas masivas.
 - Convenciones técnicas (protocolo binario, mixins, comandos, paquetes): ver `/CLAUDE.md`.
   **No duplicar esa información aquí**; este archivo es solo el protocolo de trabajo.
 - Commits: `tipo(scope): descripción` — feat / fix / refactor / chore / test / docs
