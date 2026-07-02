@@ -5,6 +5,56 @@
 
 ---
 
+## S04 — 2026-07-02 — Protocolo 0.8C5 + auditoría del core y plan profesional
+
+**Qué se hizo:**
+- El usuario reemplazó `docs/InSim.txt` por el nuevo de LFS, que resultó ser **solo un
+  puntero de 6 líneas** a lfs.net/programmer. Se recuperó la spec completa **0.8C5** de
+  `lfs.net/programmer/insim` (extraída del HTML) y se restauró como `docs/InSim.txt`.
+- Diff spec vieja (0.8A) vs nueva (0.8C5): cambios acotados. **Framework actualizado**:
+  - `ISP.SET=70` + dataclass `ISP_SET` (136 bytes, `Setup[120]` crudo) + registro en
+    `INSIM_PACKETS` + stub `.pyi` regenerado.
+  - `ISF.SET` (bit 12); `ISP_NPL.Sp2` → `RIFlags` + enums `RIF`/`SAI` + `RIF_SAI_SHIFTS`;
+    `CCI.RETIRED`; `NLP_MAX_CARS` 40→48; `HOSTF` +6 valores (SHOW_FUEL..NO_FLOOD).
+  - 12 tests nuevos (`tests/test_protocol_08c5.py`), incluida decodificación real de un
+    IS_SET de 136 bytes. Suite: **233/233 verde**.
+  - Fichas del tutorial actualizadas (nueva `ISP_SET.md`; ISI/MCI/NLP/NPL/SLC).
+- **Nueva directiva del usuario:** revisar el framework, identificar problemas de diseño y
+  hacer un plan para llevarlo a **nivel profesional** (usable por otros desarrolladores).
+  Romper los insims existentes es aceptable.
+- **Auditoría del core completa** (client, app, loader, io, sender, state, cli, packets):
+  registrados **P11–P20** en `DIAGNOSTICO.md`. Los graves: P11 (InSimApp hereda de
+  InSimClient; el "coup d'état" compensa esa herencia), P12 (sin reconexión: proceso
+  zombie si LFS se cae), P13 (sockets/cliente como singletons de módulo), P14 (el core
+  importa `config.settings` del CWD; `sys.path` hack en cli.py). Otros: API pública
+  indefinida (P15), packaging/tooling (P16: `readme="README"` roto, sin CI/lint/mypy),
+  código muerto (`_resolve_dependencies`, P17), envío UDP roto (P18), serialización
+  duplicada (P19), loader traga errores (P20).
+- **`PLAN.md` reescrito**: F1 red de seguridad del core (golden-bytes + sockets falsos) →
+  F2 arquitectura (composición, sin globals, config del paquete, API pública) → F3
+  robustez (reconexión, dispatch fuera del hilo IO) → F4 DX/packaging (ruff, mypy, CI,
+  docs, PyPI opcional) → F5–F6 ai_control (el plan antiguo).
+- Corregido de paso CLAUDE.md: `on_tick` corre a ~100 ms fijos (sleep hardcodeado),
+  no cada `interval` ms (P17).
+
+**Decisiones tomadas:**
+1. La spec del protocolo se mantiene **versionada y completa** en `docs/InSim.txt` aunque
+   LFS ya no la distribuya (fuente de verdad offline).
+2. El core primero, `ai_control` después: no tiene sentido trocear `ai_control` sobre una
+   API que va a cambiar (F2 rompe la herencia InSimApp→InSimClient).
+3. `Setup[120]` de ISP_SET se modela como `list[int]` (`('B', 120)`), no como string
+   (el decoder de strings corrompería datos binarios).
+
+**Pendiente de decisión del usuario:** idioma de la API pública del core (recomendación:
+inglés) y publicación en PyPI (Fase 4).
+
+**Estado del repo:** rama `refactor/estabilizacion`, suite 233/233. Commits: spec 0.8C5,
+soporte de protocolo, fichas del tutorial, auditoría + plan (docs/dev).
+
+**Próximo paso:** ver `ESTADO_ACTUAL.md` → Fase 1: golden-bytes de serialización.
+
+---
+
 ## S03 — 2026-07-02 — Cierre de Fase 0: limpieza de bajo riesgo
 
 **Qué se hizo:**

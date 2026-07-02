@@ -137,6 +137,94 @@ protocolo. No cuentan como deuda.)
 
 ---
 
+## 🏗️ Auditoría del core para nivel profesional (S04, 2026-07-02)
+
+> Objetivo declarado por el usuario: que **otros desarrolladores puedan usar el framework
+> felizmente** y que siga buenas prácticas. Romper los insims existentes es aceptable.
+> Los P1–P10 siguen aplicando; estos son adicionales, centrados en `src/lfs_insim/`.
+
+### P11 — Arquitectura invertida: `InSimApp` hereda de `InSimClient` (ALTA, diseño)
+- Cada módulo **ES** un cliente completo (config, `isi`, `modules[]`, executor...). Solo uno
+  ejerce; el resto queda vestigial. El patrón "coup d'état" del loader y los
+  `set/reset/force_set_insim_client` existen únicamente para compensar esta herencia.
+- Consecuencias: imposible razonar sobre "quién es el cliente"; `InSimApp.__init__` tiene
+  efectos globales (registra al primero que se instancia); el aplanado de `modules[]` en el
+  loader es frágil.
+- **Acción:** invertir a **composición**: un `InSimClient` (conexión + dispatch) y N
+  `InSimApp` registradas en él (`client.register(app)`). El loader construye el cliente y
+  registra las apps en orden de dependencias. Adiós golpe de estado.
+
+### P12 — Sin reconexión ni gestión de caída de LFS (ALTA, funcional)
+- Si LFS cierra el TCP, el hilo receptor muere y `start()` sigue en
+  `while running: sleep(0.1)` para siempre: **proceso zombie** sin conexión, sin aviso a los
+  módulos y sin reintento. El docstring de `insim_packet_io.py` dice "mantiene la
+  reconexión", pero **no hay ninguna lógica de reconexión**.
+- **Acción:** detectar desconexión → notificar (`on_disconnect`) → reintentos con backoff
+  (configurable) → re-enviar ISI y re-solicitar estado (`TINY_NCN/NPL`) → `on_reconnect`.
+
+### P13 — Estado global de módulo: sockets y cliente como singletons (ALTA, diseño)
+- `insim_state.py` guarda sockets y cliente en variables globales; `send_packet()` los lee.
+  Impide 2 conexiones en un proceso (LFS admite 8 programas InSim), obliga a los tests a
+  hacer `reset_*()` en cada setup/teardown y esconde el ciclo de vida de la conexión.
+- **Acción:** encapsular en un objeto conexión/transporte inyectado en el cliente; las apps
+  envían a través de su cliente. `insim_state` desaparece o queda como azúcar opcional.
+
+### P14 — El core importa `config.settings` del CWD (MEDIA, packaging)
+- `InSimClient.__init__` hace `from config.settings import get_config` y `cli.py` hace
+  `sys.path.insert(0, os.getcwd())` para que funcione. Un paquete instalable **no puede
+  depender de un `config/` del directorio del proyecto**: rompe fuera del repo y en tests.
+- **Acción:** defaults internos en el paquete (`lfs_insim/config.py` o dataclass
+  `InSimConfig`); el CLI (no el core) carga la config de proyecto/env si existe.
+
+### P15 — API pública indefinida (MEDIA, DX)
+- `lfs_insim/__init__.py` exporta 9 nombres, pero los tutoriales/insims importan de
+  `lfs_insim.packets`, `insim_enums`, `utils`, `insim_packet_class` (facade duplicado de
+  `packets`)... `packets/insim.py` hace `from insim_enums import *` (contamina), casi ningún
+  módulo define `__all__`.
+- **Acción:** definir la superficie pública (un solo punto de import recomendado), `__all__`
+  en módulos, deprecar `insim_packet_class`, y documentar qué es API y qué es interno (`_`).
+
+### P16 — Packaging y tooling incompletos (MEDIA, DX)
+- `pyproject.toml`: `readme = "README"` (el fichero es `README.md` → metadata rota),
+  sin `license`, `requirements.txt` redundante con `pyproject`, y `generate-stubs` /
+  `update-all` expuestos como comandos globales (deberían ser subcomandos: `lfs-insim stubs`).
+- No hay: linter/formatter (ruff), mypy, CI (GitHub Actions), pre-commit portable
+  (hay hook bash casero), CHANGELOG, ni versión única (0.2.0 en pyproject vs 1.0.0 en
+  manifests).
+- **Acción:** arreglar metadata, adoptar ruff + mypy gradual, CI con pytest en push/PR,
+  CHANGELOG y política de versiones.
+
+### P17 — Código muerto y comentarios que mienten (BAJA)
+- `InSimApp._resolve_dependencies()` **no lo llama nadie** (el docstring dice "llamado
+  automáticamente por el Loader"); `get_insim()` funciona por el fallback a
+  `loader._instances`.
+- `start()` comenta "Keep-Alive reactivo (ver on_ISP_TINY abajo)" pero vive en
+  `on_packet_received`. CLAUDE.md decía que `on_tick` corre cada `interval` ms: en realidad
+  es **fijo a 100 ms** (`time.sleep(0.1)` hardcodeado), independiente de `interval`.
+- **Acción:** borrar lo muerto, alinear comentarios, y decidir si `on_tick` debe ser
+  configurable.
+
+### P18 — Envío por UDP roto (BAJA, funcional)
+- `send_packet(use_udp=True)` usa el socket UDP que está `bind()` para **escuchar**, sin
+  `connect()` ni destino: `sendall()` fallaría. Nadie lo usa hoy.
+- **Acción:** eliminarlo o implementarlo bien (socket de envío con destino) cuando se
+  encapsule el transporte (P13).
+
+### P19 — Duplicación en el camino de serialización (BAJA)
+- `_extract_values()` recalcula el padding de strings que ya hizo
+  `validate_string_lengths()` ("por seguridad"): dos fuentes de verdad para el mismo layout.
+  El decoder además hace `.strip()` a los strings, que puede comer espacios significativos.
+- **Acción:** una sola ruta encode (prepare → pack) con tests golden-bytes; revisar `.strip()`.
+
+### P20 — Loader: errores tragados y versiones a mano (BAJA)
+- `load()` captura el fallo de carga de una dependencia, lo loguea y **sigue** (el error real
+  aflora después, lejos de la causa). `_parse_version/_check_version` reinventan
+  `packaging.version` con soporte parcial.
+- **Acción:** fail-fast con excepción encadenada; si se quieren constraints serios, usar
+  `packaging` (o documentar el subset soportado).
+
+---
+
 ## Mapa de zonas de `ai_control` (para orientarse)
 
 - `app.py` — clase `AIControl`, hot-loop `on_ISP_MCI`, gestión de `AIBehavior`.

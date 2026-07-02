@@ -101,7 +101,7 @@ The loader reads `entry_point` (not `entry`) to find the file, then looks for a 
 1. Socket receives raw bytes → `insim_packet_io.py` buffers/assembles full packets (TCP) or reads frames (UDP)
 2. `insim_packet_decoders.py` maps header byte → dataclass instance
 3. Client dispatches `on_ISP_<TYPE>(packet)` sequentially to itself, then each module
-4. Lifecycle hooks: `on_connect()`, `on_tick()` (every `INSIM_CONFIG["interval"]` ms, default 10 ms), `on_disconnect()`
+4. Lifecycle hooks: `on_connect()`, `on_tick()` (fixed ~100 ms main-loop cadence, independent of `interval`), `on_disconnect()`. `INSIM_CONFIG["interval"]` (default 10 ms) controls how often LFS sends NLP/MCI, not `on_tick`.
 
 `on_ISP_*` handlers are called from the IO receiver thread — avoid blocking; heavy work should be deferred.
 
