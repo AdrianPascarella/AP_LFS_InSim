@@ -1,38 +1,31 @@
 # 📍 Estado actual
 
-> Actualizado: **2026-07-01** — sesión S02
+> Actualizado: **2026-07-02** — sesión S03
 > **Rama de trabajo: `refactor/estabilizacion`.** Todo el refactor ocurre aquí; `main`
 > queda intacta hasta el merge final (cuando el proyecto esté estable). **Sync por GitHub:**
 > `git pull` al arrancar y `git push` al cerrar (permite continuar desde otro dispositivo).
 
 ## Estado
 
-**Entorno reproducible montado y suite en verde (hito de Fase 0 alcanzado).**
-`.venv` creado (Python 3.14.6, ignorado por git) + `pip install -e ".[dev]"` (pytest 9.1.1).
-Primera ejecución: 216/221; 5 tests de padding estaban mal (no el código) → corregidos.
-Ahora **`pytest` = 221/221 verde**. Ver P1 (resuelto) y P8 en `DIAGNOSTICO.md`.
-
-Working tree: cambios en `tests/test_packet_base.py` (pendiente de commit al cerrar el hito).
+**Fase 0 (Cimientos) COMPLETADA.** Suite **221/221 verde**. Limpieza de bajo riesgo hecha:
+`utils_temp.py` eliminado; `settings.py` sin import muerto ni secretos (env +
+`config/settings_local.py` gitignorado, plantilla en `settings_local.example.py`);
+`interval` se queda en **10 ms** (decisión: no cambiar comportamiento; docs alineadas);
+ruta de `rutas_grabadas.txt` anclada a la raíz del proyecto (sigue versionado).
+Extra: `matplotlib` declarado como dependencia de `ai_control` e instalado en `.venv` (P10).
 
 ## Fase activa
 
-**Fase 0 — Cimientos** (ver `PLAN.md`). **En curso**: entorno + suite verde ✅ hechos;
-falta la limpieza de deuda de bajo riesgo (utils_temp, settings, ruta de rutas).
+**Fase 1 — Red de seguridad (tests de caracterización)** (ver `PLAN.md`). Sin empezar.
 
 ## ▶️ Próximo paso concreto (empezar AQUÍ la próxima sesión)
 
-Continuar la limpieza de bajo riesgo de Fase 0 (checklist en `PLAN.md`), en este orden:
+Arrancar la Fase 1, empezando por la **infraestructura de fixtures** (telemetría y grafo de
+calles sintéticos, sin conexión a LFS), porque los demás puntos dependen de ella. Luego, en
+orden: caracterizar `navigation.py`, `traffic.py` y `physics.py`.
 
-1. **Eliminar `src/lfs_insim/utils_temp.py`** (solo `class DummyNode: pass`). Verificar antes
-   con grep que ningún test/módulo lo importe (**P6**).
-2. **Limpiar `config/settings.py`** (**P5**): quitar el import muerto de `ISF`; mover
-   `admin_pass` y `LFS_DIR` a config local/env; **decidir y alinear** `interval` (hoy `10`)
-   con los 100 ms de README/CLAUDE.md.
-3. **Anclar la ruta de `rutas_grabadas.txt`** al proyecto (absoluta, no relativa al CWD) y
-   decidir si el fichero de datos sigue versionado (**P6**).
-
-Recordatorio de flujo: activar el venv (`.venv\Scripts\Activate.ps1`) o invocar
-`.venv\Scripts\python.exe -m pytest`. Mantener la suite verde tras cada cambio.
+Antes de escribir tests: leer `insims/ai_control/nav_modes/freeroam/graph.py` y
+`navigation.py` para entender el modelo (RoadLink / LateralLink / Road).
 
 ## Bloqueos / esperando
 
@@ -40,7 +33,9 @@ Ninguno.
 
 ## Notas para la próxima sesión
 
-- El comando para correr tests en este entorno: `.venv\Scripts\python.exe -m pytest -q`.
-- P8 (nuevo): caso borde de string vacío sin padding — decisión de diseño pendiente, riesgo
-  bajo; no bloquea. Confirmar contra `docs/InSim.txt` cuando se aborde.
-- Al cerrar S02: commit del fix de tests + `git push` (ver `HISTORIAL.md`).
+- Comando de tests: `.venv\Scripts\python.exe -m pytest -q`.
+- **En otro dispositivo:** copiar `config/settings_local.example.py` → `config/settings_local.py`
+  con los valores locales (admin_pass, user_name, LFS_DIR); el venv necesita
+  `pip install -e ".[dev]"` (ahora incluye matplotlib).
+- Pendientes sin fase: P8 (padding string vacío) y P9 (`tools/setup_lfs.py` roto) —
+  ver `PLAN.md` § Ideas.

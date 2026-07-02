@@ -8,7 +8,7 @@
 
 ---
 
-## Fase 0 — Cimientos  ◀️ ACTIVA
+## Fase 0 — Cimientos  ✅ COMPLETADA (S03, 2026-07-02)
 
 **Objetivo:** entorno reproducible, suite corriendo y deuda de bajo riesgo eliminada.
 Sin esto no se puede refactorizar con seguridad. Riesgo casi nulo.
@@ -16,19 +16,21 @@ Sin esto no se puede refactorizar con seguridad. Riesgo casi nulo.
 - [x] Crear `.venv` e instalar `pip install -e ".[dev]"` (**P1**) — S02, Python 3.14.6 + pytest 9.1.1
 - [x] Ejecutar `pytest`; registrar cuántos de los 221 tests pasan (**P1**) — S02, 216/221 en el primer run
 - [x] Dejar los tests en verde — S02, corregidos 5 tests de padding erróneos (no el código) → **221/221** (ver P8)
-- [ ] Eliminar `src/lfs_insim/utils_temp.py` (verificar antes que ningún test lo use) (**P6**)
-- [ ] Limpiar `config/settings.py`: quitar import muerto de `ISF`; mover `admin_pass` y
+- [x] Eliminar `src/lfs_insim/utils_temp.py` (verificar antes que ningún test lo use) (**P6**) — S03, sin usos
+- [x] Limpiar `config/settings.py`: quitar import muerto de `ISF`; mover `admin_pass` y
       `LFS_DIR` a config local / env; **decidir y alinear** el valor de `interval` con la
-      documentación (**P5**)
-- [ ] Anclar la ruta de `rutas_grabadas.txt` al proyecto (ruta absoluta, no relativa al CWD)
-      y decidir si el fichero de datos sigue versionado (**P6**)
+      documentación (**P5**) — S03: env + `settings_local.py`; `interval` se queda en 10 y docs alineadas
+- [x] Anclar la ruta de `rutas_grabadas.txt` al proyecto (ruta absoluta, no relativa al CWD)
+      y decidir si el fichero de datos sigue versionado (**P6**) — S03: `RUTAS_FILE = BASE_DIR / ...`; sigue versionado
+- [x] (descubierto en S03) Declarar la dependencia `matplotlib` de `ai_control` (**P10**) —
+      `insim.json` + extra `[dev]` + instalada en `.venv`
 
 **Criterio de aceptación:** `pytest` verde desde `.venv`; `settings.py` sin import muerto
-ni secretos hardcodeados; `utils_temp.py` fuera; ruta de rutas robusta.
+ni secretos hardcodeados; `utils_temp.py` fuera; ruta de rutas robusta. ✅ Cumplido (221/221).
 
 ---
 
-## Fase 1 — Red de seguridad (tests de caracterización)
+## Fase 1 — Red de seguridad (tests de caracterización)  ◀️ ACTIVA
 
 **Objetivo:** capturar el comportamiento ACTUAL de la lógica frágil antes de tocarla.
 
@@ -92,4 +94,7 @@ El merge lo decide y autoriza el usuario. Tras el merge, se continúa desde `mai
 
 ## Ideas / pendientes sin fase asignada
 
-- (vacío — añadir aquí lo que surja y no encaje aún en una fase)
+- **P9**: decidir qué hacer con `tools/setup_lfs.py` (roto: importa `DESIRED_LFS_CONFIG`,
+  que no existe en `settings.py`) — recuperarlo o eliminarlo.
+- Migrar `rutas_grabadas.txt` a JSON cuando se toque `RouteManager` (ver P6).
+- **P8**: confirmar contra `docs/InSim.txt` el caso de string variable vacío sin padding.

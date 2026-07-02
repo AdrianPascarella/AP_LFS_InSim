@@ -5,6 +5,44 @@
 
 ---
 
+## S03 — 2026-07-02 — Cierre de Fase 0: limpieza de bajo riesgo
+
+**Qué se hizo:**
+- Arranque según protocolo: rama al día con origin, working tree limpio, docs leídas.
+- **Eliminado `src/lfs_insim/utils_temp.py`** (P6): verificado con grep que nadie lo importaba.
+- **Limpiado `config/settings.py`** (P5): import muerto de `ISF` fuera; `admin_pass` y
+  `LFS_DIR` ahora se leen de env (`LFS_ADMIN_PASS`, `LFS_DIR`) con override local en
+  `config/settings_local.py` (gitignorado; plantilla versionada `settings_local.example.py`;
+  creado el local con los valores que estaban hardcodeados para no cambiar nada en esta máquina).
+- **Anclada la ruta de `rutas_grabadas.txt`** (P6): `RUTAS_FILE = BASE_DIR / 'rutas_grabadas.txt'`
+  en `nav_modes/route/manager.py` (antes ruta relativa al CWD). `import os` muerto eliminado.
+- **Descubierto y resuelto P10**: `map_renderer.py` importa `matplotlib` sin declararlo en
+  ningún sitio → cualquier import de `ai_control` fallaba en el venv (habría bloqueado la
+  Fase 1). Declarado en `insim.json` (`python_dependencies`), añadido al extra `[dev]`,
+  instalado en `.venv` (3.11.0), aclarado en CLAUDE.md.
+- **Descubierto P9** (registrado, sin arreglar): `tools/setup_lfs.py` importa
+  `DESIRED_LFS_CONFIG`, que no existe en `settings.py` → el tool está roto.
+- Suite verificada en verde tras cada paso: **221/221**. Verificado también que `settings.py`
+  funciona con y sin `settings_local.py`.
+
+**Decisiones tomadas:**
+1. **`interval` se queda en 10 ms** y se alinean las docs (README/CLAUDE.md decían 100 ms).
+   Razón: la conducción/PID está afinada al ritmo real de 10 ms; cambiarlo sería un cambio
+   de comportamiento, no limpieza (prohibido en Fase 0). Si se quiere 100 ms, será un cambio
+   deliberado en Fase 2 (auditoría del hot-loop `on_ISP_MCI`).
+2. **`rutas_grabadas.txt` sigue versionado** (datos del usuario, conviene sincronizarlos
+   entre dispositivos). Migración a JSON pospuesta a cuando se toque `RouteManager`.
+3. Los valores por máquina van en `config/settings_local.py` (gitignorado) con fallback a
+   variables de entorno; la plantilla `settings_local.example.py` se versiona.
+
+**Estado del repo:** rama `refactor/estabilizacion`, **Fase 0 completada**, suite 221/221.
+Commits de la sesión: ver `git log` (limpieza + docs de cierre de fase).
+
+**Próximo paso:** ver `ESTADO_ACTUAL.md` → Fase 1: infraestructura de fixtures sintéticos
+y tests de caracterización de `navigation.py` / `traffic.py` / `physics.py`.
+
+---
+
 ## S02 — 2026-07-01 — Entorno reproducible y primera suite verde (Fase 0)
 
 **Qué se hizo:**

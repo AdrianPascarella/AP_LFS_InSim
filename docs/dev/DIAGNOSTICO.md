@@ -72,7 +72,7 @@ protocolo. No cuentan como deuda.)
 
 ## 🟡 Problemas de severidad BAJA (limpieza rápida — Fase 0)
 
-### P5 — Config incoherente / insegura (`config/settings.py`)
+### P5 — Config incoherente / insegura (`config/settings.py`)  ✅ RESUELTO (S03)
 - `interval: 10` (línea 76) → LFS envía MCI/NLP a **100 Hz**, no a 100 ms como dicen
   README y CLAUDE.md. El hot-loop de IA corre 10× más rápido de lo documentado. **Decidir
   el valor correcto y alinear docs.**
@@ -80,14 +80,25 @@ protocolo. No cuentan como deuda.)
   hardcodeados en fichero versionado. Mover a config local / variable de entorno.
 - `from lfs_insim.insim_enums import ISF` (línea 47): **import muerto** (sin usos) y además
   mal ubicado (en medio de definiciones de clase).
+- **Resuelto (S03, 2026-07-02):** import de `ISF` eliminado. `admin_pass` y `LFS_DIR` se leen
+  de env (`LFS_ADMIN_PASS`, `LFS_DIR`) con override en `config/settings_local.py` (gitignorado;
+  plantilla en `settings_local.example.py`). **Decisión sobre `interval`: se mantiene `10`**
+  (la conducción/PID está afinada a ese ritmo; cambiarlo sería un cambio de comportamiento,
+  no limpieza) y se alinearon README/CLAUDE.md para documentar 10 ms. Si se quiere 100 ms,
+  será un cambio deliberado en Fase 2 (auditoría del hot-loop).
 
-### P6 — Basura y datos en el repo
+### P6 — Basura y datos en el repo  ✅ RESUELTO (S03)
 - `src/lfs_insim/utils_temp.py`: solo contiene `class DummyNode: pass`. **Eliminar** (o
   reubicar si algún test lo referencia — verificar antes).
 - `rutas_grabadas.txt`: fichero de datos de **437 KB / 9916 líneas** versionado en la raíz.
   Se carga con `ast.literal_eval` (seguro) pero con **ruta relativa** dependiente del CWD
   (`nav_modes/route/manager.py:74,78,175`) → frágil según desde dónde se ejecute.
   Evaluar: sacarlo del repo, formato robusto (JSON) y ruta absoluta anclada al proyecto.
+- **Resuelto (S03, 2026-07-02):** `utils_temp.py` eliminado (verificado sin usos). Ruta de
+  rutas anclada a la raíz vía `RUTAS_FILE = BASE_DIR / 'rutas_grabadas.txt'` en `manager.py`.
+  **Decisión: el fichero sigue versionado** (son datos del usuario que conviene sincronizar
+  entre dispositivos; `ast.literal_eval` es seguro). Migrarlo a JSON queda como idea para
+  cuando se toque `RouteManager` (no urgente).
 
 ### P7 — Nombres confusos y comentarios residuales
 - `behavior.py`: `target_speed_kmh_use` vs `target_speed_kmh` y `target_point_use` vs
@@ -108,6 +119,21 @@ protocolo. No cuentan como deuda.)
   caracterizar el comportamiento real; el caso vacío queda documentado en el propio test.
 - **Acción:** decisión pendiente — confirmar contra `docs/InSim.txt` si el vacío debe
   rellenarse a 4 bytes (`"\x00\x00\x00\x00"`) o dejarse en 0. Riesgo bajo; no urgente.
+
+### P9 — `tools/setup_lfs.py` roto: importa un símbolo inexistente
+- `tools/setup_lfs.py:15` hace `from config.settings import LFS_DIR, DESIRED_LFS_CONFIG`,
+  pero **`DESIRED_LFS_CONFIG` no existe** en `settings.py` → el tool muere al arrancar
+  (descubierto en S03 al limpiar settings). Probablemente se borró/renombró en algún refactor.
+- **Acción:** decidir si el tool se recupera (definir `DESIRED_LFS_CONFIG` con los valores
+  de cfg.txt deseados: puerto InSim, OutSim, etc.) o se elimina. No bloquea nada.
+
+### P10 — matplotlib: dependencia externa sin declarar  ✅ RESUELTO (S03)
+- `map_renderer.py:4` importa `matplotlib`, pero ni `insim.json` ni `pyproject.toml` lo
+  declaraban, y README/CLAUDE.md afirmaban "sin dependencias externas". Cualquier import de
+  `ai_control` (y por tanto los tests de caracterización de Fase 1) fallaba en un venv limpio.
+- **Resuelto (S03, 2026-07-02):** declarado en `insim.json` (`python_dependencies`), añadido
+  al extra `[dev]` de `pyproject.toml`, instalado en `.venv` (3.11.0) y aclarado en CLAUDE.md
+  (el core sigue siendo stdlib puro; la dependencia es solo de `ai_control`).
 
 ---
 
