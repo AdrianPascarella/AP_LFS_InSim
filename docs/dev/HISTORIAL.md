@@ -70,8 +70,8 @@
 **Fase 1: COMPLETADA (387/387 al cierre del primer bloque). Fase 2: P11 hecho.**
 
 **Próximo paso:** ver `ESTADO_ACTUAL.md` → P13 (encapsular conexión, eliminar
-singletons de `insim_state`). Pendiente del usuario: validar P11 en LFS
-(`lfs-insim run test_insim` / `ai_control`).
+singletons de `insim_state`). **P11 validado por el usuario en LFS el mismo día**
+(los insims corren correctamente en vivo).
 
 ---
 

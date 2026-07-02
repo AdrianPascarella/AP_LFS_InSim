@@ -18,8 +18,8 @@ inverso, un bug latente). Core reescrito en **inglés** (decisión S06). Los 3 i
 cargan sin cambios (superficie de `InSimApp` conservada); smoke tests hechos:
 `ai_control` se registra tras `users_management`, CLI `list` funciona.
 
-**⚠️ Pendiente del usuario:** validar en LFS (`lfs-insim run test_insim` y
-`lfs-insim run ai_control`) que todo sigue funcionando en vivo.
+**✅ P11 validado por el usuario en LFS** (mismo día): los insims corren
+correctamente en vivo con la nueva arquitectura.
 
 **Contexto del plan (S04):** framework a nivel profesional; romper insims aceptable.
 P11–P21 en `DIAGNOSTICO.md`. Quedan gordos: P12 (reconexión), P13 (singletons),
@@ -41,7 +41,6 @@ en un proceso (test). Leer antes `insim_state.py`, `insim_packet_io.py`,
 
 ## Bloqueos / esperando
 
-- Validación en LFS de P11 por el usuario (no bloquea seguir con P13).
 - Decisión pendiente (Fase 4): ¿publicar en PyPI?
 
 ## Notas para la próxima sesión
