@@ -11,14 +11,13 @@ cambia UN solo byte, estos tests fallan. Los valores esperados se generaron con
 el código actual y se contrastaron contra la spec LFS 0.8C5 (`docs/InSim.txt`):
 tamaños totales, byte Size (= bytes/4), byte Type y offsets de campos clave.
 
-NOTA: `encode()` replica los pasos 2-3 de `send_packet()` sin tocar el socket;
-usa el `_extract_values` real, no una copia.
+NOTA: desde P13 `encode` ES la función real (`encode_packet`), extraída de
+`send_packet()`: estos tests ejercitan la ruta de producción sin socket.
 """
-import struct
-
 import pytest
 
-from lfs_insim.insim_packet_sender import _extract_values
+from lfs_insim.exceptions import InSimPacketError
+from lfs_insim.insim_packet_sender import encode_packet as encode
 from lfs_insim.packets import (
     ALLOWED_PACKETS,
     ISP_AIC, ISP_AXM, ISP_BFN, ISP_BTN, ISP_CPP, ISP_HCP, ISP_IPB, ISP_ISI,
@@ -30,14 +29,6 @@ from lfs_insim.packets import (
 from lfs_insim.insim_enums import (
     BFN, CS, ISF, JRR, SMALL, SND, TINY, TTC, VIEW,
 )
-
-
-def encode(packet) -> bytes:
-    """Replica la ruta de encode de send_packet() (prepare + pack), sin socket."""
-    packet.prepare()
-    fmt = packet.get_struct_string()
-    values = _extract_values(packet)
-    return struct.pack(fmt, *values)
 
 
 # Paquetes cuyo envío está ROTO hoy (ver P21 en DIAGNOSTICO.md): sus listas de
@@ -273,11 +264,11 @@ class TestEnviosRotos:
     """
 
     def test_reo_roto(self):
-        with pytest.raises(struct.error):
+        with pytest.raises(InSimPacketError):
             encode(ISP_REO())
 
     def test_hcp_roto(self):
-        with pytest.raises(struct.error):
+        with pytest.raises(InSimPacketError):
             encode(ISP_HCP())
 
     def test_ipb_sin_bans_funciona(self):
@@ -285,5 +276,5 @@ class TestEnviosRotos:
         assert encode(ISP_IPB()) == b'\x02C\x00\x00\x00\x00\x00\x00'
 
     def test_ipb_con_bans_roto(self):
-        with pytest.raises(struct.error):
+        with pytest.raises(InSimPacketError):
             encode(ISP_IPB(NumB=1, BanIPs=[(192, 168, 1, 1)]))
