@@ -68,13 +68,18 @@ The framework is a composable plugin system for the **LFS InSim v10 binary proto
 
 ```
 CLI (cli.py)
-  → InSimLoader        — discovers insim.json, resolves dependencies, chains modules
-    → InSimApp         — base class every module inherits; declares dependencies, handles events
-      → InSimClient    — master orchestrator; manages sockets, aggregates ISF flags, dispatches packets
-        → PacketSenderMixin  — provides send_ISP_*() magic methods via __getattr__
+  → InSimLoader        — discovers insim.json, resolves dependencies, registers apps into ONE client
+    → InSimClient      — owns the connection; aggregates ISF flags/OSO opts, dispatches packets
+      ← client.register(app)  — attaches each InSimApp (dependencies first)
+    → InSimApp(PacketSenderMixin)  — base class every module inherits; declares deps, handles events
 ```
 
-**InSimLoader "coup d'état" pattern**: the last-loaded module becomes Master. All previously loaded modules are pushed into its `modules[]` list. The Master merges `isi.Flags` from every module before sending `ISP_ISI`.
+**Composition (P11, Fase 2)**: `InSimApp` does NOT inherit from `InSimClient`. The loader
+lazily creates a single `InSimClient` (or accepts one injected via `InSimLoader(client=...)`)
+and registers every loaded app into it in dependency order — a dependency processes each
+packet BEFORE its dependents. The client merges `isi.Flags` and `outsim_opts` from every
+registered app before sending `ISP_ISI`. `app.client` holds the owning client after
+registration. There is no "Master" module and no coup d'état anymore.
 
 **Dependency resolution**: declared in `insim.json` as `"insim_dependencies": {"module_name": ">=1.0.0"}`. Access at runtime via `self.get_insim("module_name")`.
 
@@ -100,7 +105,7 @@ The loader reads `entry_point` (not `entry`) to find the file, then looks for a 
 
 1. Socket receives raw bytes → `insim_packet_io.py` buffers/assembles full packets (TCP) or reads frames (UDP)
 2. `insim_packet_decoders.py` maps header byte → dataclass instance
-3. Client dispatches `on_ISP_<TYPE>(packet)` sequentially to itself, then each module
+3. Client dispatches `on_ISP_<TYPE>(packet)` sequentially to itself, then each registered app in registration (= dependency) order
 4. Lifecycle hooks: `on_connect()`, `on_tick()` (fixed ~100 ms main-loop cadence, independent of `interval`), `on_disconnect()`. `INSIM_CONFIG["interval"]` (default 10 ms) controls how often LFS sends NLP/MCI, not `on_tick`.
 
 `on_ISP_*` handlers are called from the IO receiver thread — avoid blocking; heavy work should be deferred.
@@ -183,7 +188,7 @@ To suppress noisy send-logs for a specific packet type: `mute_send_logs('ISP_AIC
 - **Binary protocol**: LFS packets are little-endian, strings are latin-1 null-terminated. `Size` in packet header = total bytes / 4.
 - **Packet definitions**: dataclasses in `src/lfs_insim/packets/insim.py`; sub-structures in `packets/structures.py`; OutSim/OutGauge in `packets/outsim.py`. Each field carries `metadata={'fmt': '...'}` for struct serialization. `insim_packet_class.py` is a compatibility facade — always import from `lfs_insim.packets` or `lfs_insim.insim_packet_class` (they are equivalent).
 - **Enums**: all protocol flags and constants live in `src/lfs_insim/insim_enums.py` (ISF, ISP, TINY, SMALL, PTYPE, OSO, etc.).
-- **Global state**: sockets and master reference are singletons in `src/lfs_insim/insim_state.py` — only the first setter wins; do not instantiate these directly.
+- **Global state**: sockets and the client reference are singletons in `src/lfs_insim/insim_state.py` — only the first setter wins; do not instantiate these directly (P13: pending removal in Fase 2).
 - **Config**: `config/settings.py` holds `INSIM_CONFIG` (TCP host/port, prefix, interval) and `OUT_CONFIG` (OutSim options); modules read settings via `self.config.get('key', default)`.
 - **Type stubs**: `.pyi` files under `src/lfs_insim/` are auto-generated for IDE autocomplete only — do not edit manually.
 - **PID control**: `PIDController` in `utils.py` has anti-windup and anti-derivative-kick; output is clamped to [-1.0, 1.0] for pedal/steering use.

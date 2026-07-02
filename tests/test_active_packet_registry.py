@@ -69,7 +69,7 @@ class TestBuildActiveHandlers:
             def on_ISP_MSO(self, p): pass
 
         mod = ModA()
-        client.modules.append(mod)
+        client.apps.append(mod)
         client._build_active_handlers()
 
         assert 'on_ISP_MCI' in client._active_handler_names
@@ -84,7 +84,7 @@ class TestBuildActiveHandlers:
             name = "ModA"
             def on_ISP_MCI(self, p): pass
 
-        client.modules.append(ModA())
+        client.apps.append(ModA())
         client._build_active_handlers()
 
         assert mci_id in client._active_type_ids
@@ -108,7 +108,7 @@ class TestBuildActiveHandlers:
         class Empty:
             name = "Empty"
 
-        client.modules.append(Empty())
+        client.apps.append(Empty())
         client._build_active_handlers()
 
         assert int(ISP.TINY) in client._active_type_ids
@@ -125,7 +125,7 @@ class TestBuildActiveHandlers:
         class Child(Base):
             pass  # no override
 
-        client.modules.append(Child())
+        client.apps.append(Child())
         client._build_active_handlers()
 
         assert 'on_ISP_NCN' in client._active_handler_names
@@ -141,7 +141,7 @@ class TestBuildActiveHandlers:
             name = "ModB"
             def on_ISP_NPL(self, p): pass
 
-        client.modules += [ModA(), ModB()]
+        client.apps += [ModA(), ModB()]
         client._build_active_handlers()
 
         assert 'on_ISP_NCN' in client._active_handler_names

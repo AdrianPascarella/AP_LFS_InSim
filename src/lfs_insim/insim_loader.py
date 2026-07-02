@@ -1,16 +1,23 @@
+"""
+lfs_insim/insim_loader.py - Dynamic plugin loading.
+
+Discovers InSims (directories with an insim.json manifest), resolves their
+dependencies recursively and registers every loaded app into a single
+InSimClient, in dependency order (dependencies before dependents).
+"""
+
 import importlib.util
 import json
 import logging
 import re
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Type, Any
+from typing import Dict, List, Optional, Any
 from .exceptions import InSimModuleError
-import lfs_insim.insim_state as insim_state
 
 
 def _parse_version(version_str: str) -> tuple:
-    """Convierte '1.2.3' en (1, 2, 3) para comparación."""
+    """Turn '1.2.3' into (1, 2, 3) for comparison."""
     parts = re.split(r'[.\-]', version_str.strip())
     result = []
     for p in parts[:3]:
@@ -25,8 +32,8 @@ def _parse_version(version_str: str) -> tuple:
 
 def _check_version(actual: str, constraint: str) -> bool:
     """
-    Comprueba si `actual` satisface `constraint`.
-    Soporta: >=, <=, >, <, ==, != y versión exacta sin operador.
+    Check whether `actual` satisfies `constraint`.
+    Supports: >=, <=, >, <, ==, != and a bare version (exact match).
     """
     constraint = constraint.strip()
     if not constraint:
@@ -57,12 +64,12 @@ def _check_version(actual: str, constraint: str) -> bool:
 logger = logging.getLogger(__name__)
 
 class InSimManifest:
-    """Representa el manifiesto (insim.json) de un InSim."""
+    """Represents an InSim manifest (insim.json)."""
     def __init__(self, path: Path):
         self.path = path
         self.directory = path.parent
-        
-        # Valores por defecto
+
+        # Defaults
         self.name = self.directory.name
         self.version = "0.0.0"
         self.description = ""
@@ -70,7 +77,7 @@ class InSimManifest:
         self.entry_point = "main.py"
         self.insim_dependencies = {}
         self.python_dependencies = []
-        
+
         self._load()
 
     def _load(self):
@@ -87,22 +94,35 @@ class InSimManifest:
                 self.insim_dependencies = data.get('insim_dependencies', {})
                 self.python_dependencies = data.get('python_dependencies', [])
         except Exception as e:
-            logger.error(f"Error cargando manifiesto en {self.path}: {e}")
+            logger.error(f"Error loading manifest at {self.path}: {e}")
 
 class InSimLoader:
-    """Sistema de carga dinámica de plugins/módulos."""
+    """Dynamic plugin/module loading system."""
 
-    def __init__(self, insims_path: Path = None):
+    def __init__(self, insims_path: Path = None, client: Any = None):
         if insims_path is None:
             insims_path = Path.cwd() / "insims"
-        
+
         self.insims_path = insims_path
-        self._instances: Dict[str, Any] = {} 
+        self._client = client
+        self._instances: Dict[str, Any] = {}
+
+    @property
+    def client(self):
+        """
+        The single InSimClient every loaded app is registered into.
+        Created lazily on first use; an existing client can be injected
+        through the constructor instead.
+        """
+        if self._client is None:
+            from .insim_client import InSimClient
+            self._client = InSimClient()
+        return self._client
 
     def get_manifest(self, name: str) -> Optional[InSimManifest]:
         target_dir = self.insims_path / name
         manifest_path = target_dir / "insim.json"
-        
+
         if manifest_path.exists():
             return InSimManifest(manifest_path)
         return None
@@ -125,57 +145,55 @@ class InSimLoader:
         return result
 
     def discover(self) -> List[str]:
-        """Lista solo los nombres de InSims disponibles."""
+        """List the names of the available InSims."""
         return [info['name'] for info in self.list_available()]
 
     def load(self, name: str):
         """
-        Carga dinámicamente el módulo Python.
-        Estrategia: El último módulo cargado (el dependiente) asume el rol de Master (Cliente Principal),
-        y las dependencias cargadas previamente se convierten en módulos subordinados.
+        Load an InSim and everything it depends on.
+
+        Dependencies are loaded (and registered into the client) BEFORE the
+        dependent module, so dispatch order follows dependency order: a
+        tracker processes a packet before the app that consumes its state.
+        Returns the app instance (cached: loading twice returns the same one).
         """
         if name in self._instances:
             return self._instances[name]
 
         manifest = self.get_manifest(name)
         if not manifest:
-            raise InSimModuleError(f"No se encontró el InSim: {name}")
+            raise InSimModuleError(f"InSim not found: {name}")
 
-        # 1. CARGA RECURSIVA DE DEPENDENCIAS
+        # 1. RECURSIVE DEPENDENCY LOADING
         for dep_name, version_constraint in manifest.insim_dependencies.items():
             if dep_name not in self._instances:
                 try:
                     self.load(dep_name)
                 except Exception as e:
-                    logger.error(f"Falló la carga de la dependencia '{dep_name}': {e}")
+                    # P20: failures in dependencies are logged and swallowed
+                    # (fail-fast pending; see PLAN.md Fase 2)
+                    logger.error(f"Failed to load dependency '{dep_name}': {e}")
 
-            # Validar versión una vez que el módulo está cargado
+            # Validate the version once the module is loaded
             dep_instance = self._instances.get(dep_name)
             if dep_instance and version_constraint:
                 actual_version = getattr(dep_instance, 'version', '0.0.0')
                 if not _check_version(actual_version, version_constraint):
                     raise InSimModuleError(
-                        f"'{name}' requiere '{dep_name}{version_constraint}' "
-                        f"pero la versión instalada es {actual_version}"
+                        f"'{name}' requires '{dep_name}{version_constraint}' "
+                        f"but the installed version is {actual_version}"
                     )
 
         entry_file = manifest.directory / manifest.entry_point
         if not entry_file.exists():
-            raise InSimModuleError(f"Archivo de entrada no encontrado: {entry_file}")
+            raise InSimModuleError(f"Entry point file not found: {entry_file}")
 
         try:
-            # 2. PREPARAR EL TRONO (GOLPE DE ESTADO)
-            # Si ya había un cliente registrado (ej: users_management), lo destronamos temporalmente
-            # para que el nuevo módulo (tutorial_basics) pueda tomar el mando.
-            previous_master = insim_state.get_insim_client()
-            if previous_master:
-                insim_state.reset_insim_client()
-
-            # 3. IMPORTACIÓN E INSTANCIACIÓN
+            # 2. IMPORT AND INSTANTIATION
             entry_stem = Path(manifest.entry_point).stem  # 'main', '__init__', etc.
 
             if entry_stem == '__init__':
-                # El entry point es el propio __init__.py del paquete
+                # The entry point is the package's own __init__.py
                 spec = importlib.util.spec_from_file_location(
                     name, entry_file,
                     submodule_search_locations=[str(manifest.directory)]
@@ -184,8 +202,8 @@ class InSimLoader:
                 sys.modules[name] = module
                 spec.loader.exec_module(module)
             else:
-                # El entry point es un submodulo (ej: main.py).
-                # Registramos el paquete primero para que los imports relativos funcionen.
+                # The entry point is a submodule (e.g. main.py).
+                # Register the package first so relative imports work.
                 init_file = manifest.directory / '__init__.py'
                 pkg_spec = importlib.util.spec_from_file_location(
                     name,
@@ -202,46 +220,24 @@ class InSimLoader:
                 module = importlib.util.module_from_spec(spec)
                 sys.modules[sub_name] = module
                 spec.loader.exec_module(module)
-            
+
             from .insim_app import InSimApp
-            
+
             instance = None
             for attr_name in dir(module):
                 attr = getattr(module, attr_name)
                 if isinstance(attr, type) and issubclass(attr, InSimApp) and attr is not InSimApp:
-                    # Al instanciarse, este nuevo objeto llamará a set_insim_client()
-                    # y como pusimos la variable a None, se convertirá en el nuevo Master.
                     instance = attr(_loader=self, _insim_path=manifest.directory)
                     break
-            
+
             if not instance:
-                # Si fallamos, restauramos al rey anterior por si acaso
-                if previous_master:
-                    insim_state.force_set_insim_client(previous_master)
-                raise InSimModuleError(f"No se encontró una clase InSimApp en {entry_file}")
+                raise InSimModuleError(f"No InSimApp class found in {entry_file}")
 
-            # 4. REORGANIZACIÓN DE SÚBDITOS
-            # Ahora 'instance' es el Master. Debemos añadir al antiguo Master como un módulo normal.
-            if previous_master:
-                # Añadimos al antiguo master como módulo del nuevo
-                if previous_master not in instance.modules:
-                    instance.modules.append(previous_master)
-                    logger.debug(f"🔄 '{previous_master.name}' degradado a módulo de '{instance.name}'")
-                
-                # También robamos los módulos que el antiguo master pudiera tener (aplanamos la lista)
-                for sub_mod in previous_master.modules:
-                    if sub_mod not in instance.modules and sub_mod != instance:
-                        instance.modules.append(sub_mod)
-                
-                # Limpiamos al antiguo para evitar duplicidades lógicas
-                previous_master.modules = []
-
-            # 5. REGISTRO FINAL
+            # 3. REGISTRATION: cache the instance and attach it to the client
+            # (dependencies were registered first by the recursion above)
             self._instances[name] = instance
+            self.client.register(instance)
             return instance
 
         except Exception as e:
-            if previous_master:
-                insim_state.force_set_insim_client(previous_master)
-                logger.warning(f"Rollback: '{previous_master.name}' restaurado como Master tras fallo en '{name}'")
-            raise InSimModuleError(f"Error cargando módulo {name}: {e}")
+            raise InSimModuleError(f"Error loading module {name}: {e}")

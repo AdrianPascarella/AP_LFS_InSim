@@ -56,7 +56,10 @@ def cmd_run(args: argparse.Namespace) -> int:
         insim = loader.load(args.name)
 
         logger.info(f"Iniciando {insim.name} v{insim.version}")
-        insim.start()  # start() llama a stop() en su propio finally
+        # El cliente (dueño de la conexión) arranca; las apps ya están
+        # registradas en él en orden de dependencias. start() llama a stop()
+        # en su propio finally.
+        loader.client.start()
 
     except FileNotFoundError as e:
         logger.error(str(e))

@@ -1,8 +1,11 @@
 """
-lfs_insim/insim_client.py - Núcleo Orquestador del Framework.
+lfs_insim/insim_client.py - Framework orchestrator core.
 
-Gestiona la conexión física con LFS y distribuye paquetes y eventos de ciclo 
-de vida a todos los módulos (InSimApps) registrados.
+Owns the physical connection with LFS and dispatches packets and lifecycle
+events to every registered app (InSimApp). One client, N apps: apps are
+attached with `client.register(app)` and receive packets in registration
+order (dependencies first, since the loader registers them before their
+dependents).
 """
 
 import threading
@@ -20,56 +23,69 @@ from .exceptions import InSimError
 
 class InSimClient:
     def __init__(self, config: Optional[dict] = None, name: str = "DeepInSim"):
-        from config.settings import get_config
+        from config.settings import get_config  # P14: core still reads CWD config
         self.config = get_config(config)
         self.name = name
         self.logger = logging.getLogger(f"InSim.{name}")
         self.running = False
-        
-        # Estado del paquete de inicialización (ISI)
+
+        # Initialization packet (ISI) state
         self.isi = ISP_ISI()
-        
-        # Lista de módulos (InSimApps) que "escuchan" este cliente
-        self.modules: List[Any] = []
-        
-        # Configuración del pool de hilos para procesamiento asíncrono
+
+        # Apps (InSimApp instances) listening on this client, in dispatch order
+        self.apps: List[Any] = []
+
+        # Optional thread pool for asynchronous packet dispatch
         self.use_thread_pool = self.config.get('use_thread_pool', False)
         self._executor = ThreadPoolExecutor(
             max_workers=self.config.get('max_workers', 5)
         ) if self.use_thread_pool else None
 
-        # OutSim: opts del master; módulos contribuyen en set_outsim()
+        # OutSim: client base opts; apps contribute theirs via set_outsim()
         self.outsim_opts: OSO = OSO.NONE
 
-        # Registrar este cliente como el Principal en el estado global
+        # Register this client as the global one (P13: to be removed)
         set_insim_client(self)
+
+    def register(self, app: Any) -> Any:
+        """
+        Attach an app to this client.
+
+        Apps receive packets and lifecycle events in registration order.
+        Registering twice is a no-op. Returns the app for chaining.
+        """
+        if app not in self.apps:
+            self.apps.append(app)
+            app.client = self
+            self.logger.debug(f"App '{app.name}' registered")
+        return app
 
     def send(self, packet: Any) -> None:
         """
-        Envia un paquete a LFS.
-        Este método es el puente que usan los módulos (self.send) para acceder
-        a la función global send_packet.
+        Send a packet to LFS.
+        Bridge used by the client (and apps via their own send) to reach the
+        global send_packet function (P13: will go through a transport object).
         """
         send_packet(packet)
 
     def _build_active_handlers(self) -> None:
         """
-        Escanea master + todos los módulos via MRO y construye dos sets:
+        Scan the client and every app through their MROs and build two sets:
           _active_handler_names: {"on_ISP_MCI", "on_ISP_MSO", ...}
-          _active_type_ids:      {38, 11, ...}  (IDs numéricos de ISP)
+          _active_type_ids:      {38, 11, ...}  (numeric ISP type ids)
 
-        TINY (3) y VER (2) siempre se incluyen: son imprescindibles para
-        el keep-alive y la respuesta al ISI inicial.
+        TINY (3) and VER (2) are always active: they are required for the
+        keep-alive and the reply to the initial ISI.
 
-        Nota: detecta métodos de clase (incluye mixins via MRO).
-        No detecta handlers añadidos dinámicamente como atributos de instancia.
+        Note: detects class methods (mixins included via MRO). Handlers added
+        dynamically as instance attributes are NOT detected.
         """
         from .packets import INSIM_PACKETS
         from .insim_enums import ISP
 
         handler_names: set[str] = set()
-        for instance in [self] + self.modules:
-            for name in dir(type(instance)):        # MRO walk: incluye mixins
+        for instance in [self] + self.apps:
+            for name in dir(type(instance)):        # MRO walk: includes mixins
                 if name.startswith('on_ISP_'):
                     handler_names.add(name)
 
@@ -81,7 +97,7 @@ class InSimClient:
             if tid is not None:
                 active_ids.add(tid)
 
-        # Siempre activos
+        # Always active
         active_ids.update({int(ISP.TINY), int(ISP.VER)})
         handler_names.update({'on_ISP_TINY', 'on_ISP_VER'})
 
@@ -89,13 +105,13 @@ class InSimClient:
         self._active_type_ids: set[int] = active_ids
 
     def set_outsim(self) -> None:
-        """Hook vacío. InSimApp lo sobrescribe para declarar outsim_opts."""
+        """Empty hook. Subclasses may override to declare outsim_opts."""
         pass
 
     def _activate_outsim(self, combined_oso: OSO) -> None:
         """
-        Construye OutSimPack2 según combined_oso, lo registra en OUTSIM_PACKETS
-        y abre el socket UDP.
+        Build OutSimPack2 for combined_oso, register it in OUTSIM_PACKETS
+        and open the UDP socket.
         """
         from .packets.outsim import build_outsim_pack2
         from .packets import OUTSIM_PACKETS
@@ -112,198 +128,196 @@ class InSimClient:
             f.name for f in OSO
             if f in combined_oso and f.value > 0 and f.name not in ('ALL', 'ALL_NOID')
         )
-        self.logger.info(f"OutSim activo (OSO={int(combined_oso):#x}): {oso_names}")
+        self.logger.info(f"OutSim active (OSO={int(combined_oso):#x}): {oso_names}")
         self.logger.info(
-            f"  → cfg.txt requerido: OutSim Opts {int(combined_oso):x}"
+            f"  → required cfg.txt: OutSim Opts {int(combined_oso):x}"
             f" | OutSim IP 127.0.0.1 | OutSim Port {udp_port}"
         )
 
     def set_isi_packet(self):
         """
-        Configura el paquete de inicialización (ISI) base.
-        Los módulos hijos pueden extender esto mediante fusión de flags.
+        Build the base initialization packet (ISI) from config.
+        Apps contribute their needs through flag merging (see start()).
         """
         self.isi.ReqI = 0
-        # UDPPort = 0 → LFS envía NLP/MCI por TCP (camino por defecto y seguro).
-        # Si se pone != 0, LFS redirige NLP/MCI SOLO al UDP indicado, lo que
-        # requiere que el socket UDP esté abierto. Usar 'insim_udp_port' en config
-        # si se quiere NLP/MCI por UDP explícitamente; 'udp_port' es para OutSim.
+        # UDPPort = 0 → LFS sends NLP/MCI over TCP (default and safe path).
+        # If != 0, LFS redirects NLP/MCI ONLY to that UDP port, which requires
+        # the UDP socket to be open. Use 'insim_udp_port' in config to get
+        # NLP/MCI over UDP explicitly; 'udp_port' belongs to OutSim.
         self.isi.UDPPort = self.config.get('insim_udp_port', 0)
-        self.isi.Flags = 0 # Se llenará dinámicamente
+        self.isi.Flags = 0  # Filled dynamically by aggregation
         self.isi.InSimVer = self.config.get('insim_ver', 10)
 
-        # Corrección: Manejo robusto de Prefix (int o str)
+        # Robust Prefix handling (int or str)
         prefix_val = self.config.get('prefix', '!')
         if isinstance(prefix_val, int):
             self.isi.Prefix = prefix_val
         else:
             self.isi.Prefix = ord(prefix_val)
 
-        self.isi.Interval = self.config.get('interval', 100) # ms
+        self.isi.Interval = self.config.get('interval', 100)  # ms
         self.isi.Admin = self.config.get('admin_pass', '')
         self.isi.IName = self.config.get('insim_name', 'LFS-InSim')
 
     def start(self):
-        """Inicia la conexión y el bucle principal."""
+        """Open the connection and run the main loop."""
         if self.running:
             return
 
         self.running = True
         try:
             # =================================================================
-            # REGISTRO DE HANDLERS ACTIVOS (Active Packet Registry)
-            # Se construye ANTES de abrir el socket para evitar carrera.
+            # ACTIVE PACKET REGISTRY
+            # Built BEFORE opening the socket to avoid a race.
             # =================================================================
             self._build_active_handlers()
             active_names = sorted(h[3:] for h in self._active_handler_names)
             self.logger.info(
-                f"Tipos de paquete activos ({len(active_names)}): {', '.join(active_names)}"
+                f"Active packet types ({len(active_names)}): {', '.join(active_names)}"
             )
 
-            # 1. Conexión TCP Física
+            # 1. Physical TCP connection
             host = self.config.get('tcp_host', '127.0.0.1')
             port = self.config.get('tcp_port', 29999)
             connect_tcp_lfs(host, port)
 
             # =================================================================
-            # LÓGICA DE FUSIÓN DE FLAGS (Flag Aggregation)
+            # ISI FLAG AGGREGATION
             # =================================================================
-            
-            # A) Configurar la base del Maestro (este cliente)
-            self.set_isi_packet()
-            self.logger.info(f"Flags base del Maestro ({self.name}): {self.isi.Flags}")
 
-            # B) Recorrer módulos hijos para sumar sus requisitos
-            if self.modules:
-                self.logger.info(f"Fusionando requisitos de {len(self.modules)} módulos...")
-                
-                for module in self.modules:
-                    module.set_isi_packet()
-                    
+            # A) Client base ISI from config
+            self.set_isi_packet()
+            self.logger.info(f"Client base flags ({self.name}): {self.isi.Flags}")
+
+            # B) Merge the requirements of every registered app
+            if self.apps:
+                self.logger.info(f"Merging requirements from {len(self.apps)} apps...")
+
+                for app in self.apps:
+                    app.set_isi_packet()
+
                     old_flags = self.isi.Flags
-                    self.isi.Flags |= module.isi.Flags
-                    
+                    self.isi.Flags |= app.isi.Flags
+
                     if self.isi.Flags != old_flags:
                         added = self.isi.Flags ^ old_flags
-                        self.logger.debug(f" -> +Flags de '{module.name}': {added} (Total: {self.isi.Flags})")
+                        self.logger.debug(f" -> +Flags from '{app.name}': {added} (Total: {self.isi.Flags})")
 
             # =================================================================
-            # AGREGACIÓN DE OUTSIM OPTS
+            # OUTSIM OPTS AGGREGATION
             # =================================================================
             self.set_outsim()
             combined_oso: OSO = self.outsim_opts
-            for module in self.modules:
-                module.set_outsim()
-                combined_oso |= module.outsim_opts
+            for app in self.apps:
+                app.set_outsim()
+                combined_oso |= app.outsim_opts
 
             if combined_oso:
                 self._activate_outsim(combined_oso)
             else:
-                self.logger.debug("OutSim desactivado (ningún módulo lo requiere)")
+                self.logger.debug("OutSim disabled (no app requires it)")
             # =================================================================
 
-            # 3. Enviar el paquete de Inicialización (ISI) DEFINITIVO
-            self.logger.info(f"Enviando ISI Definitivo con Flags: {self.isi.Flags}")
+            # 3. Send the FINAL initialization packet (ISI)
+            self.logger.info(f"Sending final ISI with flags: {self.isi.Flags}")
             self.send(self.isi)
 
-            # 4. Notificar conexión a todos los módulos
-            self.on_connect() # Hook propio
+            # 4. Notify every app about the connection
+            self.on_connect()  # own hook
             self._dispatch_lifecycle('on_connect')
-            
-            self.logger.info(f"Cliente '{self.name}' iniciado y escuchando...")
-            
-            # 5. Bucle principal
-            # NOTA: El Keep-Alive ahora es reactivo (ver on_ISP_TINY abajo)
+
+            self.logger.info(f"Client '{self.name}' started and listening...")
+
+            # 5. Main loop
+            # NOTE: keep-alive is reactive (see on_packet_received below)
             while self.running:
-                self.on_tick() # Hook propio
+                self.on_tick()  # own hook
                 self._dispatch_lifecycle('on_tick')
-                time.sleep(0.1) # 10 ticks/s base para no saturar CPU
-                
+                time.sleep(0.1)  # 10 base ticks/s to avoid hogging the CPU
+
         except KeyboardInterrupt:
-            self.logger.info("Cierre solicitado por el usuario.")
+            self.logger.info("Shutdown requested by the user.")
         except Exception as e:
-            self.logger.error(f"Error crítico en el bucle principal: {e}", exc_info=True)
+            self.logger.error(f"Critical error in the main loop: {e}", exc_info=True)
             raise
         finally:
             self.stop()
 
     def stop(self):
-        """Detiene el cliente, cierra hilos y sockets."""
+        """Stop the client, closing threads and sockets."""
         if not self.running:
             return
-            
+
         self.running = False
-        self.logger.info("Deteniendo framework...")
-        
-        # Notificar desconexión
+        self.logger.info("Stopping framework...")
+
+        # Notify disconnection
         self._dispatch_lifecycle('on_disconnect')
         self.on_disconnect()
-        
-        # Cerrar pool de hilos
+
+        # Shut down the thread pool
         if self._executor:
             self._executor.shutdown(wait=False)
-            
-        # Cerrar sockets
+
+        # Close sockets
         stop_all_threads()
-        
-        self.logger.info("Framework detenido.")
+
+        self.logger.info("Framework stopped.")
 
     def on_packet_received(self, packet: Any):
         """
-        Callback llamado desde el hilo de IO cuando llega un paquete.
+        Callback invoked from the IO thread when a packet arrives.
         """
-        # 1. Manejo interno (Keep Alive, Pings vacíos)
-        # Algunos paquetes del sistema podrían manejarse aquí antes de despachar
-        
+        # 1. Internal handling (keep-alive pings)
         if isinstance(packet, ISP_TINY) and packet.SubT == TINY.NONE:
             self.send(ISP_TINY(ReqI=0, SubT=TINY.NONE))
-        
-        # 2. Distribuir a los módulos
+
+        # 2. Dispatch to the apps
         if self.use_thread_pool and self._executor:
             self._executor.submit(self._dispatch_packet, packet)
         else:
             self._dispatch_packet(packet)
 
     def _dispatch_packet(self, packet: Any):
-        """Entrega el paquete a este cliente y a todos sus módulos."""
+        """Deliver the packet to this client and then to every app."""
         if packet is None:
             return
 
         packet_class_name = type(packet).__name__
         handler_name = f"on_{packet_class_name}"
 
-        # Barrera post-decode: si el registro existe y nadie maneja este tipo,
-        # evitar el loop de módulos (segunda línea de defensa tras _process_raw_bytes).
+        # Post-decode barrier: if the registry exists and nobody handles this
+        # type, skip the app loop (second line of defense after _process_raw_bytes).
         if (hasattr(self, '_active_handler_names')
                 and handler_name not in self._active_handler_names):
             return
 
-        # 1. Ejecutar en el cliente principal (self)
+        # 1. Run the client's own handler (if any)
         self._execute_handler(self, handler_name, packet)
 
-        # 2. Ejecutar en módulos registrados
-        for module in self.modules:
-            self._execute_handler(module, handler_name, packet)
+        # 2. Run the handlers of every registered app, in registration order
+        for app in self.apps:
+            self._execute_handler(app, handler_name, packet)
 
     def _dispatch_lifecycle(self, event_name: str):
-        """Propaga eventos como on_connect, on_tick, etc."""
-        for module in self.modules:
-            if hasattr(module, event_name):
+        """Propagate lifecycle events (on_connect, on_tick, ...) to the apps."""
+        for app in self.apps:
+            if hasattr(app, event_name):
                 try:
-                    getattr(module, event_name)()
+                    getattr(app, event_name)()
                 except Exception as e:
-                    self.logger.error(f"Error en {module.name}.{event_name}: {e}")
+                    self.logger.error(f"Error in {app.name}.{event_name}: {e}")
 
     def _execute_handler(self, instance: Any, handler_name: str, packet: Any):
-        """Ejecuta el handler de forma segura."""
+        """Run a handler, isolating any error it raises."""
         handler = getattr(instance, handler_name, None)
         if handler and callable(handler):
             try:
                 handler(packet)
             except Exception as e:
-                self.logger.error(f"Error en {handler_name} de {instance.name}: {e}", exc_info=True)            
+                self.logger.error(f"Error in {handler_name} of {instance.name}: {e}", exc_info=True)
 
-    # Hooks vacíos para herencia
+    # Empty hooks for subclasses
     def on_connect(self): pass
     def on_disconnect(self): pass
     def on_tick(self): pass

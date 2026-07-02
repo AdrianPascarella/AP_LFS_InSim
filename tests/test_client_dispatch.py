@@ -1,16 +1,16 @@
 """
-Tests de caracterización del DISPATCH de InSimClient (Fase 1).
+Tests del DISPATCH de InSimClient (Fase 2, arquitectura de composición — P11).
 
 Cubre lo que faltaba del ítem "dispatch" del plan (el registro de handlers
 activos y los filtros pre/post-decode ya están en test_active_packet_registry.py):
 
-  - orden de entrega: primero el master (self), luego los módulos en orden
-    de registro;
+  - orden de entrega: primero el cliente (self), luego las apps en orden
+    de registro (client.register);
   - aislamiento de errores: un handler que explota no rompe el dispatch ni
     afecta a los demás handlers;
   - keep-alive reactivo: un ISP_TINY con SubT=NONE se contesta con otro igual;
   - dispatch de lifecycle (on_connect/on_tick/...): orden, aislamiento y
-    módulos sin el hook;
+    apps sin el hook;
   - enrutado según use_thread_pool (inline vs executor).
 """
 from unittest.mock import MagicMock, patch
@@ -21,7 +21,7 @@ from lfs_insim.insim_enums import TINY
 from lfs_insim.packets import ISP_MSO, ISP_TINY
 
 
-class _MasterGrabador(InSimClient):
+class _ClienteGrabador(InSimClient):
     """Cliente con un handler propio que apunta su turno en el diario."""
 
     def __init__(self, diario):
@@ -29,11 +29,11 @@ class _MasterGrabador(InSimClient):
         self._diario = diario
 
     def on_ISP_MSO(self, packet):
-        self._diario.append('master')
+        self._diario.append('cliente')
 
 
-class _ModuloGrabador:
-    """Módulo mínimo: apunta su etiqueta en el diario al recibir MSO."""
+class _AppGrabadora:
+    """App mínima: apunta su etiqueta en el diario al recibir MSO."""
 
     def __init__(self, etiqueta, diario, explota=False):
         self.name = etiqueta
@@ -47,7 +47,7 @@ class _ModuloGrabador:
         self._diario.append(self._etiqueta)
 
 
-class _ModuloLifecycle:
+class _AppLifecycle:
     def __init__(self, etiqueta, diario, explota=False):
         self.name = etiqueta
         self._etiqueta = etiqueta
@@ -70,69 +70,92 @@ class _Base:
         state.reset_sockets()
 
 
+class TestRegister(_Base):
+
+    def test_register_encola_y_asigna_el_cliente(self):
+        client = InSimClient(config={})
+        app_a = _AppGrabadora('A', [])
+        app_b = _AppGrabadora('B', [])
+
+        assert client.register(app_a) is app_a   # devuelve la app (chaining)
+        client.register(app_b)
+
+        assert client.apps == [app_a, app_b]
+        assert app_a.client is client
+        assert app_b.client is client
+
+    def test_register_dos_veces_no_duplica(self):
+        client = InSimClient(config={})
+        app = _AppGrabadora('A', [])
+
+        client.register(app)
+        client.register(app)
+
+        assert client.apps == [app]
+
+
 class TestOrdenDeDispatch(_Base):
 
-    def test_master_primero_luego_modulos_en_orden(self):
+    def test_cliente_primero_luego_apps_en_orden(self):
         diario = []
-        client = _MasterGrabador(diario)
-        client.modules += [_ModuloGrabador('A', diario), _ModuloGrabador('B', diario)]
+        client = _ClienteGrabador(diario)
+        client.register(_AppGrabadora('A', diario))
+        client.register(_AppGrabadora('B', diario))
         client._active_handler_names = {'on_ISP_MSO'}
 
         client._dispatch_packet(ISP_MSO())
 
-        assert diario == ['master', 'A', 'B']
+        assert diario == ['cliente', 'A', 'B']
 
     def test_paquete_none_no_hace_nada(self):
         diario = []
-        client = _MasterGrabador(diario)
-        client.modules.append(_ModuloGrabador('A', diario))
+        client = _ClienteGrabador(diario)
+        client.register(_AppGrabadora('A', diario))
 
         client._dispatch_packet(None)
 
         assert diario == []
 
-    def test_modulo_sin_handler_se_salta_sin_error(self):
+    def test_app_sin_handler_se_salta_sin_error(self):
         diario = []
-        client = _MasterGrabador(diario)
+        client = _ClienteGrabador(diario)
 
         class SinHandler:
-            name = 'mudo'
+            name = 'muda'
 
-        client.modules += [SinHandler(), _ModuloGrabador('B', diario)]
+        client.register(SinHandler())
+        client.register(_AppGrabadora('B', diario))
         client._active_handler_names = {'on_ISP_MSO'}
 
         client._dispatch_packet(ISP_MSO())
 
-        assert diario == ['master', 'B']
+        assert diario == ['cliente', 'B']
 
 
 class TestAislamientoDeErrores(_Base):
 
     def test_handler_que_explota_no_corta_a_los_demas(self):
         diario = []
-        client = _MasterGrabador(diario)
-        client.modules += [
-            _ModuloGrabador('A', diario, explota=True),
-            _ModuloGrabador('B', diario),
-        ]
+        client = _ClienteGrabador(diario)
+        client.register(_AppGrabadora('A', diario, explota=True))
+        client.register(_AppGrabadora('B', diario))
         client._active_handler_names = {'on_ISP_MSO'}
 
         client._dispatch_packet(ISP_MSO())   # no debe propagar la excepción
 
-        assert diario == ['master', 'B']
+        assert diario == ['cliente', 'B']
 
-    def test_error_en_el_master_no_corta_a_los_modulos(self):
+    def test_error_en_el_cliente_no_corta_a_las_apps(self):
         diario = []
 
-        class MasterQueExplota(InSimClient):
-            name_ = 'master'
+        class ClienteQueExplota(InSimClient):
             def __init__(self):
                 super().__init__(config={})
             def on_ISP_MSO(self, packet):
-                raise ValueError('boom en master')
+                raise ValueError('boom en el cliente')
 
-        client = MasterQueExplota()
-        client.modules.append(_ModuloGrabador('A', diario))
+        client = ClienteQueExplota()
+        client.register(_AppGrabadora('A', diario))
         client._active_handler_names = {'on_ISP_MSO'}
 
         client._dispatch_packet(ISP_MSO())
@@ -173,35 +196,35 @@ class TestKeepAliveReactivo(_Base):
 
 class TestDispatchLifecycle(_Base):
 
-    def test_orden_de_modulos(self):
+    def test_orden_de_apps(self):
         diario = []
         client = InSimClient(config={})
-        client.modules += [_ModuloLifecycle('A', diario), _ModuloLifecycle('B', diario)]
+        client.register(_AppLifecycle('A', diario))
+        client.register(_AppLifecycle('B', diario))
 
         client._dispatch_lifecycle('on_connect')
 
         assert diario == ['A', 'B']
 
-    def test_error_aislado_por_modulo(self):
+    def test_error_aislado_por_app(self):
         diario = []
         client = InSimClient(config={})
-        client.modules += [
-            _ModuloLifecycle('A', diario, explota=True),
-            _ModuloLifecycle('B', diario),
-        ]
+        client.register(_AppLifecycle('A', diario, explota=True))
+        client.register(_AppLifecycle('B', diario))
 
         client._dispatch_lifecycle('on_connect')   # no debe propagar
 
         assert diario == ['B']
 
-    def test_modulo_sin_hook_se_salta(self):
+    def test_app_sin_hook_se_salta(self):
         diario = []
         client = InSimClient(config={})
 
         class SinHook:
-            name = 'mudo'
+            name = 'muda'
 
-        client.modules += [SinHook(), _ModuloLifecycle('B', diario)]
+        client.register(SinHook())
+        client.register(_AppLifecycle('B', diario))
 
         client._dispatch_lifecycle('on_connect')
 
@@ -209,7 +232,7 @@ class TestDispatchLifecycle(_Base):
 
     def test_evento_inexistente_no_hace_nada(self):
         client = InSimClient(config={})
-        client.modules.append(_ModuloLifecycle('A', []))
+        client.register(_AppLifecycle('A', []))
         client._dispatch_lifecycle('on_evento_que_no_existe')
 
 
