@@ -1,11 +1,11 @@
 from __future__ import annotations
-import os
 import ast
 import logging
 import copy
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Optional
 
+from config.settings import BASE_DIR
 from insims.ai_control.nav_modes.route.mode import RouteMode
 from insims.users_management.main import Coordinates, Speed
 from lfs_insim.utils import calc_dist_3d, calc_deviation_angle
@@ -16,6 +16,9 @@ if TYPE_CHECKING:
     from insims.users_management.main import Player
 
 logger = logging.getLogger(__name__)
+
+# Fichero de rutas anclado a la raíz del proyecto (independiente del CWD)
+RUTAS_FILE = BASE_DIR / 'rutas_grabadas.txt'
 
 
 @dataclass
@@ -71,11 +74,11 @@ class RouteManager(PacketSenderMixin):
         self.load_routes()                          
         
     def load_routes(self):
-        if not os.path.exists("rutas_grabadas.txt"): 
+        if not RUTAS_FILE.exists():
             return
-            
+
         try:
-            with open("rutas_grabadas.txt", "r") as f:
+            with open(RUTAS_FILE, "r") as f:
                 lines = [line for line in f if not line.strip().startswith('#')]
             
             dict_str = "{" + "".join(lines) + "}"
@@ -172,7 +175,7 @@ class RouteManager(PacketSenderMixin):
 
     def _save_to_disk(self, plid: int):
         try:
-            with open("rutas_grabadas.txt", "a") as f:
+            with open(RUTAS_FILE, "a") as f:
                 f.write(f"\n# --- {self.recorders[plid].route_name} ---\n")
                 f.write(f"'{self.recorders[plid].route_name}': [\n")
                 for waypoint in self.recorders[plid].waypoints:
