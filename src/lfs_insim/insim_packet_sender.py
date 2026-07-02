@@ -1,22 +1,17 @@
 """
-lfs_insim/insim_packet_sender.py - Packet serialization and sending.
+lfs_insim/insim_packet_sender.py - Packet serialization.
 
 `encode_packet()` is the single serialization route (validate + prepare +
-pack): a pure function with no socket involved. `send_packet()` encodes and
-pushes the bytes through the global socket (P13: to be replaced by a
-transport object owned by the client).
+pack): a pure function with no socket involved. Sending happens through
+each client's InSimTransport (`client.send(packet)`), so this module holds
+no connection state.
 """
 import logging
 import struct
-import threading
 from .insim_packet_class import PacketFunctions, ALLOWED_PACKETS
-from .insim_state import get_socket_tcp, get_socket_udp
-from .exceptions import InSimError, InSimPacketError, InSimConnectionError
+from .exceptions import InSimPacketError
 
 logger = logging.getLogger(__name__)
-
-# Global lock so packet sends are atomic per connection
-_send_lock = threading.Lock()
 
 # Packet types whose send logs are muted.
 # Empty by default; each module adds its own with mute_send_logs().
@@ -64,30 +59,6 @@ def encode_packet(packet: PacketFunctions) -> bytes:
         raise InSimPacketError(f"Error packing {pkt_name}: {e}",
                                packet_type=pkt_name) from e
 
-
-def send_packet(packet: PacketFunctions, use_udp: bool = False):
-    """
-    Encode a packet and send it to LFS through the global socket.
-    """
-    data = encode_packet(packet)
-    pkt_name = type(packet).__name__
-    _muted = pkt_name in _MUTED_SEND_TYPES
-
-    try:
-        sock = get_socket_udp() if use_udp else get_socket_tcp()
-        if sock:
-            with _send_lock:
-                sock.sendall(data)
-            if not _muted:
-                logger.debug(f"Packet {pkt_name} sent successfully.")
-            return True
-        else:
-            raise InSimConnectionError("Could not send packet: socket not available (disconnected?)", host=None, port=None)
-    except Exception as e:
-        if isinstance(e, InSimError):
-            raise
-        logger.error(f"Network error sending packet {pkt_name}: {e}")
-        raise InSimConnectionError(f"Network error sending packet {pkt_name}: {e}") from e
 
 def _extract_values(obj):
     from dataclasses import fields

@@ -1,43 +1,38 @@
 """
-Tests de caracterización de insim_packet_io (Fase 1).
+Tests de InSimTransport (Fase 2 — P13; sucesor de test_packet_io.py).
 
 Cubre la capa de red sin LFS real:
   - `_tcp_listen_loop` con socket guionizado: reensamblado del flujo TCP
     (paquetes fragmentados y pegados), byte Size=0, cierre de conexión,
-    errores de recv y STOP_EVENT;
+    errores de recv y stop event;
   - `_udp_listen_loop` con socket guionizado: un datagrama = un paquete;
-  - `stop_all_threads`: cierre de sockets y reseteo del estado global;
-  - `connect_tcp_lfs` / `connect_udp_lfs`: fallo de conexión e integración
-    real por loopback contra la fixture `fake_lfs` (conftest.py).
+  - `close()`: cierre de sockets por instancia (sin estado global);
+  - `connect_tcp` / `connect_udp`: fallo de conexión e integración real por
+    loopback contra la fixture `fake_lfs` (conftest.py);
+  - **criterio de aceptación de Fase 2 (P13): dos clientes coexisten en un
+    mismo proceso**, cada uno con su transporte, recepción y envío propios.
 
-El filtro pre-decode de `_process_raw_bytes` ya está cubierto en
-test_active_packet_registry.py.
+La barrera pre-decode (ahora en `InSimClient._on_raw_bytes`) está cubierta
+en test_active_packet_registry.py.
 
-Comportamientos actuales que se CARACTERIZAN tal cual:
+Comportamientos que se conservan de la caracterización de Fase 1:
   - un byte Size=0 se descarta de uno en uno (resincronización byte a byte);
   - un resto incompleto en el buffer al cerrar la conexión se pierde en
-    silencio (nunca se procesa);
+    silencio;
   - una excepción en recv termina el hilo sin propagar (no hay reconexión —
     ver P12 en DIAGNOSTICO.md).
 """
 import socket
-import threading
 import time
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
-import lfs_insim.insim_packet_io as io
 import lfs_insim.insim_state as state
 from lfs_insim.exceptions import InSimConnectionError
+from lfs_insim.insim_client import InSimClient
 from lfs_insim.insim_enums import ISP
-from lfs_insim.insim_packet_io import (
-    _tcp_listen_loop,
-    _udp_listen_loop,
-    connect_tcp_lfs,
-    connect_udp_lfs,
-    stop_all_threads,
-)
+from lfs_insim.insim_transport import InSimTransport
 from lfs_insim.packets import ISP_TINY, ISP_VER
 
 
@@ -52,14 +47,36 @@ VER = (
 
 
 @pytest.fixture(autouse=True)
-def _entorno_limpio():
-    """Estado global y STOP_EVENT limpios antes y después de cada test."""
+def _cliente_por_defecto_limpio():
     state.reset_insim_client()
-    state.reset_sockets()
-    io.STOP_EVENT.clear()
     yield
-    stop_all_threads()   # cierra sockets/hilos que un test dejara vivos
     state.reset_insim_client()
+
+
+class _ClienteRecolector(InSimClient):
+    """Cliente que acumula los paquetes decodificados que recibe."""
+
+    def __init__(self, name='Recolector'):
+        super().__init__(config={}, name=name)
+        self.paquetes = []
+
+    def on_packet_received(self, packet):
+        self.paquetes.append(packet)
+
+
+@pytest.fixture
+def cliente_factory():
+    """Crea clientes recolectores y cierra sus transportes al terminar."""
+    clientes = []
+
+    def crear(name='Recolector') -> _ClienteRecolector:
+        c = _ClienteRecolector(name)
+        clientes.append(c)
+        return c
+
+    yield crear
+    for c in clientes:
+        c.transport.close()
 
 
 class _SocketTcpGuionizado:
@@ -101,20 +118,22 @@ class _SocketUdpGuionizado:
         return paso, ("127.0.0.1", 30000)
 
 
-def _correr_tcp(*guion):
+def _correr_tcp(*guion, stop_previo=False):
     """Ejecuta _tcp_listen_loop con un guion y devuelve (procesados, socket)."""
     sock = _SocketTcpGuionizado(*guion)
     procesados = []
-    with patch.object(io, '_process_raw_bytes', side_effect=procesados.append):
-        _tcp_listen_loop(sock)
+    transporte = InSimTransport(on_raw=procesados.append)
+    if stop_previo:
+        transporte._stop.set()
+    transporte._tcp_listen_loop(sock)
     return procesados, sock
 
 
 def _correr_udp(*guion):
     sock = _SocketUdpGuionizado(*guion)
     procesados = []
-    with patch.object(io, '_process_raw_bytes', side_effect=procesados.append):
-        _udp_listen_loop(sock)
+    transporte = InSimTransport(on_raw=procesados.append)
+    transporte._udp_listen_loop(sock)
     return procesados
 
 
@@ -191,11 +210,28 @@ class TestCierreYErrores:
         procesados, _ = _correr_tcp(TINY, ConnectionResetError("boom"))
         assert procesados == [TINY]
 
-    def test_stop_event_previo_impide_leer(self):
-        io.STOP_EVENT.set()
-        procesados, sock = _correr_tcp(TINY)
+    def test_stop_previo_impide_leer(self):
+        procesados, sock = _correr_tcp(TINY, stop_previo=True)
         assert procesados == []
         assert sock.llamadas == 0
+
+    def test_callback_ausente_no_revienta(self):
+        transporte = InSimTransport()          # sin on_raw
+        transporte._tcp_listen_loop(_SocketTcpGuionizado(TINY))
+
+    def test_error_del_callback_no_corta_el_bucle(self):
+        recibidos = []
+
+        def explota_una_vez(data):
+            if not recibidos:
+                recibidos.append('boom')
+                raise ValueError('boom')
+            recibidos.append(data)
+
+        transporte = InSimTransport(on_raw=explota_una_vez)
+        transporte._tcp_listen_loop(_SocketTcpGuionizado(TINY + VER))
+
+        assert recibidos == ['boom', VER]
 
 
 # ---------------------------------------------------------------------------
@@ -216,44 +252,45 @@ class TestBucleUDP:
 
 
 # ---------------------------------------------------------------------------
-# stop_all_threads
+# close()
 # ---------------------------------------------------------------------------
 
-class TestStopAllThreads:
+class TestClose:
 
-    def test_sin_sockets_no_falla_y_deja_el_evento_limpio(self):
-        stop_all_threads()
-        assert not io.STOP_EVENT.is_set()
+    def test_sin_sockets_no_falla_y_deja_el_stop_limpio(self):
+        transporte = InSimTransport()
+        transporte.close()
+        assert not transporte._stop.is_set()
 
     def test_cierra_y_resetea_ambos_sockets(self):
+        transporte = InSimTransport()
         tcp, udp = MagicMock(), MagicMock()
-        state.set_socket_tcp(tcp)
-        state.set_socket_udp(udp)
+        transporte._tcp_sock, transporte._udp_sock = tcp, udp
 
-        stop_all_threads()
+        transporte.close()
 
         tcp.shutdown.assert_called_once_with(socket.SHUT_RDWR)
         tcp.close.assert_called_once()
         udp.close.assert_called_once()
-        assert state.get_socket_tcp() is None
-        assert state.get_socket_udp() is None
+        assert transporte._tcp_sock is None
+        assert transporte._udp_sock is None
 
     def test_errores_al_cerrar_se_tragan(self):
+        transporte = InSimTransport()
         tcp = MagicMock()
         tcp.shutdown.side_effect = OSError("ya cerrado")
         udp = MagicMock()
         udp.close.side_effect = OSError("ya cerrado")
-        state.set_socket_tcp(tcp)
-        state.set_socket_udp(udp)
+        transporte._tcp_sock, transporte._udp_sock = tcp, udp
 
-        stop_all_threads()   # no debe propagar
+        transporte.close()   # no debe propagar
 
-        assert state.get_socket_tcp() is None
-        assert state.get_socket_udp() is None
+        assert transporte._tcp_sock is None
+        assert transporte._udp_sock is None
 
 
 # ---------------------------------------------------------------------------
-# Fallos de conexión
+# Fallos de conexión y envío
 # ---------------------------------------------------------------------------
 
 class TestConexionFallida:
@@ -266,7 +303,7 @@ class TestConexionFallida:
         s.close()
 
         with pytest.raises(InSimConnectionError):
-            connect_tcp_lfs("127.0.0.1", puerto)
+            InSimTransport().connect_tcp("127.0.0.1", puerto)
 
     def test_udp_puerto_ocupado_lanza_insim_connection_error(self):
         ocupado = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -274,110 +311,124 @@ class TestConexionFallida:
         puerto = ocupado.getsockname()[1]
         try:
             with pytest.raises(InSimConnectionError):
-                connect_udp_lfs("127.0.0.1", puerto)
+                InSimTransport().connect_udp("127.0.0.1", puerto)
         finally:
             ocupado.close()
 
+    def test_enviar_sin_conectar_lanza_insim_connection_error(self):
+        with pytest.raises(InSimConnectionError):
+            InSimTransport().send(TINY)
+
 
 # ---------------------------------------------------------------------------
-# Integración por loopback con el "LFS falso" (fixture fake_lfs)
+# Integración por loopback con el "LFS falso" (fixtures de conftest.py)
 # ---------------------------------------------------------------------------
-
-class _ClienteStub:
-    """Cliente mínimo: acumula los paquetes decodificados que le entregan.
-
-    Sin `_active_type_ids`, así que la barrera pre-decode deja pasar todo.
-    """
-
-    def __init__(self):
-        self.paquetes = []
-
-    def on_packet_received(self, packet):
-        self.paquetes.append(packet)
-
-
-def _hilo_receptor_tcp():
-    return next(
-        (t for t in threading.enumerate() if t.name == "InSim_TCP_Receiver"),
-        None,
-    )
-
 
 class TestIntegracionConLFSFalso:
 
-    def test_conectar_registra_socket_y_arranca_el_hilo(self, fake_lfs):
-        connect_tcp_lfs(fake_lfs.host, fake_lfs.port)
+    def test_conectar_guarda_socket_y_arranca_el_hilo(self, fake_lfs, cliente_factory):
+        c = cliente_factory()
+        c.transport.connect_tcp(fake_lfs.host, fake_lfs.port)
 
         assert fake_lfs.espera_conexion()
-        assert state.get_socket_tcp() is not None
-        hilo = _hilo_receptor_tcp()
-        assert hilo is not None and hilo.is_alive()
+        assert c.transport._tcp_sock is not None
+        assert c.transport._tcp_thread.is_alive()
 
-    def test_traza_completa_llega_decodificada(self, fake_lfs):
-        stub = _ClienteStub()
-        state.force_set_insim_client(stub)
-        connect_tcp_lfs(fake_lfs.host, fake_lfs.port)
+    def test_traza_completa_llega_decodificada(self, fake_lfs, cliente_factory):
+        c = cliente_factory()
+        c.transport.connect_tcp(fake_lfs.host, fake_lfs.port)
 
         fake_lfs.enviar(VER)
 
-        assert _esperar(lambda: len(stub.paquetes) == 1)
-        pkt = stub.paquetes[0]
+        assert _esperar(lambda: len(c.paquetes) == 1)
+        pkt = c.paquetes[0]
         assert isinstance(pkt, ISP_VER)
         assert pkt.Version == '0.8C5'
 
-    def test_traza_fragmentada_se_reensambla(self, fake_lfs):
-        stub = _ClienteStub()
-        state.force_set_insim_client(stub)
-        connect_tcp_lfs(fake_lfs.host, fake_lfs.port)
+    def test_traza_fragmentada_se_reensambla(self, fake_lfs, cliente_factory):
+        c = cliente_factory()
+        c.transport.connect_tcp(fake_lfs.host, fake_lfs.port)
 
         fake_lfs.enviar(VER[:6])
         time.sleep(0.05)   # forzar que llegue en dos recv distintos
         fake_lfs.enviar(VER[6:] + TINY)
 
-        assert _esperar(lambda: len(stub.paquetes) == 2)
-        assert isinstance(stub.paquetes[0], ISP_VER)
-        assert isinstance(stub.paquetes[1], ISP_TINY)
+        assert _esperar(lambda: len(c.paquetes) == 2)
+        assert isinstance(c.paquetes[0], ISP_VER)
+        assert isinstance(c.paquetes[1], ISP_TINY)
 
-    def test_el_lfs_falso_registra_lo_que_envia_el_cliente(self, fake_lfs):
-        connect_tcp_lfs(fake_lfs.host, fake_lfs.port)
+    def test_client_send_llega_al_lfs_falso(self, fake_lfs, cliente_factory):
+        # Ruta completa de envío P13: client.send → encode_packet → transport
+        c = cliente_factory()
+        c.transport.connect_tcp(fake_lfs.host, fake_lfs.port)
         assert fake_lfs.espera_conexion()
 
-        state.get_socket_tcp().sendall(TINY)
+        c.send(ISP_TINY())
 
         assert _esperar(lambda: fake_lfs.recibido == TINY)
 
-    def test_caida_de_lfs_termina_el_hilo_receptor(self, fake_lfs):
-        connect_tcp_lfs(fake_lfs.host, fake_lfs.port)
+    def test_caida_de_lfs_termina_el_hilo_receptor(self, fake_lfs, cliente_factory):
+        c = cliente_factory()
+        c.transport.connect_tcp(fake_lfs.host, fake_lfs.port)
         assert fake_lfs.espera_conexion()
-        hilo = _hilo_receptor_tcp()
-        assert hilo is not None and hilo.is_alive()
+        hilo = c.transport._tcp_thread
+        assert hilo.is_alive()
 
         fake_lfs.cerrar_conexion()
 
         hilo.join(2.0)
         assert not hilo.is_alive()   # y NO se reconecta (P12)
 
-    def test_stop_all_threads_termina_el_hilo_y_resetea(self, fake_lfs):
-        connect_tcp_lfs(fake_lfs.host, fake_lfs.port)
+    def test_close_termina_el_hilo_y_limpia(self, fake_lfs, cliente_factory):
+        c = cliente_factory()
+        c.transport.connect_tcp(fake_lfs.host, fake_lfs.port)
         assert fake_lfs.espera_conexion()
-        hilo = _hilo_receptor_tcp()
+        hilo = c.transport._tcp_thread
 
-        stop_all_threads()
+        c.transport.close()
 
         hilo.join(2.0)
         assert not hilo.is_alive()
-        assert state.get_socket_tcp() is None
+        assert c.transport._tcp_sock is None
 
-    def test_udp_datagrama_llega_decodificado(self):
-        stub = _ClienteStub()
-        state.force_set_insim_client(stub)
-        connect_udp_lfs("127.0.0.1", 0)   # puerto efímero
-        puerto = state.get_socket_udp().getsockname()[1]
+    def test_udp_datagrama_llega_decodificado(self, cliente_factory):
+        c = cliente_factory()
+        c.transport.connect_udp("127.0.0.1", 0)   # puerto efímero
+        puerto = c.transport._udp_sock.getsockname()[1]
 
         emisor = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         try:
             emisor.sendto(TINY, ("127.0.0.1", puerto))
-            assert _esperar(lambda: len(stub.paquetes) == 1)
-            assert isinstance(stub.paquetes[0], ISP_TINY)
+            assert _esperar(lambda: len(c.paquetes) == 1)
+            assert isinstance(c.paquetes[0], ISP_TINY)
         finally:
             emisor.close()
+
+
+class TestDosClientesCoexisten:
+    """Criterio de aceptación de Fase 2 (P13): cero estado global obligatorio."""
+
+    def test_cada_cliente_recibe_y_envia_solo_lo_suyo(self, fake_lfs_factory, cliente_factory):
+        lfs_a, lfs_b = fake_lfs_factory(), fake_lfs_factory()
+        a, b = cliente_factory('A'), cliente_factory('B')
+
+        a.transport.connect_tcp(lfs_a.host, lfs_a.port)
+        b.transport.connect_tcp(lfs_b.host, lfs_b.port)
+        assert lfs_a.espera_conexion() and lfs_b.espera_conexion()
+
+        # Recepción independiente: cada LFS falso envía un paquete distinto
+        lfs_a.enviar(VER)
+        lfs_b.enviar(TINY)
+        assert _esperar(lambda: len(a.paquetes) == 1 and len(b.paquetes) == 1)
+        assert isinstance(a.paquetes[0], ISP_VER)
+        assert isinstance(b.paquetes[0], ISP_TINY)
+        assert len(a.paquetes) == 1 and len(b.paquetes) == 1   # sin cruces
+
+        # Envío independiente: cada cliente escribe por SU transporte
+        a.send(ISP_TINY())
+        b.send(ISP_TINY(ReqI=7))
+        assert _esperar(lambda: lfs_a.recibido == bytes([1, ISP.TINY, 0, 0]))
+        assert _esperar(lambda: lfs_b.recibido == bytes([1, ISP.TINY, 7, 0]))
+
+        # El cliente por defecto (azúcar para helpers) es el primero creado
+        assert state.get_insim_client() is a

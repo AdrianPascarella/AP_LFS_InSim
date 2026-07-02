@@ -69,7 +69,8 @@ The framework is a composable plugin system for the **LFS InSim v10 binary proto
 ```
 CLI (cli.py)
   → InSimLoader        — discovers insim.json, resolves dependencies, registers apps into ONE client
-    → InSimClient      — owns the connection; aggregates ISF flags/OSO opts, dispatches packets
+    → InSimClient      — aggregates ISF flags/OSO opts, decodes and dispatches packets
+      → InSimTransport — owns the TCP/UDP sockets and receiver threads (one per client, injectable)
       ← client.register(app)  — attaches each InSimApp (dependencies first)
     → InSimApp(PacketSenderMixin)  — base class every module inherits; declares deps, handles events
 ```
@@ -103,7 +104,7 @@ The loader reads `entry_point` (not `entry`) to find the file, then looks for a 
 
 ### Packet lifecycle
 
-1. Socket receives raw bytes → `insim_packet_io.py` buffers/assembles full packets (TCP) or reads frames (UDP)
+1. Socket receives raw bytes → `insim_transport.py` (`InSimTransport`, one per client) buffers/assembles full packets (TCP) or reads frames (UDP) and hands them to `InSimClient._on_raw_bytes`
 2. `insim_packet_decoders.py` maps header byte → dataclass instance
 3. Client dispatches `on_ISP_<TYPE>(packet)` sequentially to itself, then each registered app in registration (= dependency) order
 4. Lifecycle hooks: `on_connect()`, `on_tick()` (fixed ~100 ms main-loop cadence, independent of `interval`), `on_disconnect()`. `INSIM_CONFIG["interval"]` (default 10 ms) controls how often LFS sends NLP/MCI, not `on_tick`.
@@ -117,7 +118,7 @@ self.send_ISP_MSL(Msg="hello")           # preferred: magic via PacketSenderMixi
 self.send(ISP_MSL(Msg="hello"))          # explicit: only when building the packet separately
 ```
 
-`send_packet()` is thread-safe (uses a lock internally).
+Sending is thread-safe: `client.send(packet)` = `encode_packet()` (pure serialization in `insim_packet_sender.py`) + `transport.send(bytes)` (per-instance lock). Mixin `send`/`send_ISP_*` route through `self.client`, falling back to the process's default client for helper classes.
 
 ### Writing a module
 
@@ -188,7 +189,7 @@ To suppress noisy send-logs for a specific packet type: `mute_send_logs('ISP_AIC
 - **Binary protocol**: LFS packets are little-endian, strings are latin-1 null-terminated. `Size` in packet header = total bytes / 4.
 - **Packet definitions**: dataclasses in `src/lfs_insim/packets/insim.py`; sub-structures in `packets/structures.py`; OutSim/OutGauge in `packets/outsim.py`. Each field carries `metadata={'fmt': '...'}` for struct serialization. `insim_packet_class.py` is a compatibility facade — always import from `lfs_insim.packets` or `lfs_insim.insim_packet_class` (they are equivalent).
 - **Enums**: all protocol flags and constants live in `src/lfs_insim/insim_enums.py` (ISF, ISP, TINY, SMALL, PTYPE, OSO, etc.).
-- **Global state**: sockets and the client reference are singletons in `src/lfs_insim/insim_state.py` — only the first setter wins; do not instantiate these directly (P13: pending removal in Fase 2).
+- **Global state**: none mandatory since P13 — sockets/threads live in each client's `InSimTransport`, so several clients can coexist in one process. `insim_state.py` only keeps the optional "default client" (first one created), used as fallback by `PacketSenderMixin` helper classes.
 - **Config**: `config/settings.py` holds `INSIM_CONFIG` (TCP host/port, prefix, interval) and `OUT_CONFIG` (OutSim options); modules read settings via `self.config.get('key', default)`.
 - **Type stubs**: `.pyi` files under `src/lfs_insim/` are auto-generated for IDE autocomplete only — do not edit manually.
 - **PID control**: `PIDController` in `utils.py` has anti-windup and anti-derivative-kick; output is clamped to [-1.0, 1.0] for pedal/steering use.

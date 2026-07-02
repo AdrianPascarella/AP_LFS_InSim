@@ -63,11 +63,9 @@ class _AppLifecycle:
 class _Base:
     def setup_method(self):
         state.reset_insim_client()
-        state.reset_sockets()
 
     def teardown_method(self):
         state.reset_insim_client()
-        state.reset_sockets()
 
 
 class TestRegister(_Base):

@@ -1,33 +1,32 @@
-"""Shared fixtures for test_insim handler tests."""
+"""Shared fixtures for test_insim handler tests.
+
+Desde P13 el envío viaja por el cliente (mixin → self.client o cliente por
+defecto), así que se captura parcheando `client.send` de un cliente real en
+el que se registra la app. Los helpers sin `client` propio (CMDManager...)
+caen en el cliente por defecto, que es este mismo (el primero creado).
+"""
 import pytest
 from unittest.mock import patch
 import lfs_insim.insim_state as state
+from lfs_insim.insim_client import InSimClient
 from insims.test_insim.main import TestInsim
-
-
-PATCH_TARGETS = (
-    'lfs_insim.insim_packet_sender.send_packet',  # PacketSenderMixin / CMDManager
-    'lfs_insim.insim_client.send_packet',          # InSimClient.send
-)
 
 
 @pytest.fixture(autouse=True)
 def clean_state():
     state.reset_insim_client()
-    state.reset_sockets()
     yield
     state.reset_insim_client()
-    state.reset_sockets()
 
 
 @pytest.fixture
 def insim():
-    """TestInsim instance with send_packet mocked; captured packets in app._sent."""
+    """TestInsim registrada en un cliente con el envío capturado en app._sent."""
     sent = []
-    capturer = lambda p: sent.append(p)
-    with patch(PATCH_TARGETS[0], side_effect=capturer), \
-         patch(PATCH_TARGETS[1], side_effect=capturer):
+    client = InSimClient(config={})
+    with patch.object(client, 'send', side_effect=sent.append):
         app = TestInsim(config={})
+        client.register(app)
         app._sent = sent
         yield app
 

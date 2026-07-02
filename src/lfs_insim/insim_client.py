@@ -14,15 +14,17 @@ import logging
 from concurrent.futures import ThreadPoolExecutor
 from typing import Callable, List, Any, Optional
 
-from .insim_packet_io import connect_tcp_lfs, connect_udp_lfs, stop_all_threads
+from .insim_transport import InSimTransport
 from .insim_state import set_insim_client
-from .insim_packet_sender import send_packet
+from .insim_packet_sender import encode_packet
+from .insim_packet_decoders import decode_packet
 from .insim_packet_class import ISP_ISI, ISP_TINY
 from .insim_enums import ISF, TINY, OSO
 from .exceptions import InSimError
 
 class InSimClient:
-    def __init__(self, config: Optional[dict] = None, name: str = "DeepInSim"):
+    def __init__(self, config: Optional[dict] = None, name: str = "DeepInSim",
+                 transport: Optional[InSimTransport] = None):
         from config.settings import get_config  # P14: core still reads CWD config
         self.config = get_config(config)
         self.name = name
@@ -35,6 +37,11 @@ class InSimClient:
         # Apps (InSimApp instances) listening on this client, in dispatch order
         self.apps: List[Any] = []
 
+        # Transport: owns the sockets and receiver threads of this connection.
+        # Injectable for tests or custom transports.
+        self.transport = transport or InSimTransport()
+        self.transport.on_raw = self._on_raw_bytes
+
         # Optional thread pool for asynchronous packet dispatch
         self.use_thread_pool = self.config.get('use_thread_pool', False)
         self._executor = ThreadPoolExecutor(
@@ -44,7 +51,8 @@ class InSimClient:
         # OutSim: client base opts; apps contribute theirs via set_outsim()
         self.outsim_opts: OSO = OSO.NONE
 
-        # Register this client as the global one (P13: to be removed)
+        # Optional sugar: the first client created becomes the process's
+        # default client (fallback for PacketSenderMixin helper classes)
         set_insim_client(self)
 
     def register(self, app: Any) -> Any:
@@ -61,12 +69,28 @@ class InSimClient:
         return app
 
     def send(self, packet: Any) -> None:
+        """Serialize a packet and send it through this client's transport."""
+        self.transport.send(encode_packet(packet))
+
+    def _on_raw_bytes(self, data: bytes) -> None:
         """
-        Send a packet to LFS.
-        Bridge used by the client (and apps via their own send) to reach the
-        global send_packet function (P13: will go through a transport object).
+        Turn raw bytes into a packet object and dispatch it.
+        Called from the transport's IO threads for every received packet.
         """
-        send_packet(packet)
+        # Pre-decode barrier: skip struct.unpack + dataclass creation for
+        # types nobody handles. Only applies to InSim TCP packets
+        # (data[0]*4 == len(data)); UDP OutSim/OutGauge frames do not match
+        # that signature and always pass.
+        active_ids = getattr(self, '_active_type_ids', None)
+        if (active_ids is not None
+                and len(data) >= 2
+                and data[0] * 4 == len(data)
+                and data[1] not in active_ids):
+            return
+
+        packet = decode_packet(data)
+        if packet:
+            self.on_packet_received(packet)
 
     def _build_active_handlers(self) -> None:
         """
@@ -122,7 +146,7 @@ class InSimClient:
         udp_port   = self.config.get('udp_port',   30000)
         udp_host   = self.config.get('udp_host',   '0.0.0.0')
         udp_buffer = self.config.get('udp_buffer', 4096)
-        connect_udp_lfs(udp_host, udp_port, udp_buffer)
+        self.transport.connect_udp(udp_host, udp_port, udp_buffer)
 
         oso_names = ' | '.join(
             f.name for f in OSO
@@ -179,7 +203,7 @@ class InSimClient:
             # 1. Physical TCP connection
             host = self.config.get('tcp_host', '127.0.0.1')
             port = self.config.get('tcp_port', 29999)
-            connect_tcp_lfs(host, port)
+            self.transport.connect_tcp(host, port)
 
             # =================================================================
             # ISI FLAG AGGREGATION
@@ -259,8 +283,8 @@ class InSimClient:
         if self._executor:
             self._executor.shutdown(wait=False)
 
-        # Close sockets
-        stop_all_threads()
+        # Close sockets and receiver threads
+        self.transport.close()
 
         self.logger.info("Framework stopped.")
 

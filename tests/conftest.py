@@ -91,8 +91,21 @@ class FakeLFS:
 
 
 @pytest.fixture
-def fake_lfs():
+def fake_lfs_factory():
+    """Factory de servidores "LFS falso" (permite varios en un mismo test)."""
+    servidores = []
+
+    def crear() -> FakeLFS:
+        servidor = FakeLFS()
+        servidores.append(servidor)
+        return servidor
+
+    yield crear
+    for servidor in servidores:
+        servidor.parar()
+
+
+@pytest.fixture
+def fake_lfs(fake_lfs_factory):
     """Servidor "LFS falso" por loopback, listo para aceptar una conexión."""
-    servidor = FakeLFS()
-    yield servidor
-    servidor.parar()
+    return fake_lfs_factory()

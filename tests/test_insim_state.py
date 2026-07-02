@@ -1,17 +1,20 @@
-"""Tests for global state management in insim_state.py."""
-import socket
+"""Tests del registro de cliente por defecto (insim_state.py).
+
+Desde P13 este módulo es solo azúcar opcional: guarda el primer cliente
+creado como "cliente por defecto" para las clases auxiliares que usan
+PacketSenderMixin sin estar registradas en un cliente. Los sockets ya no
+viven aquí (cada cliente tiene su InSimTransport).
+"""
 import pytest
 import lfs_insim.insim_state as state
 
 
 @pytest.fixture(autouse=True)
 def clean_state():
-    """Reset all global state before and after each test."""
+    """Reset del cliente por defecto antes y después de cada test."""
     state.reset_insim_client()
-    state.reset_sockets()
     yield
     state.reset_insim_client()
-    state.reset_sockets()
 
 
 class FakeClient:
@@ -19,7 +22,7 @@ class FakeClient:
         self.name = name
 
 
-class TestClientRegistration:
+class TestDefaultClientRegistry:
     def test_initial_client_is_none(self):
         assert state.get_insim_client() is None
 
@@ -44,47 +47,3 @@ class TestClientRegistration:
         second = FakeClient("second")
         state.set_insim_client(second)
         assert state.get_insim_client() is second
-
-    def test_force_set_overrides_existing(self):
-        first = FakeClient("first")
-        second = FakeClient("second")
-        state.set_insim_client(first)
-        state.force_set_insim_client(second)
-        assert state.get_insim_client() is second
-
-
-class TestSocketState:
-    def test_initial_tcp_socket_is_none(self):
-        assert state.get_socket_tcp() is None
-
-    def test_initial_udp_socket_is_none(self):
-        assert state.get_socket_udp() is None
-
-    def test_set_and_get_tcp_socket(self):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        try:
-            state.set_socket_tcp(sock)
-            assert state.get_socket_tcp() is sock
-        finally:
-            sock.close()
-
-    def test_set_and_get_udp_socket(self):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        try:
-            state.set_socket_udp(sock)
-            assert state.get_socket_udp() is sock
-        finally:
-            sock.close()
-
-    def test_reset_sockets_clears_both(self):
-        tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        try:
-            state.set_socket_tcp(tcp)
-            state.set_socket_udp(udp)
-            state.reset_sockets()
-            assert state.get_socket_tcp() is None
-            assert state.get_socket_udp() is None
-        finally:
-            tcp.close()
-            udp.close()

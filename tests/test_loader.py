@@ -66,7 +66,6 @@ class _FabricaInsims:
 @pytest.fixture
 def fabrica(tmp_path):
     state.reset_insim_client()
-    state.reset_sockets()
     f = _FabricaInsims(tmp_path / "insims")
     yield f
     # Limpiar sys.modules (el loader registra name y name.<entry> globalmente)
@@ -74,7 +73,6 @@ def fabrica(tmp_path):
         for key in [k for k in sys.modules if k == name or k.startswith(f"{name}.")]:
             del sys.modules[key]
     state.reset_insim_client()
-    state.reset_sockets()
 
 
 def _loader(fabrica) -> InSimLoader:

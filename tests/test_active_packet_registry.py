@@ -1,7 +1,9 @@
 """Tests for the Active Packet Registry optimization.
 
 Covers _build_active_handlers() in InSimClient, the pre-decode filter
-in _process_raw_bytes(), and the post-decode filter in _dispatch_packet().
+in InSimClient._on_raw_bytes() (P13: moved here from the old
+insim_packet_io._process_raw_bytes), and the post-decode filter in
+_dispatch_packet().
 """
 import struct
 from unittest.mock import MagicMock, patch, call
@@ -18,13 +20,9 @@ from lfs_insim.packets import INSIM_PACKETS
 # ---------------------------------------------------------------------------
 
 def _make_client():
-    """InSimClient with send_packet mocked so __init__ doesn't need sockets."""
+    """InSimClient with a clean default-client slot (construction opens no sockets)."""
     state.reset_insim_client()
-    state.reset_sockets()
-    with patch('lfs_insim.insim_packet_sender.send_packet'), \
-         patch('lfs_insim.insim_client.send_packet'):
-        client = InSimClient(config={})
-    return client
+    return InSimClient(config={})
 
 
 def _make_tcp_bytes(type_id: int, payload_size: int = 0) -> bytes:
@@ -54,11 +52,9 @@ class TestBuildActiveHandlers:
 
     def setup_method(self):
         state.reset_insim_client()
-        state.reset_sockets()
 
     def teardown_method(self):
         state.reset_insim_client()
-        state.reset_sockets()
 
     def test_collects_module_handler_names(self):
         client = _make_client()
@@ -149,21 +145,19 @@ class TestBuildActiveHandlers:
 
 
 # ---------------------------------------------------------------------------
-# Pre-decode filter in _process_raw_bytes
+# Pre-decode filter in InSimClient._on_raw_bytes
 # ---------------------------------------------------------------------------
 
 class TestPreDecodeFilter:
-    """Tests that _process_raw_bytes skips decode for inactive packet types."""
+    """Tests that _on_raw_bytes skips decode for inactive packet types."""
 
     MCI_ID = next(tid for tid, cls in INSIM_PACKETS.items() if cls.__name__ == 'ISP_MCI')
 
     def setup_method(self):
         state.reset_insim_client()
-        state.reset_sockets()
 
     def teardown_method(self):
         state.reset_insim_client()
-        state.reset_sockets()
 
     def _client_with_registry(self, active_ids):
         client = _make_client()
@@ -176,25 +170,22 @@ class TestPreDecodeFilter:
         client = self._client_with_registry({int(ISP.TINY), int(ISP.VER)})
         raw = _make_tcp_bytes(self.MCI_ID)
 
-        with patch('lfs_insim.insim_state.get_insim_client', return_value=client), \
-             patch('lfs_insim.insim_packet_io.decode_packet') as mock_decode:
-            from lfs_insim.insim_packet_io import _process_raw_bytes
-            _process_raw_bytes(raw)
+        with patch('lfs_insim.insim_client.decode_packet') as mock_decode:
+            client._on_raw_bytes(raw)
             mock_decode.assert_not_called()
 
     def test_passes_decode_for_active_type(self):
-        """Packet whose type_id IS in active_ids is decoded."""
+        """Packet whose type_id IS in active_ids is decoded and delivered."""
         active = {int(ISP.TINY), int(ISP.VER), self.MCI_ID}
         client = self._client_with_registry(active)
         raw = _make_tcp_bytes(self.MCI_ID)
 
         mock_packet = MagicMock()
-        with patch('lfs_insim.insim_state.get_insim_client', return_value=client), \
-             patch('lfs_insim.insim_packet_io.decode_packet', return_value=mock_packet):
-            from lfs_insim.insim_packet_io import _process_raw_bytes
-            _process_raw_bytes(raw)
-            # on_packet_received would be called — client received the packet
-            # (we verify decode was called implicitly via the mock returning a packet)
+        with patch('lfs_insim.insim_client.decode_packet', return_value=mock_packet) as mock_decode, \
+             patch.object(client, 'on_packet_received') as mock_recv:
+            client._on_raw_bytes(raw)
+            mock_decode.assert_called_once_with(raw)
+            mock_recv.assert_called_once_with(mock_packet)
 
     def test_passes_udp_outsim_regardless(self):
         """UDP bytes (data[0]*4 != len(data)) always reach decode_packet."""
@@ -202,10 +193,9 @@ class TestPreDecodeFilter:
         raw = _make_udp_bytes(16)
 
         mock_packet = MagicMock()
-        with patch('lfs_insim.insim_state.get_insim_client', return_value=client), \
-             patch('lfs_insim.insim_packet_io.decode_packet', return_value=mock_packet) as mock_decode:
-            from lfs_insim.insim_packet_io import _process_raw_bytes
-            _process_raw_bytes(raw)
+        with patch('lfs_insim.insim_client.decode_packet', return_value=mock_packet) as mock_decode, \
+             patch.object(client, 'on_packet_received'):
+            client._on_raw_bytes(raw)
             mock_decode.assert_called_once_with(raw)
 
     def test_no_registry_passes_all(self):
@@ -216,20 +206,10 @@ class TestPreDecodeFilter:
 
         raw = _make_tcp_bytes(self.MCI_ID)
         mock_packet = MagicMock()
-        with patch('lfs_insim.insim_state.get_insim_client', return_value=client), \
-             patch('lfs_insim.insim_packet_io.decode_packet', return_value=mock_packet) as mock_decode:
-            from lfs_insim.insim_packet_io import _process_raw_bytes
-            _process_raw_bytes(raw)
+        with patch('lfs_insim.insim_client.decode_packet', return_value=mock_packet) as mock_decode, \
+             patch.object(client, 'on_packet_received'):
+            client._on_raw_bytes(raw)
             mock_decode.assert_called_once_with(raw)
-
-    def test_none_client_returns_without_error(self):
-        """If no client is registered, _process_raw_bytes exits cleanly."""
-        state.reset_insim_client()
-        raw = _make_tcp_bytes(self.MCI_ID)
-        with patch('lfs_insim.insim_packet_io.decode_packet') as mock_decode:
-            from lfs_insim.insim_packet_io import _process_raw_bytes
-            _process_raw_bytes(raw)  # should not raise
-            mock_decode.assert_not_called()
 
 
 # ---------------------------------------------------------------------------
@@ -241,11 +221,9 @@ class TestPostDecodeFilter:
 
     def setup_method(self):
         state.reset_insim_client()
-        state.reset_sockets()
 
     def teardown_method(self):
         state.reset_insim_client()
-        state.reset_sockets()
 
     def test_skips_execute_handler_for_unregistered_type(self):
         client = _make_client()
