@@ -222,6 +222,10 @@ protocolo. No cuentan como deuda.)
   `packaging.version` con soporte parcial.
 - **Acción:** fail-fast con excepción encadenada; si se quieren constraints serios, usar
   `packaging` (o documentar el subset soportado).
+- (S05) Además: si el paquete del InSim **no tiene `__init__.py`** y el entry point es otro
+  archivo, `spec_from_file_location(name, None)` devuelve `None` y la carga muere con un
+  error críptico (`'NoneType' object has no attribute 'loader'`). Documentar el requisito
+  o dar un mensaje claro. Caracterizado en `tests/test_loader.py::test_sin_init_py_falla`.
 
 ### P21 — Envío de ISP_REO / ISP_HCP / ISP_IPB-con-bans roto (MEDIA, funcional) — descubierto en S05
 - `_extract_values()` (insim_packet_sender.py) solo aplana listas cuando el `fmt` es una
