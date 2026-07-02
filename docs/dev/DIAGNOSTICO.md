@@ -143,7 +143,7 @@ protocolo. No cuentan como deuda.)
 > felizmente** y que siga buenas prácticas. Romper los insims existentes es aceptable.
 > Los P1–P10 siguen aplicando; estos son adicionales, centrados en `src/lfs_insim/`.
 
-### P11 — Arquitectura invertida: `InSimApp` hereda de `InSimClient` (ALTA, diseño)
+### P11 — Arquitectura invertida: `InSimApp` hereda de `InSimClient` (ALTA, diseño) ✅ RESUELTO (S06)
 - Cada módulo **ES** un cliente completo (config, `isi`, `modules[]`, executor...). Solo uno
   ejerce; el resto queda vestigial. El patrón "coup d'état" del loader y los
   `set/reset/force_set_insim_client` existen únicamente para compensar esta herencia.
@@ -153,6 +153,12 @@ protocolo. No cuentan como deuda.)
 - **Acción:** invertir a **composición**: un `InSimClient` (conexión + dispatch) y N
   `InSimApp` registradas en él (`client.register(app)`). El loader construye el cliente y
   registra las apps en orden de dependencias. Adiós golpe de estado.
+- **Resolución (S06):** `InSimApp(PacketSenderMixin)` ya no hereda de `InSimClient`;
+  `client.register(app)` + cliente único perezoso en el loader (o inyectado con
+  `InSimLoader(client=...)`); `modules[]`→`apps`. Cambio de comportamiento deliberado:
+  el orden de dispatch pasa a ser el de dependencias (antes el dependiente-master recibía
+  ANTES que sus dependencias — bug latente). Los 3 insims cargan sin cambios; queda la
+  validación en LFS por el usuario.
 
 ### P12 — Sin reconexión ni gestión de caída de LFS (ALTA, funcional)
 - Si LFS cierra el TCP, el hilo receptor muere y `start()` sigue en

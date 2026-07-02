@@ -5,9 +5,37 @@
 
 ---
 
-## S06 — 2026-07-02 — Fase 1 COMPLETADA: packet_io + fixture "LFS falso"
+## S06 — 2026-07-02 — Fase 1 COMPLETADA: packet_io + fixture "LFS falso"; P11 (composición)
 
-**Qué se hizo:**
+**Qué se hizo (segundo bloque, misma sesión) — Fase 2, P11:**
+- **Decisión de idioma resuelta con el usuario:** inglés en el core (identificadores,
+  docstrings, errores/log del código nuevo); español en docs/dev, tests, insims y
+  comunicación. Registrada en `MODUS_OPERANDI.md` § 5.
+- **P11 — inversión a composición** (los 3 archivos reescritos en inglés):
+  - `insim_app.py`: `InSimApp(PacketSenderMixin)` — ya no hereda de `InSimClient`.
+    Conserva: config, logger, `isi` (solo contribución de Flags), `outsim_opts`,
+    dependencias, `get_insim`, hooks. Nuevo atributo `self.client` (lo asigna
+    `register`). Eliminado `_resolve_dependencies` (código muerto, parte de P17).
+  - `insim_client.py`: gana `register(app)` (idempotente, asigna `app.client`);
+    `modules[]` → `apps`. Dispatch, agregación de flags ISI/OSO, keep-alive y
+    lifecycle intactos.
+  - `insim_loader.py`: **sin coup d'état** — cliente único perezoso (`loader.client`,
+    propiedad) o inyectado (`InSimLoader(client=...)`); `load()` registra cada app en
+    el cliente en orden de dependencias. Conservado: caché, checks de versión, tragado
+    P20, envoltura de errores (mensajes ahora en inglés). Sin rollback (ya no hay trono).
+  - `cli.py`: `cmd_run` arranca `loader.client.start()` en vez de la app.
+- **Cambio de comportamiento deliberado:** el orden de dispatch pasa a ser el de
+  dependencias (users_management procesa ANTES que ai_control). El orden antiguo
+  (master-dependiente primero) era un bug latente: el consumidor leía estado no
+  actualizado.
+- **Tests adaptados:** `test_loader.py` (31: registro en cliente en orden de deps,
+  cliente perezoso/inyectable, fallo no ensucia el cliente), `test_client_dispatch.py`
+  (16: + TestRegister), `test_active_packet_registry.py` (`apps`). Suite **391/391**.
+- **Smoke tests reales:** `test_insim`, `users_management` y `ai_control` cargan SIN
+  cambios (la superficie de `InSimApp` se conservó); `ai_control` queda registrado tras
+  `users_management`; `lfs-insim list` OK. CLAUDE.md actualizado (sección arquitectura).
+
+**Qué se hizo (primer bloque) — cierre de Fase 1:**
 - **Tests de packet_io** (`tests/test_packet_io.py`, 28 tests), sin LFS real:
   - `_tcp_listen_loop` con socket guionizado: reensamblado del flujo TCP (paquete
     completo, dos pegados, fragmentado en dos y byte a byte, pegado+fragmento del
@@ -38,11 +66,12 @@
    internacional y eventual PyPI. El código viejo se traduce al tocarlo, sin pasadas
    masivas. Registrado en `MODUS_OPERANDI.md` § 5 y `PLAN.md` Fase 2.
 
-**Estado del repo:** rama `refactor/estabilizacion`, suite **387/387 verde** (359 + 28
-packet_io). **Fase 1: 6/6 ítems — COMPLETADA.** Fase 2 pasa a activa.
+**Estado del repo:** rama `refactor/estabilizacion`, suite **391/391 verde**.
+**Fase 1: COMPLETADA (387/387 al cierre del primer bloque). Fase 2: P11 hecho.**
 
-**Próximo paso:** ver `ESTADO_ACTUAL.md` → Fase 2 (P11, invertir herencia); antes,
-decidir con el usuario el idioma de la API pública del core.
+**Próximo paso:** ver `ESTADO_ACTUAL.md` → P13 (encapsular conexión, eliminar
+singletons de `insim_state`). Pendiente del usuario: validar P11 en LFS
+(`lfs-insim run test_insim` / `ai_control`).
 
 ---
 

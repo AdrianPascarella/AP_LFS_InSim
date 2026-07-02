@@ -7,49 +7,50 @@
 
 ## Estado
 
-**Fase 1 COMPLETADA (6/6), suite 387/387 verde.** El comportamiento del core está
-congelado por tests:
-- **Encode** (`test_golden_bytes_send.py`, 63): bytes exactos de los 27 paquetes enviables.
-- **Decode** (`test_golden_bytes_decode.py`, 20): bytes según spec 0.8C5 → dataclass.
-- **Dispatch** (`test_client_dispatch.py`, 14): orden master→módulos, aislamiento de
-  errores, keep-alive reactivo, lifecycle, thread-pool.
-- **Loader** (`test_loader.py`, 29): dependencias, coup d'état + aplanado, caché,
-  rollback del master, fallos.
-- **packet_io** (`test_packet_io.py`, 28): framing TCP (fragmentado/pegado/Size=0/cierre),
-  bucle UDP, `stop_all_threads`, fallos de conexión e integración real por loopback.
-- **Infra nueva:** fixture `fake_lfs` (`tests/conftest.py`) — servidor TCP loopback que
-  reproduce trazas hacia el cliente y registra lo que este envía. Reutilizable en toda la suite.
+**Fase 1 COMPLETADA. Fase 2 en curso: P11 hecho. Suite 391/391 verde.**
 
-**Contexto del plan (S04):** llevar el **framework a nivel profesional**; romper los
-insims existentes es aceptable. Auditoría del core → **P11–P21** en `DIAGNOSTICO.md`
-(los gordos: P11 herencia invertida + coup d'état, P12 sin reconexión, P13 singletons,
-P14 core acoplado a `config/` del CWD). Fases 1–4 = core; Fases 5–6 = ai_control.
+**P11 (composición) resuelto:** `InSimApp(PacketSenderMixin)` ya no hereda de
+`InSimClient`. Un cliente, N apps: `client.register(app)`; el loader crea el cliente
+de forma perezosa (`loader.client`, inyectable) y registra las apps en **orden de
+dependencias**. Sin coup d'état ni aplanado de `modules[]` (ahora `apps`). Cambio
+deliberado: el orden de dispatch pasa a ser dependencias→dependientes (antes era el
+inverso, un bug latente). Core reescrito en **inglés** (decisión S06). Los 3 insims
+cargan sin cambios (superficie de `InSimApp` conservada); smoke tests hechos:
+`ai_control` se registra tras `users_management`, CLI `list` funciona.
+
+**⚠️ Pendiente del usuario:** validar en LFS (`lfs-insim run test_insim` y
+`lfs-insim run ai_control`) que todo sigue funcionando en vivo.
+
+**Contexto del plan (S04):** framework a nivel profesional; romper insims aceptable.
+P11–P21 en `DIAGNOSTICO.md`. Quedan gordos: P12 (reconexión), P13 (singletons),
+P14 (config del CWD).
 
 ## Fase activa
 
-**Fase 2 — Arquitectura del core** (composición y API); ver `PLAN.md`. **Rompe la API
-de los insims** (aceptado por el usuario en S04).
+**Fase 2 — Arquitectura del core** (composición y API); ver `PLAN.md`.
+Hecho: P11 + decisión de idioma. Siguen: P13, P14, P15, P17/P20, migración/validación
+de insims.
 
 ## ▶️ Próximo paso concreto (empezar AQUÍ la próxima sesión)
 
-Empezar **P11**: invertir la herencia — `InSimApp` deja de heredar de `InSimClient`;
-un cliente, N apps (`client.register(app)`); eliminar coup d'état y aplanado de
-`modules[]`. Leer antes `insim_client.py`, `insim_app.py` e `insim_loader.py`.
-
-**Decisión de idioma resuelta (S06):** el código nuevo del core va en **inglés**
-(identificadores, docstrings, errores/log); español en docs/dev, tests, insims y
-comunicación. Ver `MODUS_OPERANDI.md` § 5.
+**P13**: encapsular la conexión — objeto transporte TCP/UDP inyectado en el cliente;
+eliminar los singletons de `insim_state` (cliente y sockets globales); `send` viaja por
+el cliente (`app.client.send`), no por globals. Criterio: dos clientes pueden coexistir
+en un proceso (test). Leer antes `insim_state.py`, `insim_packet_io.py`,
+`insim_packet_sender.py` y `packet_sender_mixin.py`.
 
 ## Bloqueos / esperando
 
+- Validación en LFS de P11 por el usuario (no bloquea seguir con P13).
 - Decisión pendiente (Fase 4): ¿publicar en PyPI?
 
 ## Notas para la próxima sesión
 
 - Comando de tests: `.venv\Scripts\python.exe -m pytest -q`.
-- Los tests de Fase 1 caracterizan el comportamiento VIEJO: al hacer P11/P13 muchos
-  se romperán **a propósito**; adaptarlos deliberadamente es parte del trabajo (esa
-  es su función: hacer visible cada cambio de comportamiento).
+- Idioma (decisión S06): código nuevo del core en **inglés**; docs/dev, tests e insims
+  en español. Ver `MODUS_OPERANDI.md` § 5.
+- Los golden-bytes y tests de packet_io de Fase 1 siguen válidos; los de loader y
+  dispatch ya están adaptados a la nueva API (registro en cliente).
 - En otro dispositivo: copiar `config/settings_local.example.py` → `settings_local.py`
   y `pip install -e ".[dev]"`.
 - Pendientes sin fase: P8, P9, migración de rutas a JSON (ver `PLAN.md` § Ideas).

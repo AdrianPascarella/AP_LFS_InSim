@@ -70,9 +70,13 @@ fallarían ante una regresión; base para refactorizar con confianza.
 **Objetivo:** eliminar los defectos estructurales de raíz. **Rompe la API de los insims**
 (aceptado por el usuario en S04).
 
-- [ ] **P11**: invertir la herencia — `InSimApp` deja de heredar de `InSimClient`.
+- [x] **P11**: invertir la herencia — `InSimApp` deja de heredar de `InSimClient`.
       Un cliente, N apps: `client.register(app)`; el loader construye el cliente y registra
-      las apps en orden de dependencias. Eliminar coup d'état y aplanado de `modules[]`
+      las apps en orden de dependencias. Eliminar coup d'état y aplanado de `modules[]` —
+      S06: `InSimApp(PacketSenderMixin)`, `modules[]`→`apps`, cliente perezoso/inyectable
+      en el loader, `_resolve_dependencies` muerto eliminado (parte de P17). El orden de
+      dispatch pasa a ser el de dependencias (cambio deliberado; antes era el inverso).
+      Core reescrito en inglés. Suite 391/391
 - [ ] **P13**: encapsular la conexión (objeto transporte TCP/UDP inyectado); eliminar los
       singletons de `insim_state`; `send` viaja por el cliente, no por globals
 - [ ] **P14**: config del paquete con defaults internos (`InSimConfig` o similar); el CLI
@@ -81,7 +85,9 @@ fallarían ante una regresión; base para refactorizar con confianza.
       módulo, deprecar `insim_packet_class` (facade), eliminar `import *` internos
 - [ ] **P17/P20 (de paso)**: borrar `_resolve_dependencies` muerto, alinear comentarios,
       fail-fast en el loader
-- [ ] Migrar `users_management`, `ai_control` y `test_insim` a la nueva API
+- [ ] Migrar `users_management`, `ai_control` y `test_insim` a la nueva API — S06: tras
+      P11 los 3 cargan **sin cambios** (la superficie de `InSimApp` se conservó); revisar
+      de nuevo tras P13/P14 + validación del usuario en LFS antes de marcar
 - [x] Decisión de diseño: idioma de la API pública del core — S06, decidido con el usuario:
       **inglés en el core** (identificadores, docstrings y errores del código nuevo/refactorizado);
       español en docs/dev, tests, insims y comunicación. El código viejo se traduce al tocarlo
