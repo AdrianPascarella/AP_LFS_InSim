@@ -8,8 +8,8 @@
 ## Estado
 
 **Fases 1 y 2 COMPLETADAS (validadas en LFS). Fase 3 ACTIVA: P12, P2-core,
-P18 y P19 hechos (P12/P2-core validados en LFS en S10). Suite 438/438 verde.
-Validación ligera pendiente en LFS del cambio de decode de P19 (ver abajo).**
+P18 y P19 hechos y VALIDADOS en LFS (P12/P2-core en S10; P18/P19 al cierre
+de S11). Suite 438/438 verde. Sin validaciones pendientes.**
 
 **P18 (envío UDP, hecho en S11):** eliminado el parámetro `use_udp` de
 `transport.send` — el envío es **siempre TCP** (LFS solo recibe InSim por TCP;
@@ -25,9 +25,8 @@ latin-1 y `struct.pack` rellena los fijos. El decoder ya **no hace `.strip()`**
 cambios deliberados de comportamiento reflejados en los goldens: string fijo
 con `len == N` pierde 1 char por el null (antes salía SIN terminador, contra
 la spec) y los strings decodificados conservan espacios previos al null.
-**Validación ligera en LFS:** una pasada normal (chat + comandos + AIs) para
-confirmar que nada dependía de los strings recortados (los parsers de comandos
-hacen su propio strip; riesgo bajo). Commit `720315a`.
+**Validado por el usuario en LFS (cierre de S11):** pasada normal OK — nada
+dependía de los strings recortados del decoder. Commit `720315a`.
 
 **Validación de P2-core en LFS (S10):** el usuario probó conexión + AIs rodando,
 cierre abrupto del juego, reapertura del puerto y arranque con el juego cerrado.

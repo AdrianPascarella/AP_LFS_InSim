@@ -36,8 +36,9 @@
   como punto de entrada del ítem "apagado limpio" en ESTADO_ACTUAL.
 - Suite **438/438** (436 + test P18 + golden P19); smoke `lfs-insim list` OK.
 
-**Pendiente de validar en LFS (ligero):** una pasada normal (chat + comandos +
-AIs) para confirmar que nada dependía de los strings recortados del decoder.
+**Validación del usuario (cierre de sesión):** probado en LFS el estado
+post-P18/P19 — todo OK (nada dependía de los strings recortados del decoder).
+**S11 termina sin validaciones pendientes.**
 
 **Próxima sesión:** apagado limpio y determinista (carrera de `close()`),
 política de errores de handlers, decisión de `on_tick` configurable.

@@ -139,7 +139,8 @@ un proceso (test); los 3 insims corren con la nueva API; tests de Fase 1 adaptad
       es la única autoridad del layout de strings (incluido el truncado de los fijos 'Ns'
       a N-1 con null garantizado); `_extract_values` solo codifica; `.strip()` eliminado
       del decoder (los espacios antes del null se conservan). Goldens actualizados
-      (2 cambios deliberados) + 1 golden nuevo del caso borde len == N
+      (2 cambios deliberados) + 1 golden nuevo del caso borde len == N.
+      **Validado por el usuario en LFS (S11)**
 - [ ] Apagado limpio y determinista (STOP_EVENT compartido/carreras en `stop_all_threads`)
 - [ ] Política de errores de handlers configurable (resiliente en prod, fail-fast en dev)
 
