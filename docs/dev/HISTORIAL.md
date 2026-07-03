@@ -7,7 +7,45 @@
 
 ## S07 — 2026-07-03 — Fase 2: P14 (config del paquete con defaults internos)
 
-**Qué se hizo:**
+**Qué se hizo (segundo bloque, misma sesión) — P15, P17 y P20** (tras validar el
+usuario P13/P14/P21 en LFS con `!test hcp` OK):
+
+- **P15 — API pública con `__all__` en todos los módulos:**
+  - El core dejó de importar la facade: client/app/sender/decoders/utils/mixin
+    importan de `.packets`; `utils.py` toma `SND` de `insim_enums` (dependía de la
+    fuga).
+  - `insim_packet_class` → facade **deprecada** (DeprecationWarning al importar);
+    re-exporta packets **y** enums (superficie del monolito original) para el código
+    viejo (`ai_control` la usa aún).
+  - `packets/insim.py`: el `from insim_enums import *` (la fuga que contaminaba todo
+    `packets`) es ahora un import explícito de 68 enums. `packets/__init__` compone su
+    `__all__` desde los submódulos + catálogos (`INSIM_PACKETS`, `OUTSIM_PACKETS`,
+    `RECEIVE`, `SEND`, `ALLOWED_PACKETS`). Descubierto de paso: `OutSimPack2` es
+    asignación de módulo (`make_dataclass`), no `class` — entró en el `__all__` de
+    `outsim.py`.
+  - `__all__` también en `insim_enums` (96 nombres; sin fugas de `IntEnum`/`IntFlag`),
+    `utils` (21), `exceptions` (7, ahora todas exportadas también en `lfs_insim`),
+    `config`, y docstring de API pública en `lfs_insim/__init__.py`.
+  - **Reparados los que dependían de la fuga** (escaneo AST de nombres no resueltos,
+    sin falsos positivos de comentarios/atributos): `test_insim/main.py` (TINY),
+    `_cmds_request.py` (SMALL, TINY), `_cmds_send.py` (12 enums) y
+    `tests/test_insim_handlers/test_lifecycle.py`; `test_packet_base.py` migrado a
+    `lfs_insim.packets`.
+- **P17:** `class INST` **duplicada** eliminada de `insim_enums.py` (dos definiciones
+  idénticas, líneas 927 y 1287); CLAUDE.md corregido (decía que los constraints de
+  versión "no se aplican todavía" — sí se aplican). `on_tick` configurable → Fase 3.
+- **P20 — fail-fast del loader:** dependencia rota aborta la carga del dependiente
+  (`InSimModuleError` con la cadena completa, `raise ... from`); eliminado el tragado.
+  Tests nuevos: fail-fast simple y cadena transitiva (nieto←hijo←fantasma).
+- **Tests:** `tests/test_api_publica.py` (17: `__all__` resuelve en 11 módulos, sin
+  duplicados, sin fugas packets↔enums↔stdlib, facade avisa y conserva superficie).
+  Suite **420/420**. Smoke: los 4 insims cargan (1 DeprecationWarning esperado de
+  `ai_control`); `lfs-insim list` OK.
+- **Validación del usuario (inicio del bloque):** P13/P14/P21 probados en LFS real —
+  todo bien, incluido `!test hcp`.
+- Pendiente del usuario: re-validar en LFS tras P15 (cambiaron imports de insims).
+
+**Qué se hizo (primer bloque):**
 - **`src/lfs_insim/config.py` (nuevo):** `DEFAULT_CONFIG` (defaults del framework:
   TCP/ISI/UDP/dispatch; sin valores por máquina como `user_name` o env) y
   `build_config(overrides)` (copia fusionada). Se mantiene **dict plano** en vez de

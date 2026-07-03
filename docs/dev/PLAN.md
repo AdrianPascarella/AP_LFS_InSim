@@ -88,13 +88,19 @@ fallarían ante una regresión; base para refactorizar con confianza.
       conservar `self.config.get(...)`); CLI con `_load_project_config()`; el loader
       propaga la config al cliente perezoso y las apps heredan la del cliente.
       Suite 402/402
-- [ ] **P15**: definir API pública — exports en `lfs_insim/__init__.py`, `__all__` por
-      módulo, deprecar `insim_packet_class` (facade), eliminar `import *` internos
-- [ ] **P17/P20 (de paso)**: borrar `_resolve_dependencies` muerto, alinear comentarios,
-      fail-fast en el loader
+- [x] **P15**: definir API pública — exports en `lfs_insim/__init__.py`, `__all__` por
+      módulo, deprecar `insim_packet_class` (facade), eliminar `import *` internos —
+      S07: `__all__` en 11 módulos; facade con DeprecationWarning (re-exporta
+      packets+enums); `packets` ya no re-exporta enums; el core no usa la facade.
+      Tests en `test_api_publica.py`. Suite 420/420
+- [x] **P17/P20 (de paso)**: borrar `_resolve_dependencies` muerto, alinear comentarios,
+      fail-fast en el loader — S06/S07: `_resolve_dependencies` (S06); `INST` duplicado
+      eliminado, CLAUDE.md alineado (constraints SÍ se aplican), fail-fast con cadena
+      de dependencias en el mensaje (S07). `on_tick` configurable → Fase 3
 - [ ] Migrar `users_management`, `ai_control` y `test_insim` a la nueva API — S06: tras
-      P11 los 3 cargan **sin cambios** (la superficie de `InSimApp` se conservó); revisar
-      de nuevo tras P13/P14 + validación del usuario en LFS antes de marcar
+      P11 los 3 cargan sin cambios; S07: tras P15, `test_insim`/`prueba_botones`
+      actualizados (enums explícitos); **queda**: quitar la facade deprecada de
+      `ai_control`/`users_management` (~12 archivos) + validación del usuario en LFS
 - [x] Decisión de diseño: idioma de la API pública del core — S06, decidido con el usuario:
       **inglés en el core** (identificadores, docstrings y errores del código nuevo/refactorizado);
       español en docs/dev, tests, insims y comunicación. El código viejo se traduce al tocarlo

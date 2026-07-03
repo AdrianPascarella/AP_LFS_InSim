@@ -100,7 +100,7 @@ registration. There is no "Master" module and no coup d'état anymore.
 }
 ```
 
-The loader reads `entry_point` (not `entry`) to find the file, then looks for a class whose name matches the module's name in CamelCase (e.g. `ai_control` → `AiControl`). Version constraints in `insim_dependencies` are recorded but not yet enforced.
+The loader reads `entry_point` (not `entry`) to find the file, then looks for a class whose name matches the module's name in CamelCase (e.g. `ai_control` → `AiControl`). Version constraints in `insim_dependencies` are enforced (`InSimModuleError` if unsatisfied), and a dependency that fails to load aborts the dependent's load (fail-fast, P20).
 
 ### Packet lifecycle
 
@@ -187,7 +187,8 @@ To suppress noisy send-logs for a specific packet type: `mute_send_logs('ISP_AIC
 ## Key conventions
 
 - **Binary protocol**: LFS packets are little-endian, strings are latin-1 null-terminated. `Size` in packet header = total bytes / 4.
-- **Packet definitions**: dataclasses in `src/lfs_insim/packets/insim.py`; sub-structures in `packets/structures.py`; OutSim/OutGauge in `packets/outsim.py`. Each field carries `metadata={'fmt': '...'}` for struct serialization. `insim_packet_class.py` is a compatibility facade — always import from `lfs_insim.packets` or `lfs_insim.insim_packet_class` (they are equivalent).
+- **Packet definitions**: dataclasses in `src/lfs_insim/packets/insim.py`; sub-structures in `packets/structures.py`; OutSim/OutGauge in `packets/outsim.py`. Each field carries `metadata={'fmt': '...'}` for struct serialization. Import packet classes from `lfs_insim.packets` and enums from `lfs_insim.insim_enums` — `insim_packet_class.py` is a **deprecated** facade (emits `DeprecationWarning`) that re-exports both, kept only for old code.
+- **Public API (P15)**: every module defines `__all__`; recommended import points are `lfs_insim` (core classes, config, exceptions), `lfs_insim.packets`, `lfs_insim.insim_enums` and `lfs_insim.utils`. `lfs_insim.packets` does NOT re-export enums (`from lfs_insim.packets import *` brings packets only).
 - **Enums**: all protocol flags and constants live in `src/lfs_insim/insim_enums.py` (ISF, ISP, TINY, SMALL, PTYPE, OSO, etc.).
 - **Global state**: none mandatory since P13 — sockets/threads live in each client's `InSimTransport`, so several clients can coexist in one process. `insim_state.py` only keeps the optional "default client" (first one created), used as fallback by `PacketSenderMixin` helper classes.
 - **Config**: package defaults live in `src/lfs_insim/config.py` (`DEFAULT_CONFIG` + `build_config(overrides)`); the core never reads project files (P14). The **CLI** loads `config/settings.py` (`INSIM_CONFIG`, which already applies `settings_local.py` and env vars) from the CWD when present and passes it down: `InSimLoader(config=...)` → lazy client → each app inherits the client's effective config. Modules read settings via `self.config.get('key', default)`.

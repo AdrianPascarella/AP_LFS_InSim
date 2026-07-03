@@ -194,13 +194,18 @@ protocolo. No cuentan como deuda.)
   `_load_project_config()`. El `sys.path` hack del CLI se queda para los **insims**
   que importan config del proyecto (legítimo); el core ya no lo necesita.
 
-### P15 — API pública indefinida (MEDIA, DX)
+### P15 — API pública indefinida (MEDIA, DX) ✅ RESUELTO (S07)
 - `lfs_insim/__init__.py` exporta 9 nombres, pero los tutoriales/insims importan de
   `lfs_insim.packets`, `insim_enums`, `utils`, `insim_packet_class` (facade duplicado de
   `packets`)... `packets/insim.py` hace `from insim_enums import *` (contamina), casi ningún
   módulo define `__all__`.
 - **Acción:** definir la superficie pública (un solo punto de import recomendado), `__all__`
   en módulos, deprecar `insim_packet_class`, y documentar qué es API y qué es interno (`_`).
+- **Resolución (S07):** `__all__` en 11 módulos; puntos de import documentados
+  (`lfs_insim` / `.packets` / `.insim_enums` / `.utils`); `packets` ya no re-exporta
+  enums (el `import *` interno es ahora explícito); facade deprecada con
+  DeprecationWarning (re-exporta packets+enums para el código viejo). Tests en
+  `tests/test_api_publica.py`.
 
 ### P16 — Packaging y tooling incompletos (MEDIA, DX)
 - `pyproject.toml`: `readme = "README"` (el fichero es `README.md` → metadata rota),
@@ -212,7 +217,11 @@ protocolo. No cuentan como deuda.)
 - **Acción:** arreglar metadata, adoptar ruff + mypy gradual, CI con pytest en push/PR,
   CHANGELOG y política de versiones.
 
-### P17 — Código muerto y comentarios que mienten (BAJA)
+### P17 — Código muerto y comentarios que mienten (BAJA) ✅ RESUELTO (S06/S07)
+- **Resolución:** `_resolve_dependencies` eliminado (S06, con P11); comentarios del
+  keep-alive alineados en la reescritura de S06; `class INST` duplicada eliminada de
+  `insim_enums.py` y CLAUDE.md corregido (los constraints de versión SÍ se aplican)
+  (S07). La decisión de si `on_tick` debe ser configurable pasa a Fase 3 (dispatch).
 - `InSimApp._resolve_dependencies()` **no lo llama nadie** (el docstring dice "llamado
   automáticamente por el Loader"); `get_insim()` funciona por el fallback a
   `loader._instances`.
@@ -234,7 +243,12 @@ protocolo. No cuentan como deuda.)
   El decoder además hace `.strip()` a los strings, que puede comer espacios significativos.
 - **Acción:** una sola ruta encode (prepare → pack) con tests golden-bytes; revisar `.strip()`.
 
-### P20 — Loader: errores tragados y versiones a mano (BAJA)
+### P20 — Loader: errores tragados y versiones a mano (BAJA) ✅ RESUELTO (S07, fail-fast)
+- **Resolución (S07):** fail-fast — una dependencia rota aborta la carga del dependiente
+  con `InSimModuleError` encadenada (`raise ... from`) y la ruta completa en el mensaje.
+  Los helpers de versión propios se quedan (subset documentado en `_check_version`);
+  el caso "sin `__init__.py`" sigue caracterizado en tests (mensaje claro pendiente,
+  puede caer en Fase 4 con la plantilla de `init`).
 - `load()` captura el fallo de carga de una dependencia, lo loguea y **sigue** (el error real
   aflora después, lejos de la causa). `_parse_version/_check_version` reinventan
   `packaging.version` con soporte parcial.
