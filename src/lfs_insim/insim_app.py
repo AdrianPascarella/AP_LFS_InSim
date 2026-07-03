@@ -13,6 +13,7 @@ import logging
 from pathlib import Path
 from typing import Dict, List, Optional, TYPE_CHECKING
 
+from .config import build_config
 from .insim_packet_class import ISP_ISI
 from .packet_sender_mixin import PacketSenderMixin
 from .insim_enums import OSO
@@ -46,8 +47,7 @@ class InSimApp(PacketSenderMixin):
         _loader: Optional['InSimLoader'] = None,
         _insim_path: Optional[Path] = None,
     ):
-        from config.settings import get_config  # P14: core still reads CWD config
-        self.config = get_config(config)
+        self.config = build_config(config)
 
         # Default to the class name when no name is given
         self.name = name or self.__class__.__name__

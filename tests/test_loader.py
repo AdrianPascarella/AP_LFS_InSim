@@ -123,6 +123,41 @@ class TestCargaBasica:
         assert loader.discover() == []
 
 
+class TestConfigDelLoader:
+    """P14: el loader propaga la config al cliente perezoso y a las apps."""
+
+    def test_config_llega_al_cliente_perezoso(self, fabrica):
+        loader = InSimLoader(insims_path=fabrica.insims_dir,
+                             config={'prefix': '$', 'tcp_port': 12345})
+
+        assert loader.client.config['prefix'] == '$'
+        assert loader.client.config['tcp_port'] == 12345
+        assert loader.client.config['insim_ver'] == 10   # defaults intactos
+
+    def test_apps_heredan_la_config_del_cliente(self, fabrica):
+        fabrica.crear("con_config")
+        loader = InSimLoader(insims_path=fabrica.insims_dir,
+                             config={'prefix': '$'})
+
+        app = loader.load("con_config")
+
+        assert app.config['prefix'] == '$'
+
+    def test_cliente_inyectado_manda_sobre_la_config_del_loader(self, fabrica):
+        from lfs_insim.insim_client import InSimClient
+
+        fabrica.crear("con_cliente")
+        mi_cliente = InSimClient(config={'prefix': '&'})
+        loader = InSimLoader(insims_path=fabrica.insims_dir,
+                             client=mi_cliente, config={'prefix': '$'})
+
+        app = loader.load("con_cliente")
+
+        # Con cliente inyectado, la config del loader se ignora (documentado):
+        # las apps heredan la config efectiva del cliente.
+        assert app.config['prefix'] == '&'
+
+
 class TestRegistroEnCliente:
     """P11: un solo cliente; las apps se registran en orden de dependencias."""
 

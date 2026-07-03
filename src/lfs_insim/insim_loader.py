@@ -99,24 +99,27 @@ class InSimManifest:
 class InSimLoader:
     """Dynamic plugin/module loading system."""
 
-    def __init__(self, insims_path: Path = None, client: Any = None):
+    def __init__(self, insims_path: Path = None, client: Any = None,
+                 config: Optional[Dict[str, Any]] = None):
         if insims_path is None:
             insims_path = Path.cwd() / "insims"
 
         self.insims_path = insims_path
         self._client = client
+        self._config = config
         self._instances: Dict[str, Any] = {}
 
     @property
     def client(self):
         """
         The single InSimClient every loaded app is registered into.
-        Created lazily on first use; an existing client can be injected
-        through the constructor instead.
+        Created lazily on first use (with the loader's `config` overrides,
+        if any); an existing client can be injected through the constructor
+        instead — then the loader's `config` is ignored.
         """
         if self._client is None:
             from .insim_client import InSimClient
-            self._client = InSimClient()
+            self._client = InSimClient(config=self._config)
         return self._client
 
     def get_manifest(self, name: str) -> Optional[InSimManifest]:
@@ -227,7 +230,11 @@ class InSimLoader:
             for attr_name in dir(module):
                 attr = getattr(module, attr_name)
                 if isinstance(attr, type) and issubclass(attr, InSimApp) and attr is not InSimApp:
-                    instance = attr(_loader=self, _insim_path=manifest.directory)
+                    # Apps inherit the client's effective config (defaults +
+                    # project overrides), so self.config is consistent across
+                    # the client and every app.
+                    instance = attr(config=self.client.config,
+                                    _loader=self, _insim_path=manifest.directory)
                     break
 
             if not instance:

@@ -14,6 +14,7 @@ import logging
 from concurrent.futures import ThreadPoolExecutor
 from typing import Callable, List, Any, Optional
 
+from .config import build_config
 from .insim_transport import InSimTransport
 from .insim_state import set_insim_client
 from .insim_packet_sender import encode_packet
@@ -25,8 +26,7 @@ from .exceptions import InSimError
 class InSimClient:
     def __init__(self, config: Optional[dict] = None, name: str = "DeepInSim",
                  transport: Optional[InSimTransport] = None):
-        from config.settings import get_config  # P14: core still reads CWD config
-        self.config = get_config(config)
+        self.config = build_config(config)
         self.name = name
         self.logger = logging.getLogger(f"InSim.{name}")
         self.running = False

@@ -36,15 +36,32 @@ except Exception:
 logger = logging.getLogger("lfs-insim")
 
 
+def _load_project_config() -> Optional[dict]:
+    """
+    Load the project's InSim config from the working directory, if any.
+
+    Priority: ``config/settings.py`` (``INSIM_CONFIG``, which already applies
+    ``settings_local.py`` and env vars) > known env vars > None (package
+    defaults only). This is CLI responsibility: the core never reads project
+    files (P14).
+    """
+    try:
+        from config.settings import INSIM_CONFIG
+    except ImportError:
+        admin_pass = os.environ.get('LFS_ADMIN_PASS')
+        return {'admin_pass': admin_pass} if admin_pass else None
+    return dict(INSIM_CONFIG)
+
+
 def get_loader():
-    """Obtiene el loader de InSims."""
+    """Build the InSim loader for the current project directory."""
     from .insim_loader import InSimLoader
-    # Usar el directorio insims del proyecto actual
+    config = _load_project_config()
     project_insims = Path.cwd() / "insims"
     if project_insims.exists():
-        return InSimLoader(insims_path=project_insims)
+        return InSimLoader(insims_path=project_insims, config=config)
     else:
-        return InSimLoader()
+        return InSimLoader(config=config)
 
 
 def cmd_run(args: argparse.Namespace) -> int:
