@@ -184,8 +184,15 @@ un handler lento no bloquea la recepción; suite verde. **Cumplido y validado en
 **Objetivo:** que un tercero pueda instalar, crear y publicar un InSim sin leer el código
 fuente. (**P16**)
 
-- [ ] Arreglar metadata: `readme = "README.md"`, `license`, keywords/classifiers; eliminar
-      `requirements.txt` redundante; una sola fuente de versión
+- [x] Arreglar metadata: `readme = "README.md"`, `license`, keywords/classifiers; eliminar
+      `requirements.txt` redundante; una sola fuente de versión — S14: `readme` apuntaba a
+      un `README` inexistente; licencia SPDX (`license = "MIT"` + `license-files`,
+      build-system sube a setuptools>=77); versión única en `lfs_insim.__version__`
+      (pyproject `dynamic`, contrato fijado con test contra la metadata instalada);
+      keywords y classifiers (Python 3.9–3.14); URLs corregidas (apuntaban al repo
+      antiguo `Aprendiendo-InSim-LFS`); descripción en inglés; `requirements.txt`
+      eliminado. 2 tests nuevos (rojo primero); wheel construye limpio en aislamiento.
+      Suite 465/465
 - [ ] `generate-stubs`/`update-all` → subcomandos del CLI (`lfs-insim stubs`, ...)
 - [ ] Adoptar **ruff** (lint + format) y **mypy** gradual (empezando por el core)
 - [ ] **CI** (GitHub Actions): pytest + ruff en push/PR a la rama de trabajo y main

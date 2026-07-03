@@ -5,6 +5,45 @@
 
 ---
 
+## S14 — 2026-07-03 — Fase 4 arrancada: metadata del paquete saneada
+
+**Arranque:** repo limpio y sincronizado (HEAD `3b75b2e`, post-cierre S13);
+suite heredada 463/463 antes de tocar.
+
+**Qué se hizo (primer ítem de Fase 4 — metadata):**
+
+- `readme = "README"` apuntaba a un archivo INEXISTENTE (existe `README.md`)
+  → corregido; el wheel ahora embebe la descripción larga.
+- **Licencia declarada** como expresión SPDX: `license = "MIT"` +
+  `license-files = ["LICENSE"]` (el archivo MIT ya existía pero el paquete no
+  lo declaraba). Exige subir el build-system a `setuptools>=77` (antes >=61).
+- **Fuente única de versión:** `__version__ = "0.2.0"` en
+  `src/lfs_insim/__init__.py` (exportada en `__all__`); pyproject pasa a
+  `dynamic = ["version"]` con `attr = "lfs_insim.__version__"`. El contrato
+  queda fijado con test: la metadata instalada coincide con `__version__`
+  (si falla tras un bump → reinstalar editable, el propio test lo dice).
+- `requirements.txt` eliminado — solo decía "no hay dependencias" (y mentía
+  con el Python mínimo: 3.10+ vs el 3.9+ real); nada lo referenciaba salvo
+  los docs de dev.
+- **URLs corregidas:** Homepage apuntaba al repo ANTIGUO
+  (`Aprendiendo-InSim-LFS`) → `AP_LFS_InSim`; añadidos Repository e Issues.
+- Descripción en inglés (metadata de cara a PyPI, coherente con la decisión
+  S06 de core en inglés); keywords y classifiers completados (Python
+  3.9–3.14, `3 :: Only`).
+- **2 tests nuevos, rojo primero** (`TestVersionUnica` en
+  `test_api_publica.py`). Suite **465/465**. Verificado: reinstalación
+  editable OK, `lfs-insim list` OK, y **el wheel construye limpio en
+  aislamiento** (`pip wheel . --no-deps` con build isolation — valida la
+  metadata SPDX con setuptools 77 real).
+
+**No requiere validación en LFS** (solo packaging; cero cambios de runtime).
+
+**Siguiente de Fase 4:** subcomandos del CLI (`lfs-insim stubs`, ...) —
+absorber los entry points sueltos `generate-stubs`/`update-all`. Después:
+ruff + mypy, CI, docs de usuario, CHANGELOG. Decisión PyPI sigue abierta.
+
+---
+
 ## S13 — 2026-07-03 — Fase 3 COMPLETADA: `handler_errors` + `tick_interval`
 
 **Arranque:** repo limpio y sincronizado (HEAD `f2995e5`, cierre S12); suite

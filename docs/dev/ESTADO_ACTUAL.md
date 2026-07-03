@@ -1,17 +1,27 @@
 # 📍 Estado actual
 
-> Actualizado: **2026-07-03** — sesión S13
+> Actualizado: **2026-07-03** — sesión S14
 > **Rama de trabajo: `refactor/estabilizacion`.** Todo el refactor ocurre aquí; `main`
 > queda intacta hasta el merge final (cuando el proyecto esté estable). **Sync por GitHub:**
 > `git pull` al arrancar y `git push` al cerrar (permite continuar desde otro dispositivo).
 
 ## Estado
 
-**Fases 1, 2 y 3 COMPLETADAS. Fase 3 cerrada en S13 con sus dos últimos
-ítems: política de errores de handlers (`handler_errors`) y tick
-configurable (`tick_interval`). Suite 463/463 verde. Sin validaciones
-pendientes en LFS (los ítems de S13 no cambian defaults; los de runtime se
-validaron en S08–S12). FASE 4 ACTIVA: DX y packaging.**
+**Fases 1, 2 y 3 COMPLETADAS. FASE 4 ACTIVA (DX y packaging): primer ítem
+— metadata del paquete — hecho en S14. Suite 465/465 verde. Sin
+validaciones pendientes en LFS (packaging no toca runtime).**
+
+**Metadata del paquete (primer ítem de Fase 4, hecho en S14):**
+`readme = "README.md"` (antes apuntaba a un `README` inexistente); licencia
+SPDX `license = "MIT"` + `license-files` (build-system sube a
+setuptools>=77); **fuente única de versión** en `lfs_insim.__version__`
+(pyproject `dynamic = ["version"]`; contrato fijado con test contra la
+metadata instalada — si falla tras un bump, reinstalar editable);
+`requirements.txt` eliminado; URLs corregidas (Homepage apuntaba al repo
+antiguo `Aprendiendo-InSim-LFS`); descripción en inglés + keywords +
+classifiers (Python 3.9–3.14). 2 tests nuevos (rojo primero,
+`TestVersionUnica`); wheel construye limpio en aislamiento
+(`pip wheel . --no-deps`).
 
 **`tick_interval` (cierre de Fase 3, hecho en S13):** la cadencia de
 `on_tick` es configurable (segundos, default 0.1 = comportamiento
@@ -182,10 +192,11 @@ sondeo interno).
 
 ## ▶️ Próximo paso concreto (empezar AQUÍ la próxima sesión)
 
-1. **Arrancar Fase 4** — orden sugerido: metadata del paquete (readme,
-   license, versión única, quitar requirements.txt) → subcomandos del CLI
-   (`lfs-insim stubs`, ...) → ruff + mypy gradual → CI (GitHub Actions) →
-   docs de usuario → CHANGELOG. Decisión pendiente con el usuario: ¿PyPI?
+1. **Seguir Fase 4** — siguiente ítem: subcomandos del CLI
+   (`lfs-insim stubs`, ...) — absorber los entry points sueltos
+   `generate-stubs`/`update-all` en el CLI (y revisar el git hook que los
+   usa). Después: ruff + mypy gradual → CI (GitHub Actions) → docs de
+   usuario → CHANGELOG. Decisión pendiente con el usuario: ¿PyPI?
 2. Idea DX de Fase 4 ya apuntada: el connect inicial fallido imprime un
    traceback feo (`exc_info=True` + re-raise) — valorar mensaje limpio y/o
    `connect_retry` para arrancar el insim antes que LFS. (La pista de ISI
