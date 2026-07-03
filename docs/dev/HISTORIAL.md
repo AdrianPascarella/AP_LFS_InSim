@@ -75,6 +75,11 @@ y el fail-fast de S13; configurarlo sin desacoplar habría sido un footgun.
 siendo ~100 ms). Próxima: **Fase 4 — DX y packaging** (metadata, CLI,
 ruff/mypy, CI, docs de usuario, CHANGELOG; decisión pendiente: PyPI).
 
+**Post-cierre:** el usuario mapeó South City en el juego (grafo freeroam +
+render actualizados). Protegido según la instrucción permanente: respaldo
+en `C:\Users\pasca\backups\AP_LFS_InSim_maps\2026-07-03_S13` + commit
+`74be94b` pusheado.
+
 ---
 
 ## S12 — 2026-07-03 — Fase 3: apagado limpio y determinista (carrera de `close()` + stop() atómico)
