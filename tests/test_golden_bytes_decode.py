@@ -7,9 +7,9 @@ Cubre los paquetes info más usados (VER, STA, NCN, NPL, MSO, MCI, NLP...) y
 los contactos (CON, OBH, HLV), más el enrutado de `decode_packet`.
 
 Comportamientos actuales que se CARACTERIZAN tal cual (no son necesariamente
-los deseados; ver P19 en DIAGNOSTICO.md):
-  - los strings decodificados pasan por `.strip()`: espacios finales
-    significativos se pierden;
+los deseados):
+  - los strings se cortan en el primer null y conservan los espacios
+    anteriores a él (el `.strip()` se eliminó en S11 — P19);
   - los campos de lista fija (p. ej. NPL.Tyres) se decodifican como `list`,
     aunque el dataclass los declare `tuple`;
   - los enums llegan como int crudo (no se convierten a IntEnum/IntFlag).
@@ -128,9 +128,9 @@ class TestGoldenDecodeMensajes:
         assert pkt.TextStart == 9
         assert pkt.Msg == 'Adrian : hola'
 
-    def test_mso_espacios_finales_se_pierden(self):
-        # Comportamiento actual (P19): el decoder hace .strip() y come los
-        # espacios finales del mensaje aunque estén antes del null.
+    def test_mso_espacios_finales_se_conservan(self):
+        # P19 (S11, cambio deliberado): el decoder ya no hace .strip() — corta
+        # en el primer null y conserva los espacios significativos previos.
         data = (
             bytes([4, ISP.MSO, 0, 0])
             + bytes([2, 0, 1, 0])
@@ -138,7 +138,7 @@ class TestGoldenDecodeMensajes:
         )
         assert len(data) == 16
         pkt = decode_packet(data)
-        assert pkt.Msg == 'hola'   # los 3 espacios desaparecen
+        assert pkt.Msg == 'hola   '   # los 3 espacios se conservan
 
     def test_btc(self):
         data = bytes([2, ISP.BTC, 1, 4, 12, 0, 1, 0])

@@ -106,10 +106,31 @@ class PacketFunctions:
         return struct.calcsize(self.get_struct_string())
 
     def validate_string_lengths(self) -> None:
-        """Ajusta los strings según las reglas de LFS (padding, truncado)."""
+        """Adjust string fields to the LFS layout rules (truncation, padding).
+
+        Single source of truth for string layout (P19):
+        - Fixed strings (fmt 'Ns'): truncate to N-1 chars so the null
+          terminator always fits; struct.pack pads the remainder with nulls.
+        - Variable strings (fmt ('s', limit)): truncate to limit-1, append
+          the null terminator and pad with nulls to a 4-byte block; the
+          resolved struct format then follows len(value) exactly.
+
+        After this, encoding is a plain latin-1 encode + struct.pack — no
+        other layer recalculates padding or truncation.
+        """
         for f in fields(self):
             fmt = f.metadata.get('fmt')
-            
+
+            # Fixed-size string: 'Ns'
+            if isinstance(fmt, str) and fmt.endswith('s') and fmt[:-1].isdigit():
+                current_val = getattr(self, f.name)
+                if not isinstance(current_val, str):
+                    continue
+                size = int(fmt[:-1])
+                if len(current_val) >= size:
+                    setattr(self, f.name, current_val[:size - 1])
+                continue
+
             if isinstance(fmt, tuple) and fmt[0] == 's':
                 _, limit = fmt
                 current_val = getattr(self, f.name)

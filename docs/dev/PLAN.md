@@ -134,8 +134,12 @@ un proceso (test); los 3 insims corren con la nueva API; tests de Fase 1 adaptad
 - [x] **P18**: eliminar o implementar bien el envío UDP — S11: **eliminado** el parámetro
       `use_udp` de `transport.send`; el envío es siempre TCP (LFS solo recibe InSim por
       TCP; UDP es solo de bajada). Documentado (docstring + CLAUDE.md) y fijado con test
-- [ ] **P19**: una sola ruta de serialización (prepare→pack) apoyada en los golden-bytes;
-      revisar `.strip()` del decoder (espacios significativos)
+- [x] **P19**: una sola ruta de serialización (prepare→pack) apoyada en los golden-bytes;
+      revisar `.strip()` del decoder (espacios significativos) — S11: `validate_string_lengths`
+      es la única autoridad del layout de strings (incluido el truncado de los fijos 'Ns'
+      a N-1 con null garantizado); `_extract_values` solo codifica; `.strip()` eliminado
+      del decoder (los espacios antes del null se conservan). Goldens actualizados
+      (2 cambios deliberados) + 1 golden nuevo del caso borde len == N
 - [ ] Apagado limpio y determinista (STOP_EVENT compartido/carreras en `stop_all_threads`)
 - [ ] Política de errores de handlers configurable (resiliente en prod, fail-fast en dev)
 

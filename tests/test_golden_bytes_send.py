@@ -127,8 +127,16 @@ class TestGoldenMensajes:
             b'\x11\r\x00\x00' + b'hola' + b'\x00' * 60
 
     def test_mst_larga_se_trunca(self):
-        # 70 chars en '64s': _extract_values recorta a 64 forzando null final
+        # 70 chars en '64s': prepare() trunca a 63 y struct.pack rellena el
+        # null final (desde P19 el layout lo fija solo validate_string_lengths)
         assert encode(ISP_MST(Msg='x' * 70)) == \
+            b'\x11\r\x00\x00' + b'x' * 63 + b'\x00'
+
+    def test_mst_de_64_justos_pierde_un_char_por_el_null(self):
+        # P19 (S11, cambio deliberado): con len == N en un string fijo 'Ns'
+        # ahora se trunca a N-1 para garantizar el null final (antes salía
+        # sin terminador, contra la spec).
+        assert encode(ISP_MST(Msg='x' * 64)) == \
             b'\x11\r\x00\x00' + b'x' * 63 + b'\x00'
 
     def test_mtc_texto_vacio_queda_en_0_bytes(self):

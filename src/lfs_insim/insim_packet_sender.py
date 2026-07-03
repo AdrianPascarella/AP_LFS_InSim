@@ -62,7 +62,6 @@ def encode_packet(packet: PacketFunctions) -> bytes:
 
 def _extract_values(obj):
     from dataclasses import fields
-    import struct
     extracted = []
 
     for f in fields(obj):
@@ -72,49 +71,26 @@ def _extract_values(obj):
 
         val = getattr(obj, f.name)
 
-        # --- MANEJO DE STRINGS (Optimizado) ---
+        # --- STRINGS ---
+        # prepare()/validate_string_lengths() is the single layout authority
+        # (P19): truncation and 4-byte padding already happened there. Here
+        # we only encode; struct.pack null-pads fixed 'Ns' fields, and
+        # variable strings resolve their format from len(val).
         if isinstance(val, str):
-            # Calcular target_size una vez
-            if isinstance(fmt_meta, str):
-                # Estático: '16s' -> 16
-                target_size = int(fmt_meta[:-1])
-            elif isinstance(fmt_meta, tuple):
-                # Variable/Tupla: ('s', 128) o ('s', None)
-                # La función prepare() de PacketFunctions ya debería haber ajustado el string
-                # pero por seguridad recalculamos el padding de 4 bytes
-                current_len = len(val) + 1 # +1 para null terminator
-                target_size = (current_len + 3) & ~3
-            else:
-                target_size = len(val)
+            # latin-1 is the LFS wire encoding (1 byte per char)
+            extracted.append(val.encode('latin-1', 'replace'))
 
-            # Codificación rápida y relleno
-            try:
-                # encode('latin-1') es más rápido que 'utf-8' y estándar en LFS
-                b_val = val.encode('latin-1', 'replace')
-                # Rellenar con ceros hasta el target_size (asegura null terminator si cabe)
-                final_bytes = b_val.ljust(target_size, b'\x00')
-                # Recortar si excede (no debería si prepare() se llamó antes, pero por seguridad)
-                if len(final_bytes) > target_size:
-                    final_bytes = final_bytes[:target_size]
-                    # Asegurar último byte 0 si es texto estricto (opcional, LFS suele leer hasta \0)
-                    if target_size > 0:
-                        final_bytes = final_bytes[:-1] + b'\x00'
-
-                extracted.append(final_bytes)
-            except Exception:
-                extracted.append(b'\x00' * target_size)
-
-        # --- MANEJO DE LISTAS Y TUPLAS VARIABLES ---
+        # --- VARIABLE LISTS AND TUPLES ---
         elif isinstance(fmt_meta, tuple):
             inner_fmt, limit = fmt_meta
             actual_items = val if val is not None else []
 
-            # Si es un string ('s', limit), el string ya fue procesado arriba
+            # A string ('s', limit) was already handled above
             if inner_fmt == 's':
                 pass
             else:
-                # Ya no rellenamos (padding). Solo procesamos hasta el límite indicado.
-                # Si limit es None, procesamos todo.
+                # No padding here: process up to the declared limit
+                # (limit None = purely variable, take everything).
                 if limit is not None:
                     items_to_process = actual_items[:limit]
                 else:
@@ -146,13 +122,13 @@ def _extract_values(obj):
                 else:
                     extracted.append(item)
 
-        # --- SUBPAQUETES ---
+        # --- SUB-STRUCTS ---
         elif hasattr(val, 'get_fmt'):
             extracted.extend(_extract_values(val))
 
-        # --- PRIMITIVOS (Convertir Enums a int) ---
+        # --- PRIMITIVES (Enums become plain ints) ---
         else:
-            if hasattr(val, 'value'): # Es un Enum
+            if hasattr(val, 'value'):   # Enum
                 extracted.append(int(val.value))
             else:
                 extracted.append(val)

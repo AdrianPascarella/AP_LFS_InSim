@@ -255,11 +255,18 @@ protocolo. No cuentan como deuda.)
 - `send_packet(use_udp=True)` usaba el socket UDP que está `bind()` para **escuchar**,
   sin `connect()` ni destino: `sendall()` fallaría. Nadie lo usaba.
 
-### P19 — Duplicación en el camino de serialización (BAJA)
-- `_extract_values()` recalcula el padding de strings que ya hizo
+### P19 — Duplicación en el camino de serialización (BAJA) ✅ RESUELTO (S11)
+- **Resolución (S11):** `validate_string_lengths()` (prepare) es la única autoridad del
+  layout de strings — gana el truncado de strings **fijos** `'Ns'` a N-1 (el null final
+  siempre cabe; antes vivía en `_extract_values`); `_extract_values()` ya solo codifica a
+  latin-1 (`struct.pack` rellena los fijos; los variables resuelven su fmt de `len(val)`).
+  El decoder ya **no hace `.strip()`**: corta en el primer null y conserva los espacios
+  significativos. Dos cambios deliberados de comportamiento, reflejados en los goldens:
+  string fijo con `len == N` pierde 1 char por el null (antes salía sin terminador,
+  contra la spec) y los espacios finales de los strings decodificados se conservan.
+- `_extract_values()` recalculaba el padding de strings que ya hizo
   `validate_string_lengths()` ("por seguridad"): dos fuentes de verdad para el mismo layout.
-  El decoder además hace `.strip()` a los strings, que puede comer espacios significativos.
-- **Acción:** una sola ruta encode (prepare → pack) con tests golden-bytes; revisar `.strip()`.
+  El decoder además hacía `.strip()` a los strings, comiendo espacios significativos.
 
 ### P20 — Loader: errores tragados y versiones a mano (BAJA) ✅ RESUELTO (S07, fail-fast)
 - **Resolución (S07):** fail-fast — una dependencia rota aborta la carga del dependiente

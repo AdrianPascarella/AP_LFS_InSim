@@ -94,9 +94,10 @@ def _decode_recursive(buffer: bytes, fmt: Any) -> Tuple[Any, int]:
         
         val = struct.unpack('<' + fmt, buffer[:size])[0]
         
-        # Limpieza de strings
+        # Strings: cut at the first null. No .strip() — leading/trailing
+        # spaces before the terminator are significant (P19).
         if fmt.endswith('s') and isinstance(val, bytes):
-            val = val.decode('latin-1', errors='replace').split('\x00')[0].strip()
+            val = val.decode('latin-1', errors='replace').split('\x00')[0]
         
         return val, size
 
@@ -122,10 +123,11 @@ def _decode_recursive(buffer: bytes, fmt: Any) -> Tuple[Any, int]:
     elif isinstance(fmt, tuple):
         inner_fmt, limit = fmt
         
-        # Strings con longitud fija
+        # Strings con longitud fija (sin .strip(): los espacios antes del
+        # null son significativos — P19)
         if inner_fmt == 's':
             size = limit if limit else len(buffer)
-            val = buffer[:size].decode('latin-1', errors='replace').split('\x00')[0].strip()
+            val = buffer[:size].decode('latin-1', errors='replace').split('\x00')[0]
             return val, size
         
         # Listas de subpaquetes
