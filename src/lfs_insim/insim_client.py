@@ -243,7 +243,10 @@ class InSimClient:
         oso_names = " | ".join(
             f.name
             for f in OSO
-            if f in combined_oso and f.value > 0 and f.name not in ("ALL", "ALL_NOID")
+            if f in combined_oso
+            and f.value > 0
+            and f.name is not None
+            and f.name not in ("ALL", "ALL_NOID")
         )
         self.logger.info(f"OutSim active (OSO={int(combined_oso):#x}): {oso_names}")
         self.logger.info(

@@ -59,3 +59,21 @@ jobs:
         env:
           MPLBACKEND: Agg
         run: pytest -q
+
+  typecheck:
+    name: Type check (mypy)
+    runs-on: ubuntu-latest
+    # Gradual (Fase 4): informa el estado de tipos del core pero NO bloquea el
+    # merge. Se ira endureciendo modulo a modulo (ver overrides en pyproject).
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install (editable + dev)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+      - name: mypy
+        run: mypy

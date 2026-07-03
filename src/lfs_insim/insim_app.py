@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Dict, List, Optional
 
 from .config import build_config
-from .insim_enums import OSO
+from .insim_enums import ISF, OSO
 from .packet_sender_mixin import PacketSenderMixin
 from .packets import ISP_ISI
 
@@ -125,7 +125,7 @@ class InSimApp(PacketSenderMixin):
         Other ISI fields (Interval, IName, Admin...) come from the client's
         config, not from apps.
         """
-        self.isi.Flags = 0
+        self.isi.Flags = ISF(0)
 
     def set_outsim(self) -> None:
         """
