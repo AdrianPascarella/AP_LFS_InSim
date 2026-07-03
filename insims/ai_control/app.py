@@ -4,11 +4,18 @@ import logging
 from typing import TYPE_CHECKING, Optional, Literal
 
 from lfs_insim import InSimApp, mute_send_logs
-from lfs_insim.packets import ISP_MCI, ISP_RST, ISP_CRS, ISP_MSO, ISP_PLL, AIInputVal as AIV
+from lfs_insim.packets import (
+    ISP_MCI,
+    ISP_RST,
+    ISP_CRS,
+    ISP_MSO,
+    ISP_PLL,
+    AIInputVal as AIV,
+)
 from lfs_insim.insim_enums import CS, SND
 from lfs_insim.utils import PIDController, separate_command_args, TextColors
 
-mute_send_logs('ISP_AIC')
+mute_send_logs("ISP_AIC")
 
 from insims.ai_control.behavior import AIBehavior, GearMode
 from insims.ai_control.nav_modes.route.mode import RouteMode
@@ -26,19 +33,25 @@ if TYPE_CHECKING:
     from insims.users_management.main import UsersManagement, AI, Telemetry, Coordinates
 
 
-class AIControl(_MapUIMixin, _CommandsMixin, _PhysicsMixin, _NavigationMixin, _TrafficMixin, InSimApp):
-
+class AIControl(
+    _MapUIMixin,
+    _CommandsMixin,
+    _PhysicsMixin,
+    _NavigationMixin,
+    _TrafficMixin,
+    InSimApp,
+):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.cmd_base = 'aic'
-        self.cmd_prefix = '.'
-        self.user_manager: Optional['UsersManagement'] = None
-        self.route_manager: Optional['RouteManager'] = None
+        self.cmd_base = "aic"
+        self.cmd_prefix = "."
+        self.user_manager: Optional["UsersManagement"] = None
+        self.route_manager: Optional["RouteManager"] = None
         self.map_recorder = MapRecorder(self._get_coords_for_map, self.cmd_prefix)
         self._init_ui_state()
 
-        self.interval_mci_s: float = self.config.get('interval', 100) / 1000
+        self.interval_mci_s: float = self.config.get("interval", 100) / 1000
 
         # Cachés de localización para jugadores humanos en los radares de tráfico.
         # Claves: PLID. Valores: (timestamp, road_id, [node_index]).
@@ -46,7 +59,9 @@ class AIControl(_MapUIMixin, _CommandsMixin, _PhysicsMixin, _NavigationMixin, _T
         self._radar_human_cache: dict = {}
         self._target_lane_human_cache: dict = {}
 
-        self.logger.info(f"Módulo {self.name} inicializado con arquitectura de objetos.")
+        self.logger.info(
+            f"Módulo {self.name} inicializado con arquitectura de objetos."
+        )
 
     def on_connect(self):
         self.user_manager = self.get_insim("users_management")
@@ -58,24 +73,33 @@ class AIControl(_MapUIMixin, _CommandsMixin, _PhysicsMixin, _NavigationMixin, _T
     def on_ISP_MSO(self, packet: ISP_MSO):
         """Filtra y redirige comandos de chat a los managers correspondientes."""
         cmd, args = separate_command_args(self.cmd_prefix, packet)
-        if not cmd: return
+        if not cmd:
+            return
 
-        if self.user_manager.user_autorized_cmd(self.user_manager.cmds_white_list, self.cmd_base, cmd, packet.UCID):
+        if self.user_manager.user_autorized_cmd(
+            self.user_manager.cmds_white_list, self.cmd_base, cmd, packet.UCID
+        ):
             self.cmds_aic.handle_commands(packet, args)
-        elif self.user_manager.user_autorized_cmd(self.user_manager.cmds_white_list, 'route', cmd, packet.UCID):
+        elif self.user_manager.user_autorized_cmd(
+            self.user_manager.cmds_white_list, "route", cmd, packet.UCID
+        ):
             self.cmds_route.handle_commands(packet, args)
-        elif self.user_manager.user_autorized_cmd(self.user_manager.cmds_white_list, 'map', cmd, packet.UCID):
+        elif self.user_manager.user_autorized_cmd(
+            self.user_manager.cmds_white_list, "map", cmd, packet.UCID
+        ):
             self.map_recorder._current_cmd_ucid = packet.UCID
             self.map_recorder.cmd_manager.handle_commands(packet, args)
 
-    def _generate_random_pid(self, pid_type: Literal['speed', 'direction']) -> PIDController:
+    def _generate_random_pid(
+        self, pid_type: Literal["speed", "direction"]
+    ) -> PIDController:
         """Genera PIDs escalados a las unidades de LFS."""
-        if pid_type == 'speed':
+        if pid_type == "speed":
             kp = round(random.uniform(0.04, 0.08), 3)
             ki = round(random.uniform(0.001, 0.005), 4)
             kd = round(random.uniform(0.01, 0.03), 3)
             return PIDController(kp=kp, ki=ki, kd=kd, out_min=-1.0, out_max=1.0)
-        elif pid_type == 'direction':
+        elif pid_type == "direction":
             kp = 0.00018
             ki = 0.0000015
             kd = 0.00004
@@ -85,27 +109,33 @@ class AIControl(_MapUIMixin, _CommandsMixin, _PhysicsMixin, _NavigationMixin, _T
         """Extrae el AIBehavior. Si no existe, lo crea con PIDs y personalidades únicos."""
         ai = self.user_manager.ais.get(plid)
         if not ai:
-            self.send_ISP_MSL(Msg=f'El PLID "{plid}" no está asociado a ninguna AI', Sound=SND.SYSMESSAGE)
+            self.send_ISP_MSL(
+                Msg=f'El PLID "{plid}" no está asociado a ninguna AI',
+                Sound=SND.SYSMESSAGE,
+            )
             return None
         if ai.player.ucid != user_ucid:
-            self.send_ISP_MSL(Msg=f'La AI "{ai.ai_name}" no es una de tus AI\'s', Sound=SND.SYSMESSAGE)
+            self.send_ISP_MSL(
+                Msg=f'La AI "{ai.ai_name}" no es una de tus AI\'s', Sound=SND.SYSMESSAGE
+            )
             return None
 
-        if 'aic' not in ai.extra:
+        if "aic" not in ai.extra:
             behavior = AIBehavior(
-                pid_speed=self._generate_random_pid('speed'),
-                pid_direction=self._generate_random_pid('direction')
+                pid_speed=self._generate_random_pid("speed"),
+                pid_direction=self._generate_random_pid("direction"),
             )
             behavior.human_speed_factor = random.uniform(0.92, 1.05)
             behavior.human_safe_gap = random.uniform(1.2, 2.5)
             behavior.human_warn_gap = behavior.human_safe_gap + 1.5
-            ai.extra['aic'] = behavior
+            ai.extra["aic"] = behavior
             self.logger.info(f"Asignados PIDs y Personalidad única a la IA {plid}")
 
-        return ai.extra['aic']
+        return ai.extra["aic"]
 
     def _get_coords_for_map(self, ucid: int):
-        if not self.user_manager: return None
+        if not self.user_manager:
+            return None
         user = self.user_manager.users.get(ucid)
         if user and user.plid:
             player = self.user_manager.players.get(user.plid)
@@ -115,10 +145,12 @@ class AIControl(_MapUIMixin, _CommandsMixin, _PhysicsMixin, _NavigationMixin, _T
 
     def on_ISP_RST(self, packet: ISP_RST):
         """Se ejecuta cuando se reinicia la carrera."""
-        self.logger.info("Carrera reiniciada. Reseteando el contacto de todas las IAs...")
+        self.logger.info(
+            "Carrera reiniciada. Reseteando el contacto de todas las IAs..."
+        )
         for ai in self.user_manager.ais.values():
-            if 'aic' in ai.extra:
-                behavior: AIBehavior = ai.extra['aic']
+            if "aic" in ai.extra:
+                behavior: AIBehavior = ai.extra["aic"]
                 behavior.active_ready = False
                 behavior.gear_mode = GearMode.NEUTRAL
                 if isinstance(behavior.active_mode, RouteMode):
@@ -131,9 +163,11 @@ class AIControl(_MapUIMixin, _CommandsMixin, _PhysicsMixin, _NavigationMixin, _T
         """Se ejecuta cuando un coche individual se reinicia."""
         plid = packet.PLID
         ai = self.user_manager.ais.get(plid)
-        if ai and 'aic' in ai.extra:
-            self.logger.info(f"La IA {ai.ai_name} se ha reiniciado. Reseteando su contacto...")
-            behavior: AIBehavior = ai.extra['aic']
+        if ai and "aic" in ai.extra:
+            self.logger.info(
+                f"La IA {ai.ai_name} se ha reiniciado. Reseteando su contacto..."
+            )
+            behavior: AIBehavior = ai.extra["aic"]
             behavior.active_ready = False
             behavior.gear_mode = GearMode.NEUTRAL
             if isinstance(behavior.active_mode, RouteMode):
@@ -146,7 +180,10 @@ class AIControl(_MapUIMixin, _CommandsMixin, _PhysicsMixin, _NavigationMixin, _T
         """Se ejecuta cuando un jugador va a espectadores o se desconecta."""
         if self.map_recorder.recording_plid == packet.PLID:
             self.map_recorder.recording_plid = None
-            self.send_ISP_MSL(Msg=f"{TextColors.YELLOW}[Grabación] PLID {packet.PLID} ha salido. Selecciona un nuevo PLID para grabar.", Sound=SND.SYSMESSAGE)
+            self.send_ISP_MSL(
+                Msg=f"{TextColors.YELLOW}[Grabación] PLID {packet.PLID} ha salido. Selecciona un nuevo PLID para grabar.",
+                Sound=SND.SYSMESSAGE,
+            )
 
     def on_ISP_MCI(self, packet: ISP_MCI):
         """Bucle principal de telemetría."""
@@ -171,13 +208,17 @@ class AIControl(_MapUIMixin, _CommandsMixin, _PhysicsMixin, _NavigationMixin, _T
             if plid in self.route_manager.recorders:
                 self.route_manager.process(plid, telemetry.coordinates, telemetry.speed)
 
-            if (plid == self.map_recorder.recording_plid
-                    and self.map_recorder.auto_recording_enabled
-                    and self.map_recorder.current_recording):
-                self.map_recorder.update_recording(telemetry.coordinates, telemetry.speed.speed_kmh)
+            if (
+                plid == self.map_recorder.recording_plid
+                and self.map_recorder.auto_recording_enabled
+                and self.map_recorder.current_recording
+            ):
+                self.map_recorder.update_recording(
+                    telemetry.coordinates, telemetry.speed.speed_kmh
+                )
 
-            if ai and 'aic' in ai.extra:
-                behavior: AIBehavior = ai.extra['aic']
+            if ai and "aic" in ai.extra:
+                behavior: AIBehavior = ai.extra["aic"]
 
                 if isinstance(behavior.active_mode, RouteMode):
                     self._update_route_navigation(ai)

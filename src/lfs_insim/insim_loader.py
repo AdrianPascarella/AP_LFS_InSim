@@ -18,7 +18,7 @@ from .exceptions import InSimModuleError
 
 def _parse_version(version_str: str) -> tuple:
     """Turn '1.2.3' into (1, 2, 3) for comparison."""
-    parts = re.split(r'[.\-]', version_str.strip())
+    parts = re.split(r"[.\-]", version_str.strip())
     result = []
     for p in parts[:3]:
         try:
@@ -39,7 +39,7 @@ def _check_version(actual: str, constraint: str) -> bool:
     if not constraint:
         return True
 
-    match = re.match(r'^(>=|<=|>|<|==|!=)?\s*(.+)$', constraint)
+    match = re.match(r"^(>=|<=|>|<|==|!=)?\s*(.+)$", constraint)
     if not match:
         return True
 
@@ -47,24 +47,27 @@ def _check_version(actual: str, constraint: str) -> bool:
     actual_t = _parse_version(actual)
     required_t = _parse_version(required_str)
 
-    if op is None or op == '==':
+    if op is None or op == "==":
         return actual_t == required_t
-    if op == '!=':
+    if op == "!=":
         return actual_t != required_t
-    if op == '>=':
+    if op == ">=":
         return actual_t >= required_t
-    if op == '<=':
+    if op == "<=":
         return actual_t <= required_t
-    if op == '>':
+    if op == ">":
         return actual_t > required_t
-    if op == '<':
+    if op == "<":
         return actual_t < required_t
     return True
 
+
 logger = logging.getLogger(__name__)
+
 
 class InSimManifest:
     """Represents an InSim manifest (insim.json)."""
+
     def __init__(self, path: Path):
         self.path = path
         self.directory = path.parent
@@ -84,23 +87,28 @@ class InSimManifest:
         if not self.path.exists():
             return
         try:
-            with open(self.path, 'r', encoding='utf-8') as f:
+            with open(self.path, "r", encoding="utf-8") as f:
                 data = json.load(f)
-                self.name = data.get('name', self.name)
-                self.version = data.get('version', self.version)
-                self.description = data.get('description', self.description)
-                self.author = data.get('author', self.author)
-                self.entry_point = data.get('entry_point', self.entry_point)
-                self.insim_dependencies = data.get('insim_dependencies', {})
-                self.python_dependencies = data.get('python_dependencies', [])
+                self.name = data.get("name", self.name)
+                self.version = data.get("version", self.version)
+                self.description = data.get("description", self.description)
+                self.author = data.get("author", self.author)
+                self.entry_point = data.get("entry_point", self.entry_point)
+                self.insim_dependencies = data.get("insim_dependencies", {})
+                self.python_dependencies = data.get("python_dependencies", [])
         except Exception as e:
             logger.error(f"Error loading manifest at {self.path}: {e}")
+
 
 class InSimLoader:
     """Dynamic plugin/module loading system."""
 
-    def __init__(self, insims_path: Path = None, client: Any = None,
-                 config: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self,
+        insims_path: Path = None,
+        client: Any = None,
+        config: Optional[Dict[str, Any]] = None,
+    ):
         if insims_path is None:
             insims_path = Path.cwd() / "insims"
 
@@ -119,6 +127,7 @@ class InSimLoader:
         """
         if self._client is None:
             from .insim_client import InSimClient
+
             self._client = InSimClient(config=self._config)
         return self._client
 
@@ -139,17 +148,19 @@ class InSimLoader:
             if item.is_dir() and (item / "insim.json").exists():
                 manifest = InSimManifest(item / "insim.json")
                 name = manifest.name or item.name
-                result.append({
-                    "name": name,
-                    "version": manifest.version,
-                    "description": manifest.description,
-                    "dependencies": list(manifest.insim_dependencies.keys())
-                })
+                result.append(
+                    {
+                        "name": name,
+                        "version": manifest.version,
+                        "description": manifest.description,
+                        "dependencies": list(manifest.insim_dependencies.keys()),
+                    }
+                )
         return result
 
     def discover(self) -> List[str]:
         """List the names of the available InSims."""
-        return [info['name'] for info in self.list_available()]
+        return [info["name"] for info in self.list_available()]
 
     def load(self, name: str):
         """
@@ -182,7 +193,7 @@ class InSimLoader:
             # Validate the version once the module is loaded
             dep_instance = self._instances[dep_name]
             if version_constraint:
-                actual_version = getattr(dep_instance, 'version', '0.0.0')
+                actual_version = getattr(dep_instance, "version", "0.0.0")
                 if not _check_version(actual_version, version_constraint):
                     raise InSimModuleError(
                         f"'{name}' requires '{dep_name}{version_constraint}' "
@@ -197,11 +208,12 @@ class InSimLoader:
             # 2. IMPORT AND INSTANTIATION
             entry_stem = Path(manifest.entry_point).stem  # 'main', '__init__', etc.
 
-            if entry_stem == '__init__':
+            if entry_stem == "__init__":
                 # The entry point is the package's own __init__.py
                 spec = importlib.util.spec_from_file_location(
-                    name, entry_file,
-                    submodule_search_locations=[str(manifest.directory)]
+                    name,
+                    entry_file,
+                    submodule_search_locations=[str(manifest.directory)],
                 )
                 module = importlib.util.module_from_spec(spec)
                 sys.modules[name] = module
@@ -209,11 +221,11 @@ class InSimLoader:
             else:
                 # The entry point is a submodule (e.g. main.py).
                 # Register the package first so relative imports work.
-                init_file = manifest.directory / '__init__.py'
+                init_file = manifest.directory / "__init__.py"
                 pkg_spec = importlib.util.spec_from_file_location(
                     name,
                     init_file if init_file.exists() else None,
-                    submodule_search_locations=[str(manifest.directory)]
+                    submodule_search_locations=[str(manifest.directory)],
                 )
                 pkg_module = importlib.util.module_from_spec(pkg_spec)
                 sys.modules[name] = pkg_module
@@ -231,12 +243,19 @@ class InSimLoader:
             instance = None
             for attr_name in dir(module):
                 attr = getattr(module, attr_name)
-                if isinstance(attr, type) and issubclass(attr, InSimApp) and attr is not InSimApp:
+                if (
+                    isinstance(attr, type)
+                    and issubclass(attr, InSimApp)
+                    and attr is not InSimApp
+                ):
                     # Apps inherit the client's effective config (defaults +
                     # project overrides), so self.config is consistent across
                     # the client and every app.
-                    instance = attr(config=self.client.config,
-                                    _loader=self, _insim_path=manifest.directory)
+                    instance = attr(
+                        config=self.client.config,
+                        _loader=self,
+                        _insim_path=manifest.directory,
+                    )
                     break
 
             if not instance:

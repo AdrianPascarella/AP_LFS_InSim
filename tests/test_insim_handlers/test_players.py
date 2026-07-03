@@ -1,4 +1,5 @@
 """Tests for ISP_NPL and ISP_PLL handlers (human players and AIs)."""
+
 from lfs_insim.packets import ISP_NCN, ISP_NPL, ISP_PLL
 from lfs_insim.insim_enums import PTYPE
 
@@ -110,9 +111,9 @@ class TestOnISP_PLL:
     def test_ai_removed_without_touching_user_plid(self, insim):
         insim.on_ISP_NCN(_ncn(ucid=1))
         insim.on_ISP_NPL(_npl_human(plid=10, ucid=1))  # human
-        insim.on_ISP_NPL(_npl_ai(plid=20, ucid=1))     # AI
-        insim.on_ISP_PLL(_pll(plid=20))                # AI leaves
-        assert insim.users[1]["plid"] == 10             # human's plid untouched
+        insim.on_ISP_NPL(_npl_ai(plid=20, ucid=1))  # AI
+        insim.on_ISP_PLL(_pll(plid=20))  # AI leaves
+        assert insim.users[1]["plid"] == 10  # human's plid untouched
         assert 20 not in insim.players
 
     def test_pll_unknown_plid_does_not_raise(self, insim):

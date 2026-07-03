@@ -2,13 +2,14 @@ from dataclasses import dataclass, field, fields, is_dataclass
 from typing import Optional, List, Any
 import struct
 
-__all__ = ['repeat', 'PacketFunctions']
+__all__ = ["repeat", "PacketFunctions"]
 
-def repeat(fmt: str|dict, times) -> list:
+
+def repeat(fmt: str | dict, times) -> list:
     return [fmt for _ in range(times)]
 
-class PacketFunctions:
 
+class PacketFunctions:
     _metadata_cache = None
 
     @classmethod
@@ -18,12 +19,12 @@ class PacketFunctions:
             # Solo trabajamos si es un dataclass
             if not is_dataclass(cls):
                 return {}
-            
+
             # Construimos el mapa una sola vez
             cls._metadata_cache = {
-                f.name: f.metadata.get('fmt') 
-                for f in fields(cls) 
-                if f.metadata.get('fmt') is not None
+                f.name: f.metadata.get("fmt")
+                for f in fields(cls)
+                if f.metadata.get("fmt") is not None
             }
         return cls._metadata_cache
 
@@ -33,10 +34,10 @@ class PacketFunctions:
         """
         resolved = {}
         for f in fields(self):
-            fmt = f.metadata.get('fmt')
+            fmt = f.metadata.get("fmt")
             if fmt is None:
                 continue
-            
+
             # Obtenemos el valor real de la instancia para este campo
             val = getattr(self, f.name)
 
@@ -44,7 +45,7 @@ class PacketFunctions:
             if isinstance(fmt, tuple):
                 inner_fmt, limit = fmt
                 actual_count = len(val) if val is not None else 0
-                
+
                 # Si se especifica un conteo (limit no es None), tratar como variable con límite
                 if limit is not None:
                     # El conteo real es el número de elementos que tenga la instancia,
@@ -54,7 +55,7 @@ class PacketFunctions:
                     # Si el límite es None, es puramente variable
                     final_count = actual_count
 
-                if inner_fmt == 's':
+                if inner_fmt == "s":
                     resolved[f.name] = f"{final_count}s"
                 else:
                     # Si es una clase, obtener su estructura
@@ -62,12 +63,12 @@ class PacketFunctions:
                         inner_fmt_struct = inner_fmt.metadata_to_dict()
                     else:
                         inner_fmt_struct = inner_fmt
-                        
+
                     resolved[f.name] = repeat(inner_fmt_struct, final_count)
 
             # CASO SUBPAQUETE: {'fmt': type}
             elif isinstance(fmt, type):
-                if hasattr(val, 'get_fmt'):
+                if hasattr(val, "get_fmt"):
                     resolved[f.name] = val.get_fmt()
                 else:
                     resolved[f.name] = fmt
@@ -75,7 +76,7 @@ class PacketFunctions:
             # CASO PRIMITIVO O LISTA FIJA
             else:
                 resolved[f.name] = fmt
-                
+
         return resolved
 
     def get_struct_string(self) -> str:
@@ -83,7 +84,7 @@ class PacketFunctions:
         Convierte el diccionario de get_fmt() en un string compatible con struct.
         """
         fmt_dict = self.get_fmt()
-        
+
         def flatten(structure):
             s = ""
             if isinstance(structure, str):
@@ -119,22 +120,22 @@ class PacketFunctions:
         other layer recalculates padding or truncation.
         """
         for f in fields(self):
-            fmt = f.metadata.get('fmt')
+            fmt = f.metadata.get("fmt")
 
             # Fixed-size string: 'Ns'
-            if isinstance(fmt, str) and fmt.endswith('s') and fmt[:-1].isdigit():
+            if isinstance(fmt, str) and fmt.endswith("s") and fmt[:-1].isdigit():
                 current_val = getattr(self, f.name)
                 if not isinstance(current_val, str):
                     continue
                 size = int(fmt[:-1])
                 if len(current_val) >= size:
-                    setattr(self, f.name, current_val[:size - 1])
+                    setattr(self, f.name, current_val[: size - 1])
                 continue
 
-            if isinstance(fmt, tuple) and fmt[0] == 's':
+            if isinstance(fmt, tuple) and fmt[0] == "s":
                 _, limit = fmt
                 current_val = getattr(self, f.name)
-                
+
                 if not isinstance(current_val, str):
                     continue
 
@@ -143,7 +144,7 @@ class PacketFunctions:
                 # 1. Truncar (dejamos espacio para el null terminator)
                 if isinstance(limit, int):
                     if len(new_val) >= limit:
-                        new_val = new_val[:limit - 1]
+                        new_val = new_val[: limit - 1]
 
                 # 2. Relleno (padding) a bloque de 4 con null bytes, incluyendo
                 # el null terminator dentro del bloque alineado.

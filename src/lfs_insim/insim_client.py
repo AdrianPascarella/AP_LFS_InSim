@@ -50,16 +50,20 @@ _DISPATCH_STOP = object()
 
 
 class InSimClient:
-    def __init__(self, config: Optional[dict] = None, name: str = "DeepInSim",
-                 transport: Optional[InSimTransport] = None):
+    def __init__(
+        self,
+        config: Optional[dict] = None,
+        name: str = "DeepInSim",
+        transport: Optional[InSimTransport] = None,
+    ):
         self.config = build_config(config)
         self.name = name
         self.logger = logging.getLogger(f"InSim.{name}")
         self.running = False
 
         # Error policy: fail fast on a bad value, whatever the policy is.
-        policy = self.config.get('handler_errors', 'log')
-        if policy not in ('log', 'raise'):
+        policy = self.config.get("handler_errors", "log")
+        if policy not in ("log", "raise"):
             raise InSimConfigurationError(
                 f"Invalid 'handler_errors' value: {policy!r} "
                 "(expected 'log' or 'raise')"
@@ -67,7 +71,7 @@ class InSimClient:
 
         # Tick cadence: validated here so a bad value fails at creation,
         # not minutes later inside start().
-        raw_tick = self.config.get('tick_interval', 0.1)
+        raw_tick = self.config.get("tick_interval", 0.1)
         try:
             tick = float(raw_tick)
         except (TypeError, ValueError):
@@ -167,11 +171,13 @@ class InSimClient:
         # types nobody handles. Only applies to InSim TCP packets
         # (data[0]*4 == len(data)); UDP OutSim/OutGauge frames do not match
         # that signature and always pass.
-        active_ids = getattr(self, '_active_type_ids', None)
-        if (active_ids is not None
-                and len(data) >= 2
-                and data[0] * 4 == len(data)
-                and data[1] not in active_ids):
+        active_ids = getattr(self, "_active_type_ids", None)
+        if (
+            active_ids is not None
+            and len(data) >= 2
+            and data[0] * 4 == len(data)
+            and data[1] not in active_ids
+        ):
             return
 
         packet = decode_packet(data)
@@ -195,21 +201,21 @@ class InSimClient:
 
         handler_names: set[str] = set()
         for instance in [self] + self.apps:
-            for name in dir(type(instance)):        # MRO walk: includes mixins
-                if name.startswith('on_ISP_'):
+            for name in dir(type(instance)):  # MRO walk: includes mixins
+                if name.startswith("on_ISP_"):
                     handler_names.add(name)
 
         # Reverse map: "ISP_MCI" -> 38
         cls_to_id = {cls.__name__: tid for tid, cls in INSIM_PACKETS.items()}
         active_ids: set[int] = set()
         for h in handler_names:
-            tid = cls_to_id.get(h[3:])              # "on_ISP_MCI" -> "ISP_MCI"
+            tid = cls_to_id.get(h[3:])  # "on_ISP_MCI" -> "ISP_MCI"
             if tid is not None:
                 active_ids.add(tid)
 
         # Always active
         active_ids.update({int(ISP.TINY), int(ISP.VER)})
-        handler_names.update({'on_ISP_TINY', 'on_ISP_VER'})
+        handler_names.update({"on_ISP_TINY", "on_ISP_VER"})
 
         self._active_handler_names: set[str] = handler_names
         self._active_type_ids: set[int] = active_ids
@@ -229,14 +235,15 @@ class InSimClient:
         OutSimPack2 = build_outsim_pack2(combined_oso)
         OUTSIM_PACKETS[OutSimPack2().get_size()] = OutSimPack2
 
-        udp_port   = self.config.get('udp_port',   30000)
-        udp_host   = self.config.get('udp_host',   '0.0.0.0')
-        udp_buffer = self.config.get('udp_buffer', 4096)
+        udp_port = self.config.get("udp_port", 30000)
+        udp_host = self.config.get("udp_host", "0.0.0.0")
+        udp_buffer = self.config.get("udp_buffer", 4096)
         self.transport.connect_udp(udp_host, udp_port, udp_buffer)
 
-        oso_names = ' | '.join(
-            f.name for f in OSO
-            if f in combined_oso and f.value > 0 and f.name not in ('ALL', 'ALL_NOID')
+        oso_names = " | ".join(
+            f.name
+            for f in OSO
+            if f in combined_oso and f.value > 0 and f.name not in ("ALL", "ALL_NOID")
         )
         self.logger.info(f"OutSim active (OSO={int(combined_oso):#x}): {oso_names}")
         self.logger.info(
@@ -254,20 +261,20 @@ class InSimClient:
         # If != 0, LFS redirects NLP/MCI ONLY to that UDP port, which requires
         # the UDP socket to be open. Use 'insim_udp_port' in config to get
         # NLP/MCI over UDP explicitly; 'udp_port' belongs to OutSim.
-        self.isi.UDPPort = self.config.get('insim_udp_port', 0)
+        self.isi.UDPPort = self.config.get("insim_udp_port", 0)
         self.isi.Flags = 0  # Filled dynamically by aggregation
-        self.isi.InSimVer = self.config.get('insim_ver', 10)
+        self.isi.InSimVer = self.config.get("insim_ver", 10)
 
         # Robust Prefix handling (int or str)
-        prefix_val = self.config.get('prefix', '!')
+        prefix_val = self.config.get("prefix", "!")
         if isinstance(prefix_val, int):
             self.isi.Prefix = prefix_val
         else:
             self.isi.Prefix = ord(prefix_val)
 
-        self.isi.Interval = self.config.get('interval', 100)  # ms
-        self.isi.Admin = self.config.get('admin_pass', '')
-        self.isi.IName = self.config.get('insim_name', 'LFS-InSim')
+        self.isi.Interval = self.config.get("interval", 100)  # ms
+        self.isi.Admin = self.config.get("admin_pass", "")
+        self.isi.IName = self.config.get("insim_name", "LFS-InSim")
 
     def start(self):
         """Open the connection and run the main loop."""
@@ -292,8 +299,8 @@ class InSimClient:
             self._start_dispatch_worker()
 
             # 1. Physical TCP connection
-            host = self.config.get('tcp_host', '127.0.0.1')
-            port = self.config.get('tcp_port', 29999)
+            host = self.config.get("tcp_host", "127.0.0.1")
+            port = self.config.get("tcp_port", 29999)
             self.transport.connect_tcp(host, port)
 
             # =================================================================
@@ -316,7 +323,9 @@ class InSimClient:
 
                     if self.isi.Flags != old_flags:
                         added = self.isi.Flags ^ old_flags
-                        self.logger.debug(f" -> +Flags from '{app.name}': {added} (Total: {self.isi.Flags})")
+                        self.logger.debug(
+                            f" -> +Flags from '{app.name}': {added} (Total: {self.isi.Flags})"
+                        )
 
             # =================================================================
             # OUTSIM OPTS AGGREGATION
@@ -335,18 +344,18 @@ class InSimClient:
 
             # 3. Send the FINAL initialization packet (ISI)
             self.logger.info(f"Sending final ISI with flags: {self.isi.Flags}")
-            self._session_received_data = False   # reset BEFORE the ISI can be answered
+            self._session_received_data = False  # reset BEFORE the ISI can be answered
             self.send(self.isi)
             self.connected = True
             # Fresh reconnection-streak state (P24): if this session dies
             # before `reconnect_stable_time`, _reconnect resumes from here.
             self._session_started_at = time.monotonic()
             self._reconnect_attempt = 0
-            self._reconnect_delay = float(self.config.get('reconnect_delay', 1.0))
+            self._reconnect_delay = float(self.config.get("reconnect_delay", 1.0))
 
             # 4. Notify every app about the connection
             self.on_connect()  # own hook
-            self._dispatch_lifecycle('on_connect')
+            self._dispatch_lifecycle("on_connect")
 
             self.logger.info(f"Client '{self.name}' started and listening...")
 
@@ -357,9 +366,9 @@ class InSimClient:
             # of owed ticks). The loop itself polls at <=100 ms so
             # connection-loss detection and fail-fast handler errors never
             # wait on a slow tick.
-            tick_interval = float(self.config.get('tick_interval', 0.1))
+            tick_interval = float(self.config.get("tick_interval", 0.1))
             poll = min(0.1, tick_interval)
-            next_tick = time.monotonic()   # first tick fires immediately
+            next_tick = time.monotonic()  # first tick fires immediately
             while self.running:
                 if self._handler_error is not None:
                     # Fail-fast policy (handler_errors='raise'): a handler
@@ -374,7 +383,7 @@ class InSimClient:
                     continue
                 if time.monotonic() >= next_tick:
                     self.on_tick()  # own hook
-                    self._dispatch_lifecycle('on_tick')
+                    self._dispatch_lifecycle("on_tick")
                     next_tick = time.monotonic() + tick_interval
                 time.sleep(poll)
 
@@ -402,7 +411,7 @@ class InSimClient:
         # shutdown must complete and every app must get its on_disconnect.
         if self.connected:
             self.connected = False
-            self._dispatch_lifecycle('on_disconnect', isolate=True)
+            self._dispatch_lifecycle("on_disconnect", isolate=True)
             self.on_disconnect()
 
         # Close sockets and receiver threads (no more packets get enqueued)
@@ -431,11 +440,17 @@ class InSimClient:
         # Diagnostic hint (S12): LFS gives no feedback on the socket when it
         # rejects an ISI — it just closes. A session that dies young without
         # a single packet received is almost certainly a rejected ISI.
-        uptime = (time.monotonic() - self._session_started_at
-                  if self._session_started_at is not None else None)
-        stable_time = float(self.config.get('reconnect_stable_time', 10.0))
-        if (uptime is not None and uptime < stable_time
-                and not self._session_received_data):
+        uptime = (
+            time.monotonic() - self._session_started_at
+            if self._session_started_at is not None
+            else None
+        )
+        stable_time = float(self.config.get("reconnect_stable_time", 10.0))
+        if (
+            uptime is not None
+            and uptime < stable_time
+            and not self._session_received_data
+        ):
             self.logger.warning(
                 f"The session died after {uptime:.1f}s without receiving a "
                 "single packet from LFS — the ISI was likely rejected. Check "
@@ -444,10 +459,10 @@ class InSimClient:
                 "rejects an ISI."
             )
 
-        self._dispatch_lifecycle('on_disconnect')
+        self._dispatch_lifecycle("on_disconnect")
         self.on_disconnect()
 
-        if not self.config.get('reconnect', True):
+        if not self.config.get("reconnect", True):
             self.logger.error("Auto-reconnect is disabled; stopping the client.")
             self.stop()
             return
@@ -467,19 +482,25 @@ class InSimClient:
         streak towards `reconnect_max_attempts`) instead of starting fresh;
         otherwise a rejected ISI would turn into a full-speed connection
         storm against LFS (P24, seen live in S12: "InSim - TCP excess")."""
-        host = self.config.get('tcp_host', '127.0.0.1')
-        port = self.config.get('tcp_port', 29999)
-        delay = float(self.config.get('reconnect_delay', 1.0))
-        backoff = float(self.config.get('reconnect_backoff', 2.0))
-        max_delay = float(self.config.get('reconnect_max_delay', 30.0))
-        max_attempts = int(self.config.get('reconnect_max_attempts', 0))
-        stable_time = float(self.config.get('reconnect_stable_time', 10.0))
+        host = self.config.get("tcp_host", "127.0.0.1")
+        port = self.config.get("tcp_port", 29999)
+        delay = float(self.config.get("reconnect_delay", 1.0))
+        backoff = float(self.config.get("reconnect_backoff", 2.0))
+        max_delay = float(self.config.get("reconnect_max_delay", 30.0))
+        max_attempts = int(self.config.get("reconnect_max_attempts", 0))
+        stable_time = float(self.config.get("reconnect_stable_time", 10.0))
 
         attempt = 0
-        uptime = (time.monotonic() - self._session_started_at
-                  if self._session_started_at is not None else None)
-        if (uptime is not None and uptime < stable_time
-                and self._reconnect_delay is not None):
+        uptime = (
+            time.monotonic() - self._session_started_at
+            if self._session_started_at is not None
+            else None
+        )
+        if (
+            uptime is not None
+            and uptime < stable_time
+            and self._reconnect_delay is not None
+        ):
             # The previous session died young: the streak continues. Wait
             # before reconnecting and keep escalating instead of hammering.
             attempt = self._reconnect_attempt
@@ -500,7 +521,9 @@ class InSimClient:
                 self.stop()
                 return
 
-            self.logger.info(f"Reconnecting to LFS at {host}:{port} (attempt {attempt})...")
+            self.logger.info(
+                f"Reconnecting to LFS at {host}:{port} (attempt {attempt})..."
+            )
             try:
                 # Anything signalled before this instant belongs to the dead
                 # connection; events set from here on come from the new one.
@@ -527,14 +550,14 @@ class InSimClient:
 
     def _restore_session(self):
         """Resend the ISI and re-request the state after reconnecting."""
-        self._session_received_data = False   # reset BEFORE the ISI can be answered
+        self._session_received_data = False  # reset BEFORE the ISI can be answered
         self.send(self.isi)
         self.connected = True
         # on_reconnect BEFORE re-requesting the state (P22): apps reset their
         # per-session memory here, so the NCN/NPL replies triggered below can
         # never race against that cleanup and get wiped.
         self.on_reconnect()  # own hook
-        self._dispatch_lifecycle('on_reconnect')
+        self._dispatch_lifecycle("on_reconnect")
         # Ask LFS for connections and players again so app trackers
         # (on_ISP_NCN / on_ISP_NPL handlers) rebuild their state.
         self.send(ISP_TINY(ReqI=1, SubT=TINY.NCN))
@@ -569,7 +592,7 @@ class InSimClient:
     @property
     def _fail_fast(self) -> bool:
         """True when handler_errors='raise' (fail-fast error policy)."""
-        return self.config.get('handler_errors', 'log') == 'raise'
+        return self.config.get("handler_errors", "log") == "raise"
 
     def _start_dispatch_worker(self) -> None:
         """Start the dispatch worker thread (idempotent)."""
@@ -635,8 +658,10 @@ class InSimClient:
 
         # Post-decode barrier: if the registry exists and nobody handles this
         # type, skip the app loop (second line of defense after _process_raw_bytes).
-        if (hasattr(self, '_active_handler_names')
-                and handler_name not in self._active_handler_names):
+        if (
+            hasattr(self, "_active_handler_names")
+            and handler_name not in self._active_handler_names
+        ):
             return
 
         # 1. Run the client's own handler (if any)
@@ -676,10 +701,19 @@ class InSimClient:
             except Exception as e:
                 if self._fail_fast:
                     raise
-                self.logger.error(f"Error in {handler_name} of {instance.name}: {e}", exc_info=True)
+                self.logger.error(
+                    f"Error in {handler_name} of {instance.name}: {e}", exc_info=True
+                )
 
     # Empty hooks for subclasses
-    def on_connect(self): pass
-    def on_disconnect(self): pass
-    def on_reconnect(self): pass
-    def on_tick(self): pass
+    def on_connect(self):
+        pass
+
+    def on_disconnect(self):
+        pass
+
+    def on_reconnect(self):
+        pass
+
+    def on_tick(self):
+        pass

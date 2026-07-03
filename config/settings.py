@@ -16,7 +16,7 @@ class _InsimRotatingHandler(logging.handlers.RotatingFileHandler):
     @staticmethod
     def _namer(name: str) -> str:
         # name = "/path/insim.log.1"  →  "/path/insim1.log"
-        return re.sub(r'^(.+?)(\.[^.]+)\.(\d+)$', r'\1\3\2', name)
+        return re.sub(r"^(.+?)(\.[^.]+)\.(\d+)$", r"\1\3\2", name)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -29,7 +29,7 @@ class _HighFreqFilter(logging.Filter):
     # Patrones específicos de los logs de alta frecuencia, no nombres de tipo genéricos.
     # 'ISP_MCI'/'ISP_NLP' eran demasiado amplios y filtraban logs legítimos (p.ej.
     # "Tipos de paquete activos: ..., ISP_MCI, ...").
-    _PATTERNS: set = {'MCI PLID', 'NLP PLID', 'OutSim', 'OutGauge'}
+    _PATTERNS: set = {"MCI PLID", "NLP PLID", "OutSim", "OutGauge"}
 
     @classmethod
     def mute_pattern(cls, *patterns: str) -> None:
@@ -51,13 +51,13 @@ class _HighFreqFilter(logging.Filter):
 # ═══════════════════════════════════════════════════════════════════════════
 
 BASE_DIR = Path(__file__).parent.parent  # Carpeta raíz del proyecto
-LOGS_DIR = BASE_DIR / 'logs'             # Carpeta de logs
+LOGS_DIR = BASE_DIR / "logs"  # Carpeta de logs
 
 # Crear carpeta si no existe
 LOGS_DIR.mkdir(exist_ok=True)
 
 # Instalación local de LFS. Valor por máquina: variable de entorno o settings_local.py.
-LFS_DIR = os.environ.get('LFS_DIR', 'C:/LFS')
+LFS_DIR = os.environ.get("LFS_DIR", "C:/LFS")
 
 # ═══════════════════════════════════════════════════════════════════════════
 # CONFIGURACIÓN DE InSim (Conexión a LFS)
@@ -65,12 +65,11 @@ LFS_DIR = os.environ.get('LFS_DIR', 'C:/LFS')
 
 INSIM_CONFIG: Dict[str, Any] = {
     # --- Conexión TCP (InSim Principal) ---
-    'tcp_host':   '127.0.0.1',
-    'tcp_port':   29999,        # Debe coincidir con /insim en LFS
-    'tcp_buffer': 4096,
-
+    "tcp_host": "127.0.0.1",
+    "tcp_port": 29999,  # Debe coincidir con /insim en LFS
+    "tcp_buffer": 4096,
     # --- Configuración del Paquete de Inicialización (ISI) ---
-    'insim_name': 'InSimApp',
+    "insim_name": "InSimApp",
     # Contraseña de admin de LFS: por máquina (env o settings_local.py), nunca versionada.
     # Si no coincide con "Game Admin" del cfg.txt de LFS, este rechaza el ISI cerrando
     # el socket sin feedback (el cliente lo detecta y deja una pista en el log — S12).
@@ -78,23 +77,21 @@ INSIM_CONFIG: Dict[str, Any] = {
     # {LFS_DIR}/cfg.txt cuando admin_pass esté vacío y tcp_host sea local — SIEMPRE en
     # esta capa de proyecto, nunca en el core (P14). Ojo: LFS escribe cfg.txt al SALIR,
     # en caliente puede estar desactualizado.
-    'admin_pass': os.environ.get('LFS_ADMIN_PASS', ''),
-    'insim_ver':  10,           # InSim v10 para LFS 0.7F+
-    'prefix':     '!',          # Prefijo para comandos de chat
-    'interval':   10,           # Intervalo NLP/MCI en ms (el hot-loop de IA corre a este ritmo)
-    'flags':      0,
-
+    "admin_pass": os.environ.get("LFS_ADMIN_PASS", ""),
+    "insim_ver": 10,  # InSim v10 para LFS 0.7F+
+    "prefix": "!",  # Prefijo para comandos de chat
+    "interval": 10,  # Intervalo NLP/MCI en ms (el hot-loop de IA corre a este ritmo)
+    "flags": 0,
     # Configuración de usuario
-    'user_name': 'AdrianPascarella',
-
+    "user_name": "AdrianPascarella",
     # --- UDP (OutSim / OutGauge) ---
     # Puerto en el que este proceso escucha paquetes UDP de LFS.
     # Debe coincidir con OutSim Port en cfg.txt de LFS.
     # El socket UDP solo se abre si algún módulo declara outsim_opts
     # en set_outsim() — este valor configura el puerto, no lo activa.
-    'udp_port':   30000,
-    'udp_host':   '0.0.0.0',
-    'udp_buffer': 4096,
+    "udp_port": 30000,
+    "udp_host": "0.0.0.0",
+    "udp_buffer": 4096,
 }
 
 
@@ -103,62 +100,67 @@ INSIM_CONFIG: Dict[str, Any] = {
 # ═══════════════════════════════════════════════════════════════════════════
 
 LOGGING_CONFIG = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'filters': {
-        'no_high_freq': {
-            '()': 'config.settings._HighFreqFilter',
+    "version": 1,
+    "disable_existing_loggers": False,
+    "filters": {
+        "no_high_freq": {
+            "()": "config.settings._HighFreqFilter",
         },
     },
-    'formatters': {
-        'standard': {
-            'format': '[%(asctime)s] [%(levelname)s] [%(name)s]: %(message)s',
-            'datefmt': '%H:%M:%S'
+    "formatters": {
+        "standard": {
+            "format": "[%(asctime)s] [%(levelname)s] [%(name)s]: %(message)s",
+            "datefmt": "%H:%M:%S",
         },
-        'detailed': {
-            'format': '[%(asctime)s] [%(name)s] [%(funcName)s] [%(levelname)s]: %(message)s'
-        }
-    },
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-            'formatter': 'standard',
-            'level': 'INFO',
-            'filters': ['no_high_freq'],
-        },
-        'file': {
-            'class': 'config.settings._InsimRotatingHandler',
-            'filename': str(LOGS_DIR / 'insim.log'),
-            'maxBytes': 5 * 1024 * 1024,  # 5 MB
-            'backupCount': 3,
-            'formatter': 'detailed',
-            'level': 'DEBUG',
-            'encoding': 'utf-8',
-            'filters': ['no_high_freq'],
+        "detailed": {
+            "format": "[%(asctime)s] [%(name)s] [%(funcName)s] [%(levelname)s]: %(message)s"
         },
     },
-    'root': {
-        'level': 'DEBUG',
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "standard",
+            "level": "INFO",
+            "filters": ["no_high_freq"],
+        },
+        "file": {
+            "class": "config.settings._InsimRotatingHandler",
+            "filename": str(LOGS_DIR / "insim.log"),
+            "maxBytes": 5 * 1024 * 1024,  # 5 MB
+            "backupCount": 3,
+            "formatter": "detailed",
+            "level": "DEBUG",
+            "encoding": "utf-8",
+            "filters": ["no_high_freq"],
+        },
+    },
+    "root": {
+        "level": "DEBUG",
         # 'file' SIEMPRE antes que 'console': en Windows, una selección de
         # texto en la consola (QuickEdit) bloquea la escritura a stdout y el
         # logger se congela en el handler de consola — si va primero, el
         # registro no llega nunca al archivo y el log miente (visto en S10).
-        'handlers': ['file', 'console'],
+        "handlers": ["file", "console"],
     },
 }
 
-def get_logger(name: str, log_filename: str = None, level: int = logging.INFO) -> logging.Logger:
+
+def get_logger(
+    name: str, log_filename: str = None, level: int = logging.INFO
+) -> logging.Logger:
     """
-    Crea un logger configurado. 
+    Crea un logger configurado.
     Si se especifica log_filename, crea un archivo separado para este logger.
     """
     logger = logging.getLogger(name)
     logger.setLevel(level)
-    
+
     if logger.hasHandlers():
         return logger
 
-    formatter = logging.Formatter('[%(asctime)s] [%(name)s] %(levelname)s: %(message)s', datefmt='%H:%M:%S')
+    formatter = logging.Formatter(
+        "[%(asctime)s] [%(name)s] %(levelname)s: %(message)s", datefmt="%H:%M:%S"
+    )
 
     ch = logging.StreamHandler()
     ch.setFormatter(formatter)
@@ -166,15 +168,19 @@ def get_logger(name: str, log_filename: str = None, level: int = logging.INFO) -
 
     if log_filename:
         file_path = LOGS_DIR / log_filename
-        fh = _InsimRotatingHandler(file_path, maxBytes=1024*1024, backupCount=1, encoding='utf-8')
+        fh = _InsimRotatingHandler(
+            file_path, maxBytes=1024 * 1024, backupCount=1, encoding="utf-8"
+        )
         fh.setFormatter(formatter)
         logger.addHandler(fh)
-    
+
     return logger
+
 
 # ═══════════════════════════════════════════════════════════════════════════
 # FUNCIÓN DE CONFIGURACIÓN CONSOLIDADA
 # ═══════════════════════════════════════════════════════════════════════════
+
 
 def get_config(custom_config: Dict[str, Any] = None) -> Dict[str, Any]:
     """Retorna INSIM_CONFIG fusionado con cualquier override personalizado."""
@@ -194,5 +200,5 @@ try:
 except ImportError:
     pass
 else:
-    INSIM_CONFIG.update(getattr(settings_local, 'INSIM_CONFIG_OVERRIDES', {}))
-    LFS_DIR = getattr(settings_local, 'LFS_DIR', LFS_DIR)
+    INSIM_CONFIG.update(getattr(settings_local, "INSIM_CONFIG_OVERRIDES", {}))
+    LFS_DIR = getattr(settings_local, "LFS_DIR", LFS_DIR)

@@ -6,6 +6,7 @@ pack): a pure function with no socket involved. Sending happens through
 each client's InSimTransport (`client.send(packet)`), so this module holds
 no connection state.
 """
+
 import logging
 import struct
 from .packets import PacketFunctions, ALLOWED_PACKETS
@@ -38,7 +39,9 @@ def encode_packet(packet: PacketFunctions) -> bytes:
     """
     # 1. Safety check: is this a packet LFS accepts from an InSim program?
     if type(packet) not in ALLOWED_PACKETS:
-        raise InSimPacketError(f"Packet {type(packet).__name__} is not in the allowed-send list.")
+        raise InSimPacketError(
+            f"Packet {type(packet).__name__} is not in the allowed-send list."
+        )
 
     # 2. Preparation: adjust strings (multiples of 4) and update Size
     packet.prepare()
@@ -56,16 +59,18 @@ def encode_packet(packet: PacketFunctions) -> bytes:
     try:
         return struct.pack(fmt_string, *values)
     except Exception as e:
-        raise InSimPacketError(f"Error packing {pkt_name}: {e}",
-                               packet_type=pkt_name) from e
+        raise InSimPacketError(
+            f"Error packing {pkt_name}: {e}", packet_type=pkt_name
+        ) from e
 
 
 def _extract_values(obj):
     from dataclasses import fields
+
     extracted = []
 
     for f in fields(obj):
-        fmt_meta = f.metadata.get('fmt')
+        fmt_meta = f.metadata.get("fmt")
         if fmt_meta is None:
             continue
 
@@ -78,7 +83,7 @@ def _extract_values(obj):
         # variable strings resolve their format from len(val).
         if isinstance(val, str):
             # latin-1 is the LFS wire encoding (1 byte per char)
-            extracted.append(val.encode('latin-1', 'replace'))
+            extracted.append(val.encode("latin-1", "replace"))
 
         # --- VARIABLE LISTS AND TUPLES ---
         elif isinstance(fmt_meta, tuple):
@@ -86,7 +91,7 @@ def _extract_values(obj):
             actual_items = val if val is not None else []
 
             # A string ('s', limit) was already handled above
-            if inner_fmt == 's':
+            if inner_fmt == "s":
                 pass
             else:
                 # No padding here: process up to the declared limit
@@ -97,7 +102,7 @@ def _extract_values(obj):
                     items_to_process = actual_items
 
                 for item in items_to_process:
-                    if hasattr(item, 'get_fmt'):
+                    if hasattr(item, "get_fmt"):
                         extracted.extend(_extract_values(item))
                     elif isinstance(item, (tuple, list)):
                         # Multi-value item (e.g. an IP as (192,168,1,1) for '4B')
@@ -114,21 +119,23 @@ def _extract_values(obj):
                 item = items[i] if i < len(items) else None
                 if isinstance(slot_fmt, type):
                     # Sub-struct slot (e.g. CarHCP in ISP_HCP)
-                    extracted.extend(_extract_values(item if item is not None else slot_fmt()))
+                    extracted.extend(
+                        _extract_values(item if item is not None else slot_fmt())
+                    )
                 elif item is None:
                     extracted.append(0)
-                elif hasattr(item, 'value'):   # Enum
+                elif hasattr(item, "value"):  # Enum
                     extracted.append(int(item.value))
                 else:
                     extracted.append(item)
 
         # --- SUB-STRUCTS ---
-        elif hasattr(val, 'get_fmt'):
+        elif hasattr(val, "get_fmt"):
             extracted.extend(_extract_values(val))
 
         # --- PRIMITIVES (Enums become plain ints) ---
         else:
-            if hasattr(val, 'value'):   # Enum
+            if hasattr(val, "value"):  # Enum
                 extracted.append(int(val.value))
             else:
                 extracted.append(val)

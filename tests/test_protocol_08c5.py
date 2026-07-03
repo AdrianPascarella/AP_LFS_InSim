@@ -3,11 +3,19 @@
 Cubre: ISP_SET (nuevo paquete 70), ISF.SET, NPL.RIFlags (antes Sp2) + RIF/SAI,
 CCI.RETIRED, NLP_MAX_CARS=48 y los nuevos HOSTF.
 """
+
 import struct
 import pytest
 
 from lfs_insim.insim_enums import (
-    ISP, ISF, CCI, HOSTF, RIF, SAI, RIF_SAI_SHIFTS, LFS_LIMITS,
+    ISP,
+    ISF,
+    CCI,
+    HOSTF,
+    RIF,
+    SAI,
+    RIF_SAI_SHIFTS,
+    LFS_LIMITS,
 )
 from lfs_insim.packets import ISP_SET, ISP_NPL, INSIM_PACKETS
 from lfs_insim.insim_packet_decoders import decode_packet
@@ -59,11 +67,11 @@ class TestISPSet:
     def test_decode_desde_bytes(self):
         setup = bytes(range(120))
         data = (
-            bytes([136 // 4, 70, 0, 5])   # Size, Type=ISP_SET, ReqI, PLID=5
-            + b"XRT\x00"                  # CName (skin prefix)
-            + struct.pack("<I", 0)        # Spare
-            + bytes([55, 0, 0, 0])        # FuelLoad=55, Sp1-3
-            + setup                       # Setup[120]
+            bytes([136 // 4, 70, 0, 5])  # Size, Type=ISP_SET, ReqI, PLID=5
+            + b"XRT\x00"  # CName (skin prefix)
+            + struct.pack("<I", 0)  # Spare
+            + bytes([55, 0, 0, 0])  # FuelLoad=55, Sp1-3
+            + setup  # Setup[120]
         )
         assert len(data) == 136
 

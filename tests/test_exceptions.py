@@ -1,4 +1,5 @@
 """Tests for the custom exception hierarchy."""
+
 import pytest
 from lfs_insim.exceptions import (
     InSimError,
@@ -56,7 +57,9 @@ class TestConnectionError:
 
 class TestPacketError:
     def test_metadata_stored(self):
-        e = InSimPacketError("bad packet", packet_type="ISP_ISI", packet_size=44, data=b"\x00")
+        e = InSimPacketError(
+            "bad packet", packet_type="ISP_ISI", packet_size=44, data=b"\x00"
+        )
         assert e.packet_type == "ISP_ISI"
         assert e.packet_size == 44
         assert e.data == b"\x00"

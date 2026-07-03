@@ -18,12 +18,12 @@ class FreeroamMode(AINavModeState):
 
     # 1. Localización Topológica (¿Dónde estoy?)
     current_id: Optional[str] = None
-    current_type: Optional[Literal['Road', 'RoadLink', 'LatLink']] = None
+    current_type: Optional[Literal["Road", "RoadLink", "LatLink"]] = None
     node_index: int = 0
 
     # 2. Planificación de enlaces y Micronavegación
     next_link_id: Optional[str] = None
-    next_link_type: Optional[Literal['RoadLink', 'LatLink']] = None
+    next_link_type: Optional[Literal["RoadLink", "LatLink"]] = None
     current_road_id: Optional[str] = None
     previous_road_id: Optional[str] = None
 
@@ -65,13 +65,15 @@ class FreeroamMode(AINavModeState):
         self._blinker_min_duration: float = 3.0
 
         # FSM de adelantamiento — inicialización garantizada en construcción
-        self.overtake_state: str = 'IDLE'
+        self.overtake_state: str = "IDLE"
         self.overtake_cooldown: float = 0.0
         self.overtake_target_plid: Optional[int] = None
         self.overtake_fast_lane_id: Optional[str] = None
         self.overtake_return_lane_id: Optional[str] = None
         self.overtake_lat_link_id: Optional[str] = None
-        self.overtake_change_lane: bool = False  # Traffic lo activa; nav ejecuta el cambio y lo desactiva
+        self.overtake_change_lane: bool = (
+            False  # Traffic lo activa; nav ejecuta el cambio y lo desactiva
+        )
         self._overtake_no_return_until: float = 0.0
         self._fast_lane_logged: bool = False
         self._passing_start_time: float = 0.0

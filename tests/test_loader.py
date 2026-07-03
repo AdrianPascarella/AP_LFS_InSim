@@ -12,6 +12,7 @@ sin conexión a LFS: instanciar un InSimApp no abre sockets ni toca el
 estado global (ya no existe el "coup d'état": el único cliente lo crea el
 loader de forma perezosa).
 """
+
 import json
 import sys
 
@@ -21,12 +22,7 @@ import lfs_insim.insim_state as state
 from lfs_insim.exceptions import InSimModuleError
 from lfs_insim.insim_loader import InSimLoader, _check_version, _parse_version
 
-CODIGO_MINIMO = (
-    "from lfs_insim import InSimApp\n"
-    "\n"
-    "class {clase}(InSimApp):\n"
-    "    pass\n"
-)
+CODIGO_MINIMO = "from lfs_insim import InSimApp\n\nclass {clase}(InSimApp):\n    pass\n"
 
 
 class _FabricaInsims:
@@ -79,7 +75,6 @@ def _loader(fabrica) -> InSimLoader:
 
 
 class TestCargaBasica:
-
     def test_carga_simple(self, fabrica):
         fabrica.crear("solo_mod", version="2.1.0")
         loader = _loader(fabrica)
@@ -87,10 +82,10 @@ class TestCargaBasica:
         instancia = loader.load("solo_mod")
 
         assert type(instancia).__name__ == "SoloMod"
-        assert instancia.version == "2.1.0"          # leída del manifiesto
+        assert instancia.version == "2.1.0"  # leída del manifiesto
         assert loader._instances["solo_mod"] is instancia
-        assert loader.client.apps == [instancia]      # registrada en el cliente
-        assert instancia.client is loader.client      # y con el cliente asignado
+        assert loader.client.apps == [instancia]  # registrada en el cliente
+        assert instancia.client is loader.client  # y con el cliente asignado
 
     def test_carga_con_entry_point_init(self, fabrica):
         fabrica.crear("init_mod", entry="__init__.py")
@@ -108,7 +103,7 @@ class TestCargaBasica:
         segunda = loader.load("cacheado")
 
         assert primera is segunda
-        assert loader.client.apps == [primera]        # registrada una sola vez
+        assert loader.client.apps == [primera]  # registrada una sola vez
 
     def test_discover_lista_los_insims(self, fabrica):
         fabrica.crear("mod_uno")
@@ -126,35 +121,36 @@ class TestConfigDelLoader:
     """P14: el loader propaga la config al cliente perezoso y a las apps."""
 
     def test_config_llega_al_cliente_perezoso(self, fabrica):
-        loader = InSimLoader(insims_path=fabrica.insims_dir,
-                             config={'prefix': '$', 'tcp_port': 12345})
+        loader = InSimLoader(
+            insims_path=fabrica.insims_dir, config={"prefix": "$", "tcp_port": 12345}
+        )
 
-        assert loader.client.config['prefix'] == '$'
-        assert loader.client.config['tcp_port'] == 12345
-        assert loader.client.config['insim_ver'] == 10   # defaults intactos
+        assert loader.client.config["prefix"] == "$"
+        assert loader.client.config["tcp_port"] == 12345
+        assert loader.client.config["insim_ver"] == 10  # defaults intactos
 
     def test_apps_heredan_la_config_del_cliente(self, fabrica):
         fabrica.crear("con_config")
-        loader = InSimLoader(insims_path=fabrica.insims_dir,
-                             config={'prefix': '$'})
+        loader = InSimLoader(insims_path=fabrica.insims_dir, config={"prefix": "$"})
 
         app = loader.load("con_config")
 
-        assert app.config['prefix'] == '$'
+        assert app.config["prefix"] == "$"
 
     def test_cliente_inyectado_manda_sobre_la_config_del_loader(self, fabrica):
         from lfs_insim.insim_client import InSimClient
 
         fabrica.crear("con_cliente")
-        mi_cliente = InSimClient(config={'prefix': '&'})
-        loader = InSimLoader(insims_path=fabrica.insims_dir,
-                             client=mi_cliente, config={'prefix': '$'})
+        mi_cliente = InSimClient(config={"prefix": "&"})
+        loader = InSimLoader(
+            insims_path=fabrica.insims_dir, client=mi_cliente, config={"prefix": "$"}
+        )
 
         app = loader.load("con_cliente")
 
         # Con cliente inyectado, la config del loader se ignora (documentado):
         # las apps heredan la config efectiva del cliente.
-        assert app.config['prefix'] == '&'
+        assert app.config["prefix"] == "&"
 
 
 class TestRegistroEnCliente:
@@ -164,11 +160,11 @@ class TestRegistroEnCliente:
         fabrica.crear("cualquiera")
         loader = _loader(fabrica)
 
-        cliente = loader.client            # se crea en el primer acceso
+        cliente = loader.client  # se crea en el primer acceso
         loader.load("cualquiera")
 
-        assert loader.client is cliente    # y es siempre el mismo
-        assert state.get_insim_client() is cliente   # registrado como global
+        assert loader.client is cliente  # y es siempre el mismo
+        assert state.get_insim_client() is cliente  # registrado como global
 
     def test_se_puede_inyectar_un_cliente_propio(self, fabrica):
         from lfs_insim.insim_client import InSimClient
@@ -219,7 +215,6 @@ class TestRegistroEnCliente:
 
 
 class TestFallosDeCarga:
-
     def test_modulo_inexistente(self, fabrica):
         loader = _loader(fabrica)
         with pytest.raises(InSimModuleError, match="InSim not found"):
@@ -281,12 +276,11 @@ class TestFallosDeCarga:
         fabrica.crear("optimista", deps={"dep_fantasma": ">=1.0.0"})
         loader = _loader(fabrica)
 
-        with pytest.raises(InSimModuleError,
-                           match="dependency 'dep_fantasma' failed"):
+        with pytest.raises(InSimModuleError, match="dependency 'dep_fantasma' failed"):
             loader.load("optimista")
 
         assert "optimista" not in loader._instances
-        assert loader.client.apps == []          # nada quedó registrado
+        assert loader.client.apps == []  # nada quedó registrado
 
     def test_fail_fast_encadena_dependencias_transitivas(self, fabrica):
         # El mensaje encadena la ruta: nieto ← hijo ← dependencia rota
@@ -294,33 +288,39 @@ class TestFallosDeCarga:
         fabrica.crear("nieto", deps={"hijo": ">=1.0.0"})
         loader = _loader(fabrica)
 
-        with pytest.raises(InSimModuleError,
-                           match="Cannot load 'nieto'.*Cannot load 'hijo'"):
+        with pytest.raises(
+            InSimModuleError, match="Cannot load 'nieto'.*Cannot load 'hijo'"
+        ):
             loader.load("nieto")
 
 
 class TestVersionHelpers:
-
-    @pytest.mark.parametrize("texto, esperado", [
-        ("1.2.3", (1, 2, 3)),
-        ("1.2", (1, 2, 0)),
-        ("2", (2, 0, 0)),
-        ("1.2.3-beta", (1, 2, 3)),   # el sufijo pre-release se descarta
-        ("abc", (0, 0, 0)),          # texto no numérico → 0
-    ])
+    @pytest.mark.parametrize(
+        "texto, esperado",
+        [
+            ("1.2.3", (1, 2, 3)),
+            ("1.2", (1, 2, 0)),
+            ("2", (2, 0, 0)),
+            ("1.2.3-beta", (1, 2, 3)),  # el sufijo pre-release se descarta
+            ("abc", (0, 0, 0)),  # texto no numérico → 0
+        ],
+    )
     def test_parse_version(self, texto, esperado):
         assert _parse_version(texto) == esperado
 
-    @pytest.mark.parametrize("actual, constraint, esperado", [
-        ("1.2.3", ">=1.0.0", True),
-        ("1.0.0", ">=2.0.0", False),
-        ("1.2.3", "==1.2.3", True),
-        ("1.2.3", "1.2.3", True),    # sin operador = igualdad exacta
-        ("1.2.3", "!=1.2.3", False),
-        ("2.0.0", "<3.0.0", True),
-        ("3.0.0", "<=3.0.0", True),
-        ("3.0.1", ">3.0.0", True),
-        ("1.2.3", "", True),         # constraint vacío = siempre válido
-    ])
+    @pytest.mark.parametrize(
+        "actual, constraint, esperado",
+        [
+            ("1.2.3", ">=1.0.0", True),
+            ("1.0.0", ">=2.0.0", False),
+            ("1.2.3", "==1.2.3", True),
+            ("1.2.3", "1.2.3", True),  # sin operador = igualdad exacta
+            ("1.2.3", "!=1.2.3", False),
+            ("2.0.0", "<3.0.0", True),
+            ("3.0.0", "<=3.0.0", True),
+            ("3.0.1", ">3.0.0", True),
+            ("1.2.3", "", True),  # constraint vacío = siempre válido
+        ],
+    )
     def test_check_version(self, actual, constraint, esperado):
         assert _check_version(actual, constraint) is esperado

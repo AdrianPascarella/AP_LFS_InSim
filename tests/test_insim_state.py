@@ -5,6 +5,7 @@ creado como "cliente por defecto" para las clases auxiliares que usan
 PacketSenderMixin sin estar registradas en un cliente. Los sockets ya no
 viven aquí (cada cliente tiene su InSimTransport).
 """
+
 import pytest
 import lfs_insim.insim_state as state
 

@@ -4,12 +4,22 @@ y muestran la respuesta cuando LFS la devuelve.
 Cubre: VER, STA, ISM, RST, AXI, NLP, NCI, MAL, PLH, IPB, RIP, PING,
        REO, CPP, AII.
 """
+
 from __future__ import annotations
 from typing import TYPE_CHECKING
 from lfs_insim.packets import *
 from lfs_insim.utils import CMDManager, TextColors as c
 from lfs_insim.insim_enums import (
-    RAINPR, HG, SMPR, RIP as RIP_ERR, VIEW, GEAR, AI_FLAGS, DL, SMALL, TINY,
+    RAINPR,
+    HG,
+    SMPR,
+    RIP as RIP_ERR,
+    VIEW,
+    GEAR,
+    AI_FLAGS,
+    DL,
+    SMALL,
+    TINY,
 )
 
 if TYPE_CHECKING:
@@ -25,24 +35,113 @@ def _ms(secs: int) -> str:
 
 
 class _RequestMixin(_Base):
-
     def _reg_request_cmds(self, cmds: CMDManager) -> None:
-        (cmds
-         .add_cmd("ver",  "Solicita ISP_VER (version LFS)",        None, self._cmd_ver,  is_mso_required=False)
-         .add_cmd("sta",  "Solicita ISP_STA (estado del juego)",   None, self._cmd_sta,  is_mso_required=False)
-         .add_cmd("ism",  "Solicita ISP_ISM (info multijugador)",  None, self._cmd_ism,  is_mso_required=False)
-         .add_cmd("rst",  "Solicita ISP_RST (configuracion carrera)", None, self._cmd_rst, is_mso_required=False)
-         .add_cmd("axi",  "Solicita ISP_AXI (info layout autocross)", None, self._cmd_axi, is_mso_required=False)
-         .add_cmd("nlp",  "Solicita ISP_NLP (nodo/vuelta de coches)", None, self._cmd_nlp, is_mso_required=False)
-         .add_cmd("nci",  "Solicita ISP_NCI (info extra conexiones)", None, self._cmd_nci, is_mso_required=False)
-         .add_cmd("mal",  "Solicita ISP_MAL (mods permitidos)",    None, self._cmd_mal,  is_mso_required=False)
-         .add_cmd("plh",  "Solicita ISP_PLH (handicaps jugadores)", None, self._cmd_plh,  is_mso_required=False)
-         .add_cmd("ipb",  "Solicita ISP_IPB (IPs baneadas)",       None, self._cmd_ipb,  is_mso_required=False)
-         .add_cmd("rip",  "Solicita ISP_RIP (info replay)",        None, self._cmd_rip,  is_mso_required=False)
-         .add_cmd("ping", "Envia TINY_PING y espera TINY_REPLY",   None, self._cmd_ping, is_mso_required=False)
-         .add_cmd("reo",  "Solicita ISP_REO (orden de parrilla)",  None, self._cmd_reo,  is_mso_required=False)
-         .add_cmd("cpp",  "Solicita ISP_CPP (posicion camara)",    None, self._cmd_cpp,  is_mso_required=False)
-         .add_cmd("aii",  "Solicita ISP_AII (info IA local)",      None, self._cmd_aii,  is_mso_required=False)
+        (
+            cmds.add_cmd(
+                "ver",
+                "Solicita ISP_VER (version LFS)",
+                None,
+                self._cmd_ver,
+                is_mso_required=False,
+            )
+            .add_cmd(
+                "sta",
+                "Solicita ISP_STA (estado del juego)",
+                None,
+                self._cmd_sta,
+                is_mso_required=False,
+            )
+            .add_cmd(
+                "ism",
+                "Solicita ISP_ISM (info multijugador)",
+                None,
+                self._cmd_ism,
+                is_mso_required=False,
+            )
+            .add_cmd(
+                "rst",
+                "Solicita ISP_RST (configuracion carrera)",
+                None,
+                self._cmd_rst,
+                is_mso_required=False,
+            )
+            .add_cmd(
+                "axi",
+                "Solicita ISP_AXI (info layout autocross)",
+                None,
+                self._cmd_axi,
+                is_mso_required=False,
+            )
+            .add_cmd(
+                "nlp",
+                "Solicita ISP_NLP (nodo/vuelta de coches)",
+                None,
+                self._cmd_nlp,
+                is_mso_required=False,
+            )
+            .add_cmd(
+                "nci",
+                "Solicita ISP_NCI (info extra conexiones)",
+                None,
+                self._cmd_nci,
+                is_mso_required=False,
+            )
+            .add_cmd(
+                "mal",
+                "Solicita ISP_MAL (mods permitidos)",
+                None,
+                self._cmd_mal,
+                is_mso_required=False,
+            )
+            .add_cmd(
+                "plh",
+                "Solicita ISP_PLH (handicaps jugadores)",
+                None,
+                self._cmd_plh,
+                is_mso_required=False,
+            )
+            .add_cmd(
+                "ipb",
+                "Solicita ISP_IPB (IPs baneadas)",
+                None,
+                self._cmd_ipb,
+                is_mso_required=False,
+            )
+            .add_cmd(
+                "rip",
+                "Solicita ISP_RIP (info replay)",
+                None,
+                self._cmd_rip,
+                is_mso_required=False,
+            )
+            .add_cmd(
+                "ping",
+                "Envia TINY_PING y espera TINY_REPLY",
+                None,
+                self._cmd_ping,
+                is_mso_required=False,
+            )
+            .add_cmd(
+                "reo",
+                "Solicita ISP_REO (orden de parrilla)",
+                None,
+                self._cmd_reo,
+                is_mso_required=False,
+            )
+            .add_cmd(
+                "cpp",
+                "Solicita ISP_CPP (posicion camara)",
+                None,
+                self._cmd_cpp,
+                is_mso_required=False,
+            )
+            .add_cmd(
+                "aii",
+                "Solicita ISP_AII (info IA local)",
+                None,
+                self._cmd_aii,
+                is_mso_required=False,
+            )
         )
 
     # --- Comandos ---
@@ -110,34 +209,46 @@ class _RequestMixin(_Base):
     # --- Handlers de respuesta ---
 
     def on_ISP_VER(self, packet: ISP_VER):
-        self.send_ISP_MSL(Msg=f"{c.GREEN}[VER] {packet.Product} v{packet.Version} InSimVer={packet.InSimVer}")
+        self.send_ISP_MSL(
+            Msg=f"{c.GREEN}[VER] {packet.Product} v{packet.Version} InSimVer={packet.InSimVer}"
+        )
 
     def on_ISP_STA(self, packet: ISP_STA):
         try:
             race = RAINPR(packet.RaceInProg).name
         except ValueError:
             race = str(int(packet.RaceInProg))
-        self.send_ISP_MSL(Msg=f"{c.GREEN}[STA] {packet.Track} | {race} | {packet.NumP}j {packet.NumConns}c")
+        self.send_ISP_MSL(
+            Msg=f"{c.GREEN}[STA] {packet.Track} | {race} | {packet.NumP}j {packet.NumConns}c"
+        )
 
     def on_ISP_ISM(self, packet: ISP_ISM):
         role = HG(packet.Host).name.capitalize()
         self.send_ISP_MSL(Msg=f"{c.GREEN}[ISM] {role}: {packet.Hname}")
 
     def on_ISP_RST(self, packet: ISP_RST):
-        self.send_ISP_MSL(Msg=f"{c.GREEN}[RST] {packet.Track} | Vueltas={packet.RaceLaps} | Coches={packet.NumP}")
+        self.send_ISP_MSL(
+            Msg=f"{c.GREEN}[RST] {packet.Track} | Vueltas={packet.RaceLaps} | Coches={packet.NumP}"
+        )
 
     def on_ISP_AXI(self, packet: ISP_AXI):
         name = packet.LName or "(sin layout)"
-        self.send_ISP_MSL(Msg=f"{c.GREEN}[AXI] '{name}' | Objetos={packet.NumO} | CPs={packet.NumCP}")
+        self.send_ISP_MSL(
+            Msg=f"{c.GREEN}[AXI] '{name}' | Objetos={packet.NumO} | CPs={packet.NumCP}"
+        )
 
     def on_ISP_NLP(self, packet: ISP_NLP):
         self.send_ISP_MSL(Msg=f"{c.GREEN}[NLP] {packet.NumP} coches:")
         for info in packet.Info:
-            self.send_ISP_MSL(Msg=f"  PLID {info.PLID} | Nodo {info.Node} | Vuelta {info.Lap} | Pos {info.Position}")
+            self.send_ISP_MSL(
+                Msg=f"  PLID {info.PLID} | Nodo {info.Node} | Vuelta {info.Lap} | Pos {info.Position}"
+            )
 
     def on_ISP_NCI(self, packet: ISP_NCI):
         ip = f"{(packet.IPAddress >> 24) & 0xFF}.{(packet.IPAddress >> 16) & 0xFF}.{(packet.IPAddress >> 8) & 0xFF}.{packet.IPAddress & 0xFF}"
-        self.send_ISP_MSL(Msg=f"{c.GREEN}[NCI] UCID {packet.UCID} | UserID={packet.UserID} | IP={ip}")
+        self.send_ISP_MSL(
+            Msg=f"{c.GREEN}[NCI] UCID {packet.UCID} | UserID={packet.UserID} | IP={ip}"
+        )
 
     def on_ISP_MAL(self, packet: ISP_MAL):
         self.send_ISP_MSL(Msg=f"{c.GREEN}[MAL] {packet.NumM} mods permitidos")
@@ -155,10 +266,12 @@ class _RequestMixin(_Base):
         except ValueError:
             playing = str(int(packet.MPR))
             error = str(int(packet.Error))
-        self.send_ISP_MSL(Msg=f"{c.GREEN}[RIP] {playing} | '{packet.RName}' | Error={error}")
+        self.send_ISP_MSL(
+            Msg=f"{c.GREEN}[RIP] {playing} | '{packet.RName}' | Error={error}"
+        )
 
     def on_ISP_REO(self, packet: ISP_REO):
-        plids = [p for p in packet.PLID[:packet.NumP] if p != 0]
+        plids = [p for p in packet.PLID[: packet.NumP] if p != 0]
         self.send_ISP_MSL(Msg=f"{c.GREEN}[REO] {packet.NumP} coches | PLIDs: {plids}")
 
     def on_ISP_CPP(self, packet: ISP_CPP):
@@ -166,14 +279,18 @@ class _RequestMixin(_Base):
             cam = VIEW(packet.InGameCam).name
         except ValueError:
             cam = str(int(packet.InGameCam))
-        self.send_ISP_MSL(Msg=f"{c.GREEN}[CPP] Cam={cam} PLID={packet.ViewPLID} FOV={packet.FOV:.1f}")
+        self.send_ISP_MSL(
+            Msg=f"{c.GREEN}[CPP] Cam={cam} PLID={packet.ViewPLID} FOV={packet.FOV:.1f}"
+        )
 
     def on_ISP_AII(self, packet: ISP_AII):
         try:
             gear = GEAR(packet.Gear).name
         except ValueError:
             gear = str(int(packet.Gear))
-        self.send_ISP_MSL(Msg=f"{c.GREEN}[AII] PLID={packet.PLID} RPM={packet.RPM:.0f} Gear={gear}")
+        self.send_ISP_MSL(
+            Msg=f"{c.GREEN}[AII] PLID={packet.PLID} RPM={packet.RPM:.0f} Gear={gear}"
+        )
 
     def on_ISP_TINY(self, packet: ISP_TINY):
         if packet.SubT == TINY.REPLY:

@@ -1,4 +1,5 @@
 """Tests for PacketFunctions: serialization, string padding, size calculation."""
+
 import struct
 import pytest
 from lfs_insim.packets import ISP_TINY, ISP_SMALL, ISP_ISI, ISP_MSO

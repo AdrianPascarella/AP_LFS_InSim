@@ -1,4 +1,5 @@
 """Tests for utility functions: unit conversions, geometry, colors, PID."""
+
 import math
 import pytest
 from lfs_insim.utils import (
@@ -63,7 +64,10 @@ class TestLfsPosToMeters:
 
     def test_roundtrip(self):
         original = 131072
-        assert lfs_pos_to_meters(lfs_pos_to_meters(original, rev=False), rev=True) == original
+        assert (
+            lfs_pos_to_meters(lfs_pos_to_meters(original, rev=False), rev=True)
+            == original
+        )
 
 
 class TestLfsSpeedToKmh:
@@ -255,7 +259,7 @@ class TestPIDController:
 
     def test_derivative_on_second_run(self):
         pid = PIDController(kp=0.0, ki=0.0, kd=1.0)
-        pid.update(target=0, current=0, dt=0.1)    # first run: sets prev_current=0
+        pid.update(target=0, current=0, dt=0.1)  # first run: sets prev_current=0
         result = pid.update(target=0, current=1, dt=0.1)  # current increased by 1
         # d_term = -kd * (current - prev) / dt = -1.0 * (1 - 0) / 0.1 = -10 → clamped -1.0
         assert result == pytest.approx(-1.0)

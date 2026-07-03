@@ -21,24 +21,30 @@ class PacketSenderMixin:
     """
 
     def send(self, packet) -> None:
-        client = getattr(self, 'client', None)
+        client = getattr(self, "client", None)
         if client is None:
             from lfs_insim.insim_state import get_insim_client
+
             client = get_insim_client()
         if client is None:
             from lfs_insim.exceptions import InSimConnectionError
+
             raise InSimConnectionError(
                 "No client available to send the packet: register the app with "
-                "client.register(app) or create an InSimClient first.")
+                "client.register(app) or create an InSimClient first."
+            )
         client.send(packet)
 
     def __getattr__(self, name: str):
-        if name.startswith('send_ISP_'):
+        if name.startswith("send_ISP_"):
             packet_name = name[5:]  # extracts 'ISP_XXX'
             from lfs_insim import packets as _packets
+
             packet_class = getattr(_packets, packet_name, None)
             if packet_class is None:
-                raise AttributeError(f"Packet '{packet_name}' does not exist in the protocol.")
+                raise AttributeError(
+                    f"Packet '{packet_name}' does not exist in the protocol."
+                )
 
             def _send_wrapper(**kwargs):
                 self.send(packet_class(**kwargs))

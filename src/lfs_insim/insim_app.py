@@ -24,6 +24,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+
 class InSimApp(PacketSenderMixin):
     """
     Base class for every framework module.
@@ -44,7 +45,7 @@ class InSimApp(PacketSenderMixin):
         self,
         config: Optional[dict] = None,
         name: Optional[str] = None,
-        _loader: Optional['InSimLoader'] = None,
+        _loader: Optional["InSimLoader"] = None,
         _insim_path: Optional[Path] = None,
     ):
         self.config = build_config(config)
@@ -54,11 +55,11 @@ class InSimApp(PacketSenderMixin):
         self.logger = logging.getLogger(f"InSim.{self.name}")
 
         # Set by InSimClient.register(); apps must not create clients
-        self.client: Optional['InSimClient'] = None
+        self.client: Optional["InSimClient"] = None
 
         self._loader = _loader
         self._insim_path = _insim_path
-        self._module_instances: Dict[str, 'InSimApp'] = {}
+        self._module_instances: Dict[str, "InSimApp"] = {}
 
         # Copy the class-level dependency list so _load_metadata() does not
         # mutate the attribute shared by every module.
@@ -81,7 +82,7 @@ class InSimApp(PacketSenderMixin):
         manifest_path = self._insim_path / "insim.json"
         if manifest_path.exists():
             try:
-                with open(manifest_path, 'r', encoding='utf-8') as f:
+                with open(manifest_path, "r", encoding="utf-8") as f:
                     data = json.load(f)
                     self.version = data.get("version", self.version)
                     self.description = data.get("description", self.description)
@@ -93,7 +94,7 @@ class InSimApp(PacketSenderMixin):
             except Exception as e:
                 self.logger.warning(f"Could not load the manifest: {e}")
 
-    def get_insim(self, name: str) -> Optional['InSimApp']:
+    def get_insim(self, name: str) -> Optional["InSimApp"]:
         """
         Return the instance of a module this app depends on.
 
@@ -144,9 +145,16 @@ class InSimApp(PacketSenderMixin):
     # on_disconnect fires when the connection is lost (or the client stops);
     # on_reconnect fires after the client re-establishes the session (the
     # client already resent the ISI and re-requested TINY.NCN/NPL).
-    def on_connect(self): pass
-    def on_disconnect(self): pass
-    def on_reconnect(self): pass
-    def on_tick(self): pass
+    def on_connect(self):
+        pass
+
+    def on_disconnect(self):
+        pass
+
+    def on_reconnect(self):
+        pass
+
+    def on_tick(self):
+        pass
 
     # send() and send_ISP_*() inherited from PacketSenderMixin

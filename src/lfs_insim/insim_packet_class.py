@@ -8,6 +8,7 @@ protocol enums from ``lfs_insim.insim_enums`` instead.
 This module re-exports BOTH namespaces because the old monolithic file
 exposed them together (P15).
 """
+
 import warnings
 
 warnings.warn(
@@ -17,5 +18,5 @@ warnings.warn(
     stacklevel=2,
 )
 
-from lfs_insim.packets import *       # noqa: E402,F401,F403
-from lfs_insim.insim_enums import *   # noqa: E402,F401,F403
+from lfs_insim.packets import *  # noqa: E402,F401,F403
+from lfs_insim.insim_enums import *  # noqa: E402,F401,F403

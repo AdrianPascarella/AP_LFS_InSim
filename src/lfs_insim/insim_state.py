@@ -10,22 +10,23 @@ What remains here is convenience sugar: a reference to the process's
 fallback for helper classes that are not registered to a client
 (e.g. utils.Command / CMDManager).
 """
+
 from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from .insim_client import InSimClient
 
-_default_client: Optional['InSimClient'] = None
+_default_client: Optional["InSimClient"] = None
 
 
-def set_insim_client(client: 'InSimClient') -> None:
+def set_insim_client(client: "InSimClient") -> None:
     """Register the default client. Only the first one wins."""
     global _default_client
     if _default_client is None:
         _default_client = client
 
 
-def get_insim_client() -> Optional['InSimClient']:
+def get_insim_client() -> Optional["InSimClient"]:
     """Return the process's default client (None if none was created)."""
     return _default_client
 

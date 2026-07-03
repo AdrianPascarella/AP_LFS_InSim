@@ -9,7 +9,6 @@ from ._handlers_event import _EventMixin
 
 
 class TestInsim(_RequestMixin, _SendMixin, _EventMixin, InSimApp):
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.cmd_prefix: str = self.config.get("prefix", "!")
@@ -27,13 +26,13 @@ class TestInsim(_RequestMixin, _SendMixin, _EventMixin, InSimApp):
     def set_isi_packet(self):
         super().set_isi_packet()
         self.isi.Flags |= (
-            ISF.LOCAL    |  # eventos de invitado/SP
-            ISF.NLP      |  # paquetes NLP (nodo y vuelta)
-            ISF.MCI      |  # paquetes MCI (telemetria detallada)
-            ISF.CON      |  # colisiones coche-coche
-            ISF.HLV      |  # infracciones HLVC
-            ISF.AXM_LOAD |  # AXM al cargar layout
-            ISF.AXM_EDIT    # AXM al editar objetos
+            ISF.LOCAL  # eventos de invitado/SP
+            | ISF.NLP  # paquetes NLP (nodo y vuelta)
+            | ISF.MCI  # paquetes MCI (telemetria detallada)
+            | ISF.CON  # colisiones coche-coche
+            | ISF.HLV  # infracciones HLVC
+            | ISF.AXM_LOAD  # AXM al cargar layout
+            | ISF.AXM_EDIT  # AXM al editar objetos
         )
 
     def on_connect(self):
@@ -43,9 +42,20 @@ class TestInsim(_RequestMixin, _SendMixin, _EventMixin, InSimApp):
         cmds = CMDManager(self.cmd_prefix, self.cmd_base)
 
         # comandos base: estado interno
-        (cmds
-         .add_cmd("users",   "Lista usuarios conectados",  None, self._cmd_users,   is_mso_required=False)
-         .add_cmd("players", "Lista coches en pista",      None, self._cmd_players, is_mso_required=False)
+        (
+            cmds.add_cmd(
+                "users",
+                "Lista usuarios conectados",
+                None,
+                self._cmd_users,
+                is_mso_required=False,
+            ).add_cmd(
+                "players",
+                "Lista coches en pista",
+                None,
+                self._cmd_players,
+                is_mso_required=False,
+            )
         )
 
         # comandos de peticion request/response
@@ -88,7 +98,9 @@ class TestInsim(_RequestMixin, _SendMixin, _EventMixin, InSimApp):
         }
         if not is_ai and packet.UCID in self.users:
             self.users[packet.UCID]["plid"] = packet.PLID
-        self.logger.info(f"NPL: {'AI ' + packet.PName if is_ai else packet.CName} (PLID {packet.PLID})")
+        self.logger.info(
+            f"NPL: {'AI ' + packet.PName if is_ai else packet.CName} (PLID {packet.PLID})"
+        )
 
     def on_ISP_PLL(self, packet: ISP_PLL):
         player = self.players.pop(packet.PLID, None)
@@ -101,7 +113,9 @@ class TestInsim(_RequestMixin, _SendMixin, _EventMixin, InSimApp):
     def on_ISP_MCI(self, packet: ISP_MCI):
         for car in packet.Info:
             if car.PLID in self.players:
-                self.logger.debug(f"MCI PLID {car.PLID}: speed={car.Speed} node={car.Node} lap={car.Lap}")
+                self.logger.debug(
+                    f"MCI PLID {car.PLID}: speed={car.Speed} node={car.Node} lap={car.Lap}"
+                )
 
     # --- Comandos base ---
 
@@ -116,7 +130,11 @@ class TestInsim(_RequestMixin, _SendMixin, _EventMixin, InSimApp):
             return
         self.send_ISP_MSL(Msg=f"{c.WHITE}=== Usuarios ({len(self.users)}) ===")
         for ucid, u in self.users.items():
-            status = f"{c.GREEN}En pista (PLID {u['plid']})" if u["plid"] else f"{c.YELLOW}Espectador"
+            status = (
+                f"{c.GREEN}En pista (PLID {u['plid']})"
+                if u["plid"]
+                else f"{c.YELLOW}Espectador"
+            )
             self.send_ISP_MSL(Msg=f"UCID {ucid} | {u['uname']} | {status}")
 
     def _cmd_players(self):
@@ -126,7 +144,9 @@ class TestInsim(_RequestMixin, _SendMixin, _EventMixin, InSimApp):
         self.send_ISP_MSL(Msg=f"{c.WHITE}=== Coches en pista ({len(self.players)}) ===")
         for plid, p in self.players.items():
             label = f"AI:{p['ai_name']}" if p["is_ai"] else p["plate"]
-            self.send_ISP_MSL(Msg=f"PLID {plid} | {p['car']} | {label} | UCID {p['ucid']}")
+            self.send_ISP_MSL(
+                Msg=f"PLID {plid} | {p['car']} | {label} | UCID {p['ucid']}"
+            )
 
     def on_disconnect(self):
         self.logger.info(f"Modulo {self.name} desconectado.")

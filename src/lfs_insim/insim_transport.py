@@ -72,7 +72,7 @@ class InSimTransport:
                 target=self._tcp_listen_loop,
                 args=(sock,),
                 name="InSim_TCP_Receiver",
-                daemon=True
+                daemon=True,
             )
             self._tcp_thread.start()
             logger.info(f"Connected to LFS via TCP at {host}:{port}")
@@ -90,7 +90,7 @@ class InSimTransport:
                 target=self._udp_listen_loop,
                 args=(sock, buffer_size),
                 name="InSim_UDP_Receiver",
-                daemon=True
+                daemon=True,
             )
             self._udp_thread.start()
             logger.info(f"Listening for OutSim via UDP on port {port}")
@@ -110,7 +110,11 @@ class InSimTransport:
         """
         sock = self._tcp_sock
         if sock is None:
-            raise InSimConnectionError("Could not send: socket not available (disconnected?)", host=None, port=None)
+            raise InSimConnectionError(
+                "Could not send: socket not available (disconnected?)",
+                host=None,
+                port=None,
+            )
         try:
             with self._send_lock:
                 sock.sendall(data)
@@ -176,7 +180,7 @@ class InSimTransport:
 
     def _udp_listen_loop(self, sock: socket.socket, buffer_size: int = 4096):
         """UDP receive loop (OutSim/OutGauge frames need no reassembly)."""
-        stop = self._stop   # this connection's stop event (see _tcp_listen_loop)
+        stop = self._stop  # this connection's stop event (see _tcp_listen_loop)
         while not stop.is_set():
             try:
                 data, _ = sock.recvfrom(buffer_size)

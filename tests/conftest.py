@@ -8,6 +8,7 @@ todo lo que el cliente le envía. No implementa lógica de protocolo: los
 tests deciden qué bytes reproducir (p. ej. capturas reales o construidos
 según la spec de docs/InSim.txt).
 """
+
 import socket
 import threading
 import time
@@ -35,10 +36,8 @@ class FakeLFS:
         self._conectado = threading.Event()
         self._recibido = bytearray()
         self._lock = threading.Lock()
-        self.conexiones = 0   # nº de conexiones aceptadas hasta ahora
-        self._hilo = threading.Thread(
-            target=self._atender, name="FakeLFS", daemon=True
-        )
+        self.conexiones = 0  # nº de conexiones aceptadas hasta ahora
+        self._hilo = threading.Thread(target=self._atender, name="FakeLFS", daemon=True)
         self._hilo.start()
 
     def _atender(self):

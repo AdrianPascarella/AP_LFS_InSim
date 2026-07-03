@@ -8,6 +8,7 @@ from insims.ai_control.nav_modes import AINavModeState
 @dataclass
 class RouteMode(AINavModeState):
     """Estado exclusivo del modo de Rutas."""
+
     active_route_name: Optional[str] = None
     route_wp_index: int = 0
     route_started: bool = False

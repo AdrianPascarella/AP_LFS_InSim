@@ -1,4 +1,5 @@
 """Tests for ISP_NCN and ISP_CNL handlers."""
+
 from lfs_insim.packets import ISP_NCN, ISP_CNL
 
 

@@ -5,6 +5,7 @@ in InSimClient._on_raw_bytes() (P13: moved here from the old
 insim_packet_io._process_raw_bytes), and the post-decode filter in
 _dispatch_packet().
 """
+
 import struct
 from unittest.mock import MagicMock, patch, call
 import pytest
@@ -18,6 +19,7 @@ from lfs_insim.packets import INSIM_PACKETS
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_client():
     """InSimClient with a clean default-client slot (construction opens no sockets)."""
@@ -48,8 +50,8 @@ def _make_udp_bytes(size: int = 10) -> bytes:
 # _build_active_handlers: handler discovery
 # ---------------------------------------------------------------------------
 
-class TestBuildActiveHandlers:
 
+class TestBuildActiveHandlers:
     def setup_method(self):
         state.reset_insim_client()
 
@@ -61,24 +63,32 @@ class TestBuildActiveHandlers:
 
         class ModA:
             name = "ModA"
-            def on_ISP_MCI(self, p): pass
-            def on_ISP_MSO(self, p): pass
+
+            def on_ISP_MCI(self, p):
+                pass
+
+            def on_ISP_MSO(self, p):
+                pass
 
         mod = ModA()
         client.apps.append(mod)
         client._build_active_handlers()
 
-        assert 'on_ISP_MCI' in client._active_handler_names
-        assert 'on_ISP_MSO' in client._active_handler_names
+        assert "on_ISP_MCI" in client._active_handler_names
+        assert "on_ISP_MSO" in client._active_handler_names
 
     def test_collects_corresponding_type_ids(self):
         client = _make_client()
 
-        mci_id = next(tid for tid, cls in INSIM_PACKETS.items() if cls.__name__ == 'ISP_MCI')
+        mci_id = next(
+            tid for tid, cls in INSIM_PACKETS.items() if cls.__name__ == "ISP_MCI"
+        )
 
         class ModA:
             name = "ModA"
-            def on_ISP_MCI(self, p): pass
+
+            def on_ISP_MCI(self, p):
+                pass
 
         client.apps.append(ModA())
         client._build_active_handlers()
@@ -89,13 +99,13 @@ class TestBuildActiveHandlers:
         client = _make_client()
         client._build_active_handlers()
         assert int(ISP.TINY) in client._active_type_ids
-        assert 'on_ISP_TINY' in client._active_handler_names
+        assert "on_ISP_TINY" in client._active_handler_names
 
     def test_always_includes_ver(self):
         client = _make_client()
         client._build_active_handlers()
         assert int(ISP.VER) in client._active_type_ids
-        assert 'on_ISP_VER' in client._active_handler_names
+        assert "on_ISP_VER" in client._active_handler_names
 
     def test_no_handlers_still_has_tiny_ver(self):
         """Module with zero on_ISP_* still gets TINY and VER."""
@@ -116,7 +126,9 @@ class TestBuildActiveHandlers:
 
         class Base:
             name = "Base"
-            def on_ISP_NCN(self, p): pass
+
+            def on_ISP_NCN(self, p):
+                pass
 
         class Child(Base):
             pass  # no override
@@ -124,34 +136,41 @@ class TestBuildActiveHandlers:
         client.apps.append(Child())
         client._build_active_handlers()
 
-        assert 'on_ISP_NCN' in client._active_handler_names
+        assert "on_ISP_NCN" in client._active_handler_names
 
     def test_handlers_from_multiple_modules_merged(self):
         client = _make_client()
 
         class ModA:
             name = "ModA"
-            def on_ISP_NCN(self, p): pass
+
+            def on_ISP_NCN(self, p):
+                pass
 
         class ModB:
             name = "ModB"
-            def on_ISP_NPL(self, p): pass
+
+            def on_ISP_NPL(self, p):
+                pass
 
         client.apps += [ModA(), ModB()]
         client._build_active_handlers()
 
-        assert 'on_ISP_NCN' in client._active_handler_names
-        assert 'on_ISP_NPL' in client._active_handler_names
+        assert "on_ISP_NCN" in client._active_handler_names
+        assert "on_ISP_NPL" in client._active_handler_names
 
 
 # ---------------------------------------------------------------------------
 # Pre-decode filter in InSimClient._on_raw_bytes
 # ---------------------------------------------------------------------------
 
+
 class TestPreDecodeFilter:
     """Tests that _on_raw_bytes skips decode for inactive packet types."""
 
-    MCI_ID = next(tid for tid, cls in INSIM_PACKETS.items() if cls.__name__ == 'ISP_MCI')
+    MCI_ID = next(
+        tid for tid, cls in INSIM_PACKETS.items() if cls.__name__ == "ISP_MCI"
+    )
 
     def setup_method(self):
         state.reset_insim_client()
@@ -170,7 +189,7 @@ class TestPreDecodeFilter:
         client = self._client_with_registry({int(ISP.TINY), int(ISP.VER)})
         raw = _make_tcp_bytes(self.MCI_ID)
 
-        with patch('lfs_insim.insim_client.decode_packet') as mock_decode:
+        with patch("lfs_insim.insim_client.decode_packet") as mock_decode:
             client._on_raw_bytes(raw)
             mock_decode.assert_not_called()
 
@@ -181,8 +200,12 @@ class TestPreDecodeFilter:
         raw = _make_tcp_bytes(self.MCI_ID)
 
         mock_packet = MagicMock()
-        with patch('lfs_insim.insim_client.decode_packet', return_value=mock_packet) as mock_decode, \
-             patch.object(client, 'on_packet_received') as mock_recv:
+        with (
+            patch(
+                "lfs_insim.insim_client.decode_packet", return_value=mock_packet
+            ) as mock_decode,
+            patch.object(client, "on_packet_received") as mock_recv,
+        ):
             client._on_raw_bytes(raw)
             mock_decode.assert_called_once_with(raw)
             mock_recv.assert_called_once_with(mock_packet)
@@ -193,8 +216,12 @@ class TestPreDecodeFilter:
         raw = _make_udp_bytes(16)
 
         mock_packet = MagicMock()
-        with patch('lfs_insim.insim_client.decode_packet', return_value=mock_packet) as mock_decode, \
-             patch.object(client, 'on_packet_received'):
+        with (
+            patch(
+                "lfs_insim.insim_client.decode_packet", return_value=mock_packet
+            ) as mock_decode,
+            patch.object(client, "on_packet_received"),
+        ):
             client._on_raw_bytes(raw)
             mock_decode.assert_called_once_with(raw)
 
@@ -202,12 +229,16 @@ class TestPreDecodeFilter:
         """Client without _active_type_ids never skips decode (safe default)."""
         client = _make_client()
         # Deliberately do NOT call _build_active_handlers()
-        assert not hasattr(client, '_active_type_ids')
+        assert not hasattr(client, "_active_type_ids")
 
         raw = _make_tcp_bytes(self.MCI_ID)
         mock_packet = MagicMock()
-        with patch('lfs_insim.insim_client.decode_packet', return_value=mock_packet) as mock_decode, \
-             patch.object(client, 'on_packet_received'):
+        with (
+            patch(
+                "lfs_insim.insim_client.decode_packet", return_value=mock_packet
+            ) as mock_decode,
+            patch.object(client, "on_packet_received"),
+        ):
             client._on_raw_bytes(raw)
             mock_decode.assert_called_once_with(raw)
 
@@ -215,6 +246,7 @@ class TestPreDecodeFilter:
 # ---------------------------------------------------------------------------
 # Post-decode filter in _dispatch_packet
 # ---------------------------------------------------------------------------
+
 
 class TestPostDecodeFilter:
     """Tests that _dispatch_packet skips module loop for unregistered handlers."""
@@ -227,34 +259,34 @@ class TestPostDecodeFilter:
 
     def test_skips_execute_handler_for_unregistered_type(self):
         client = _make_client()
-        client._active_handler_names = {'on_ISP_TINY', 'on_ISP_VER'}
+        client._active_handler_names = {"on_ISP_TINY", "on_ISP_VER"}
 
         fake_packet = MagicMock()
-        fake_packet.__class__.__name__ = 'ISP_MCI'
+        fake_packet.__class__.__name__ = "ISP_MCI"
 
-        with patch.object(client, '_execute_handler') as mock_exec:
+        with patch.object(client, "_execute_handler") as mock_exec:
             client._dispatch_packet(fake_packet)
             mock_exec.assert_not_called()
 
     def test_calls_execute_handler_for_registered_type(self):
         client = _make_client()
-        client._active_handler_names = {'on_ISP_TINY', 'on_ISP_MCI'}
+        client._active_handler_names = {"on_ISP_TINY", "on_ISP_MCI"}
 
         fake_packet = MagicMock()
-        fake_packet.__class__.__name__ = 'ISP_MCI'
+        fake_packet.__class__.__name__ = "ISP_MCI"
 
-        with patch.object(client, '_execute_handler') as mock_exec:
+        with patch.object(client, "_execute_handler") as mock_exec:
             client._dispatch_packet(fake_packet)
             assert mock_exec.called
 
     def test_no_registry_dispatches_normally(self):
         """Without _active_handler_names, all packets are dispatched."""
         client = _make_client()
-        assert not hasattr(client, '_active_handler_names')
+        assert not hasattr(client, "_active_handler_names")
 
         fake_packet = MagicMock()
-        fake_packet.__class__.__name__ = 'ISP_MCI'
+        fake_packet.__class__.__name__ = "ISP_MCI"
 
-        with patch.object(client, '_execute_handler') as mock_exec:
+        with patch.object(client, "_execute_handler") as mock_exec:
             client._dispatch_packet(fake_packet)
             assert mock_exec.called

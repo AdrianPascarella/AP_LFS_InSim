@@ -8,9 +8,16 @@ from lfs_insim.insim_enums import CSVAL
 from lfs_insim.utils import calc_dist_3d
 from insims.ai_control.behavior import AIBehavior
 from insims.ai_control.nav_modes.freeroam.mode import FreeroamMode
-from insims.ai_control.nav_modes.freeroam.graph import IntersectionZone, LateralLink, RoadLink, SpecialRule
+from insims.ai_control.nav_modes.freeroam.graph import (
+    IntersectionZone,
+    LateralLink,
+    RoadLink,
+    SpecialRule,
+)
 from insims.ai_control.nav_modes.freeroam.geometry import (
-    calc_dist_point_to_segment_2d, get_dist_to_polygon_edge_2d, is_point_in_polygon_2d
+    calc_dist_point_to_segment_2d,
+    get_dist_to_polygon_edge_2d,
+    is_point_in_polygon_2d,
 )
 from insims.ai_control.nav_modes.freeroam.enums import TrafficRule, AIManeuverState
 from insims.users_management.main import Coordinates
@@ -21,22 +28,24 @@ if TYPE_CHECKING:
 
 
 class _TrafficMixin(_MixinBase):
-    def _scan_lane_ahead(self, ai: AI, mode: FreeroamMode, max_dist_m: float) -> list[tuple[float, float, int]]:
+    def _scan_lane_ahead(
+        self, ai: AI, mode: FreeroamMode, max_dist_m: float
+    ) -> list[tuple[float, float, int]]:
         vehicles_ahead = []
-        
+
         if not ai.player.telemetry:
             return vehicles_ahead
-            
+
         my_coords = ai.player.telemetry.coordinates
-        is_opposing = getattr(mode, 'is_driving_opposing', False)
-        
+        is_opposing = getattr(mode, "is_driving_opposing", False)
+
         # =========================================================
         # [!] OPTIMIZACIÓN 1: Obtener la geometría FUERA del bucle.
         # Si no hay geometría actual válida, ni siquiera iteramos.
         # =========================================================
-        if mode.current_type == 'Road':
+        if mode.current_type == "Road":
             geom = self.map_recorder.roads.get(mode.current_id)
-        elif mode.current_type == 'RoadLink': 
+        elif mode.current_type == "RoadLink":
             geom = self.map_recorder.road_links.get(mode.current_id)
         else:
             geom = None
@@ -46,19 +55,21 @@ class _TrafficMixin(_MixinBase):
 
         # =========================================================
         # [!] OPTIMIZACIÓN 2: Pre-calcular constantes direccionales
-        # Calculamos nuestro vector direccional y nuestra distancia 
+        # Calculamos nuestro vector direccional y nuestra distancia
         # al siguiente nodo UNA sola vez antes de mirar a otros coches.
         # =========================================================
         curr_idx = max(0, min(mode.node_index, len(geom.nodes) - 1))
-        
+
         # Índices para el vector de dirección (Dot Product) y para la distancia (Empates)
         if is_opposing:
             next_idx_dir = max(0, curr_idx - 1)
-            if curr_idx == next_idx_dir: next_idx_dir = min(len(geom.nodes) - 1, curr_idx + 1)
+            if curr_idx == next_idx_dir:
+                next_idx_dir = min(len(geom.nodes) - 1, curr_idx + 1)
             next_idx_dist = max(0, curr_idx - 1)
         else:
             next_idx_dir = min(curr_idx + 1, len(geom.nodes) - 1)
-            if curr_idx == next_idx_dir: next_idx_dir = max(0, curr_idx - 1)
+            if curr_idx == next_idx_dir:
+                next_idx_dir = max(0, curr_idx - 1)
             next_idx_dist = min(curr_idx + 1, len(geom.nodes) - 1)
 
         # A. Vector direccional pre-calculado
@@ -69,14 +80,18 @@ class _TrafficMixin(_MixinBase):
 
         # B. Mi distancia al nodo pre-calculada
         target_node = geom.nodes[next_idx_dist]
-        mi_dist_al_nodo = math.hypot(target_node.x_m - my_coords.x_m, target_node.y_m - my_coords.y_m)
+        mi_dist_al_nodo = math.hypot(
+            target_node.x_m - my_coords.x_m, target_node.y_m - my_coords.y_m
+        )
 
         # =========================================================
         # 1. GENERADOR UNIFICADO
         # =========================================================
         def iter_all_vehicles():
-            for p in self.user_manager.players.values(): yield p, False, None
-            for a in self.user_manager.ais.values(): yield a.player, True, a
+            for p in self.user_manager.players.values():
+                yield p, False, None
+            for a in self.user_manager.ais.values():
+                yield a.player, True, a
 
         # =========================================================
         # 2. ESCANEO Y DETECCIÓN (Bucle Caliente)
@@ -84,18 +99,18 @@ class _TrafficMixin(_MixinBase):
         for other_player, is_ai, other_ai in iter_all_vehicles():
             if other_player.plid == ai.player.plid or not other_player.telemetry:
                 continue
-                
+
             other_coords = other_player.telemetry.coordinates
-            
+
             # [!] OPTIMIZACIÓN 3: Bounding Box Check rápido antes del hypot
             dx = my_coords.x_m - other_coords.x_m
             dy = my_coords.y_m - other_coords.y_m
-            
+
             if abs(dx) > max_dist_m + 15.0 or abs(dy) > max_dist_m + 15.0:
                 continue
 
             fast_dist = math.hypot(dx, dy)
-            if fast_dist > max_dist_m + 15.0: 
+            if fast_dist > max_dist_m + 15.0:
                 continue
 
             other_road_id = None
@@ -104,8 +119,8 @@ class _TrafficMixin(_MixinBase):
             # ---------------------------------------------------------
             # EXTRACCIÓN TOPOLÓGICA
             # ---------------------------------------------------------
-            if is_ai and other_ai and 'aic' in other_ai.extra:
-                other_mode = other_ai.extra['aic'].active_mode
+            if is_ai and other_ai and "aic" in other_ai.extra:
+                other_mode = other_ai.extra["aic"].active_mode
                 if other_mode and other_mode.current_id:
                     other_road_id = other_mode.current_id
                     other_node_index = other_mode.node_index
@@ -113,21 +128,34 @@ class _TrafficMixin(_MixinBase):
                 current_time = time.time()
                 if len(self._radar_human_cache) > 64:
                     self._radar_human_cache = {
-                        plid: d for plid, d in self._radar_human_cache.items()
+                        plid: d
+                        for plid, d in self._radar_human_cache.items()
                         if current_time - d[0] < 10.0
                     }
                 cached_data = self._radar_human_cache.get(other_player.plid)
 
                 if not cached_data or (current_time - cached_data[0]) > 0.1:
-                    ctx = self.map_recorder.get_location_context(other_coords.x_m, other_coords.y_m, other_coords.z_m)
-                    calc_road_id = ctx.link_id if (ctx.link_id and ctx.link_dist < ctx.road_dist) else ctx.road_id
+                    ctx = self.map_recorder.get_location_context(
+                        other_coords.x_m, other_coords.y_m, other_coords.z_m
+                    )
+                    calc_road_id = (
+                        ctx.link_id
+                        if (ctx.link_id and ctx.link_dist < ctx.road_dist)
+                        else ctx.road_id
+                    )
                     calc_node_index = -1
 
                     # [!] OPTIMIZACIÓN 4: Solo calculamos el índice exacto del jugador si comparte nuestra calle
                     if calc_road_id == mode.current_id:
-                        calc_node_index, _ = self._get_closest_node_index(other_coords.x_m, other_coords.y_m, geom.nodes)
+                        calc_node_index, _ = self._get_closest_node_index(
+                            other_coords.x_m, other_coords.y_m, geom.nodes
+                        )
 
-                    self._radar_human_cache[other_player.plid] = (current_time, calc_road_id, calc_node_index)
+                    self._radar_human_cache[other_player.plid] = (
+                        current_time,
+                        calc_road_id,
+                        calc_node_index,
+                    )
                     other_road_id = calc_road_id
                     other_node_index = calc_node_index
                 else:
@@ -139,33 +167,43 @@ class _TrafficMixin(_MixinBase):
             if not other_road_id:
                 continue
 
-            same_segment = (other_road_id == mode.current_id)
+            same_segment = other_road_id == mode.current_id
 
             # Si estamos en un Road y el otro ya está en nuestro próximo RoadLink,
             # lo tratamos como obstáculo adelante (evita pileup en la entrada del link)
             in_our_next_link = (
                 not same_segment
-                and mode.current_type == 'Road'
+                and mode.current_type == "Road"
                 and mode.next_link_id
-                and mode.next_link_type == 'RoadLink'
+                and mode.next_link_type == "RoadLink"
                 and other_road_id == mode.next_link_id
             )
 
             if not same_segment and not in_our_next_link:
                 continue
-                
+
             if same_segment:
-                idx_diff = mode.node_index - other_node_index if is_opposing else other_node_index - mode.node_index
+                idx_diff = (
+                    mode.node_index - other_node_index
+                    if is_opposing
+                    else other_node_index - mode.node_index
+                )
 
                 # Vehículo en nodo inferior = detrás de nosotros → nunca es bloqueante
                 if idx_diff < 0:
                     continue
 
                 if idx_diff == 0:
-                    su_dist_al_nodo = math.hypot(target_node.x_m - other_coords.x_m, target_node.y_m - other_coords.y_m)
+                    su_dist_al_nodo = math.hypot(
+                        target_node.x_m - other_coords.x_m,
+                        target_node.y_m - other_coords.y_m,
+                    )
                     if su_dist_al_nodo > mi_dist_al_nodo:
                         continue
-                    if abs(su_dist_al_nodo - mi_dist_al_nodo) < 0.3 and ai.player.plid < other_player.plid:
+                    if (
+                        abs(su_dist_al_nodo - mi_dist_al_nodo) < 0.3
+                        and ai.player.plid < other_player.plid
+                    ):
                         continue
 
                 elif idx_diff <= 3:
@@ -185,60 +223,68 @@ class _TrafficMixin(_MixinBase):
             # CÁLCULO DE DISTANCIA FINAL
             # ---------------------------------------------------------
             dist_m = calc_dist_3d(
-                my_coords.x_m, my_coords.y_m, my_coords.z_m,
-                other_coords.x_m, other_coords.y_m, other_coords.z_m
+                my_coords.x_m,
+                my_coords.y_m,
+                my_coords.z_m,
+                other_coords.x_m,
+                other_coords.y_m,
+                other_coords.z_m,
             )
 
             if dist_m <= max_dist_m:
-                vehicles_ahead.append((dist_m, other_player.telemetry.speed.speed_kmh, other_player.plid))
+                vehicles_ahead.append(
+                    (dist_m, other_player.telemetry.speed.speed_kmh, other_player.plid)
+                )
 
         # =========================================================
         # 3. ORDENACIÓN
         # =========================================================
         vehicles_ahead.sort(key=lambda x: x[0])
         return vehicles_ahead
-    
+
     def _update_traffic_behavior(self, ai: AI) -> None:
         """
         Orquestador táctico (Navegación Micro).
         Sigue el patrón Sense-Think-Act gestionando su propia frecuencia de escaneo
         y operando la Máquina de Estados de Adelantamiento (FSM).
         """
-        behavior: AIBehavior = ai.extra.get('aic')
-        if not behavior or not ai.player.telemetry: 
+        behavior: AIBehavior = ai.extra.get("aic")
+        if not behavior or not ai.player.telemetry:
             return
-            
+
         mode: FreeroamMode = behavior.active_mode
-        if not mode: 
+        if not mode:
             return
 
         # =========================================================
         # 1. RECUPERAR CONTEXTO ESPACIAL Y ESTADOS
         # =========================================================
         nodes_list = []
-        if mode.current_type == 'Road':
+        if mode.current_type == "Road":
             geom = self.map_recorder.roads.get(mode.current_id)
-        elif mode.current_type == 'RoadLink': 
+        elif mode.current_type == "RoadLink":
             geom = self.map_recorder.road_links.get(mode.current_id)
         else:
             geom = None
-            
-        if not geom or mode.node_index >= len(geom.nodes): 
+
+        if not geom or mode.node_index >= len(geom.nodes):
             return
 
         nodes_list = geom.nodes
-        min_vel = getattr(geom, 'min_speed_kmh', 15.0)
-        limite_vel = getattr(geom, 'speed_limit_kmh', 30.0)
+        min_vel = getattr(geom, "min_speed_kmh", 15.0)
+        limite_vel = getattr(geom, "speed_limit_kmh", 30.0)
 
         # Override de velocidad por SpecialRule activa
         for rule_id in mode.active_special_rules:
             rule = self.map_recorder.special_rules.get(rule_id)
-            if rule and 'speed_limit' in rule.rules:
-                override = rule.rules['speed_limit']
+            if rule and "speed_limit" in rule.rules:
+                override = rule.rules["speed_limit"]
                 limite_vel = min(limite_vel, override)
                 min_vel = min(min_vel, override / 2.0)
 
-        velocidad_base = min_vel + (limite_vel - min_vel) * getattr(mode, 'speed_limit_bias', 0.5)
+        velocidad_base = min_vel + (limite_vel - min_vel) * getattr(
+            mode, "speed_limit_bias", 0.5
+        )
         mode._debug_speed_base = velocidad_base
         my_coords = ai.player.telemetry.coordinates
 
@@ -246,9 +292,8 @@ class _TrafficMixin(_MixinBase):
         # 2. CONTROL DE FRECUENCIA Y PATRÓN SENSE-THINK-ACT
         # =========================================================
         current_time = time.time()
-        
+
         if current_time - mode._last_radar_time >= mode._radar_interval:
-            
             my_speed_ms = max(ai.player.telemetry.speed.speed_kmh / 3.6, 0.1)
             safe_gap_s = behavior.human_safe_gap
             warn_gap_s = behavior.human_warn_gap
@@ -269,30 +314,37 @@ class _TrafficMixin(_MixinBase):
             # ---------------------------------------------------------
             # ESTADO: IDLE (Conducción Normal)
             # ---------------------------------------------------------
-            if mode.overtake_state == 'IDLE':
-
+            if mode.overtake_state == "IDLE":
                 if vehicles_ahead:
                     closest_dist, closest_speed_kmh, closest_plid = vehicles_ahead[0]
 
                     # ACC siempre activo
                     velocidad_segura = self._apply_adaptive_cruise_control(
-                        velocidad_base, closest_speed_kmh, closest_dist, min_dist_m, max_dist_m
+                        velocidad_base,
+                        closest_speed_kmh,
+                        closest_dist,
+                        min_dist_m,
+                        max_dist_m,
                     )
                     mode.blocking_plid = closest_plid
                     mode.blocking_dist = closest_dist
 
                     # Gatillo: coche delante ≥5% más lento, sin cooldown, sin regla bloqueante
                     lane_change_blocked = any(
-                        self.map_recorder.special_rules.get(rid) and
-                        self.map_recorder.special_rules[rid].rules.get('no_lane_change', False)
+                        self.map_recorder.special_rules.get(rid)
+                        and self.map_recorder.special_rules[rid].rules.get(
+                            "no_lane_change", False
+                        )
                         for rid in mode.active_special_rules
                     )
-                    if (not lane_change_blocked
-                            and closest_speed_kmh < velocidad_base * 0.95
-                            and current_time > mode.overtake_cooldown
-                            and closest_dist < max_dist_m):
-                        mode.overtake_state          = 'EVALUATING'
-                        mode.overtake_target_plid    = closest_plid
+                    if (
+                        not lane_change_blocked
+                        and closest_speed_kmh < velocidad_base * 0.95
+                        and current_time > mode.overtake_cooldown
+                        and closest_dist < max_dist_m
+                    ):
+                        mode.overtake_state = "EVALUATING"
+                        mode.overtake_target_plid = closest_plid
                         mode.overtake_return_lane_id = mode.current_road_id
                     elif lane_change_blocked:
                         pass  # no_lane_change activo — sin log (demasiado frecuente)
@@ -303,11 +355,11 @@ class _TrafficMixin(_MixinBase):
             # ---------------------------------------------------------
             # ESTADO: EVALUATING (Análisis de viabilidad)
             # ---------------------------------------------------------
-            elif mode.overtake_state == 'EVALUATING':
+            elif mode.overtake_state == "EVALUATING":
                 velocidad_segura = mode._cached_target_speed
                 mode.maneuver_state = AIManeuverState.FOLLOWING
 
-                current_rule = getattr(geom, 'traffic_rule', TrafficRule.LHT)
+                current_rule = getattr(geom, "traffic_rule", TrafficRule.LHT)
                 target_road_id, target_lat_id = self._find_valid_overtake_lane(
                     mode.current_road_id, current_rule, nodes_list, mode.node_index
                 )
@@ -320,62 +372,92 @@ class _TrafficMixin(_MixinBase):
                         is_opposing = lat_link.opposing
 
                         distances_ahead_m = [v[0] for v in vehicles_ahead]
-                        rel_dist_m = self._get_relative_dist_to_cover(distances_ahead_m, extra_dist=5.0)
-
-                        overtake_speed = target_road_geom.speed_limit_kmh * mode.speed_limit_bias
-                        target_speed   = vehicles_ahead[0][1] if vehicles_ahead else velocidad_base * 0.8
-                        req_dist_m, time_to_overtake_s = self._estimate_overtake_distance(
-                            overtake_speed, target_speed, rel_dist_m
+                        rel_dist_m = self._get_relative_dist_to_cover(
+                            distances_ahead_m, extra_dist=5.0
                         )
 
-                        if req_dist_m != float('inf'):
+                        overtake_speed = (
+                            target_road_geom.speed_limit_kmh * mode.speed_limit_bias
+                        )
+                        target_speed = (
+                            vehicles_ahead[0][1]
+                            if vehicles_ahead
+                            else velocidad_base * 0.8
+                        )
+                        req_dist_m, time_to_overtake_s = (
+                            self._estimate_overtake_distance(
+                                overtake_speed, target_speed, rel_dist_m
+                            )
+                        )
+
+                        if req_dist_m != float("inf"):
                             es_seguro = self._is_lane_safe_to_overtake(
-                                ai, mode, target_road_id, lat_link, is_opposing, req_dist_m, time_to_overtake_s
+                                ai,
+                                mode,
+                                target_road_id,
+                                lat_link,
+                                is_opposing,
+                                req_dist_m,
+                                time_to_overtake_s,
                             )
                             if es_seguro:
-                                mode.overtake_lat_link_id       = target_lat_id
-                                mode.overtake_change_lane       = True
-                                mode.overtake_fast_lane_id      = target_road_id
-                                mode.is_driving_opposing        = is_opposing
-                                mode.overtake_state             = 'OVERTAKING'
-                                mode.maneuver_state             = AIManeuverState.OVERTAKING
-                                mode.future_indicator           = None
+                                mode.overtake_lat_link_id = target_lat_id
+                                mode.overtake_change_lane = True
+                                mode.overtake_fast_lane_id = target_road_id
+                                mode.is_driving_opposing = is_opposing
+                                mode.overtake_state = "OVERTAKING"
+                                mode.maneuver_state = AIManeuverState.OVERTAKING
+                                mode.future_indicator = None
                                 # Tiempo hasta estar en paralelo con el target: dist / speed_delta
-                                _our_speed_ms    = (target_road_geom.speed_limit_kmh * mode.speed_limit_bias * 1.05) / 3.6
+                                _our_speed_ms = (
+                                    target_road_geom.speed_limit_kmh
+                                    * mode.speed_limit_bias
+                                    * 1.05
+                                ) / 3.6
                                 _target_speed_ms = target_speed / 3.6
-                                _closest_dist_m  = vehicles_ahead[0][0] if vehicles_ahead else 0.0
-                                _speed_delta     = max(_our_speed_ms - _target_speed_ms, 0.1)
+                                _closest_dist_m = (
+                                    vehicles_ahead[0][0] if vehicles_ahead else 0.0
+                                )
+                                _speed_delta = max(
+                                    _our_speed_ms - _target_speed_ms, 0.1
+                                )
                                 _time_to_parallel = _closest_dist_m / _speed_delta
 
-                                mode._passing_start_time        = current_time
-                                mode._overtake_no_return_until  = current_time + _time_to_parallel
+                                mode._passing_start_time = current_time
+                                mode._overtake_no_return_until = (
+                                    current_time + _time_to_parallel
+                                )
                             else:
-                                mode.overtake_state    = 'IDLE'
-                                mode.maneuver_state    = AIManeuverState.NORMAL
+                                mode.overtake_state = "IDLE"
+                                mode.maneuver_state = AIManeuverState.NORMAL
                                 mode.overtake_cooldown = current_time + 4.0
                         else:
-                            mode.overtake_state    = 'IDLE'
-                            mode.maneuver_state    = AIManeuverState.NORMAL
+                            mode.overtake_state = "IDLE"
+                            mode.maneuver_state = AIManeuverState.NORMAL
                             mode.overtake_cooldown = current_time + 5.0
                     else:
-                        mode.overtake_state    = 'IDLE'
-                        mode.maneuver_state    = AIManeuverState.NORMAL
+                        mode.overtake_state = "IDLE"
+                        mode.maneuver_state = AIManeuverState.NORMAL
                         mode.overtake_cooldown = current_time + 2.0
                 else:
-                    mode.overtake_state    = 'IDLE'
-                    mode.maneuver_state    = AIManeuverState.NORMAL
+                    mode.overtake_state = "IDLE"
+                    mode.maneuver_state = AIManeuverState.NORMAL
                     mode.overtake_cooldown = current_time + 3.0
 
             # ---------------------------------------------------------
             # ESTADO: OVERTAKING (Maniobra en el carril rápido)
             # ---------------------------------------------------------
-            elif mode.overtake_state == 'OVERTAKING':
-                in_fast_lane = (mode.current_road_id == mode.overtake_fast_lane_id)
+            elif mode.overtake_state == "OVERTAKING":
+                in_fast_lane = mode.current_road_id == mode.overtake_fast_lane_id
 
                 # Nav cruzó el LatLink de entrada (una sola vez): estamos en el carril rápido.
-                if in_fast_lane and not mode.overtake_change_lane and not mode._fast_lane_logged:
+                if (
+                    in_fast_lane
+                    and not mode.overtake_change_lane
+                    and not mode._fast_lane_logged
+                ):
                     mode._fast_lane_logged = True
-                    mode.future_indicator  = None
+                    mode.future_indicator = None
 
                 # Velocidad: base +5% como máximo
                 velocidad_segura = velocidad_base * 1.05
@@ -383,17 +465,20 @@ class _TrafficMixin(_MixinBase):
                 # ACC en el carril rápido
                 if vehicles_ahead:
                     f_dist, f_speed, _ = vehicles_ahead[0]
-                    velocidad_segura = min(velocidad_segura, self._apply_adaptive_cruise_control(
-                        velocidad_base, f_speed, f_dist, min_dist_m, max_dist_m
-                    ))
+                    velocidad_segura = min(
+                        velocidad_segura,
+                        self._apply_adaptive_cruise_control(
+                            velocidad_base, f_speed, f_dist, min_dist_m, max_dist_m
+                        ),
+                    )
 
                 # Emergencia frontal (solo en carril contrario y ya dentro)
                 if mode.is_driving_opposing and in_fast_lane and vehicles_ahead:
                     ONCOMING_EMERGENCY_S = 3.0
-                    ONCOMING_DANGER_S    = 5.0
+                    ONCOMING_DANGER_S = 5.0
                     f_dist, f_speed, _ = vehicles_ahead[0]
                     closing_speed_ms = my_speed_ms + max(f_speed / 3.6, 0.1)
-                    time_to_frontal  = f_dist / closing_speed_ms
+                    time_to_frontal = f_dist / closing_speed_ms
                     if time_to_frontal < ONCOMING_EMERGENCY_S:
                         self._trigger_return(mode, current_time)
                         velocidad_segura = 0
@@ -401,16 +486,21 @@ class _TrafficMixin(_MixinBase):
                         velocidad_segura = 0
 
                 # Retorno normal: timer expirado + hueco libre en el carril original
-                if in_fast_lane and mode.overtake_state == 'OVERTAKING' \
-                        and current_time >= mode._overtake_no_return_until:
-                    ahead_gap, behind_gap = self._scan_return_lane_gap(ai, mode, max_dist_m)
+                if (
+                    in_fast_lane
+                    and mode.overtake_state == "OVERTAKING"
+                    and current_time >= mode._overtake_no_return_until
+                ):
+                    ahead_gap, behind_gap = self._scan_return_lane_gap(
+                        ai, mode, max_dist_m
+                    )
                     if ahead_gap >= min_dist_m and behind_gap >= min_dist_m:
                         self._trigger_return(mode, current_time)
 
             # ---------------------------------------------------------
             # ESTADO: RETURNING (Volviendo al carril original)
             # ---------------------------------------------------------
-            elif mode.overtake_state == 'RETURNING':
+            elif mode.overtake_state == "RETURNING":
                 velocidad_segura = velocidad_base
 
                 if mode.current_road_id == mode.overtake_return_lane_id:
@@ -425,15 +515,17 @@ class _TrafficMixin(_MixinBase):
             # =========================================================
             # CONTROL DE INTERSECCIONES (Ceda el Paso)
             # =========================================================
-            YIELD_LOOK_AHEAD_s = 5.0   # Anticipación: cuántos segundos adelante miramos el cruce
-            PRIORITY_APPROACH_s = 4.0  # Ventana para detectar coche prioritario aproximándose
+            YIELD_LOOK_AHEAD_s = (
+                5.0  # Anticipación: cuántos segundos adelante miramos el cruce
+            )
+            PRIORITY_APPROACH_s = (
+                4.0  # Ventana para detectar coche prioritario aproximándose
+            )
 
-            if hasattr(self.map_recorder, 'zones') and self.map_recorder.zones:
-
+            if hasattr(self.map_recorder, "zones") and self.map_recorder.zones:
                 yielding_to_zone = False
 
                 for zone_id, zone in self.map_recorder.zones.items():
-
                     # 1. ¿Somos la vía no-prioritaria en este cruce?
                     vias_prioritarias_a_vigilar = []
                     for prio_id, no_prio_id in zone.priority_rules:
@@ -444,7 +536,9 @@ class _TrafficMixin(_MixinBase):
                         continue
 
                     # 2. ¿Nos estamos acercando a la zona? (tiempo-based, más amplio que el ACC)
-                    dist_al_borde = self._get_dist_to_zone_edge(my_coords.x_m, my_coords.y_m, zone)
+                    dist_al_borde = self._get_dist_to_zone_edge(
+                        my_coords.x_m, my_coords.y_m, zone
+                    )
                     yield_range_m = max(15.0, my_speed_ms * YIELD_LOOK_AHEAD_s)
 
                     if dist_al_borde > yield_range_m:
@@ -453,7 +547,12 @@ class _TrafficMixin(_MixinBase):
                     # Si no estamos ya dentro de la zona, verificamos que vamos hacia ella
                     if dist_al_borde > 0.1:
                         zone_cx, zone_cy = self._get_zone_centroid(zone)
-                        my_heading_rad = ai.player.telemetry.heading.angle_lfs * 2.0 * math.pi / 65536.0
+                        my_heading_rad = (
+                            ai.player.telemetry.heading.angle_lfs
+                            * 2.0
+                            * math.pi
+                            / 65536.0
+                        )
                         my_fwd_x = -math.sin(my_heading_rad)
                         my_fwd_y = math.cos(my_heading_rad)
                         vec_x = zone_cx - my_coords.x_m
@@ -463,7 +562,9 @@ class _TrafficMixin(_MixinBase):
 
                     # 3. Pre-filtro esférico usando el centroide real de la zona
                     zone_cx, zone_cy = self._get_zone_centroid(zone)
-                    radio_filtro = zone.radius_m + max(20.0, my_speed_ms * PRIORITY_APPROACH_s * 1.5)
+                    radio_filtro = zone.radius_m + max(
+                        20.0, my_speed_ms * PRIORITY_APPROACH_s * 1.5
+                    )
 
                     # 4. Escanear vehículos prioritarios (dentro O aproximándose con dirección correcta)
                     coche_prioritario_detectado = False
@@ -474,17 +575,28 @@ class _TrafficMixin(_MixinBase):
                             continue
 
                         other_coords = a.player.telemetry.coordinates
-                        if math.hypot(zone_cx - other_coords.x_m, zone_cy - other_coords.y_m) > radio_filtro:
+                        if (
+                            math.hypot(
+                                zone_cx - other_coords.x_m, zone_cy - other_coords.y_m
+                            )
+                            > radio_filtro
+                        ):
                             continue
 
                         other_road_id = None
-                        if a.extra.get('aic') and a.extra['aic'].active_mode:
-                            other_road_id = a.extra['aic'].active_mode.current_road_id
+                        if a.extra.get("aic") and a.extra["aic"].active_mode:
+                            other_road_id = a.extra["aic"].active_mode.current_road_id
 
                         if other_road_id in vias_prioritarias_a_vigilar:
                             other_heading_lfs = a.player.telemetry.heading.angle_lfs
                             other_speed_kmh = a.player.telemetry.speed.speed_kmh
-                            if self._is_priority_vehicle_active_at_zone(other_coords, other_speed_kmh, other_heading_lfs, zone, PRIORITY_APPROACH_s):
+                            if self._is_priority_vehicle_active_at_zone(
+                                other_coords,
+                                other_speed_kmh,
+                                other_heading_lfs,
+                                zone,
+                                PRIORITY_APPROACH_s,
+                            ):
                                 coche_prioritario_detectado = True
                                 break
 
@@ -495,18 +607,33 @@ class _TrafficMixin(_MixinBase):
                                 continue
 
                             other_coords = p.telemetry.coordinates
-                            if math.hypot(zone_cx - other_coords.x_m, zone_cy - other_coords.y_m) > radio_filtro:
+                            if (
+                                math.hypot(
+                                    zone_cx - other_coords.x_m,
+                                    zone_cy - other_coords.y_m,
+                                )
+                                > radio_filtro
+                            ):
                                 continue
 
                             ctx = self.map_recorder.get_location_context(
-                                other_coords.x_m, other_coords.y_m, other_coords.z_m,
-                                find_links=False, find_zones=False
+                                other_coords.x_m,
+                                other_coords.y_m,
+                                other_coords.z_m,
+                                find_links=False,
+                                find_zones=False,
                             )
 
                             if ctx.road_id in vias_prioritarias_a_vigilar:
                                 other_heading_lfs = p.telemetry.heading.angle_lfs
                                 other_speed_kmh = p.telemetry.speed.speed_kmh
-                                if self._is_priority_vehicle_active_at_zone(other_coords, other_speed_kmh, other_heading_lfs, zone, PRIORITY_APPROACH_s):
+                                if self._is_priority_vehicle_active_at_zone(
+                                    other_coords,
+                                    other_speed_kmh,
+                                    other_heading_lfs,
+                                    zone,
+                                    PRIORITY_APPROACH_s,
+                                ):
                                     coche_prioritario_detectado = True
                                     break
 
@@ -536,14 +663,21 @@ class _TrafficMixin(_MixinBase):
             # =========================================================
             # CONTROL DE REGLAS ESPECIALES (Activación/Desactivación)
             # =========================================================
-            if hasattr(self.map_recorder, 'special_rules') and self.map_recorder.special_rules:
+            if (
+                hasattr(self.map_recorder, "special_rules")
+                and self.map_recorder.special_rules
+            ):
                 for rule_id, rule in self.map_recorder.special_rules.items():
                     if len(rule.nodes) < 2:
                         continue
                     start_node = rule.nodes[0]
-                    end_node   = rule.nodes[1]
-                    dist_start = math.hypot(my_coords.x_m - start_node.x_m, my_coords.y_m - start_node.y_m)
-                    dist_end   = math.hypot(my_coords.x_m - end_node.x_m,   my_coords.y_m - end_node.y_m)
+                    end_node = rule.nodes[1]
+                    dist_start = math.hypot(
+                        my_coords.x_m - start_node.x_m, my_coords.y_m - start_node.y_m
+                    )
+                    dist_end = math.hypot(
+                        my_coords.x_m - end_node.x_m, my_coords.y_m - end_node.y_m
+                    )
 
                     if rule_id not in mode.active_special_rules:
                         if dist_start <= rule.radius_m:
@@ -556,7 +690,6 @@ class _TrafficMixin(_MixinBase):
             # --- LECTURA DE CACHÉ (Ahorro de CPU) ---
             velocidad_segura = mode._cached_target_speed
 
-        
         velocidad_final = min(velocidad_segura, velocidad_base)
 
         # =========================================================
@@ -564,11 +697,14 @@ class _TrafficMixin(_MixinBase):
         # =========================================================
         my_speed_ms = ai.player.telemetry.speed.speed_kmh / 3.6
         lookahead_m = max(5.0, my_speed_ms * 0.4)
-        _reverse_lookahead = (getattr(mode, 'is_driving_opposing', False)
-                              and mode.current_road_id == getattr(mode, 'overtake_fast_lane_id', None))
+        _reverse_lookahead = getattr(
+            mode, "is_driving_opposing", False
+        ) and mode.current_road_id == getattr(mode, "overtake_fast_lane_id", None)
         la_x, la_y = self._get_lookahead_point(
-            my_coords.x_m, my_coords.y_m,
-            mode.node_index, nodes_list,
+            my_coords.x_m,
+            my_coords.y_m,
+            mode.node_index,
+            nodes_list,
             lookahead_m,
             reverse=_reverse_lookahead,
         )
@@ -579,7 +715,7 @@ class _TrafficMixin(_MixinBase):
         """Verifica si un punto está dentro de la zona usando tus funciones geométricas."""
         nodes = zone.nodes
         n_nodes = len(nodes)
-        
+
         if n_nodes == 0:
             return False
         elif n_nodes == 1:
@@ -587,7 +723,9 @@ class _TrafficMixin(_MixinBase):
             return math.hypot(px - nodes[0].x_m, py - nodes[0].y_m) <= zone.radius_m
         elif n_nodes == 2:
             # Es una línea con grosor (cápsula)
-            dist = calc_dist_point_to_segment_2d(px, py, nodes[0].x_m, nodes[0].y_m, nodes[1].x_m, nodes[1].y_m)
+            dist = calc_dist_point_to_segment_2d(
+                px, py, nodes[0].x_m, nodes[0].y_m, nodes[1].x_m, nodes[1].y_m
+            )
             return dist <= zone.radius_m
         else:
             # Es un polígono
@@ -597,21 +735,26 @@ class _TrafficMixin(_MixinBase):
         """Calcula la distancia exacta desde el coche hasta el borde geométrico de la zona."""
         nodes = zone.nodes
         n_nodes = len(nodes)
-        
+
         if n_nodes == 0:
-            return float('inf')
+            return float("inf")
         elif n_nodes == 1:
             dist = math.hypot(px - nodes[0].x_m, py - nodes[0].y_m) - zone.radius_m
         elif n_nodes == 2:
-            dist = calc_dist_point_to_segment_2d(px, py, nodes[0].x_m, nodes[0].y_m, nodes[1].x_m, nodes[1].y_m) - zone.radius_m
+            dist = (
+                calc_dist_point_to_segment_2d(
+                    px, py, nodes[0].x_m, nodes[0].y_m, nodes[1].x_m, nodes[1].y_m
+                )
+                - zone.radius_m
+            )
         else:
             if is_point_in_polygon_2d(px, py, nodes):
-                return 0.0 # Ya estamos dentro del polígono
+                return 0.0  # Ya estamos dentro del polígono
             dist = get_dist_to_polygon_edge_2d(px, py, nodes)
-            
+
         # Devolvemos max(0.0, dist) para evitar distancias negativas si penetramos un poco la zona
         return max(0.0, dist)
-    
+
     def _get_zone_centroid(self, zone) -> tuple:
         nodes = zone.nodes
         if not nodes:
@@ -620,12 +763,21 @@ class _TrafficMixin(_MixinBase):
         cy = sum(n.y_m for n in nodes) / len(nodes)
         return cx, cy
 
-    def _is_priority_vehicle_active_at_zone(self, vehicle_coords, vehicle_speed_kmh: float, vehicle_heading_lfs: int, zone, approach_time_s: float = 4.0) -> bool:
+    def _is_priority_vehicle_active_at_zone(
+        self,
+        vehicle_coords,
+        vehicle_speed_kmh: float,
+        vehicle_heading_lfs: int,
+        zone,
+        approach_time_s: float = 4.0,
+    ) -> bool:
         """True si el vehículo está dentro de la zona O se aproxima a ella con dirección hacia ella."""
         if self._is_point_in_zone(vehicle_coords.x_m, vehicle_coords.y_m, zone):
             return True
 
-        dist_to_edge = self._get_dist_to_zone_edge(vehicle_coords.x_m, vehicle_coords.y_m, zone)
+        dist_to_edge = self._get_dist_to_zone_edge(
+            vehicle_coords.x_m, vehicle_coords.y_m, zone
+        )
         speed_ms = max(vehicle_speed_kmh / 3.6, 0.5)
 
         if dist_to_edge / speed_ms > approach_time_s:
@@ -640,20 +792,27 @@ class _TrafficMixin(_MixinBase):
         vec_y = zone_cy - vehicle_coords.y_m
         return (fwd_x * vec_x + fwd_y * vec_y) > 0.0
 
-    def _apply_adaptive_cruise_control(self, base_speed_kmh: float, closest_speed_kmh: float, closest_dist_m: float, min_dist_m: float, max_dist_m: float) -> float:
+    def _apply_adaptive_cruise_control(
+        self,
+        base_speed_kmh: float,
+        closest_speed_kmh: float,
+        closest_dist_m: float,
+        min_dist_m: float,
+        max_dist_m: float,
+    ) -> float:
         """
         Regula la velocidad de la IA con 3 zonas: Adaptación suave, Frenado agresivo y Parada crítica.
         """
         # ==========================================
         # CONFIGURACIÓN DE LÍMITES FÍSICOS ABSOLUTOS
         # ==========================================
-        PARADA_ABSOLUTA_M = 5.0 
-        
+        PARADA_ABSOLUTA_M = 5.0
+
         # La distancia crítica nunca será menor a nuestro límite absoluto (5 metros).
         critical_dist_m = max(PARADA_ABSOLUTA_M, min_dist_m * 0.5)
-        
-        # [!] PARCHE DE SEGURIDAD MATEMÁTICO: 
-        # Al forzar los 3 metros arriba, si el `min_dist_m` dinámico es muy pequeño (ej. 2m), 
+
+        # [!] PARCHE DE SEGURIDAD MATEMÁTICO:
+        # Al forzar los 3 metros arriba, si el `min_dist_m` dinámico es muy pequeño (ej. 2m),
         # las fórmulas de abajo fallarían por división por cero o darían ratios negativos.
         # Por tanto, empujamos las zonas dinámicas hacia arriba si es necesario.
         min_dist_m = max(critical_dist_m + 2.0, min_dist_m)
@@ -670,16 +829,18 @@ class _TrafficMixin(_MixinBase):
         # ==========================================
         if closest_dist_m <= min_dist_m:
             # Aquí frenamos agresivamente de forma proporcional.
-            ratio_frenado = (closest_dist_m - critical_dist_m) / (min_dist_m - critical_dist_m)
-            
+            ratio_frenado = (closest_dist_m - critical_dist_m) / (
+                min_dist_m - critical_dist_m
+            )
+
             # Pedimos ir MÁS LENTO que el coche de delante para recuperar la distancia de seguridad
             target_speed = closest_speed_kmh * ratio_frenado
-            
-            # ANTI-CREEP: Evita el frenado asintótico. Si la velocidad objetivo es ridículamente 
+
+            # ANTI-CREEP: Evita el frenado asintótico. Si la velocidad objetivo es ridículamente
             # baja (ej. arrastrarse a 1.5 km/h frente a un ceda el paso), frenamos en seco.
             if target_speed < 2.0:
                 return 0.0
-                
+
             return target_speed
 
         # ==========================================
@@ -688,12 +849,14 @@ class _TrafficMixin(_MixinBase):
         if closest_dist_m < max_dist_m:
             # Interpolación (Lerp) para igualar la velocidad del líder de forma suave
             ratio_adaptacion = (closest_dist_m - min_dist_m) / (max_dist_m - min_dist_m)
-            
+
             # Buscamos igualar la velocidad del coche de delante
             match_speed = min(closest_speed_kmh, base_speed_kmh)
-            
+
             # A medida que nos acercamos al min_dist_m, la velocidad cae a match_speed
-            target_speed = match_speed + (base_speed_kmh - match_speed) * ratio_adaptacion
+            target_speed = (
+                match_speed + (base_speed_kmh - match_speed) * ratio_adaptacion
+            )
             return min(target_speed, base_speed_kmh)
 
         # Si está fuera de los radares (más lejos que max_dist_m), vamos a la velocidad base
@@ -701,7 +864,8 @@ class _TrafficMixin(_MixinBase):
 
     def _get_lookahead_point(
         self,
-        my_x: float, my_y: float,
+        my_x: float,
+        my_y: float,
         node_index: int,
         nodes_list: list,
         lookahead_m: float,
@@ -710,7 +874,9 @@ class _TrafficMixin(_MixinBase):
         if not nodes_list:
             return my_x, my_y
 
-        indices = range(node_index, -1, -1) if reverse else range(node_index, len(nodes_list))
+        indices = (
+            range(node_index, -1, -1) if reverse else range(node_index, len(nodes_list))
+        )
 
         prev_x, prev_y = my_x, my_y
         accumulated = 0.0
@@ -719,29 +885,42 @@ class _TrafficMixin(_MixinBase):
             seg_len = math.hypot(node.x_m - prev_x, node.y_m - prev_y)
             if accumulated + seg_len >= lookahead_m:
                 t = (lookahead_m - accumulated) / seg_len if seg_len > 0 else 0.0
-                return prev_x + t * (node.x_m - prev_x), prev_y + t * (node.y_m - prev_y)
+                return prev_x + t * (node.x_m - prev_x), prev_y + t * (
+                    node.y_m - prev_y
+                )
             accumulated += seg_len
             prev_x, prev_y = node.x_m, node.y_m
 
         last = nodes_list[0 if reverse else -1]
         return last.x_m, last.y_m
 
-    def _find_valid_overtake_lane(self, current_road_id: str, current_road_traffic_rule: TrafficRule, current_road_nodes: List[Coordinates], node_index: int) -> Optional[Tuple[str,str]]:
+    def _find_valid_overtake_lane(
+        self,
+        current_road_id: str,
+        current_road_traffic_rule: TrafficRule,
+        current_road_nodes: List[Coordinates],
+        node_index: int,
+    ) -> Optional[Tuple[str, str]]:
         """
         Evalúa una lista de carriles laterales y devuelve el primero que sea válido
         para adelantar basándose en la regla de tráfico (RHT/LHT) del carril actual.
         """
         # 1. Obtener el segmento actual para conocer su TrafficRule
 
-
         connected_lateral_ids: List[Tuple[str, str]] = []
 
         # 2. Definimos el lado objetivo
         for lat_link in self.map_recorder.lateral_links.values():
-            if lat_link.road_a == current_road_id: connected_lateral_ids.append((lat_link.road_b, lat_link.link_id))
-            elif lat_link.road_b == current_road_id: connected_lateral_ids.append((lat_link.road_a, lat_link.link_id))
+            if lat_link.road_a == current_road_id:
+                connected_lateral_ids.append((lat_link.road_b, lat_link.link_id))
+            elif lat_link.road_b == current_road_id:
+                connected_lateral_ids.append((lat_link.road_a, lat_link.link_id))
 
-        target_side = CSVAL.INDICATORS.LEFT if current_road_traffic_rule == TrafficRule.RHT else CSVAL.INDICATORS.RIGHT
+        target_side = (
+            CSVAL.INDICATORS.LEFT
+            if current_road_traffic_rule == TrafficRule.RHT
+            else CSVAL.INDICATORS.RIGHT
+        )
 
         # 3. Evaluamos los carriles vecinos
         for info_id in connected_lateral_ids:
@@ -760,8 +939,10 @@ class _TrafficMixin(_MixinBase):
                 return road_id, link_id
 
         return None, None
-    
-    def _get_relative_dist_to_cover(self, distances_ahead_m: list[float], extra_dist: float = 5) -> float:
+
+    def _get_relative_dist_to_cover(
+        self, distances_ahead_m: list[float], extra_dist: float = 5
+    ) -> float:
         """
         Calcula la distancia relativa a ganar para un adelantamiento.
         Usa la distancia al primer coche como el 'safe gap' delantero y trasero.
@@ -769,64 +950,77 @@ class _TrafficMixin(_MixinBase):
         """
         if not distances_ahead_m:
             return 0.0
-            
+
         distances_ahead_m.sort()
         first_car_dist = distances_ahead_m[0]
         last_car_dist = first_car_dist
-        
+
         # Evaluamos el hueco entre cada coche para ver dónde termina el convoy
         for i in range(1, len(distances_ahead_m)):
             current_dist = distances_ahead_m[i]
             gap = current_dist - last_car_dist
-            
-            if gap <= first_car_dist+extra_dist:
+
+            if gap <= first_car_dist + extra_dist:
                 last_car_dist = current_dist
             else:
                 break
-                
+
         # Retorna la distancia relativa total a cubrir matemáticamente simplificada
         return last_car_dist + first_car_dist + extra_dist
-    
-    def _estimate_overtake_distance(self, overtake_lane_speed_kmh: float, target_speed_kmh: float, relative_dist_to_cover_m: float) -> float:
+
+    def _estimate_overtake_distance(
+        self,
+        overtake_lane_speed_kmh: float,
+        target_speed_kmh: float,
+        relative_dist_to_cover_m: float,
+    ) -> float:
         """
         Calcula los metros de asfalto requeridos para completar un adelantamiento.
         """
         my_overtake_speed_ms = overtake_lane_speed_kmh / 3.6
         target_speed_ms = max(target_speed_kmh / 3.6, 0.1)
-        
+
         speed_delta_ms = my_overtake_speed_ms - target_speed_ms
 
         if speed_delta_ms <= 0.1:
-            return float('inf'), float('inf')
-            
+            return float("inf"), float("inf")
+
         time_to_overtake_s = relative_dist_to_cover_m / speed_delta_ms
         total_road_distance_m = my_overtake_speed_ms * time_to_overtake_s
-        
+
         # Retornamos la tupla (distancia, tiempo)
         return total_road_distance_m, time_to_overtake_s
-    
-    def _get_available_overtake_distance(self, mode: FreeroamMode, my_coords: Coordinates, overtake_lat_link: LateralLink) -> float:
+
+    def _get_available_overtake_distance(
+        self, mode: FreeroamMode, my_coords: Coordinates, overtake_lat_link: LateralLink
+    ) -> float:
         """
         Devuelve cuántos metros físicos seguros le quedan a la IA para adelantar,
         teniendo en cuenta su ruta (next_link) y la longitud de la línea discontinua.
         """
         if overtake_lat_link.is_circular:
-            return float('inf')
+            return float("inf")
 
         # 1. Metros restantes de la ventana de adelantamiento (línea discontinua)
         # Asumimos una función que calcula la longitud restante de una lista de nodos
-        closest_lat_idx, _ = self._get_closest_node_index(my_coords.x_m, my_coords.y_m, overtake_lat_link.nodes)
-        lat_dist_available = self._calc_path_length(overtake_lat_link.nodes, start_idx=closest_lat_idx)
-        
+        closest_lat_idx, _ = self._get_closest_node_index(
+            my_coords.x_m, my_coords.y_m, overtake_lat_link.nodes
+        )
+        lat_dist_available = self._calc_path_length(
+            overtake_lat_link.nodes, start_idx=closest_lat_idx
+        )
+
         # 2. Metros restantes hasta que la IA tenga que girar/salir
-        route_dist_available = float('inf')
+        route_dist_available = float("inf")
         if mode.next_link_id:
             current_road_nodes = self.map_recorder.roads[mode.current_road_id].nodes
-            route_dist_available = self._calc_path_length(current_road_nodes, start_idx=mode.node_index)
+            route_dist_available = self._calc_path_length(
+                current_road_nodes, start_idx=mode.node_index
+            )
 
         # La distancia real que tenemos para maniobrar es el peor de los casos (el más corto)
         return min(lat_dist_available, route_dist_available)
-    
+
     def _calc_path_length(self, nodes: List[Coordinates], start_idx: int = 0) -> float:
         """
         Calcula la distancia real de un trazado sumando la distancia entre sus nodos
@@ -834,45 +1028,55 @@ class _TrafficMixin(_MixinBase):
         """
         if not nodes or start_idx >= len(nodes) - 1:
             return 0.0
-            
+
         total_dist = 0.0
         # Nos aseguramos de que el índice inicial no sea negativo
         start_idx = max(0, start_idx)
-        
+
         for i in range(start_idx, len(nodes) - 1):
             p1 = nodes[i]
             p2 = nodes[i + 1]
-            # Usamos math.hypot (2D) por rendimiento, ya que para longitudes de asfalto 
+            # Usamos math.hypot (2D) por rendimiento, ya que para longitudes de asfalto
             # suele ser más que suficiente salvo que haya pendientes extremas.
             total_dist += math.hypot(p2.x_m - p1.x_m, p2.y_m - p1.y_m)
-            
+
         return total_dist
 
-    def _scan_target_lane(self, ai: AI, mode: FreeroamMode, target_road_id: str, max_dist_m: float) -> list[tuple[float, float, int]]:
+    def _scan_target_lane(
+        self, ai: AI, mode: FreeroamMode, target_road_id: str, max_dist_m: float
+    ) -> list[tuple[float, float, int]]:
         """
-        Escanea un carril específico usando una caché independiente 
+        Escanea un carril específico usando una caché independiente
         para evitar sobreescribir los datos del radar principal.
         """
         vehicles_ahead = []
-        if not ai.player.telemetry: 
+        if not ai.player.telemetry:
             return vehicles_ahead
-            
+
         my_coords = ai.player.telemetry.coordinates
 
         def iter_all_vehicles():
-            for p in self.user_manager.players.values(): yield p, False, None
-            for a in self.user_manager.ais.values(): yield a.player, True, a
+            for p in self.user_manager.players.values():
+                yield p, False, None
+            for a in self.user_manager.ais.values():
+                yield a.player, True, a
 
         # =========================================================
         # VECTOR DIRECCIONAL BASE (Para saber qué es "hacia adelante")
         # =========================================================
-        curr_geom = self.map_recorder.roads.get(mode.current_id) or self.map_recorder.road_links.get(mode.current_id) or self.map_recorder.lateral_links.get(mode.current_id)
-        if not curr_geom or not curr_geom.nodes: return []
-        
+        curr_geom = (
+            self.map_recorder.roads.get(mode.current_id)
+            or self.map_recorder.road_links.get(mode.current_id)
+            or self.map_recorder.lateral_links.get(mode.current_id)
+        )
+        if not curr_geom or not curr_geom.nodes:
+            return []
+
         curr_idx = min(mode.node_index, len(curr_geom.nodes) - 1)
         next_idx = min(curr_idx + 1, len(curr_geom.nodes) - 1)
-        if curr_idx == next_idx: curr_idx = max(0, curr_idx - 1)
-        
+        if curr_idx == next_idx:
+            curr_idx = max(0, curr_idx - 1)
+
         my_dir_x = curr_geom.nodes[next_idx].x_m - curr_geom.nodes[curr_idx].x_m
         my_dir_y = curr_geom.nodes[next_idx].y_m - curr_geom.nodes[curr_idx].y_m
 
@@ -882,34 +1086,47 @@ class _TrafficMixin(_MixinBase):
         for other_player, is_ai, other_ai in iter_all_vehicles():
             if other_player.plid == ai.player.plid or not other_player.telemetry:
                 continue
-                
+
             other_coords = other_player.telemetry.coordinates
-            
+
             # Culling espacial rápido 2D
-            fast_dist = math.hypot(my_coords.x_m - other_coords.x_m, my_coords.y_m - other_coords.y_m)
-            if fast_dist > max_dist_m + 15.0: 
+            fast_dist = math.hypot(
+                my_coords.x_m - other_coords.x_m, my_coords.y_m - other_coords.y_m
+            )
+            if fast_dist > max_dist_m + 15.0:
                 continue
 
             # Extracción Topológica
             other_road_id = None
-            if is_ai and other_ai and 'aic' in other_ai.extra:
-                other_mode: FreeroamMode = other_ai.extra['aic'].active_mode
-                if other_mode: other_road_id = other_mode.current_id
+            if is_ai and other_ai and "aic" in other_ai.extra:
+                other_mode: FreeroamMode = other_ai.extra["aic"].active_mode
+                if other_mode:
+                    other_road_id = other_mode.current_id
             else:
                 # [!] Usamos una caché propia para este escaner: _target_lane_human_cache
                 current_time = time.time()
                 if len(self._target_lane_human_cache) > 64:
                     self._target_lane_human_cache = {
-                        plid: d for plid, d in self._target_lane_human_cache.items()
+                        plid: d
+                        for plid, d in self._target_lane_human_cache.items()
                         if current_time - d[0] < 10.0
                     }
                 cached_data = self._target_lane_human_cache.get(other_player.plid)
-                
+
                 if not cached_data or (current_time - cached_data[0]) > 0.1:
-                    ctx = self.map_recorder.get_location_context(other_coords.x_m, other_coords.y_m, other_coords.z_m)
-                    calc_road_id = ctx.link_id if (ctx.link_id and ctx.link_dist < ctx.road_dist) else ctx.road_id
-                    
-                    self._target_lane_human_cache[other_player.plid] = (current_time, calc_road_id)
+                    ctx = self.map_recorder.get_location_context(
+                        other_coords.x_m, other_coords.y_m, other_coords.z_m
+                    )
+                    calc_road_id = (
+                        ctx.link_id
+                        if (ctx.link_id and ctx.link_dist < ctx.road_dist)
+                        else ctx.road_id
+                    )
+
+                    self._target_lane_human_cache[other_player.plid] = (
+                        current_time,
+                        calc_road_id,
+                    )
                     other_road_id = calc_road_id
                 else:
                     # Acceso seguro por índice. El 1 es siempre nuestro calc_road_id
@@ -922,20 +1139,38 @@ class _TrafficMixin(_MixinBase):
             # [!] FILTRO DIRECCIONAL: ¿Está físicamente delante de nosotros?
             vec_x = other_coords.x_m - my_coords.x_m
             vec_y = other_coords.y_m - my_coords.y_m
-            
-            if (my_dir_x * vec_x) + (my_dir_y * vec_y) <= 0:
-                continue # Está detrás
 
-            dist_m = calc_dist_3d(my_coords.x_m, my_coords.y_m, my_coords.z_m, other_coords.x_m, other_coords.y_m, other_coords.z_m)
+            if (my_dir_x * vec_x) + (my_dir_y * vec_y) <= 0:
+                continue  # Está detrás
+
+            dist_m = calc_dist_3d(
+                my_coords.x_m,
+                my_coords.y_m,
+                my_coords.z_m,
+                other_coords.x_m,
+                other_coords.y_m,
+                other_coords.z_m,
+            )
 
             if dist_m <= max_dist_m:
-                vehicles_ahead.append((dist_m, other_player.telemetry.speed.speed_kmh, other_player.plid))
+                vehicles_ahead.append(
+                    (dist_m, other_player.telemetry.speed.speed_kmh, other_player.plid)
+                )
 
         vehicles_ahead.sort(key=lambda x: x[0])
         return vehicles_ahead
 
-    def _is_lane_safe_to_overtake(self, ai: AI, mode: FreeroamMode, target_road_id: str, overtake_lat_link: LateralLink
-    , is_opposing: bool, req_dist_m: float, time_to_overtake_s: float, safe_gap_s: float = 2.0) -> bool:
+    def _is_lane_safe_to_overtake(
+        self,
+        ai: AI,
+        mode: FreeroamMode,
+        target_road_id: str,
+        overtake_lat_link: LateralLink,
+        is_opposing: bool,
+        req_dist_m: float,
+        time_to_overtake_s: float,
+        safe_gap_s: float = 2.0,
+    ) -> bool:
         """
         Calcula dinámicamente si el carril objetivo es seguro:
         1. Comprueba si tenemos suficiente asfalto físico en la vía y en nuestra ruta.
@@ -948,20 +1183,30 @@ class _TrafficMixin(_MixinBase):
         # =========================================================
         # 1. COMPROBACIÓN DE SALIDA (¿Cabe la maniobra antes de nuestro próximo giro?)
         # =========================================================
-        if mode.next_link_id and mode.next_link_type == 'RoadLink':
+        if mode.next_link_id and mode.next_link_type == "RoadLink":
             road_link = self.map_recorder.road_links.get(mode.next_link_id)
             if road_link and road_link.nodes:
-                exit_idx, _ = self._get_closest_node_index(my_coords.x_m, my_coords.y_m, road_link.nodes)
+                exit_idx, _ = self._get_closest_node_index(
+                    my_coords.x_m, my_coords.y_m, road_link.nodes
+                )
                 exit_node = road_link.nodes[exit_idx]
-                dist_to_exit = calc_dist_3d(my_coords.x_m, my_coords.y_m, my_coords.z_m,
-                                             exit_node.x_m, exit_node.y_m, exit_node.z_m)
+                dist_to_exit = calc_dist_3d(
+                    my_coords.x_m,
+                    my_coords.y_m,
+                    my_coords.z_m,
+                    exit_node.x_m,
+                    exit_node.y_m,
+                    exit_node.z_m,
+                )
                 if req_dist_m > dist_to_exit:
                     return False
 
         # =========================================================
         # 2. COMPROBACIÓN FÍSICA Y DE RUTA (Límites de asfalto)
         # =========================================================
-        available_dist_m = self._get_available_overtake_distance(mode, my_coords, overtake_lat_link)
+        available_dist_m = self._get_available_overtake_distance(
+            mode, my_coords, overtake_lat_link
+        )
         safe_gap_m = my_speed_ms * safe_gap_s
         if req_dist_m + safe_gap_m > available_dist_m:
             return False
@@ -970,7 +1215,9 @@ class _TrafficMixin(_MixinBase):
         # 2. ESCANEO DINÁMICO DE TRÁFICO
         # =========================================================
         scan_dist = min(req_dist_m * 2.0, my_speed_ms * 10.0)
-        target_vehicles = self._scan_target_lane(ai, mode, target_road_id, max_dist_m=scan_dist)
+        target_vehicles = self._scan_target_lane(
+            ai, mode, target_road_id, max_dist_m=scan_dist
+        )
 
         for dist_m, other_speed_kmh, _ in target_vehicles:
             other_speed_ms = other_speed_kmh / 3.6
@@ -1008,24 +1255,28 @@ class _TrafficMixin(_MixinBase):
 
     def _trigger_return(self, mode: FreeroamMode, current_time: float) -> None:
         """Activa RETURNING: indica a nav que ejecute el cambio de carril de retorno."""
-        mode.overtake_change_lane  = True
-        mode.overtake_state        = 'RETURNING'
-        mode.maneuver_state        = AIManeuverState.RETURNING
+        mode.overtake_change_lane = True
+        mode.overtake_state = "RETURNING"
+        mode.maneuver_state = AIManeuverState.RETURNING
         mode._returning_start_time = current_time
 
-    def _finish_overtake(self, mode: FreeroamMode, current_time: float, name: str = '') -> None:
+    def _finish_overtake(
+        self, mode: FreeroamMode, current_time: float, name: str = ""
+    ) -> None:
         """Cierra el adelantamiento. next_link_id nunca fue tocado — no hay nada que restaurar."""
-        mode.overtake_state          = 'IDLE'
-        mode.maneuver_state          = AIManeuverState.NORMAL
-        mode.overtake_target_plid    = None
-        mode.is_driving_opposing     = False
-        mode.overtake_fast_lane_id   = None
-        mode.overtake_lat_link_id    = None
-        mode.overtake_change_lane    = False
-        mode._fast_lane_logged       = False
-        mode.overtake_cooldown       = current_time + 8.0
+        mode.overtake_state = "IDLE"
+        mode.maneuver_state = AIManeuverState.NORMAL
+        mode.overtake_target_plid = None
+        mode.is_driving_opposing = False
+        mode.overtake_fast_lane_id = None
+        mode.overtake_lat_link_id = None
+        mode.overtake_change_lane = False
+        mode._fast_lane_logged = False
+        mode.overtake_cooldown = current_time + 8.0
 
-    def _scan_return_lane_gap(self, ai: 'AI', mode: FreeroamMode, max_dist_m: float) -> tuple[float, float]:
+    def _scan_return_lane_gap(
+        self, ai: "AI", mode: FreeroamMode, max_dist_m: float
+    ) -> tuple[float, float]:
         """
         Escanea el carril de retorno desde la posición actual (en el carril rápido).
         Devuelve (dist_más_cercano_delante, dist_más_cercano_detrás) en ese carril.
@@ -1034,51 +1285,54 @@ class _TrafficMixin(_MixinBase):
             return 0.0, 0.0
 
         my_coords = ai.player.telemetry.coordinates
-        ret_geom  = self.map_recorder.roads.get(mode.overtake_return_lane_id)
+        ret_geom = self.map_recorder.roads.get(mode.overtake_return_lane_id)
         if not ret_geom or not ret_geom.nodes:
-            return float('inf'), float('inf')
+            return float("inf"), float("inf")
 
-        closest_idx, _ = self._get_closest_node_index(my_coords.x_m, my_coords.y_m, ret_geom.nodes)
+        closest_idx, _ = self._get_closest_node_index(
+            my_coords.x_m, my_coords.y_m, ret_geom.nodes
+        )
         next_idx = min(closest_idx + 1, len(ret_geom.nodes) - 1)
         if closest_idx == next_idx:
             next_idx = max(0, closest_idx - 1)
         dir_x = ret_geom.nodes[next_idx].x_m - ret_geom.nodes[closest_idx].x_m
         dir_y = ret_geom.nodes[next_idx].y_m - ret_geom.nodes[closest_idx].y_m
 
-        min_ahead  = float('inf')
-        min_behind = float('inf')
+        min_ahead = float("inf")
+        min_behind = float("inf")
 
-        for other_player, is_ai, other_ai in (
-            [(p, False, None) for p in self.user_manager.players.values()] +
-            [(a.player, True, a) for a in self.user_manager.ais.values()]
-        ):
+        for other_player, is_ai, other_ai in [
+            (p, False, None) for p in self.user_manager.players.values()
+        ] + [(a.player, True, a) for a in self.user_manager.ais.values()]:
             if other_player.plid == ai.player.plid or not other_player.telemetry:
                 continue
 
             # Filtro topológico: solo coches en el carril de retorno
-            if is_ai and other_ai and 'aic' in other_ai.extra:
-                other_mode = other_ai.extra['aic'].active_mode
+            if is_ai and other_ai and "aic" in other_ai.extra:
+                other_mode = other_ai.extra["aic"].active_mode
                 other_road = other_mode.current_road_id if other_mode else None
             else:
                 ctx = self.map_recorder.get_location_context(
                     other_player.telemetry.coordinates.x_m,
                     other_player.telemetry.coordinates.y_m,
-                    other_player.telemetry.coordinates.z_m
+                    other_player.telemetry.coordinates.z_m,
                 )
                 other_road = ctx.road_id
 
             if other_road != mode.overtake_return_lane_id:
                 continue
 
-            oc   = other_player.telemetry.coordinates
-            dist = calc_dist_3d(my_coords.x_m, my_coords.y_m, my_coords.z_m, oc.x_m, oc.y_m, oc.z_m)
+            oc = other_player.telemetry.coordinates
+            dist = calc_dist_3d(
+                my_coords.x_m, my_coords.y_m, my_coords.z_m, oc.x_m, oc.y_m, oc.z_m
+            )
             if dist > max_dist_m * 2.0:
                 continue
 
             dot = dir_x * (oc.x_m - my_coords.x_m) + dir_y * (oc.y_m - my_coords.y_m)
 
             if dot >= 0:
-                min_ahead  = min(min_ahead, dist)
+                min_ahead = min(min_ahead, dist)
             else:
                 min_behind = min(min_behind, dist)
 

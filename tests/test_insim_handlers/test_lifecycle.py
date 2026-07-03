@@ -1,4 +1,5 @@
 """Tests for TestInsim lifecycle: __init__, set_isi_packet, on_connect, on_disconnect."""
+
 from lfs_insim.packets import ISP_TINY, ISP_MSL
 from lfs_insim.insim_enums import ISF, TINY
 from lfs_insim.utils import CMDManager

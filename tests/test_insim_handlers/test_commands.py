@@ -1,4 +1,5 @@
 """Tests for on_ISP_MSO dispatch and _cmd_users / _cmd_players commands."""
+
 from lfs_insim.packets import ISP_MSO, ISP_NCN, ISP_NPL, ISP_MSL
 from lfs_insim.insim_enums import PTYPE
 

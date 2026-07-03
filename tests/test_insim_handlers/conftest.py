@@ -5,6 +5,7 @@ defecto), así que se captura parcheando `client.send` de un cliente real en
 el que se registra la app. Los helpers sin `client` propio (CMDManager...)
 caen en el cliente por defecto, que es este mismo (el primero creado).
 """
+
 import pytest
 from unittest.mock import patch
 import lfs_insim.insim_state as state
@@ -24,7 +25,7 @@ def insim():
     """TestInsim registrada en un cliente con el envío capturado en app._sent."""
     sent = []
     client = InSimClient(config={})
-    with patch.object(client, 'send', side_effect=sent.append):
+    with patch.object(client, "send", side_effect=sent.append):
         app = TestInsim(config={})
         client.register(app)
         app._sent = sent

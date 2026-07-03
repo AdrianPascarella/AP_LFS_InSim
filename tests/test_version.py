@@ -1,4 +1,5 @@
 """Tests for version parsing and constraint checking in InSimLoader."""
+
 import pytest
 from lfs_insim.insim_loader import _parse_version, _check_version
 

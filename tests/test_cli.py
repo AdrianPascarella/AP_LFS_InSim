@@ -7,6 +7,7 @@ instalaban como comandos GLOBALES en el PATH de quien hiciera `pip install`
 subcomandos de `lfs-insim` (`lfs-insim stubs`, `lfs-insim update-all`) y los
 quita de `[project.scripts]`, dejando `lfs-insim` como el único console-script.
 """
+
 from pathlib import Path
 
 import pytest

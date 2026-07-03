@@ -12,6 +12,7 @@ Uso:
     lfs-insim stubs             Regenera los stubs de tipos (.pyi)
     lfs-insim update-all        Regenera todos los artefactos generados
 """
+
 import argparse
 import json
 import logging
@@ -27,12 +28,13 @@ from typing import Optional
 # Aplicar configuración de logging del proyecto (escribe en logs/insim.log)
 try:
     from config.settings import LOGGING_CONFIG
+
     logging.config.dictConfig(LOGGING_CONFIG)
 except Exception:
     logging.basicConfig(
         level=logging.INFO,
-        format='[%(asctime)s] %(levelname)s: %(message)s',
-        datefmt='%H:%M:%S'
+        format="[%(asctime)s] %(levelname)s: %(message)s",
+        datefmt="%H:%M:%S",
     )
 
 logger = logging.getLogger("lfs-insim")
@@ -50,14 +52,15 @@ def _load_project_config() -> Optional[dict]:
     try:
         from config.settings import INSIM_CONFIG
     except ImportError:
-        admin_pass = os.environ.get('LFS_ADMIN_PASS')
-        return {'admin_pass': admin_pass} if admin_pass else None
+        admin_pass = os.environ.get("LFS_ADMIN_PASS")
+        return {"admin_pass": admin_pass} if admin_pass else None
     return dict(INSIM_CONFIG)
 
 
 def get_loader():
     """Build the InSim loader for the current project directory."""
     from .insim_loader import InSimLoader
+
     config = _load_project_config()
     project_insims = Path.cwd() / "insims"
     if project_insims.exists():
@@ -76,17 +79,18 @@ def _disable_console_quick_edit() -> None:
     the reconnection loop. Long-running commands turn it off. No-op outside
     Windows or without a console; best effort, never fails startup.
     """
-    if sys.platform != 'win32':
+    if sys.platform != "win32":
         return
     try:
         import ctypes
+
         kernel32 = ctypes.windll.kernel32
-        handle = kernel32.GetStdHandle(-10)             # STD_INPUT_HANDLE
+        handle = kernel32.GetStdHandle(-10)  # STD_INPUT_HANDLE
         mode = ctypes.c_uint()
         if not kernel32.GetConsoleMode(handle, ctypes.byref(mode)):
-            return                                      # no console attached
+            return  # no console attached
         ENABLE_QUICK_EDIT_MODE = 0x0040
-        ENABLE_EXTENDED_FLAGS = 0x0080                  # needed to alter QuickEdit
+        ENABLE_EXTENDED_FLAGS = 0x0080  # needed to alter QuickEdit
         kernel32.SetConsoleMode(
             handle,
             (mode.value & ~ENABLE_QUICK_EDIT_MODE) | ENABLE_EXTENDED_FLAGS,
@@ -97,9 +101,9 @@ def _disable_console_quick_edit() -> None:
 
 def cmd_run(args: argparse.Namespace) -> int:
     """Ejecuta un InSim."""
-    _disable_console_quick_edit()   # un clic en la consola no debe congelar el proceso
+    _disable_console_quick_edit()  # un clic en la consola no debe congelar el proceso
     loader = get_loader()
-    
+
     try:
         logger.info(f"Cargando InSim: {args.name}")
         insim = loader.load(args.name)
@@ -112,7 +116,9 @@ def cmd_run(args: argparse.Namespace) -> int:
 
     except FileNotFoundError as e:
         logger.error(str(e))
-        logger.info(f"InSims disponibles: {', '.join(i['name'] for i in loader.list_available())}")
+        logger.info(
+            f"InSims disponibles: {', '.join(i['name'] for i in loader.list_available())}"
+        )
         return 1
     except KeyboardInterrupt:
         logger.info("Detenido por el usuario")
@@ -128,22 +134,26 @@ def cmd_list(args: argparse.Namespace) -> int:
     """Lista InSims disponibles."""
     loader = get_loader()
     insims = loader.list_available()
-    
+
     if not insims:
         print("No se encontraron InSims.")
         print(f"Directorio de búsqueda: {loader.insims_path}")
         return 0
-    
+
     print(f"\n{'Nombre':<20} {'Versión':<10} {'Descripción'}")
     print("-" * 60)
-    
+
     for info in insims:
-        desc = info['description'][:30] + "..." if len(info['description']) > 33 else info['description']
+        desc = (
+            info["description"][:30] + "..."
+            if len(info["description"]) > 33
+            else info["description"]
+        )
         print(f"{info['name']:<20} {info['version']:<10} {desc}")
-    
+
     print(f"\nTotal: {len(insims)} InSim(s)")
     print(f"Ubicación: {loader.insims_path}\n")
-    
+
     return 0
 
 
@@ -151,34 +161,34 @@ def cmd_info(args: argparse.Namespace) -> int:
     """Muestra información detallada de un InSim."""
     loader = get_loader()
     manifest = loader.get_manifest(args.name)
-    
+
     if manifest is None:
         logger.error(f"InSim '{args.name}' no encontrado")
         return 1
-    
-    print(f"\n{'='*50}")
+
+    print(f"\n{'=' * 50}")
     print(f"  {manifest.name} v{manifest.version}")
-    print(f"{'='*50}")
-    
+    print(f"{'=' * 50}")
+
     if manifest.description:
         print(f"\n  {manifest.description}")
-    
+
     if manifest.author:
         print(f"\n  Autor: {manifest.author}")
-    
+
     print(f"\n  Punto de entrada: {manifest.entry_point}")
     print(f"  Directorio: {manifest.directory}")
-    
+
     if manifest.insim_dependencies:
         print(f"\n  Dependencias InSim:")
         for dep, version in manifest.insim_dependencies.items():
             print(f"    - {dep} {version}")
-    
+
     if manifest.python_dependencies:
         print(f"\n  Dependencias Python:")
         for dep in manifest.python_dependencies:
             print(f"    - {dep}")
-    
+
     print()
     return 0
 
@@ -187,14 +197,14 @@ def cmd_init(args: argparse.Namespace) -> int:
     """Crea un nuevo InSim."""
     loader = get_loader()
     insim_dir = loader.insims_path / args.name
-    
+
     if insim_dir.exists():
         logger.error(f"Ya existe un InSim llamado '{args.name}'")
         return 1
-    
+
     # Crear directorio
     insim_dir.mkdir(parents=True)
-    
+
     # Crear insim.json
     manifest = {
         "name": args.name,
@@ -203,18 +213,18 @@ def cmd_init(args: argparse.Namespace) -> int:
         "author": "",
         "entry_point": "main.py",
         "insim_dependencies": {},
-        "python_dependencies": []
+        "python_dependencies": [],
     }
-    
-    with open(insim_dir / "insim.json", 'w', encoding='utf-8') as f:
+
+    with open(insim_dir / "insim.json", "w", encoding="utf-8") as f:
         json.dump(manifest, f, indent=2, ensure_ascii=False)
-    
+
     # Nombre de clase: snake_case -> CamelCase
-    class_name = ''.join(word.capitalize() for word in args.name.split('_'))
+    class_name = "".join(word.capitalize() for word in args.name.split("_"))
 
     # Crear __init__.py
     init_content = f'"""{args.name} InSim Package."""\n'
-    with open(insim_dir / "__init__.py", 'w', encoding='utf-8') as f:
+    with open(insim_dir / "__init__.py", "w", encoding="utf-8") as f:
         f.write(init_content)
 
     # Crear main.py con template
@@ -263,10 +273,10 @@ class {class_name}(InSimApp):
     def on_disconnect(self):
         self.logger.info(f"Modulo {{self.name}} desconectado.")
 '''
-    
-    with open(insim_dir / "main.py", 'w', encoding='utf-8') as f:
+
+    with open(insim_dir / "main.py", "w", encoding="utf-8") as f:
         f.write(main_content)
-    
+
     print(f"\nInSim '{args.name}' creado en: {insim_dir}")
     print(f"\nSiguientes pasos:")
     print(f"  1. Edita {insim_dir / 'main.py'}")
@@ -279,6 +289,7 @@ class {class_name}(InSimApp):
 def cmd_stubs(args: argparse.Namespace) -> int:
     """Regenera los stubs de tipos (.pyi) para el autocompletado del IDE."""
     from . import generate_stubs
+
     generate_stubs.main()
     return 0
 
@@ -286,6 +297,7 @@ def cmd_stubs(args: argparse.Namespace) -> int:
 def cmd_update_all(args: argparse.Namespace) -> int:
     """Regenera todos los artefactos generados: stubs .pyi + lista de InSims del README."""
     from . import update_all
+
     update_all.main()
     return 0
 
@@ -304,54 +316,55 @@ Ejemplos:
   lfs-insim info ai_control       Muestra información del InSim 'ai_control'
   lfs-insim stubs                 Regenera los stubs de tipos (.pyi)
   lfs-insim update-all            Regenera stubs y la lista de InSims del README
-"""
+""",
     )
-    
+
     parser.add_argument(
-        '-v', '--verbose',
-        action='store_true',
-        help='Mostrar información de debug'
+        "-v", "--verbose", action="store_true", help="Mostrar información de debug"
     )
-    
-    subparsers = parser.add_subparsers(dest='command', help='Comandos disponibles')
-    
+
+    subparsers = parser.add_subparsers(dest="command", help="Comandos disponibles")
+
     # Comando: run
-    run_parser = subparsers.add_parser('run', help='Ejecutar un InSim')
-    run_parser.add_argument('name', help='Nombre del InSim a ejecutar')
+    run_parser = subparsers.add_parser("run", help="Ejecutar un InSim")
+    run_parser.add_argument("name", help="Nombre del InSim a ejecutar")
     run_parser.set_defaults(func=cmd_run)
-    
+
     # Comando: list
-    list_parser = subparsers.add_parser('list', help='Listar InSims disponibles')
+    list_parser = subparsers.add_parser("list", help="Listar InSims disponibles")
     list_parser.set_defaults(func=cmd_list)
-    
+
     # Comando: info
-    info_parser = subparsers.add_parser('info', help='Mostrar información de un InSim')
-    info_parser.add_argument('name', help='Nombre del InSim')
+    info_parser = subparsers.add_parser("info", help="Mostrar información de un InSim")
+    info_parser.add_argument("name", help="Nombre del InSim")
     info_parser.set_defaults(func=cmd_info)
-    
+
     # Comando: init
-    init_parser = subparsers.add_parser('init', help='Crear un nuevo InSim')
-    init_parser.add_argument('name', help='Nombre del nuevo InSim')
+    init_parser = subparsers.add_parser("init", help="Crear un nuevo InSim")
+    init_parser.add_argument("name", help="Nombre del nuevo InSim")
     init_parser.set_defaults(func=cmd_init)
 
     # Comando: stubs (antes el script global 'generate-stubs')
-    stubs_parser = subparsers.add_parser('stubs', help='Regenerar los stubs de tipos (.pyi)')
+    stubs_parser = subparsers.add_parser(
+        "stubs", help="Regenerar los stubs de tipos (.pyi)"
+    )
     stubs_parser.set_defaults(func=cmd_stubs)
 
     # Comando: update-all (antes el script global 'update-all')
     update_all_parser = subparsers.add_parser(
-        'update-all', help='Regenerar todos los artefactos generados (stubs + README)')
+        "update-all", help="Regenerar todos los artefactos generados (stubs + README)"
+    )
     update_all_parser.set_defaults(func=cmd_update_all)
 
     args = parser.parse_args(argv)
-    
+
     if args.verbose:
         logging.getLogger().setLevel(logging.DEBUG)
-    
+
     if args.command is None:
         parser.print_help()
         return 0
-    
+
     return args.func(args)
 
 

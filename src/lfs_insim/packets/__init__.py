@@ -5,6 +5,7 @@ Recommended import point for every packet class:
     from lfs_insim.packets import ISP_MSO, CompCar
 Protocol enums live in `lfs_insim.insim_enums` and are NOT re-exported here.
 """
+
 from .base import *
 from .structures import *
 from .insim import *
@@ -19,7 +20,11 @@ __all__ = [
     *_structures.__all__,
     *_insim.__all__,
     *_outsim.__all__,
-    'INSIM_PACKETS', 'OUTSIM_PACKETS', 'RECEIVE', 'SEND', 'ALLOWED_PACKETS',
+    "INSIM_PACKETS",
+    "OUTSIM_PACKETS",
+    "RECEIVE",
+    "SEND",
+    "ALLOWED_PACKETS",
 ]
 
 # OutGaugePack y OutSimPack tienen formato fijo: siempre registrados.
@@ -27,11 +32,13 @@ __all__ = [
 # cuando algún módulo declara outsim_opts != OSO.NONE.
 OUTSIM_PACKETS: dict = {
     OutGaugePack().get_size(): OutGaugePack,
-    OutSimPack().get_size():   OutSimPack,
+    OutSimPack().get_size(): OutSimPack,
 }
+
 
 class RECEIVE:
     """Catálogo de recepción"""
+
     ISP_VER = ISP_VER
     ISP_TINY = ISP_TINY
     ISP_SMALL = ISP_SMALL
@@ -89,8 +96,10 @@ class RECEIVE:
     OutSimPack = OutSimPack
     OutSimPack2 = OutSimPack2
 
+
 class SEND:
     """Catálogo de envío"""
+
     ISP_ISI = ISP_ISI
     ISP_TINY = ISP_TINY
     ISP_SMALL = ISP_SMALL
@@ -119,7 +128,7 @@ class SEND:
     ISP_RIP = ISP_RIP
     ISP_SSH = ISP_SSH
 
+
 ALLOWED_PACKETS = tuple(
-    valor for nombre, valor in vars(SEND).items() 
-    if nombre.startswith("ISP_")
+    valor for nombre, valor in vars(SEND).items() if nombre.startswith("ISP_")
 )
