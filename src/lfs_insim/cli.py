@@ -64,8 +64,38 @@ def get_loader():
         return InSimLoader(config=config)
 
 
+def _disable_console_quick_edit() -> None:
+    """
+    Disable Windows console QuickEdit mode for this process.
+
+    With QuickEdit on (the console default), a single click on the window
+    starts a text selection that BLOCKS every write to stdout until it is
+    released — which freezes every thread at its next log call, including
+    the reconnection loop. Long-running commands turn it off. No-op outside
+    Windows or without a console; best effort, never fails startup.
+    """
+    if sys.platform != 'win32':
+        return
+    try:
+        import ctypes
+        kernel32 = ctypes.windll.kernel32
+        handle = kernel32.GetStdHandle(-10)             # STD_INPUT_HANDLE
+        mode = ctypes.c_uint()
+        if not kernel32.GetConsoleMode(handle, ctypes.byref(mode)):
+            return                                      # no console attached
+        ENABLE_QUICK_EDIT_MODE = 0x0040
+        ENABLE_EXTENDED_FLAGS = 0x0080                  # needed to alter QuickEdit
+        kernel32.SetConsoleMode(
+            handle,
+            (mode.value & ~ENABLE_QUICK_EDIT_MODE) | ENABLE_EXTENDED_FLAGS,
+        )
+    except Exception:
+        pass
+
+
 def cmd_run(args: argparse.Namespace) -> int:
     """Ejecuta un InSim."""
+    _disable_console_quick_edit()   # un clic en la consola no debe congelar el proceso
     loader = get_loader()
     
     try:

@@ -133,7 +133,11 @@ LOGGING_CONFIG = {
     },
     'root': {
         'level': 'DEBUG',
-        'handlers': ['console', 'file'],
+        # 'file' SIEMPRE antes que 'console': en Windows, una selección de
+        # texto en la consola (QuickEdit) bloquea la escritura a stdout y el
+        # logger se congela en el handler de consola — si va primero, el
+        # registro no llega nunca al archivo y el log miente (visto en S10).
+        'handlers': ['file', 'console'],
     },
 }
 
