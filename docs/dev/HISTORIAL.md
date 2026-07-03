@@ -38,9 +38,20 @@ suite heredada 463/463 antes de tocar.
 
 **No requiere validación en LFS** (solo packaging; cero cambios de runtime).
 
-**Siguiente de Fase 4:** subcomandos del CLI (`lfs-insim stubs`, ...) —
-absorber los entry points sueltos `generate-stubs`/`update-all`. Después:
-ruff + mypy, CI, docs de usuario, CHANGELOG. Decisión PyPI sigue abierta.
+**Decisión de secuencia (S14, acordada con el usuario):** orden de Fase 4 =
+**CLI → ruff + CI → docs → CHANGELOG**. El ítem del CLI va primero por un
+wart concreto hallado al leer el paquete: `generate-stubs` y `update-all`
+se instalan como **comandos GLOBALES en el PATH** de quien haga
+`pip install` (nombres genéricos que invaden el entorno ajeno) → plegarlos
+en `lfs-insim`. Luego ruff ANTES de escribir más código (format = diff de
+pura forma, cubierto por los 465 tests) y CI encima.
+
+**PyPI (verificado en S14):** el nombre `lfs-insim` está LIBRE
+(`pypi.org/pypi/lfs-insim/json` → 404). Decisión: **preparar sí, publicar
+no todavía** — ensayar en TestPyPI cuando llegue CI y dejar workflow listo;
+el publish real a PyPI, tras el merge a `main` (acción pública e
+irreversible). Sin prisa por reservar el nombre. Detalle en
+ESTADO_ACTUAL § Bloqueos.
 
 ---
 

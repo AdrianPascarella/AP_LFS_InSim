@@ -192,19 +192,42 @@ sondeo interno).
 
 ## ▶️ Próximo paso concreto (empezar AQUÍ la próxima sesión)
 
-1. **Seguir Fase 4** — siguiente ítem: subcomandos del CLI
-   (`lfs-insim stubs`, ...) — absorber los entry points sueltos
-   `generate-stubs`/`update-all` en el CLI (y revisar el git hook que los
-   usa). Después: ruff + mypy gradual → CI (GitHub Actions) → docs de
-   usuario → CHANGELOG. Decisión pendiente con el usuario: ¿PyPI?
-2. Idea DX de Fase 4 ya apuntada: el connect inicial fallido imprime un
+Orden de Fase 4 acordado con el usuario (S14): **CLI → ruff + CI → docs →
+CHANGELOG**; PyPI se prepara pero NO se dispara hasta el merge a `main`.
+
+1. **Siguiente ítem: subcomandos del CLI.** Absorber los entry points
+   sueltos `generate-stubs` y `update-all` en `lfs-insim` (p. ej.
+   `lfs-insim stubs`, `lfs-insim update-all`) y quitarlos de
+   `[project.scripts]`. **Motivo concreto (hallado en S14):** hoy se instalan
+   como **comandos GLOBALES en el PATH** de quien haga `pip install` —
+   nombres genéricos que invaden el entorno ajeno, justo lo contrario del
+   objetivo de Fase 4. Sub-tareas: `cli.py` (nuevos subparsers que llamen a
+   `generate_stubs.main()` / `update_all.main()`), quitar los dos scripts de
+   pyproject, y **revisar el git hook** (`scripts/install-git-hooks.*`) que
+   invoca `generate-stubs` en el commit → pasarlo a `lfs-insim stubs` o al
+   módulo (`python -m lfs_insim.generate_stubs`). `update_all.py` corre
+   `generate_stubs` + `tools/update_insims_readme.py`.
+2. **Luego el bloque grande: ruff + CI juntos.** ruff (lint+format) ANTES de
+   escribir más código — el `ruff format` es un diff grande pero de pura
+   forma (cero comportamiento) y los 465 tests son la red que lo prueba;
+   se paga una vez. Después CI (GitHub Actions: pytest + ruff en push/PR).
+   mypy gradual sobre el core, sin bloquear.
+3. Después: docs de usuario (quickstart) → CHANGELOG.
+4. Idea DX de Fase 4 ya apuntada: el connect inicial fallido imprime un
    traceback feo (`exc_info=True` + re-raise) — valorar mensaje limpio y/o
    `connect_retry` para arrancar el insim antes que LFS. (La pista de ISI
    rechazado ya está hecha; el fallback de cfg.txt está en PLAN § Ideas.)
 
 ## Bloqueos / esperando
 
-- Decisión pendiente (Fase 4): ¿publicar en PyPI?
+- Decisión pendiente (Fase 4): ¿publicar en PyPI? Recomendación S14:
+  **preparar sí, disparar no todavía.** El nombre `lfs-insim` está LIBRE
+  (verificado en S14: `pypi.org/pypi/lfs-insim/json` → 404). Plan: cuando
+  llegue CI, ensayar contra **TestPyPI** y dejar un workflow de publicación
+  listo; el `pip install` real a PyPI queda para DESPUÉS del merge a `main`
+  (acción de cara al público y difícilmente reversible: versión liberada no
+  se reutiliza, nombre reclamado). Sin urgencia por reservar el nombre (nicho
+  + PyPI desaconseja el squatting). La metadata ya quedó lista para ello (S14).
 
 ## Notas para la próxima sesión
 
