@@ -4,7 +4,8 @@ import logging
 from typing import TYPE_CHECKING, Optional, Literal
 
 from lfs_insim import InSimApp, mute_send_logs
-from lfs_insim.insim_packet_class import ISP_MCI, ISP_RST, ISP_CRS, ISP_MSO, ISP_PLL, AIInputVal as AIV, CS, SND
+from lfs_insim.packets import ISP_MCI, ISP_RST, ISP_CRS, ISP_MSO, ISP_PLL, AIInputVal as AIV
+from lfs_insim.insim_enums import CS, SND
 from lfs_insim.utils import PIDController, separate_command_args, TextColors
 
 mute_send_logs('ISP_AIC')

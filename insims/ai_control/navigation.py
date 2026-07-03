@@ -4,7 +4,8 @@ import time
 import random
 from typing import TYPE_CHECKING, Optional, List, Tuple, Literal
 
-from lfs_insim.insim_packet_class import CSVAL, AIInputVal as AIV, CS
+from lfs_insim.packets import AIInputVal as AIV
+from lfs_insim.insim_enums import CSVAL, CS
 from lfs_insim.utils import (
     calc_dist_3d, get_closest_node_index, determine_smart_spawn_index,
     apply_antilag_window, evaluate_dynamic_capture

@@ -9,7 +9,7 @@ from config.settings import BASE_DIR
 from insims.ai_control.nav_modes.route.mode import RouteMode
 from insims.users_management.main import Coordinates, Speed
 from lfs_insim.utils import calc_dist_3d, calc_deviation_angle
-from lfs_insim.insim_packet_class import ISP_MSL
+from lfs_insim.packets import ISP_MSL
 from lfs_insim.packet_sender_mixin import PacketSenderMixin
 
 if TYPE_CHECKING:

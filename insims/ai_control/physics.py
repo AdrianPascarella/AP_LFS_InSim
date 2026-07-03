@@ -2,7 +2,8 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING
 
-from lfs_insim.insim_packet_class import CSVAL, AIInputVal as AIV, CS
+from lfs_insim.packets import AIInputVal as AIV
+from lfs_insim.insim_enums import CSVAL, CS
 from lfs_insim.utils import calc_dist_3d, calc_target_heading, get_heading_diff, lfs_pos_to_meters
 from insims.ai_control.behavior import AIBehavior, AdaptiveSpeedConfig, GearMode
 from insims.users_management.main import Coordinates

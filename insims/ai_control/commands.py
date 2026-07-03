@@ -4,7 +4,8 @@ import time
 import random
 from typing import TYPE_CHECKING, Optional
 
-from lfs_insim.insim_packet_class import SND, AIInputVal as AIV, CSVAL, CS
+from lfs_insim.packets import AIInputVal as AIV
+from lfs_insim.insim_enums import SND, CSVAL, CS
 from lfs_insim.utils import TextColors, CMDManager
 from insims.ai_control.behavior import AIBehavior, AdaptiveSpeedConfig
 from insims.ai_control.nav_modes.route.mode import RouteMode
@@ -13,7 +14,7 @@ from insims.ai_control.base import _MixinBase
 
 if TYPE_CHECKING:
     from insims.users_management.main import AI
-    from lfs_insim.insim_packet_class import ISP_MSO
+    from lfs_insim.packets import ISP_MSO
 
 
 class _CommandsMixin(_MixinBase):

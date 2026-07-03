@@ -4,7 +4,7 @@ import time
 import random
 from typing import TYPE_CHECKING, Optional, List, Tuple
 
-from lfs_insim.insim_packet_class import CSVAL
+from lfs_insim.insim_enums import CSVAL
 from lfs_insim.utils import calc_dist_3d
 from insims.ai_control.behavior import AIBehavior
 from insims.ai_control.nav_modes.freeroam.mode import FreeroamMode

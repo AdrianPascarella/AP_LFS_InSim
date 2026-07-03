@@ -3,7 +3,7 @@ import random
 from dataclasses import dataclass, field
 from typing import Optional, List, Literal
 
-from lfs_insim.insim_packet_class import CSVAL
+from lfs_insim.insim_enums import CSVAL
 from insims.ai_control.nav_modes import AINavModeState
 from insims.ai_control.nav_modes.freeroam.enums import AIManeuverState
 

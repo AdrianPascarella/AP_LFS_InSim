@@ -10,7 +10,8 @@ from typing import Dict, Optional, List, Callable
 from enum import Enum
 
 from insims.users_management.main import Coordinates
-from lfs_insim.insim_packet_class import ISP_MSL, ISP_MSO, CSVAL, SND
+from lfs_insim.packets import ISP_MSL, ISP_MSO
+from lfs_insim.insim_enums import CSVAL, SND
 from lfs_insim.packet_sender_mixin import PacketSenderMixin
 from lfs_insim.utils import CMDManager, calc_dist_3d, TextColors, calc_deviation_angle, calc_dist_point_to_segment_3d
 

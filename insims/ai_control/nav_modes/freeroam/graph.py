@@ -2,7 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import List, Optional, Literal
 
-from lfs_insim.insim_packet_class import CSVAL
+from lfs_insim.insim_enums import CSVAL
 from insims.users_management.main import Coordinates
 from insims.ai_control.nav_modes.freeroam.enums import TrafficRule
 
