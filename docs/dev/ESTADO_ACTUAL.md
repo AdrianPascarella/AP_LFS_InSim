@@ -1,15 +1,23 @@
 # 📍 Estado actual
 
-> Actualizado: **2026-07-03** — sesión S07
+> Actualizado: **2026-07-03** — sesión S08
 > **Rama de trabajo: `refactor/estabilizacion`.** Todo el refactor ocurre aquí; `main`
 > queda intacta hasta el merge final (cuando el proyecto esté estable). **Sync por GitHub:**
 > `git pull` al arrancar y `git push` al cerrar (permite continuar desde otro dispositivo).
 
 ## Estado
 
-**Fase 1 COMPLETADA. Fase 2 casi cerrada: P11, P13, P14, P15, P17 y P20 hechos.
-Suite 420/420 verde. TODO lo anterior validado por el usuario en LFS (S07):
-P13/P14/P21 y también el estado post-P15 (`!test` OK). Sin validaciones pendientes.**
+**Fase 1 COMPLETADA. Fase 2 con TODO el código hecho: P11, P13, P14, P15, P17 y P20,
+y la migración de insims (S08). Suite 420/420 verde. Falta SOLO la validación del
+usuario en LFS del estado post-migración para declarar Fase 2 cerrada.**
+
+**Migración de insims (hecha en S08):** `ai_control` ya no importa la facade
+deprecada — los 10 imports de `insim_packet_class` (9 archivos) pasaron a
+`lfs_insim.packets` (ISP_*, `AIInputVal`) y `lfs_insim.insim_enums` (CS, CSVAL,
+SND). `users_management` ya estaba migrado (usa `packets`/`insim_enums` directos;
+sus enums llegan vía `um_class.py`). Smoke: los 4 insims cargan con
+DeprecationWarning-como-error (nadie importa la facade); `lfs-insim list` OK.
+Commit `0292a01`.
 
 **P15 (API pública, hecho en S07):** `__all__` en todos los módulos públicos
 (`lfs_insim`, `packets/*`, `insim_enums`, `utils`, `exceptions`, `config`). Puntos de
@@ -45,7 +53,8 @@ TCP/UDP, hilos receptores, stop y lock **por instancia**; el cliente lo posee
 aceptación en `test_transport.py`). Smoke: `ai_control` carga, CLI OK.
 
 **Validación en LFS (S07):** el usuario probó el estado post-P15 en LFS real
-(`!test` incluido) — todo bien. No hay validaciones pendientes.
+(`!test` incluido) — todo bien. **Pendiente (S08): validar el estado
+post-migración de `ai_control`** (ver "Próximo paso").
 
 **Contexto del plan (S04):** framework a nivel profesional; romper insims aceptable.
 P11–P21 en `DIAGNOSTICO.md`. Queda gordo: P12 (reconexión, Fase 3).
@@ -53,16 +62,16 @@ P11–P21 en `DIAGNOSTICO.md`. Queda gordo: P12 (reconexión, Fase 3).
 ## Fase activa
 
 **Fase 2 — Arquitectura del core** (composición y API); ver `PLAN.md`.
-Hecho: P11, P13, P14, P15, P17, P20 y decisión de idioma. Queda: la pasada final de
-migración/validación de insims (última casilla).
+Hecho: P11, P13, P14, P15, P17, P20, decisión de idioma y migración de insims (S08).
+Queda: validación del usuario en LFS (última casilla).
 
 ## ▶️ Próximo paso concreto (empezar AQUÍ la próxima sesión)
 
-**Cerrar Fase 2 — migración de insims a la nueva API:** quitar de `ai_control` (y
-`users_management`) los imports de la facade deprecada (`insim_packet_class` →
-`lfs_insim.packets` + `lfs_insim.insim_enums`; son ~12 archivos, cambio mecánico de
-imports), smoke + suite, y validación del usuario en LFS. Con eso Fase 2 queda
-completa y se abre **Fase 3** (P12 reconexión — el gordo pendiente — y P2/P18/P19).
+**Validación del usuario en LFS del estado post-migración** (el código ya está):
+arrancar `lfs-insim run ai_control`, probar comandos habituales (`!test` incluido)
+y comportamiento de la IA. Si todo bien → **Fase 2 CERRADA** y se abre **Fase 3**
+(P12 reconexión — el gordo pendiente — y P2/P18/P19). Si algo falla, el cambio es
+solo de imports (commit `0292a01`), fácil de acotar.
 
 ## Bloqueos / esperando
 

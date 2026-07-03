@@ -99,8 +99,9 @@ fallarían ante una regresión; base para refactorizar con confianza.
       de dependencias en el mensaje (S07). `on_tick` configurable → Fase 3
 - [ ] Migrar `users_management`, `ai_control` y `test_insim` a la nueva API — S06: tras
       P11 los 3 cargan sin cambios; S07: tras P15, `test_insim`/`prueba_botones`
-      actualizados (enums explícitos); **queda**: quitar la facade deprecada de
-      `ai_control`/`users_management` (~12 archivos) + validación del usuario en LFS
+      actualizados (enums explícitos); S08: `ai_control` migrado (10 imports, 9
+      archivos; `users_management` ya estaba); smoke sin facade + suite 420/420;
+      **queda solo**: validación del usuario en LFS → al pasarla, marcar y cerrar Fase 2
 - [x] Decisión de diseño: idioma de la API pública del core — S06, decidido con el usuario:
       **inglés en el core** (identificadores, docstrings y errores del código nuevo/refactorizado);
       español en docs/dev, tests, insims y comunicación. El código viejo se traduce al tocarlo

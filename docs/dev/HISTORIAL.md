@@ -5,6 +5,33 @@
 
 ---
 
+## S08 — 2026-07-03 — Fase 2: migración de insims fuera de la facade deprecada
+
+**Qué se hizo:**
+- **`ai_control` migrado a la API pública (P15):** los 10 imports de
+  `insim_packet_class` en 9 archivos (`app.py`, `commands.py` ×2, `physics.py`,
+  `traffic.py`, `navigation.py`, `nav_modes/route/manager.py`,
+  `nav_modes/freeroam/{graph,map_recorder,mode}.py`) pasan a los puntos
+  recomendados: ISP_* y `AIInputVal` desde `lfs_insim.packets`; `CS`, `CSVAL` y
+  `SND` desde `lfs_insim.insim_enums`. Cambio mecánico, sin tocar lógica.
+- **`users_management` no necesitaba cambios:** ya importaba
+  `lfs_insim.packets`/`lfs_insim.insim_enums`; `main.py` recibe los enums vía
+  `from um_class import *` (um_class hace `from insim_enums import *`).
+- **Verificación:** smoke que carga los 4 insims con el DeprecationWarning de la
+  facade elevado a error y comprueba que `insim_packet_class` no entra en
+  `sys.modules` — OK. `lfs-insim list` OK. Suite **420/420**.
+- Con esto la facade deprecada queda sin consumidores dentro del repo (solo la
+  cubren los tests de compatibilidad de `test_api_publica.py`).
+
+**Commits:** `0292a01` refactor(insims): migrar ai_control fuera de la facade
+deprecada (cierre P15).
+
+**Pendiente del usuario:** validar en LFS el estado post-migración
+(`lfs-insim run ai_control`, comandos y conducción). Si va bien, **Fase 2 queda
+CERRADA** y la próxima sesión abre Fase 3 (P12 reconexión, P2, P18, P19).
+
+---
+
 ## S07 — 2026-07-03 — Fase 2: P14 (config del paquete con defaults internos)
 
 **Qué se hizo (segundo bloque, misma sesión) — P15, P17 y P20** (tras validar el
