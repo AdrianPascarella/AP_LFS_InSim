@@ -12,12 +12,18 @@ escrito, no existe.
 
 Antes de tocar nada:
 1. Estar en la rama de refactor (`git branch --show-current`; si no, `git checkout refactor/estabilizacion`).
-2. **`git pull`** para traer cambios hechos desde otro dispositivo (los `.md` o el código pueden haber cambiado).
-3. Leer `ESTADO_ACTUAL.md` (dónde quedé, próximo paso).
-4. Leer la última entrada de `HISTORIAL.md`.
-5. Leer la fase activa en `PLAN.md`.
-6. Verificar con `git status` y `git log --oneline -5` que el repo coincide con lo escrito.
-7. Resumir al usuario en 2-3 líneas dónde estamos y qué propongo. Luego actuar.
+2. **Proteger mapas modificados ANTES de cualquier `git pull`/checkout/stash** (instrucción
+   permanente del usuario, 2026-07-03): si `git status` muestra cambios sin commitear en mapas
+   freeroam (`insims/ai_control/nav_modes/freeroam/maps/*.json` y sus renders `*_rendered.png`),
+   guardarlos SIEMPRE de forma segura — copia de respaldo fuera del repo + commit
+   `data(ai_control): ...` + push. Es trabajo manual largo grabado en el juego y **no debe
+   perderse nunca**. Este commit+push está autorizado de forma permanente, sin preguntar.
+3. **`git pull`** para traer cambios hechos desde otro dispositivo (los `.md` o el código pueden haber cambiado).
+4. Leer `ESTADO_ACTUAL.md` (dónde quedé, próximo paso).
+5. Leer la última entrada de `HISTORIAL.md`.
+6. Leer la fase activa en `PLAN.md`.
+7. Verificar con `git status` y `git log --oneline -5` que el repo coincide con lo escrito.
+8. Resumir al usuario en 2-3 líneas dónde estamos y qué propongo. Luego actuar.
 
 ## 2. Protocolo de CIERRE de sesión (o de hito)
 
