@@ -59,6 +59,11 @@ class TestBuildConfig:
                       'udp_host', 'udp_port', 'udp_buffer'):
             assert clave in DEFAULT_CONFIG, f"falta '{clave}' en DEFAULT_CONFIG"
 
+    def test_handler_errors_por_defecto_es_log(self):
+        # La política de errores de handlers (Fase 3) debe ser resiliente
+        # por defecto: aislar y loguear, nunca tirar el cliente en prod.
+        assert DEFAULT_CONFIG['handler_errors'] == 'log'
+
 
 class TestCoreSinConfigDelProyecto:
     """P14: el core funciona con `config.settings` inimportable."""

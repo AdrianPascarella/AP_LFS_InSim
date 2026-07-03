@@ -17,6 +17,13 @@ Threading model (contract for module authors):
     There is no cross-thread ordering guarantee between lifecycle hooks and
     packet handlers.
   - `send()` is thread-safe and may be called from any thread.
+  - App errors follow the `handler_errors` config key: 'log' (default)
+    isolates them — logged with traceback, the client keeps running;
+    'raise' is fail-fast — the first error in a packet handler or
+    lifecycle hook stops the client and re-raises out of start() (the
+    dispatch worker hands the exception to the main thread). Exception:
+    on_disconnect errors during stop() are always isolated so the
+    shutdown sequence completes.
 """
 
 import queue
@@ -32,7 +39,7 @@ from .insim_packet_sender import encode_packet
 from .insim_packet_decoders import decode_packet
 from .packets import ISP_ISI, ISP_TINY
 from .insim_enums import ISF, TINY, OSO
-from .exceptions import InSimError, InSimConnectionError
+from .exceptions import InSimError, InSimConnectionError, InSimConfigurationError
 
 # Queued behind every pending packet to tell the dispatch worker to exit
 # (see InSimClient._stop_dispatch_worker).
@@ -46,6 +53,19 @@ class InSimClient:
         self.name = name
         self.logger = logging.getLogger(f"InSim.{name}")
         self.running = False
+
+        # Error policy: fail fast on a bad value, whatever the policy is.
+        policy = self.config.get('handler_errors', 'log')
+        if policy not in ('log', 'raise'):
+            raise InSimConfigurationError(
+                f"Invalid 'handler_errors' value: {policy!r} "
+                "(expected 'log' or 'raise')"
+            )
+
+        # With handler_errors='raise', the dispatch worker parks the first
+        # handler exception here and exits; the main loop in start()
+        # re-raises it so the client dies with the original traceback.
+        self._handler_error: Optional[BaseException] = None
 
         # Guards the running check-and-set in stop(): two threads stopping
         # at once (e.g. a handler and a Ctrl+C) must not both run the
@@ -317,6 +337,12 @@ class InSimClient:
             # 5. Main loop
             # NOTE: keep-alive is reactive (see on_packet_received below)
             while self.running:
+                if self._handler_error is not None:
+                    # Fail-fast policy (handler_errors='raise'): a handler
+                    # raised on the dispatch worker. Re-raise it here so
+                    # start() dies with the original traceback.
+                    error, self._handler_error = self._handler_error, None
+                    raise error
                 if self._connection_lost.is_set():
                     # Connection dropped: handle it (and reconnect) from the
                     # main thread; on_tick pauses until the session is back.
@@ -345,10 +371,12 @@ class InSimClient:
             self.running = False
         self.logger.info("Stopping framework...")
 
-        # Notify disconnection (skip when the connection-loss path already did)
+        # Notify disconnection (skip when the connection-loss path already
+        # did). Errors are isolated even with handler_errors='raise': the
+        # shutdown must complete and every app must get its on_disconnect.
         if self.connected:
             self.connected = False
-            self._dispatch_lifecycle('on_disconnect')
+            self._dispatch_lifecycle('on_disconnect', isolate=True)
             self.on_disconnect()
 
         # Close sockets and receiver threads (no more packets get enqueued)
@@ -512,6 +540,11 @@ class InSimClient:
     # Dispatch worker (P2)
     # ------------------------------------------------------------------ #
 
+    @property
+    def _fail_fast(self) -> bool:
+        """True when handler_errors='raise' (fail-fast error policy)."""
+        return self.config.get('handler_errors', 'log') == 'raise'
+
     def _start_dispatch_worker(self) -> None:
         """Start the dispatch worker thread (idempotent)."""
         if self._dispatch_thread is not None and self._dispatch_thread.is_alive():
@@ -542,9 +575,11 @@ class InSimClient:
     def _dispatch_loop(self) -> None:
         """
         Dispatch worker main loop. Takes decoded packets from the queue and
-        delivers them in FIFO order. Handler errors are already isolated in
-        _execute_handler; the extra guard here keeps the worker alive against
-        anything unexpected.
+        delivers them in FIFO order. With handler_errors='log', handler
+        errors are already isolated in _execute_handler and the guard here
+        keeps the worker alive against anything unexpected; with 'raise',
+        the first error stops the worker (pending packets are deliberately
+        dropped) and is handed to the main thread, which re-raises it.
         """
         while True:
             item = self._dispatch_queue.get()
@@ -553,6 +588,13 @@ class InSimClient:
             try:
                 self._dispatch_packet(item)
             except Exception as e:
+                if self._fail_fast:
+                    self._handler_error = e
+                    self.logger.critical(
+                        f"Error in a handler for {type(item).__name__} with "
+                        f"handler_errors='raise'; stopping the client: {e}"
+                    )
+                    break
                 self.logger.error(
                     f"Error dispatching {type(item).__name__}: {e}", exc_info=True
                 )
@@ -578,22 +620,36 @@ class InSimClient:
         for app in self.apps:
             self._execute_handler(app, handler_name, packet)
 
-    def _dispatch_lifecycle(self, event_name: str):
-        """Propagate lifecycle events (on_connect, on_tick, ...) to the apps."""
+    def _dispatch_lifecycle(self, event_name: str, isolate: bool = False):
+        """Propagate lifecycle events (on_connect, on_tick, ...) to the apps.
+
+        Follows the handler_errors policy; `isolate=True` forces the 'log'
+        behavior regardless — used from stop(), where the shutdown sequence
+        must complete and every app must still get its on_disconnect.
+        """
         for app in self.apps:
             if hasattr(app, event_name):
                 try:
                     getattr(app, event_name)()
                 except Exception as e:
-                    self.logger.error(f"Error in {app.name}.{event_name}: {e}")
+                    if self._fail_fast and not isolate:
+                        raise
+                    self.logger.error(
+                        f"Error in {app.name}.{event_name}: {e}", exc_info=True
+                    )
 
     def _execute_handler(self, instance: Any, handler_name: str, packet: Any):
-        """Run a handler, isolating any error it raises."""
+        """Run a handler, applying the handler_errors policy to any error:
+        'log' isolates it (logged with traceback, dispatch continues);
+        'raise' propagates it (fail-fast — the dispatch worker hands it to
+        the main thread, which stops the client)."""
         handler = getattr(instance, handler_name, None)
         if handler and callable(handler):
             try:
                 handler(packet)
             except Exception as e:
+                if self._fail_fast:
+                    raise
                 self.logger.error(f"Error in {handler_name} of {instance.name}: {e}", exc_info=True)
 
     # Empty hooks for subclasses

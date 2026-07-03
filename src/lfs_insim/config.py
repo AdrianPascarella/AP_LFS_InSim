@@ -52,6 +52,17 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     'reconnect_max_delay': 30.0,   # upper bound for the delay
     'reconnect_max_attempts': 0,   # 0 = retry forever
     'reconnect_stable_time': 10.0, # session shorter than this keeps the backoff escalating (P24)
+
+    # --- Error policy ---
+    # What to do when an app packet handler (`on_ISP_*`) or lifecycle hook
+    # raises:
+    #   'log'   (default) isolate the error: log it with traceback and keep
+    #           running — resilient, for production;
+    #   'raise' fail-fast: the first error stops the client and re-raises
+    #           out of start() — for development.
+    # Exception: on_disconnect errors during stop() are always isolated so
+    # the shutdown sequence completes.
+    'handler_errors': 'log',
 }
 
 

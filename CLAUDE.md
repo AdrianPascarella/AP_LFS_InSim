@@ -113,6 +113,8 @@ The loader reads `entry_point` (not `entry`) to find the file, then looks for a 
 
 **Threading contract (P2)**: `on_ISP_*` handlers run on the client's dispatch worker thread, one packet at a time in strict FIFO order — never on the IO threads. A slow handler no longer blocks reception (or the keep-alive), but it delays the packets queued behind it. Lifecycle hooks (`on_connect`/`on_tick`/`on_disconnect`/`on_reconnect`) run on the main thread; there is no cross-thread ordering guarantee between lifecycle hooks and packet handlers. `send()` is thread-safe from any thread. On `stop()`, pending queued packets are dispatched before the worker exits.
 
+**Handler error policy**: the `handler_errors` config key controls what happens when an app packet handler or lifecycle hook raises — `'log'` (default, production) isolates the error (logged with traceback, dispatch continues); `'raise'` (development) is fail-fast: the first error stops the client and re-raises out of `start()` with the original traceback (pending queued packets are dropped). Exception: `on_disconnect` errors during `stop()` are always isolated so the shutdown completes. An invalid value raises `InSimConfigurationError` at client creation.
+
 ### Sending packets
 
 ```python
