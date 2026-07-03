@@ -5,8 +5,7 @@ Cubre: carga simple, resolución recursiva de dependencias, registro de las
 apps en el cliente único del loader (en orden de dependencias: primero las
 dependencias, después el dependiente), caché de instancias, fallos (módulo
 inexistente, entry point ausente, sin clase InSimApp, versión insuficiente)
-y el tragado de errores de dependencias (P20 en DIAGNOSTICO.md, fail-fast
-pendiente).
+y el fail-fast ante dependencias rotas (P20, resuelto en S07).
 
 Los InSims de prueba se generan en tmp_path (insim.json + app.py mínimo),
 sin conexión a LFS: instanciar un InSimApp no abre sockets ni toca el
@@ -275,18 +274,29 @@ class TestFallosDeCarga:
         with pytest.raises(InSimModuleError, match="requires 'dep_vieja>=2.0.0'"):
             loader.load("exigente")
 
-    def test_p20_dependencia_rota_se_traga_y_sigue(self, fabrica):
-        # Comportamiento actual (P20): si una dependencia no se puede cargar,
-        # el loader lo loguea y CONTINÚA — el dependiente se carga igualmente
-        # y el error real aflora después (get_insim devuelve None).
+    def test_p20_dependencia_rota_hace_fail_fast(self, fabrica):
+        # P20 resuelto: si una dependencia no se puede cargar, el dependiente
+        # NO se carga — el error aflora en el acto con la cadena completa
+        # (antes se tragaba y get_insim devolvía None mucho después).
         fabrica.crear("optimista", deps={"dep_fantasma": ">=1.0.0"})
         loader = _loader(fabrica)
 
-        instancia = loader.load("optimista")     # no lanza, pese a la dependencia rota
+        with pytest.raises(InSimModuleError,
+                           match="dependency 'dep_fantasma' failed"):
+            loader.load("optimista")
 
-        assert type(instancia).__name__ == "Optimista"
-        assert "dep_fantasma" not in loader._instances
-        assert instancia.get_insim("dep_fantasma") is None
+        assert "optimista" not in loader._instances
+        assert loader.client.apps == []          # nada quedó registrado
+
+    def test_fail_fast_encadena_dependencias_transitivas(self, fabrica):
+        # El mensaje encadena la ruta: nieto ← hijo ← dependencia rota
+        fabrica.crear("hijo", deps={"dep_fantasma": ">=1.0.0"})
+        fabrica.crear("nieto", deps={"hijo": ">=1.0.0"})
+        loader = _loader(fabrica)
+
+        with pytest.raises(InSimModuleError,
+                           match="Cannot load 'nieto'.*Cannot load 'hijo'"):
+            loader.load("nieto")
 
 
 class TestVersionHelpers:

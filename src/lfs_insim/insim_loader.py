@@ -167,19 +167,21 @@ class InSimLoader:
         if not manifest:
             raise InSimModuleError(f"InSim not found: {name}")
 
-        # 1. RECURSIVE DEPENDENCY LOADING
+        # 1. RECURSIVE DEPENDENCY LOADING (fail-fast, P20: a broken
+        # dependency aborts the dependent's load with the full chain in the
+        # message, instead of surfacing later as a None from get_insim)
         for dep_name, version_constraint in manifest.insim_dependencies.items():
             if dep_name not in self._instances:
                 try:
                     self.load(dep_name)
-                except Exception as e:
-                    # P20: failures in dependencies are logged and swallowed
-                    # (fail-fast pending; see PLAN.md Fase 2)
-                    logger.error(f"Failed to load dependency '{dep_name}': {e}")
+                except InSimModuleError as e:
+                    raise InSimModuleError(
+                        f"Cannot load '{name}': dependency '{dep_name}' failed: {e}"
+                    ) from e
 
             # Validate the version once the module is loaded
-            dep_instance = self._instances.get(dep_name)
-            if dep_instance and version_constraint:
+            dep_instance = self._instances[dep_name]
+            if version_constraint:
                 actual_version = getattr(dep_instance, 'version', '0.0.0')
                 if not _check_version(actual_version, version_constraint):
                     raise InSimModuleError(
