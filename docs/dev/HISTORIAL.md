@@ -60,6 +60,19 @@ usuario. Commit `759f224`.
 "todo funciona correctamente" (conexión normal con la password puesta y
 apagado limpio). **S12 termina sin validaciones pendientes.**
 
+**Remate de S12 — pista de diagnóstico de ISI rechazado (decidido con el
+usuario tras valorar leer la password del cfg.txt):** LFS no da feedback en
+el socket al rechazar un ISI — solo cierra. Ahora el cliente marca la
+sesión como "hablada" al primer byte recibido y, si muere antes de
+`reconnect_stable_time` sin haber recibido NADA, loguea la pista explícita
+("ISI likely rejected — check admin_pass / InSim version") — el mensaje que
+faltó en el diagnóstico del incidente. El **fallback de leer `Game Admin`
+desde cfg.txt se descartó como código** (solo localhost; cfg.txt se escribe
+al SALIR de LFS; y rompería P14 si viviera en el core) y quedó apuntado
+como idea a futuro en PLAN § Ideas + comentario en `config/settings.py`
+(capa de proyecto, si algún día se hace). 4 tests
+(`TestPistaDeIsiRechazado`). Suite **450/450**. Commit `3f2e2b3`.
+
 **Próxima sesión:** política de errores de handlers configurable
 (resiliente en prod, fail-fast en dev); decisión de `on_tick` configurable.
 

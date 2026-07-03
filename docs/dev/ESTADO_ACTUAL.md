@@ -9,7 +9,18 @@
 
 **Fases 1 y 2 COMPLETADAS (validadas en LFS). Fase 3 ACTIVA: P12, P2-core,
 P18, P19, apagado limpio y P24 hechos y VALIDADOS en LFS (apagado limpio y
-P24 al cierre de S12). Suite 446/446 verde. Sin validaciones pendientes.**
+P24 al cierre de S12). Suite 450/450 verde. Sin validaciones pendientes
+(la pista de diagnóstico del final de S12 es solo un log nuevo — se verá
+sola la próxima vez que un ISI sea rechazado).**
+
+**Pista de diagnóstico de ISI rechazado (hecho al cierre de S12):** LFS no
+da feedback en el socket al rechazar un ISI — solo cierra. El cliente marca
+la sesión como "hablada" al primer byte recibido (`_session_received_data`,
+reseteado antes de cada ISI) y, si una sesión muere antes de
+`reconnect_stable_time` sin haber recibido NADA, `_handle_connection_lost`
+loguea la pista ("ISI likely rejected — check admin_pass / InSim version").
+El fallback de leer `Game Admin` desde cfg.txt quedó SOLO como idea a
+futuro (PLAN § Ideas + comentario en `config/settings.py`). Commit `3f2e2b3`.
 
 **P24 (tormenta de reconexión, hecho en S12 — incidente EN VIVO):** al
 intentar conectar desde el dispositivo nuevo, LFS rechazaba el ISI
@@ -151,12 +162,11 @@ Fase 2/S07: decidir si `on_tick` es configurable.
 1. **Política de errores de handlers configurable** (resiliente en prod,
    fail-fast en dev) — hoy `_execute_handler` traga y loguea siempre.
 2. Decisión heredada: ¿`on_tick` configurable? (hoy fijo a ~100 ms).
-3. Ideas DX apuntadas (sin fase, candidatas a Fase 4): (a) el connect
-   inicial fallido imprime un traceback feo (`exc_info=True` + re-raise) —
-   valorar mensaje limpio y/o `connect_retry` para arrancar el insim antes
-   que LFS; (b) tras el incidente de S12: cuando la sesión muere joven tras
-   el ISI sin haber recibido NADA de LFS, loguear una pista explícita
-   ("revisa admin_pass / versión InSim") — LFS no da feedback en el socket.
+3. Idea DX apuntada (sin fase, candidata a Fase 4): el connect inicial
+   fallido imprime un traceback feo (`exc_info=True` + re-raise) — valorar
+   mensaje limpio y/o `connect_retry` para arrancar el insim antes que LFS.
+   (La pista de ISI rechazado ya está hecha; el fallback de cfg.txt está
+   apuntado en PLAN § Ideas.)
 
 ## Bloqueos / esperando
 
