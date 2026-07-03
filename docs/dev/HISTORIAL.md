@@ -5,7 +5,50 @@
 
 ---
 
-## S08 — 2026-07-03 — Fase 2: migración de insims fuera de la facade deprecada
+## S08 — 2026-07-03 — Fase 2 cerrada + Fase 3: P12 (reconexión automática)
+
+**Qué se hizo (segundo bloque, misma sesión) — P12, reconexión automática:**
+
+- **Transporte:** callback nuevo `on_connection_lost` — se dispara desde el hilo
+  receptor moribundo cuando el bucle TCP termina sin `close()` (recv vacío o
+  excepción); un cierre deliberado (`close()` pone `_stop` antes) NO lo dispara.
+  `connect_tcp` ahora cierra un socket previo muerto antes de reconectar.
+- **Cliente (diseño: reconexión desde el bucle principal):** el callback solo
+  marca un `threading.Event`; el bucle de `start()` — exactamente el que antes
+  quedaba zombie (P12) — lo detecta en ≤100 ms y llama a
+  `_handle_connection_lost()`: `on_disconnect` a apps y cliente **desde el hilo
+  principal** (consistente con on_connect/on_tick, sin hilos extra ni carreras),
+  y `_reconnect()` con backoff exponencial. Al reconectar: reenvía `self.isi`
+  (ya agregado), re-solicita `TINY.NCN/NPL` (los trackers se repueblan solos por
+  sus handlers) y despacha `on_reconnect` (hook nuevo, vacío por defecto en
+  `InSimClient` y `InSimApp`). Nuevo atributo `client.connected`; `stop()` ya no
+  duplica `on_disconnect` si la caída ya lo despachó. Con `reconnect: False` o
+  `reconnect_max_attempts` agotados → `stop()` limpio (adiós proceso zombie).
+  `on_tick` se pausa mientras se reconecta.
+- **Config:** claves nuevas en `DEFAULT_CONFIG`: `reconnect` (True),
+  `reconnect_delay` (1.0 s), `reconnect_backoff` (2.0), `reconnect_max_delay`
+  (30 s), `reconnect_max_attempts` (0 = infinito).
+- **users_management:** `on_reconnect` limpia la memoria (`_clear_all_memory`)
+  para no arrastrar estado de antes de la caída; los NCN/NPL la repueblan.
+- **Tests:** `tests/test_reconexion.py` (11): callback del transporte (avisa en
+  recv vacío/excepción, no con stop, errores aislados) e integración real del
+  cliente con `start()` en un hilo contra FakeLFS (caída → on_disconnect →
+  reconexión → ISI+NCN/NPL → on_reconnect, en orden y a todas las apps; dos
+  caídas seguidas; `reconnect: False` detiene el cliente sin zombie;
+  `max_attempts` exacto; `stop()` durante el backoff sale limpio). Los tests de
+  política de reintentos parchean `connect_tcp` (el connect real a puerto
+  cerrado tarda segundos en Windows). **FakeLFS acepta ahora conexiones
+  sucesivas** (`espera_conexiones(n)`, contador `conexiones`).
+- **Docs:** CLAUDE.md (hook `on_reconnect` + sección de auto-reconexión),
+  DIAGNOSTICO.md (P12 resuelto), PLAN.md (casilla P12 de Fase 3).
+- Suite **431/431**; smoke de carga de insims y CLI OK.
+
+**Pendiente del usuario:** validar P12 en LFS (matar/levantar LFS con el InSim
+corriendo → reconecta solo y los comandos vuelven a responder).
+
+---
+
+## S08 (primer bloque) — 2026-07-03 — Fase 2: migración de insims fuera de la facade deprecada
 
 **Qué se hizo:**
 - **`ai_control` migrado a la API pública (P15):** los 10 imports de

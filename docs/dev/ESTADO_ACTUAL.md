@@ -7,10 +7,19 @@
 
 ## Estado
 
-**Fases 1 y 2 COMPLETADAS. Fase 2 cerrada en S08: P11, P13, P14, P15, P17, P20 y
-migración de insims, todo validado por el usuario en LFS (incluido el estado
-post-migración — todo funcionó correctamente). Suite 420/420 verde. Sin
-validaciones pendientes. Fase 3 (robustez en runtime) ACTIVA; primer objetivo: P12.**
+**Fases 1 y 2 COMPLETADAS (validadas en LFS). Fase 3 ACTIVA: P12 (reconexión
+automática) implementado en S08 con 11 tests nuevos — suite 431/431 verde.
+Pendiente: validación del usuario en LFS (matar/levantar LFS con el InSim corriendo).**
+
+**P12 (reconexión, hecho en S08):** el transporte avisa con `on_connection_lost`
+cuando el bucle receptor TCP muere sin `close()`; el bucle principal de `start()`
+(el que antes quedaba zombie) detecta el evento en ≤100 ms, despacha `on_disconnect`
+(desde el hilo principal, como on_connect/on_tick), reintenta con backoff exponencial
+(claves `reconnect*` en `DEFAULT_CONFIG`: delay 1 s, factor 2, tope 30 s,
+`max_attempts 0` = infinito), reenvía el ISI agregado, re-solicita `TINY.NCN/NPL`
+y despacha `on_reconnect` (hook nuevo en cliente y apps). `reconnect: False` o
+intentos agotados → `stop()` limpio. `users_management.on_reconnect` limpia su
+memoria (los NCN/NPL entrantes la repueblan). `on_tick` se pausa mientras reconecta.
 
 **Migración de insims (hecha en S08):** `ai_control` ya no importa la facade
 deprecada — los 10 imports de `insim_packet_class` (9 archivos) pasaron a
@@ -54,26 +63,28 @@ TCP/UDP, hilos receptores, stop y lock **por instancia**; el cliente lo posee
 aceptación en `test_transport.py`). Smoke: `ai_control` carga, CLI OK.
 
 **Validación en LFS (S08):** el usuario probó el estado post-migración en LFS
-real — todo funcionó correctamente. No hay validaciones pendientes.
+real — todo funcionó correctamente (Fase 2 cerrada). **Pendiente: validar P12**
+(ver "Próximo paso").
 
 **Contexto del plan (S04):** framework a nivel profesional; romper insims aceptable.
 P11–P21 en `DIAGNOSTICO.md`. Queda gordo: P12 (reconexión, Fase 3).
 
 ## Fase activa
 
-**Fase 3 — Robustez en runtime**; ver `PLAN.md`. Pendiente: P12 (reconexión),
-P2-core (dispatch fuera del hilo IO), P18 (envío UDP), P19 (una sola ruta de
-serialización), apagado limpio, política de errores de handlers. También heredado
-de Fase 2/S07: decidir si `on_tick` debe ser configurable.
+**Fase 3 — Robustez en runtime**; ver `PLAN.md`. Hecho: P12 (falta validación en
+LFS). Pendiente: P2-core (dispatch fuera del hilo IO), P18 (envío UDP), P19 (una
+sola ruta de serialización), apagado limpio, política de errores de handlers.
+También heredado de Fase 2/S07: decidir si `on_tick` debe ser configurable.
 
 ## ▶️ Próximo paso concreto (empezar AQUÍ la próxima sesión)
 
-**P12 — reconexión automática:** diseñar y implementar backoff configurable en
-`InSimClient`/`InSimTransport`, hooks `on_disconnect`/`on_reconnect` para las apps,
-reenvío de ISI y re-solicitud de estado (TINY.NCN/NPL) al reconectar. Empezar por
-tests con `FakeLFS` (conftest) que simulen caída y vuelta del servidor — red de
-seguridad antes de tocar el transporte. Criterio: matar/levantar LFS con el InSim
-corriendo → se reconecta solo (validación del usuario).
+**1) Validación de P12 en LFS** (criterio de aceptación de Fase 3): con
+`lfs-insim run ai_control` corriendo, cerrar LFS (o `/insim 0` y reactivar) y
+volver a abrirlo → el InSim debe reconectar solo (ver logs "Reconnecting...",
+"Reconnected"), los comandos deben volver a responder y `users_management` debe
+repoblar usuarios/jugadores. **2) Después: P2-core** — sacar el dispatch del hilo
+de IO (cola + worker dedicado), documentar el contrato de threading y
+revisar/retirar `use_thread_pool`.
 
 ## Bloqueos / esperando
 

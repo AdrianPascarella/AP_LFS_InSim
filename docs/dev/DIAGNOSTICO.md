@@ -160,13 +160,22 @@ protocolo. No cuentan como deuda.)
   ANTES que sus dependencias — bug latente). Los 3 insims cargan sin cambios; queda la
   validación en LFS por el usuario.
 
-### P12 — Sin reconexión ni gestión de caída de LFS (ALTA, funcional)
+### P12 — Sin reconexión ni gestión de caída de LFS (ALTA, funcional) ✅ RESUELTO (S08)
 - Si LFS cierra el TCP, el hilo receptor muere y `start()` sigue en
   `while running: sleep(0.1)` para siempre: **proceso zombie** sin conexión, sin aviso a los
   módulos y sin reintento. El docstring de `insim_packet_io.py` dice "mantiene la
   reconexión", pero **no hay ninguna lógica de reconexión**.
 - **Acción:** detectar desconexión → notificar (`on_disconnect`) → reintentos con backoff
   (configurable) → re-enviar ISI y re-solicitar estado (`TINY_NCN/NPL`) → `on_reconnect`.
+- **Resolución (S08):** el transporte avisa con `on_connection_lost` cuando el bucle
+  receptor muere sin que se haya llamado a `close()`; el bucle principal de `start()`
+  (el que quedaba zombie) detecta el evento, despacha `on_disconnect` desde el hilo
+  principal, reintenta con backoff exponencial (claves `reconnect*` en `DEFAULT_CONFIG`;
+  `reconnect_max_attempts: 0` = infinito), reenvía el ISI, re-solicita `TINY.NCN/NPL`
+  (los trackers se repueblan por sus handlers) y despacha `on_reconnect`. Con
+  `reconnect: False` o intentos agotados → `stop()` limpio (sin zombie).
+  `users_management.on_reconnect` limpia su memoria para no arrastrar estado viejo.
+  Tests: `tests/test_reconexion.py` (11); `FakeLFS` acepta ahora conexiones sucesivas.
 
 ### P13 — Estado global de módulo: sockets y cliente como singletons (ALTA, diseño) ✅ RESUELTO (S06)
 - `insim_state.py` guarda sockets y cliente en variables globales; `send_packet()` los lee.

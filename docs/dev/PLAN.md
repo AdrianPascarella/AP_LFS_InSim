@@ -115,8 +115,13 @@ un proceso (test); los 3 insims corren con la nueva API; tests de Fase 1 adaptad
 
 **Objetivo:** comportamiento profesional ante fallos y carga.
 
-- [ ] **P12**: reconexión automática con backoff configurable; `on_disconnect`/`on_reconnect`;
-      reenvío de ISI y re-solicitud de estado al reconectar
+- [x] **P12**: reconexión automática con backoff configurable; `on_disconnect`/`on_reconnect`;
+      reenvío de ISI y re-solicitud de estado al reconectar — S08: `on_connection_lost`
+      en el transporte + detección/reconexión en el bucle principal de `start()`
+      (hooks desde el hilo principal; claves `reconnect*` en `DEFAULT_CONFIG`;
+      sin zombie al desactivarla o agotar intentos); `users_management.on_reconnect`
+      limpia memoria; 11 tests en `test_reconexion.py`; FakeLFS multi-conexión.
+      Suite 431/431. **Pendiente: validación del usuario en LFS** (matar/levantar LFS)
 - [ ] **P2 (parte core)**: sacar el dispatch del hilo de IO (cola + worker dedicado);
       documentar el contrato de threading para autores de módulos; revisar/retirar
       `use_thread_pool` (orden no garantizado)
