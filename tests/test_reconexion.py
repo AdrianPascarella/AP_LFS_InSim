@@ -14,6 +14,7 @@ Dos niveles:
 Integración real por loopback contra FakeLFS (conftest.py), que acepta
 conexiones sucesivas.
 """
+import logging
 import threading
 import time
 from unittest.mock import patch
@@ -387,3 +388,50 @@ class TestReconexionProvisional:
                 cliente._reconnect()
 
         assert not cliente.running   # la racha agotó los intentos y paró
+
+
+class TestPistaDeIsiRechazado:
+    """Idea DX de S12: LFS no da NINGÚN feedback en el socket cuando rechaza
+    un ISI (p. ej. admin password incorrecta) — solo cierra. El cliente
+    detecta la firma "sesión joven Y muda" y deja una pista explícita en el
+    log, que es lo que faltó en el diagnóstico del incidente de S12."""
+
+    PISTA = 'the ISI was likely rejected'
+
+    def _cliente_caido(self, recibio_datos):
+        cliente = InSimClient(config={'reconnect': False}, name='Pista')
+        cliente.running = True
+        cliente.connected = True
+        cliente._session_started_at = time.monotonic()   # sesión recién nacida
+        cliente._session_received_data = recibio_datos
+        return cliente
+
+    def test_caida_joven_y_muda_loguea_la_pista(self, caplog):
+        cliente = self._cliente_caido(recibio_datos=False)
+        with caplog.at_level(logging.WARNING):
+            cliente._handle_connection_lost()
+        assert any(self.PISTA in r.message for r in caplog.records)
+
+    def test_si_llego_algun_paquete_no_hay_pista(self, caplog):
+        # La sesión murió joven pero LFS SÍ habló: el ISI fue aceptado
+        # (caída real, no rechazo) — la pista sobraría y confundiría.
+        cliente = self._cliente_caido(recibio_datos=True)
+        with caplog.at_level(logging.WARNING):
+            cliente._handle_connection_lost()
+        assert not any(self.PISTA in r.message for r in caplog.records)
+
+    def test_cualquier_byte_recibido_marca_la_sesion_como_hablada(self):
+        cliente = InSimClient(config={}, name='Pista')
+        assert not cliente._session_received_data
+        with patch.object(cliente, 'send'):     # el keep-alive reactivo no viene al caso
+            cliente._on_raw_bytes(TINY_KEEPALIVE)   # cualquier dato de LFS cuenta
+        assert cliente._session_received_data
+
+    def test_restore_session_resetea_el_flag(self):
+        # Cada sesión evalúa su propio silencio: la reconexión limpia el flag
+        # ANTES de reenviar el ISI (la respuesta ya cuenta para la nueva).
+        cliente = InSimClient(config={}, name='Pista')
+        cliente._session_received_data = True
+        with patch.object(cliente, 'send'):
+            cliente._restore_session()
+        assert not cliente._session_received_data

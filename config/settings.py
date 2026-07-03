@@ -72,6 +72,12 @@ INSIM_CONFIG: Dict[str, Any] = {
     # --- Configuración del Paquete de Inicialización (ISI) ---
     'insim_name': 'InSimApp',
     # Contraseña de admin de LFS: por máquina (env o settings_local.py), nunca versionada.
+    # Si no coincide con "Game Admin" del cfg.txt de LFS, este rechaza el ISI cerrando
+    # el socket sin feedback (el cliente lo detecta y deja una pista en el log — S12).
+    # IDEA A FUTURO (S12, ver PLAN § Ideas): fallback opcional que lea "Game Admin" de
+    # {LFS_DIR}/cfg.txt cuando admin_pass esté vacío y tcp_host sea local — SIEMPRE en
+    # esta capa de proyecto, nunca en el core (P14). Ojo: LFS escribe cfg.txt al SALIR,
+    # en caliente puede estar desactualizado.
     'admin_pass': os.environ.get('LFS_ADMIN_PASS', ''),
     'insim_ver':  10,           # InSim v10 para LFS 0.7F+
     'prefix':     '!',          # Prefijo para comandos de chat

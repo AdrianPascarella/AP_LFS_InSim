@@ -68,6 +68,13 @@ class InSimClient:
         self._reconnect_attempt = 0
         self._reconnect_delay: Optional[float] = None
 
+        # True once ANY data arrived from LFS in the current session. LFS
+        # sends nothing back when it rejects an ISI (e.g. admin password
+        # mismatch) — it just closes the socket — so "died young AND silent"
+        # is the signature of a rejected ISI and gets an explicit hint in
+        # the log (see _handle_connection_lost; incident S12).
+        self._session_received_data = False
+
         # Initialization packet (ISI) state
         self.isi = ISP_ISI()
 
@@ -116,6 +123,10 @@ class InSimClient:
         Turn raw bytes into a packet object and dispatch it.
         Called from the transport's IO threads for every received packet.
         """
+        # Any bytes from LFS prove the ISI was accepted (counted BEFORE the
+        # barrier: filtered packet types are still LFS talking to us).
+        self._session_received_data = True
+
         # Pre-decode barrier: skip struct.unpack + dataclass creation for
         # types nobody handles. Only applies to InSim TCP packets
         # (data[0]*4 == len(data)); UDP OutSim/OutGauge frames do not match
@@ -288,6 +299,7 @@ class InSimClient:
 
             # 3. Send the FINAL initialization packet (ISI)
             self.logger.info(f"Sending final ISI with flags: {self.isi.Flags}")
+            self._session_received_data = False   # reset BEFORE the ISI can be answered
             self.send(self.isi)
             self.connected = True
             # Fresh reconnection-streak state (P24): if this session dies
@@ -361,6 +373,23 @@ class InSimClient:
         self._connection_lost.clear()
         self.connected = False
         self.logger.warning("Connection with LFS lost.")
+
+        # Diagnostic hint (S12): LFS gives no feedback on the socket when it
+        # rejects an ISI — it just closes. A session that dies young without
+        # a single packet received is almost certainly a rejected ISI.
+        uptime = (time.monotonic() - self._session_started_at
+                  if self._session_started_at is not None else None)
+        stable_time = float(self.config.get('reconnect_stable_time', 10.0))
+        if (uptime is not None and uptime < stable_time
+                and not self._session_received_data):
+            self.logger.warning(
+                f"The session died after {uptime:.1f}s without receiving a "
+                "single packet from LFS — the ISI was likely rejected. Check "
+                "'admin_pass' (LFS 'Game Admin' password) and the InSim "
+                "version; LFS gives no feedback on the socket when it "
+                "rejects an ISI."
+            )
+
         self._dispatch_lifecycle('on_disconnect')
         self.on_disconnect()
 
@@ -444,6 +473,7 @@ class InSimClient:
 
     def _restore_session(self):
         """Resend the ISI and re-request the state after reconnecting."""
+        self._session_received_data = False   # reset BEFORE the ISI can be answered
         self.send(self.isi)
         self.connected = True
         # on_reconnect BEFORE re-requesting the state (P22): apps reset their

@@ -226,6 +226,13 @@ El merge lo decide y autoriza el usuario. Tras el merge, se continúa desde `mai
 
 - **P9**: decidir qué hacer con `tools/setup_lfs.py` (roto: importa `DESIRED_LFS_CONFIG`,
   que no existe en `settings.py`) — recuperarlo o eliminarlo.
+- **Fallback opcional de `admin_pass` desde cfg.txt** (idea S12, tras el incidente del
+  ISI rechazado): que `config/settings.py` (capa de proyecto — NUNCA el core, P14) lea
+  `Game Admin` de `{LFS_DIR}/cfg.txt` solo si `admin_pass` está vacío y `tcp_host` es
+  local, dejando en el log de dónde salió. Limitaciones conocidas: solo localhost, y
+  LFS escribe cfg.txt al SALIR (en caliente puede estar desactualizado). La pista de
+  diagnóstico del cliente ("ISI likely rejected") ya cubre el 90 % del dolor; esto
+  sería solo comodidad. Encaja con la decisión pendiente de P9 (setup_lfs.py).
 - Migrar `rutas_grabadas.txt` a JSON cuando se toque `RouteManager` (ver P6).
 - **P8**: confirmar contra `docs/InSim.txt` el caso de string variable vacío sin padding.
 - `interval` a 100 ms como cambio deliberado, si se quiere, al auditar el hot-loop (Fase 5).
