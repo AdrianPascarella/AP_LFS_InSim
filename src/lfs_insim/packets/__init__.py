@@ -1,8 +1,26 @@
+"""
+lfs_insim.packets - Public packet surface of the framework (P15).
+
+Recommended import point for every packet class:
+    from lfs_insim.packets import ISP_MSO, CompCar
+Protocol enums live in `lfs_insim.insim_enums` and are NOT re-exported here.
+"""
 from .base import *
 from .structures import *
 from .insim import *
 from .outsim import *
 from .maps import INSIM_PACKETS
+
+from . import base as _base, structures as _structures
+from . import insim as _insim, outsim as _outsim
+
+__all__ = [
+    *_base.__all__,
+    *_structures.__all__,
+    *_insim.__all__,
+    *_outsim.__all__,
+    'INSIM_PACKETS', 'OUTSIM_PACKETS', 'RECEIVE', 'SEND', 'ALLOWED_PACKETS',
+]
 
 # OutGaugePack y OutSimPack tienen formato fijo: siempre registrados.
 # OutSimPack2 se añade dinámicamente en insim_client._activate_outsim()

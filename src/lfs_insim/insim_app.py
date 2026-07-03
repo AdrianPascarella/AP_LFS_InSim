@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, TYPE_CHECKING
 
 from .config import build_config
-from .insim_packet_class import ISP_ISI
+from .packets import ISP_ISI
 from .packet_sender_mixin import PacketSenderMixin
 from .insim_enums import OSO
 

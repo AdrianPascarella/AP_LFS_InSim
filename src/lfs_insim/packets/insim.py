@@ -5,7 +5,32 @@ from .structures import (
     ObjectInfo, CarHCP, PlayerHCap, AIInputVal
 )
 from .outsim import OSMain
-from lfs_insim.insim_enums import *
+from lfs_insim.insim_enums import (
+    AD_NOAD, AI_FLAGS, AXO_INDEX, BFN, BYF, CARS, CAR_CONFIG, CHARS, CIM,
+    CONF, CSC, DL, FVM, GEAR, GRG, HG, HLVC, HOSTF, INST, ISB_CLICK,
+    ISB_STYLE, ISF, ISP, ISS, ISS_CPP, ISS_SFP, JRR, LEAVR, LFS, LICENSE,
+    MARSH, MOD_BIT, MSO, NCN_FLAGS, NRM, OBH, OCO, OFFON, PASS, PENALTY,
+    PENR, PIF, PITLANE, PMO, PMOF, PSE, PTYPE, RAINPR, RESULT, RIF, RIP,
+    RIPOPT, RST_TIMING, SCH_FLAGS, SERVER, SETF, SMALL, SMPR, SND, SSH,
+    TINY, TTC, TYPEIN_FLAGS, TYRE, UCO, VIEW, VOTE, WEATHER, WIND,
+)
+
+# Public API of this module (P15): one dataclass per InSim packet type,
+# in protocol id order.
+__all__ = [
+    'ISP_NONE', 'ISP_ISI', 'ISP_VER', 'ISP_TINY', 'ISP_SMALL', 'ISP_STA',
+    'ISP_SCH', 'ISP_SFP', 'ISP_SCC', 'ISP_CPP', 'ISP_ISM', 'ISP_MSO',
+    'ISP_III', 'ISP_MST', 'ISP_MTC', 'ISP_MOD', 'ISP_VTN', 'ISP_RST',
+    'ISP_NCN', 'ISP_CNL', 'ISP_CPR', 'ISP_NPL', 'ISP_PLP', 'ISP_PLL',
+    'ISP_LAP', 'ISP_SPX', 'ISP_PIT', 'ISP_PSF', 'ISP_PLA', 'ISP_CCH',
+    'ISP_PEN', 'ISP_TOC', 'ISP_FLG', 'ISP_PFL', 'ISP_FIN', 'ISP_RES',
+    'ISP_REO', 'ISP_NLP', 'ISP_MCI', 'ISP_MSX', 'ISP_MSL', 'ISP_CRS',
+    'ISP_BFN', 'ISP_AXI', 'ISP_AXO', 'ISP_BTN', 'ISP_BTC', 'ISP_BTT',
+    'ISP_RIP', 'ISP_SSH', 'ISP_CON', 'ISP_OBH', 'ISP_HLV', 'ISP_PLC',
+    'ISP_AXM', 'ISP_ACR', 'ISP_HCP', 'ISP_NCI', 'ISP_JRR', 'ISP_UCO',
+    'ISP_OCO', 'ISP_TTC', 'ISP_SLC', 'ISP_CSC', 'ISP_CIM', 'ISP_MAL',
+    'ISP_PLH', 'ISP_IPB', 'ISP_AIC', 'ISP_AII', 'ISP_SET',
+]
 
 @dataclass
 class ISP_NONE(PacketFunctions):

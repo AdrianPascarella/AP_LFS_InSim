@@ -5,6 +5,12 @@ Estas excepciones permiten identificar rápidamente el origen de un fallo
 proporcionando mensajes detallados y estructuras de datos relevantes.
 """
 
+__all__ = [
+    'InSimError', 'InSimConnectionError', 'InSimConfigurationError',
+    'InSimPacketError', 'InSimModuleError', 'InSimProtocolError',
+    'InSimCommandError',
+]
+
 class InSimError(Exception):
     """Clase base para todos los errores del framework InSim."""
     pass

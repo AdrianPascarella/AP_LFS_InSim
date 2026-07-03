@@ -1,6 +1,8 @@
 from .insim import *
 from .outsim import *
 
+__all__ = ['INSIM_PACKETS']
+
 # Mapeo de InSim (Tipo de paquete -> Clase)
 INSIM_PACKETS = {
     ISP_NONE.Type: ISP_NONE, ISP_ISI.Type: ISP_ISI, 2: ISP_VER, 3: ISP_TINY, 4: ISP_SMALL,

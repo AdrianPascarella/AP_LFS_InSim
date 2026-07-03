@@ -35,7 +35,7 @@ class PacketSenderMixin:
     def __getattr__(self, name: str):
         if name.startswith('send_ISP_'):
             packet_name = name[5:]  # extracts 'ISP_XXX'
-            from lfs_insim import insim_packet_class as _packets
+            from lfs_insim import packets as _packets
             packet_class = getattr(_packets, packet_name, None)
             if packet_class is None:
                 raise AttributeError(f"Packet '{packet_name}' does not exist in the protocol.")

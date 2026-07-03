@@ -19,7 +19,7 @@ from .insim_transport import InSimTransport
 from .insim_state import set_insim_client
 from .insim_packet_sender import encode_packet
 from .insim_packet_decoders import decode_packet
-from .insim_packet_class import ISP_ISI, ISP_TINY
+from .packets import ISP_ISI, ISP_TINY
 from .insim_enums import ISF, TINY, OSO
 from .exceptions import InSimError
 

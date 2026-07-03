@@ -4,6 +4,11 @@ from lfs_insim.insim_enums import (
     CCI, PHC, CS, CSVAL, OSO
 )
 
+__all__ = [
+    'Vec', 'Vector', 'NodeLap', 'CompCar', 'CarContact', 'CarContOBJ',
+    'ObjectInfo', 'CarHCP', 'PlayerHCap', 'AIInputVal',
+]
+
 # Structs básicos
 @dataclass
 class Vec(PacketFunctions):

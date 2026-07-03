@@ -1,5 +1,24 @@
 from enum import IntEnum, IntFlag
 
+# Public API of this module (P15): every protocol enum/constant, in
+# definition order. Star-importing this module yields exactly these names.
+__all__ = [
+    'INSIM_VERSION', 'NOT_CHANGED', 'RIF_SAI_SHIFTS',
+    'LFS_LIMITS', 'ISP', 'TINY', 'SMALL', 'TTC', 'CIM', 'NRM', 'GRG', 'FVM',
+    'MARSH', 'ISF', 'ISS', 'ISS_SFP', 'ISS_CPP', 'OFFON', 'SCH_FLAGS', 'HG',
+    'MOD_BIT', 'NCN_FLAGS', 'AD_NOAD', 'CAR_CONFIG', 'BYF', 'CHARS', 'LFS',
+    'LEAVR', 'PTYPE', 'SETF', 'TYRE', 'PASS', 'HOSTF', 'PENALTY', 'PENR',
+    'PITLANE', 'PSE', 'CCI', 'MSO', 'SND', 'CS', 'HEADLIGHTS', 'SIREN',
+    'LOOK', 'INDICATORS', 'MIN_MID_MAX', 'STEER', 'TOGGLE', 'GEAR', 'PIF',
+    'RIF', 'SAI', 'AI_HELP', 'CSVAL', 'CARS', 'AI_FLAGS', 'LCL', 'PMO',
+    'IS_OBJECT_TYPE', 'UCO', 'CPK_INDEX', 'OCO', 'IS_RECT', 'ISB_STYLE',
+    'BFN', 'TYPEIN_FLAGS', 'ISB_CLICK', 'OG', 'DL', 'OSO', 'VOTE',
+    'RST_TIMING', 'VIEW', 'JRR', 'CSC', 'RIP', 'SSH', 'LCS', 'CONF', 'OBH',
+    'OCO_DATA_MAIN', 'OCO_DATA_AXO', 'HLVC', 'AXO_INDEX', 'PMOF', 'LICENSE',
+    'RESULT', 'RIPOPT', 'INST', 'SMPR', 'DLF', 'PHC', 'RAINPR', 'SERVER',
+    'WEATHER', 'WIND',
+]
+
 # Versión del Protocolo
 INSIM_VERSION = 10
 
@@ -923,13 +942,6 @@ class IS_RECT:
     
     Y_MIN = 30
     Y_MAX = 170
-
-class INST(IntFlag):
-    """
-    INST - InSim Style Flags.
-    """
-    ALWAYS_ON = 128    # El botón es visible en todas las pantallas (Garage, Opciones, etc.)
-    DEFAULT = 0
 
 class ISB_STYLE(IntFlag):
     """

@@ -8,7 +8,7 @@ no connection state.
 """
 import logging
 import struct
-from .insim_packet_class import PacketFunctions, ALLOWED_PACKETS
+from .packets import PacketFunctions, ALLOWED_PACKETS
 from .exceptions import InSimPacketError
 
 logger = logging.getLogger(__name__)

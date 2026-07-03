@@ -14,7 +14,7 @@ import struct
 import logging
 from typing import Any, Optional, Tuple, Type, Union
 
-from .insim_packet_class import INSIM_PACKETS, OUTSIM_PACKETS
+from .packets import INSIM_PACKETS, OUTSIM_PACKETS
 from .exceptions import InSimPacketError
 
 logger = logging.getLogger(__name__)

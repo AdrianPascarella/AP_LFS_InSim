@@ -1,6 +1,6 @@
 from lfs_insim import InSimApp
 from lfs_insim.packets import *
-from lfs_insim.insim_enums import ISF, PTYPE
+from lfs_insim.insim_enums import ISF, PTYPE, TINY
 from lfs_insim.utils import CMDManager, separate_command_args, TextColors as c
 
 from ._cmds_request import _RequestMixin

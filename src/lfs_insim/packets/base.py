@@ -2,6 +2,8 @@ from dataclasses import dataclass, field, fields, is_dataclass
 from typing import Optional, List, Any
 import struct
 
+__all__ = ['repeat', 'PacketFunctions']
+
 def repeat(fmt: str|dict, times) -> list:
     return [fmt for _ in range(times)]
 

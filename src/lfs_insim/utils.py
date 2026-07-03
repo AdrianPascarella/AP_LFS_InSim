@@ -1,5 +1,6 @@
 from __future__ import annotations  # SIEMPRE EN LA LÍNEA 1
-from lfs_insim.insim_packet_class import ISP_MSO, ISP_MSL, SND
+from lfs_insim.packets import ISP_MSO, ISP_MSL
+from lfs_insim.insim_enums import SND
 from lfs_insim.packet_sender_mixin import PacketSenderMixin
 from dataclasses import dataclass, field
 from typing import Any, Callable
@@ -7,6 +8,23 @@ import re
 import math
 import logging
 from lfs_insim.exceptions import InSimCommandError
+
+__all__ = [
+    # Chat / comandos
+    'separate_message', 'separate_command_args', 'strip_lfs_colors',
+    'TextColors', 'Command', 'CMDManager',
+    # Control
+    'PIDController',
+    # Conversión de unidades LFS
+    'lfs_pos_to_meters', 'lfs_speed_to_kmh', 'lfs_angle_to_degrees',
+    'lfs_angvel_to_degrees_per_second',
+    # Geometría / navegación
+    'calc_dist_3d', 'calc_target_heading', 'get_heading_diff',
+    'calc_deviation_angle', 'calc_dist_point_to_segment_3d',
+    'get_closest_node_index', 'determine_smart_spawn_index',
+    'apply_antilag_window', 'evaluate_dynamic_capture',
+    'is_target_ahead_and_in_lane',
+]
 
 logger = logging.getLogger(__name__)
 

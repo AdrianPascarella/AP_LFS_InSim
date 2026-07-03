@@ -8,7 +8,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from lfs_insim.packets import *
 from lfs_insim.utils import CMDManager, TextColors as c
-from lfs_insim.insim_enums import RAINPR, HG, SMPR, RIP as RIP_ERR, VIEW, GEAR, AI_FLAGS, DL
+from lfs_insim.insim_enums import (
+    RAINPR, HG, SMPR, RIP as RIP_ERR, VIEW, GEAR, AI_FLAGS, DL, SMALL, TINY,
+)
 
 if TYPE_CHECKING:
     from lfs_insim import InSimApp as _Base

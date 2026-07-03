@@ -13,6 +13,8 @@ to keep the surface every existing module relies on.
 
 from typing import Any, Dict, Optional
 
+__all__ = ['DEFAULT_CONFIG', 'build_config']
+
 DEFAULT_CONFIG: Dict[str, Any] = {
     # --- TCP connection (InSim) ---
     'tcp_host':   '127.0.0.1',

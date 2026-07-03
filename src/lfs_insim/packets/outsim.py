@@ -3,6 +3,11 @@ from .base import PacketFunctions, repeat
 from .structures import Vec, Vector
 from lfs_insim.insim_enums import OSO
 
+__all__ = [
+    'OSMain', 'OutSimPack', 'OutGaugePack', 'OutSimMain', 'OutSimInputs',
+    'OutSimWheel', 'build_outsim_pack2', 'OutSimPack2',
+]
+
 
 @dataclass
 class OSMain(PacketFunctions):
