@@ -164,6 +164,10 @@ CI verde; un desarrollador externo puede seguir el quickstart sin ayuda.
 
 ## Fase 5 — ai_control: red de seguridad y estabilización (antiguo plan F1–F2)
 
+- [ ] Hacer `ai_control` consciente de la reconexión (visto en S10): parar/pausar
+      `_run_test_freeroam` en `on_disconnect` (hoy el hilo muere con `InSimConnectionError`
+      al enviar desconectado, o enloquece tras la limpieza de memoria), resetear
+      estado propio y ownership de AIs en `on_reconnect`
 - [ ] Tests de caracterización de `navigation.py` (planificación de enlaces, nodo más cercano)
 - [ ] Tests de caracterización de `traffic.py` (radar / `_scan_lane_ahead`, ACC, overtake)
 - [ ] Tests de `physics.py` (volante/pedales/marchas) con telemetría sintética

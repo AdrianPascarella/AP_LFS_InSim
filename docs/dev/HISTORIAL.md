@@ -5,6 +5,51 @@
 
 ---
 
+## S10 — 2026-07-03 — Validación de P2-core en LFS + P22 resuelto + P23 (QuickEdit)
+
+**Validación del usuario (P2-core), con análisis forense del log:**
+
+- Secuencia probada: conexión + AIs rodando (~68 min), cierre abrupto del juego,
+  reapertura del puerto, cierre del puerto, arranque del insim con el juego cerrado.
+- **El framework se comportó bien en todo:** detección de caída en 33–40 ms,
+  backoff correcto, restauración de sesión (ISI + NCN/NPL + limpieza/repoblación
+  de users_management), keep-alive contestado bajo tráfico, Ctrl+C limpio en
+  pleno backoff (adiós zombie), fail-fast diseñado al arrancar sin LFS.
+- **Los comportamientos "raros" eran de `ai_control`** (no es consciente de la
+  reconexión): su hilo `_run_test_freeroam` (bucle infinito en hilo daemon,
+  `commands.py:389`) murió con `InSimConnectionError` al enviar desconectado
+  (traceback a stderr, invisible en el log) en la 1ª caída; en la 2ª sobrevivió
+  de casualidad y, tras la limpieza de memoria del on_reconnect, vio "0 coches"
+  y se puso a crear/arrancar IAs con ownership desincronizado ("La AI X no es
+  una de tus AI's"). Apuntado como ítem nuevo de Fase 5 en PLAN.md.
+- **Misterio resuelto (P23):** tras la 1ª caída el proceso quedó mudo (ni intento
+  4 ni shutdown). Causa: consola Windows en modo selección (QuickEdit) — bloquea
+  stdout, y con `handlers: ['console', 'file']` el logger se congela ANTES de
+  escribir al archivo. El insim estaba paralizado, no muerto; encaja con el
+  relato del usuario ("me conecté sin problemas pero no se ejecutó nada").
+
+**Fixes aplicados (S10):**
+
+- **P23 (mitigación):** `file` antes que `console` en `LOGGING_CONFIG` (el
+  archivo siempre recibe el registro aunque la consola esté congelada);
+  `lfs-insim run` desactiva QuickEdit al arrancar (`_disable_console_quick_edit`,
+  ctypes, best effort, solo win32); `_reconnect` deja traza explícita
+  ("Reconnection abandoned") cuando sale por parada del cliente.
+- **P22 (resuelto):** `_restore_session` invertido — ISI → `on_reconnect`
+  (limpieza de estado) → `TINY.NCN/NPL` — para que las respuestas nunca corran
+  contra la limpieza. La carrera se había visto EN VIVO en el log de las
+  13:33:55. Test nuevo del orden causal en `test_reconexion.py`.
+- Suite **436/436**; smoke `lfs-insim list` + ruta de error de `run` OK.
+
+**Decisión:** robustez de `ai_control` ante reconexiones → Fase 5 (no mezclar
+con el core). Idea DX apuntada: traceback feo del connect inicial fallido y
+posible `connect_retry` (ver ESTADO_ACTUAL § Próximo paso).
+
+**Próxima sesión:** P18 (envío UDP: recomendación eliminar) y P19 (una sola
+ruta de serialización).
+
+---
+
 ## S09 — 2026-07-03 — Fase 3: P2-core (dispatch fuera del hilo de IO)
 
 **Arranque de sesión:** había mapeo de South City sin commitear (+5.605 líneas

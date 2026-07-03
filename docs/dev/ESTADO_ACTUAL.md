@@ -1,16 +1,28 @@
 # 📍 Estado actual
 
-> Actualizado: **2026-07-03** — sesión S09
+> Actualizado: **2026-07-03** — sesión S10
 > **Rama de trabajo: `refactor/estabilizacion`.** Todo el refactor ocurre aquí; `main`
 > queda intacta hasta el merge final (cuando el proyecto esté estable). **Sync por GitHub:**
 > `git pull` al arrancar y `git push` al cerrar (permite continuar desde otro dispositivo).
 
 ## Estado
 
-**Fases 1 y 2 COMPLETADAS (validadas en LFS). Fase 3 ACTIVA: P12 hecho y
-validado; P2-core (dispatch fuera del hilo de IO) hecho en S09 — suite
-435/435 verde. PENDIENTE DE VALIDAR EN LFS (funcionamiento normal de
-ai_control: nada debería cambiar visiblemente).**
+**Fases 1 y 2 COMPLETADAS (validadas en LFS). Fase 3 ACTIVA: P12 y P2-core
+hechos y VALIDADOS en LFS (S10). P22 resuelto y P23 (congelación por consola
+QuickEdit) mitigado en S10 — suite 436/436 verde. Sin validaciones pendientes.**
+
+**Validación de P2-core en LFS (S10):** el usuario probó conexión + AIs rodando,
+cierre abrupto del juego, reapertura del puerto y arranque con el juego cerrado.
+El framework se comportó bien en todo (detección de caída en 33–40 ms, backoff,
+restauración de sesión, keep-alive bajo tráfico, Ctrl+C limpio en pleno backoff).
+Los comportamientos "raros" eran de `ai_control` (no es consciente de la
+reconexión: su hilo `_run_test_freeroam` muere al enviar desconectado o enloquece
+tras la limpieza de memoria) → apuntado como ítem de Fase 5. Del análisis del log
+salieron y se arreglaron en S10: **P22** (orden de `_restore_session` invertido:
+ISI → on_reconnect → TINY.NCN/NPL, con test del orden causal) y **P23**
+(QuickEdit de la consola Windows congelaba el proceso entero sin dejar traza:
+ahora el handler `file` va antes que `console`, `lfs-insim run` desactiva
+QuickEdit al arrancar, y el bucle de reconexión deja traza si se abandona).
 
 **P2-core (dispatch fuera del hilo de IO, hecho en S09):** los hilos de IO del
 transporte ya NO ejecutan handlers — decodifican, contestan el keep-alive en el
@@ -80,33 +92,29 @@ aceptación en `test_transport.py`). Smoke: `ai_control` carga, CLI OK.
 
 **Validación en LFS (S08):** el usuario probó el estado post-migración (Fase 2
 cerrada) y también P12 — la reconexión funcionó al matar/levantar LFS con el
-InSim corriendo. **Validación pendiente (S09): P2-core** (ver "Próximo paso").
+InSim corriendo. **P2-core validado en S10** (ver "Estado").
 
 **Contexto del plan (S04):** framework a nivel profesional; romper insims aceptable.
 P11–P21 en `DIAGNOSTICO.md`. Queda gordo: P12 (reconexión, Fase 3).
 
 ## Fase activa
 
-**Fase 3 — Robustez en runtime**; ver `PLAN.md`. Hecho: P12 (validado en LFS),
-P2-core (pendiente de validar en LFS). Pendiente: P18 (envío UDP), P19 (una
-sola ruta de serialización), P22 (carrera menor en `_restore_session`),
-apagado limpio, política de errores de handlers. También heredado de Fase 2/S07:
-decidir si `on_tick` debe ser configurable.
+**Fase 3 — Robustez en runtime**; ver `PLAN.md`. Hecho y validado: P12, P2-core.
+Extras S10: P22 resuelto, P23 mitigado. Pendiente: P18 (envío UDP), P19 (una
+sola ruta de serialización), apagado limpio, política de errores de handlers.
+También heredado de Fase 2/S07: decidir si `on_tick` debe ser configurable.
 
 ## ▶️ Próximo paso concreto (empezar AQUÍ la próxima sesión)
 
-1. **Validar P2-core en LFS** (lo hace el usuario): correr `ai_control` con
-   normalidad — comandos, conducción, botones, y una reconexión (matar/levantar
-   LFS). No debería notarse ningún cambio; los handlers ahora corren en el
-   worker de dispatch en vez del hilo de IO.
-2. **P18 — envío UDP roto:** decidir eliminarlo o implementarlo bien (hoy
+1. **P18 — envío UDP roto:** decidir eliminarlo o implementarlo bien (hoy
    `transport.send(use_udp=True)` usaría el socket bind() de escucha, sin
    destino; nadie lo usa). Recomendación: eliminarlo y documentar que el envío
    es siempre TCP (LFS solo recibe InSim por TCP; UDP es solo de bajada).
-3. **P19 — una sola ruta de serialización** (prepare→pack), apoyada en los
+2. **P19 — una sola ruta de serialización** (prepare→pack), apoyada en los
    golden-bytes; revisar el `.strip()` del decoder (espacios significativos).
-   De paso, **P22** (invertir orden en `_restore_session` + ajustar
-   `test_reconexion.py`).
+3. Idea DX apuntada en S10 (sin fase): el connect inicial fallido imprime un
+   traceback feo (`exc_info=True` + re-raise); valorar mensaje limpio y/o una
+   opción `connect_retry` para poder arrancar el insim antes que LFS.
 
 ## Bloqueos / esperando
 

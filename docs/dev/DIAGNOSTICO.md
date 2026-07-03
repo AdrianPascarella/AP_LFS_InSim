@@ -290,14 +290,27 @@ protocolo. No cuentan como deuda.)
   Tests de excepción sustituidos por golden-bytes reales
   (`TestGoldenSecuenciasFijas`); REO/HCP reincorporados al test estructural.
 
-### P22 — Carrera en `_restore_session`: on_reconnect limpia DESPUÉS de re-solicitar estado (BAJA) — detectado en S09
+### P22 — Carrera en `_restore_session`: on_reconnect limpia DESPUÉS de re-solicitar estado (BAJA) — detectado en S09 ✅ RESUELTO (S10)
 - `_restore_session()` envía `TINY.NCN/NPL` **antes** de despachar `on_reconnect`. Si LFS
   contesta muy rápido, un `ISP_NCN/NPL` nuevo puede despacharse (worker) antes de que
   `on_reconnect` (hilo principal) ejecute `_clear_all_memory()` de `users_management` →
   ese estado nuevo se borraría y no se repoblaría. Ventana de µs–ms; preexistente a P2
-  (con dispatch en el hilo de IO la carrera ya existía).
-- **Acción:** invertir el orden (despachar `on_reconnect` primero, re-solicitar
-  `TINY.NCN/NPL` después) y ajustar el orden fijado en `test_reconexion.py`.
+  (con dispatch en el hilo de IO la carrera ya existía). Confirmado en vivo en el log
+  de la validación de S10 (reconexión de las 13:33:55).
+- **Resolución (S10):** orden invertido — ISI → `on_reconnect` (limpieza) →
+  `TINY.NCN/NPL`. El orden causal queda fijado en
+  `test_reconexion.py::test_on_reconnect_se_despacha_antes_de_resolicitar_estado`.
+
+### P23 — Consola Windows (QuickEdit) puede congelar el proceso entero (MEDIA, operacional) — detectado en S10 ✅ MITIGADO (S10)
+- Un clic en la consola activa la selección QuickEdit y **bloquea toda escritura a
+  stdout**; con el handler de consola primero en `LOGGING_CONFIG`, cualquier hilo se
+  congela en su siguiente log (incluido el bucle de reconexión) y el registro no llega
+  ni al archivo. Visto en vivo en S10: el insim quedó paralizado en pleno backoff sin
+  dejar traza (el "misterio" de las 13:19).
+- **Mitigación (S10):** (1) handler `file` antes que `console` (el archivo siempre
+  cuenta la verdad); (2) `lfs-insim run` desactiva QuickEdit al arrancar
+  (`_disable_console_quick_edit`, best effort, solo win32); (3) traza explícita
+  "Reconnection abandoned" cuando el bucle de reconexión sale por parada del cliente.
 
 ---
 
