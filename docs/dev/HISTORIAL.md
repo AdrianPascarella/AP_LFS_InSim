@@ -5,6 +5,61 @@
 
 ---
 
+## S15 — 2026-07-03 — Fase 4: subcomandos del CLI (fin de los scripts globales)
+
+**Arranque:** repo limpio y sincronizado (HEAD `459bc4c`, cierre S14); suite
+heredada 465/465 antes de tocar. Sin mapas freeroam sin commitear que proteger.
+
+**Qué se hizo (segundo ítem de Fase 4 — CLI):** los entry points sueltos
+`generate-stubs` y `update-all` se instalaban como **comandos GLOBALES en el
+PATH** de cualquiera que hiciera `pip install` (nombres genéricos que invaden
+el entorno ajeno — lo contrario del objetivo de Fase 4). Plegados en
+subcomandos de `lfs-insim`:
+
+- **`cli.py`**: dos handlers nuevos (`cmd_stubs`, `cmd_update_all`) con import
+  perezoso del módulo (`from . import generate_stubs` / `update_all`) que
+  llaman a su `main()` y devuelven 0 — replican EXACTAMENTE lo que hacían los
+  console-scripts (`... :main`, cuyo return `None` daba exit 0 y cuyas
+  excepciones/`sys.exit` propagaban). Dos subparsers nuevos (`stubs`,
+  `update-all`); docstring del módulo y epilog actualizados.
+- **`pyproject.toml`**: `generate-stubs` y `update-all` fuera de
+  `[project.scripts]` — **`lfs-insim` es el único console-script** (comentario
+  explicando el porqué).
+- **Git hook revisado (sub-tarea del ítem):** el `.githooks/pre-commit` es un
+  **no-op deshabilitado por el usuario** (`exit 0`, con comentario propio) y
+  `scripts/install-git-hooks.*` solo fija `core.hooksPath` → **ningún hook
+  invocaba `generate-stubs`**: nada que migrar. Decisión: NO reactivarlo (lo
+  deshabilitó el usuario a propósito); solo dejar registrado que, si se
+  reactiva, debe llamar a `lfs-insim stubs` / `python -m lfs_insim.generate_stubs`.
+- **Docs corregidas:** CLAUDE.md y README.md apuntaban la regeneración de
+  stubs a `python src/lfs_insim/generate_stubs.py` y afirmaban que el hook
+  "genera stubs en cada commit" (falso) → ahora `lfs-insim stubs` /
+  `lfs-insim update-all` y comentario honesto sobre el hook deshabilitado.
+  Nota de resolución parcial de P16 en DIAGNOSTICO (metadata S14 + scripts S15;
+  quedan ruff/mypy/CI/CHANGELOG).
+
+- **4 tests nuevos, rojo primero** (`tests/test_cli.py`, primer test del CLI):
+  despacho de `stubs`→`generate_stubs.main()` y `update-all`→`update_all.main()`
+  (monkeypatch del `main()`), y contrato de packaging leyendo `pyproject.toml`
+  con `tomllib` — `lfs-insim` es el único `[project.scripts]`. Suite **469/469**.
+- **Verificado a mano (smoke real, sin mocks):** `lfs-insim --help` lista los
+  subcomandos; `lfs-insim stubs` regenera de verdad y el `.pyi` versionado
+  **no cambió** (estaba al día); reinstalación editable (`pip install -e ".[dev]"`)
+  **borra los `.exe` viejos** (`generate-stubs.exe`, `update-all.exe`) y deja
+  solo `lfs-insim.exe`, ya con los subcomandos.
+
+**No requiere validación en LFS:** solo tooling de desarrollo/packaging, cero
+cambios de runtime (los 465 tests previos pasan intactos).
+
+**Decisión de diseño:** los subcomandos llaman a `main()` y devuelven 0 en vez
+de envolver el manejo de errores — replican el contrato exacto de los
+console-scripts que sustituyen (`generate_stubs.main()` autoaborta con
+`sys.exit(1)`; `update_all.main()` re-lanza tras loguear con `exc_info`), sin
+inventar comportamiento nuevo. Import perezoso para no cargar `lfs_insim.packets`
+(que `generate_stubs` importa a nivel de módulo) en cada arranque del CLI.
+
+---
+
 ## S14 — 2026-07-03 — Fase 4 arrancada: metadata del paquete saneada
 
 **Arranque:** repo limpio y sincronizado (HEAD `3b75b2e`, post-cierre S13);

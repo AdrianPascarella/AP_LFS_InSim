@@ -1,15 +1,33 @@
 # 📍 Estado actual
 
-> Actualizado: **2026-07-03** — sesión S14
+> Actualizado: **2026-07-03** — sesión S15
 > **Rama de trabajo: `refactor/estabilizacion`.** Todo el refactor ocurre aquí; `main`
 > queda intacta hasta el merge final (cuando el proyecto esté estable). **Sync por GitHub:**
 > `git pull` al arrancar y `git push` al cerrar (permite continuar desde otro dispositivo).
 
 ## Estado
 
-**Fases 1, 2 y 3 COMPLETADAS. FASE 4 ACTIVA (DX y packaging): primer ítem
-— metadata del paquete — hecho en S14. Suite 465/465 verde. Sin
-validaciones pendientes en LFS (packaging no toca runtime).**
+**Fases 1, 2 y 3 COMPLETADAS. FASE 4 ACTIVA (DX y packaging): metadata
+(S14) y subcomandos del CLI (S15) hechos. Suite 469/469 verde. Sin
+validaciones pendientes en LFS (packaging/CLI de tooling no tocan runtime).**
+
+**Subcomandos del CLI (segundo ítem de Fase 4, hecho en S15):** los antiguos
+entry points `generate-stubs` y `update-all` se instalaban como comandos
+GLOBALES en el PATH de quien hiciera `pip install` (nombres genéricos que
+invaden el entorno ajeno) → plegados en `lfs-insim stubs` y
+`lfs-insim update-all`. Dos handlers en `cli.py` (`cmd_stubs`/`cmd_update_all`,
+import perezoso) que llaman a `generate_stubs.main()` / `update_all.main()` —
+mismo comportamiento que los console-scripts (llamar a `main()`, devolver 0).
+Los dos scripts fuera de `[project.scripts]`: **`lfs-insim` es el único
+console-script**. Git hook revisado: `.githooks/pre-commit` es un no-op
+deshabilitado por el usuario (NO invocaba `generate-stubs` — nada que
+migrar); docs corregidas (CLAUDE/README apuntan a `lfs-insim stubs` y ya no
+afirman que el hook autogenera stubs). 4 tests nuevos (`tests/test_cli.py`,
+rojo primero): despacho de ambos subcomandos + contrato de que `lfs-insim`
+es el único script. Verificado además a mano: reinstalación editable
+(`pip install -e ".[dev]"`) **elimina los `.exe` viejos** y deja solo
+`lfs-insim.exe` con los subcomandos. Suite 469/469. **No requiere validación
+en LFS.**
 
 **Metadata del paquete (primer ítem de Fase 4, hecho en S14):**
 `readme = "README.md"` (antes apuntaba a un `README` inexistente); licencia
@@ -194,26 +212,20 @@ sondeo interno).
 
 Orden de Fase 4 acordado con el usuario (S14): **CLI → ruff + CI → docs →
 CHANGELOG**; PyPI se prepara pero NO se dispara hasta el merge a `main`.
+El ítem del CLI quedó HECHO en S15 (ver "Estado").
 
-1. **Siguiente ítem: subcomandos del CLI.** Absorber los entry points
-   sueltos `generate-stubs` y `update-all` en `lfs-insim` (p. ej.
-   `lfs-insim stubs`, `lfs-insim update-all`) y quitarlos de
-   `[project.scripts]`. **Motivo concreto (hallado en S14):** hoy se instalan
-   como **comandos GLOBALES en el PATH** de quien haga `pip install` —
-   nombres genéricos que invaden el entorno ajeno, justo lo contrario del
-   objetivo de Fase 4. Sub-tareas: `cli.py` (nuevos subparsers que llamen a
-   `generate_stubs.main()` / `update_all.main()`), quitar los dos scripts de
-   pyproject, y **revisar el git hook** (`scripts/install-git-hooks.*`) que
-   invoca `generate-stubs` en el commit → pasarlo a `lfs-insim stubs` o al
-   módulo (`python -m lfs_insim.generate_stubs`). `update_all.py` corre
-   `generate_stubs` + `tools/update_insims_readme.py`.
-2. **Luego el bloque grande: ruff + CI juntos.** ruff (lint+format) ANTES de
-   escribir más código — el `ruff format` es un diff grande pero de pura
-   forma (cero comportamiento) y los 465 tests son la red que lo prueba;
-   se paga una vez. Después CI (GitHub Actions: pytest + ruff en push/PR).
-   mypy gradual sobre el core, sin bloquear.
-3. Después: docs de usuario (quickstart) → CHANGELOG.
-4. Idea DX de Fase 4 ya apuntada: el connect inicial fallido imprime un
+1. **Siguiente ítem — el bloque grande: ruff + CI juntos.** ruff
+   (lint+format) ANTES de escribir más código — el `ruff format` es un diff
+   grande pero de pura forma (cero comportamiento) y los 469 tests son la red
+   que lo prueba; se paga una vez. Decisiones a tomar al arrancar: qué
+   `line-length` y qué reglas activar (empezar conservador: `E`,`F`,`I` y
+   subir), y si `format` va en una pasada única commiteada aparte del lint.
+   Después CI (GitHub Actions: pytest + ruff en push/PR a la rama de trabajo
+   y a main). mypy gradual sobre el core, sin bloquear el merge.
+2. Después: docs de usuario (quickstart "tu primer InSim en 5 min", guía de
+   módulos/dependencias, referencia de API; revisar la plantilla de
+   `lfs-insim init`) → CHANGELOG.md + convención semver.
+3. Idea DX de Fase 4 ya apuntada: el connect inicial fallido imprime un
    traceback feo (`exc_info=True` + re-raise) — valorar mensaje limpio y/o
    `connect_retry` para arrancar el insim antes que LFS. (La pista de ISI
    rechazado ya está hecha; el fallback de cfg.txt está en PLAN § Ideas.)

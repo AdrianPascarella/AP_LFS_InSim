@@ -193,7 +193,17 @@ fuente. (**P16**)
       antiguo `Aprendiendo-InSim-LFS`); descripción en inglés; `requirements.txt`
       eliminado. 2 tests nuevos (rojo primero); wheel construye limpio en aislamiento.
       Suite 465/465
-- [ ] `generate-stubs`/`update-all` → subcomandos del CLI (`lfs-insim stubs`, ...)
+- [x] `generate-stubs`/`update-all` → subcomandos del CLI (`lfs-insim stubs`,
+      `lfs-insim update-all`) — S15: dos handlers en `cli.py` que llaman a
+      `generate_stubs.main()` / `update_all.main()` (mismo comportamiento que
+      los console-scripts: llamar a `main()` y devolver 0); los dos scripts
+      globales fuera de `[project.scripts]` — `lfs-insim` es el único
+      console-script. Git hook revisado: `.githooks/pre-commit` es un no-op
+      deshabilitado por el usuario (no invocaba `generate-stubs`, nada que
+      migrar); docs corregidas (CLAUDE/README apuntan a `lfs-insim stubs` y
+      ya no afirman que el hook autogenera). 4 tests nuevos (`test_cli.py`,
+      rojo primero) + reinstalación editable que elimina los `.exe` viejos.
+      Suite 469/469
 - [ ] Adoptar **ruff** (lint + format) y **mypy** gradual (empezando por el core)
 - [ ] **CI** (GitHub Actions): pytest + ruff en push/PR a la rama de trabajo y main
 - [ ] Docs de usuario: quickstart "tu primer InSim en 5 min", guía de módulos y dependencias,

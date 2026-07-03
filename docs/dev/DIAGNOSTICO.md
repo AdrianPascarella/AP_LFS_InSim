@@ -231,6 +231,11 @@ protocolo. No cuentan como deuda.)
   manifests).
 - **Acción:** arreglar metadata, adoptar ruff + mypy gradual, CI con pytest en push/PR,
   CHANGELOG y política de versiones.
+- **Resolución (parcial, S14–S15):** metadata saneada (readme `.md`, licencia SPDX,
+  `requirements.txt` fuera, versión única en `lfs_insim.__version__`) en S14;
+  `generate-stubs`/`update-all` plegados en subcomandos `lfs-insim stubs` /
+  `lfs-insim update-all` y fuera de `[project.scripts]` en S15 (ya no invaden el
+  PATH ajeno). **Pendiente:** ruff, mypy gradual, CI y CHANGELOG (resto de Fase 4).
 
 ### P17 — Código muerto y comentarios que mienten (BAJA) ✅ RESUELTO (S06/S07)
 - **Resolución:** `_resolve_dependencies` eliminado (S06, con P11); comentarios del
