@@ -47,6 +47,11 @@ class InSimClient:
         self.logger = logging.getLogger(f"InSim.{name}")
         self.running = False
 
+        # Guards the running check-and-set in stop(): two threads stopping
+        # at once (e.g. a handler and a Ctrl+C) must not both run the
+        # shutdown sequence, or on_disconnect would be dispatched twice.
+        self._stop_lock = threading.Lock()
+
         # True while there is a live session with LFS (TCP up + ISI sent).
         # Cleared on connection loss and on stop().
         self.connected = False
@@ -307,10 +312,13 @@ class InSimClient:
 
     def stop(self):
         """Stop the client, closing threads and sockets."""
-        if not self.running:
-            return
-
-        self.running = False
+        # Atomic check-and-set: only ONE caller runs the shutdown sequence.
+        # The lock covers just the flag flip, so a reentrant stop() from an
+        # on_disconnect hook returns immediately instead of deadlocking.
+        with self._stop_lock:
+            if not self.running:
+                return
+            self.running = False
         self.logger.info("Stopping framework...")
 
         # Notify disconnection (skip when the connection-loss path already did)

@@ -124,9 +124,14 @@ class InSimTransport:
 
     def _tcp_listen_loop(self, sock: socket.socket):
         """TCP receive loop with packet reassembly."""
+        # Capture THIS connection's stop event: close() sets it and then
+        # REPLACES self._stop (never clears it), so a receiver waking up
+        # late from a closed socket can never observe a re-armed event and
+        # report a deliberate close as a lost connection.
+        stop = self._stop
         buffer = bytearray()
 
-        while not self._stop.is_set():
+        while not stop.is_set():
             try:
                 data = sock.recv(4096)
                 if not data:
@@ -157,7 +162,7 @@ class InSimTransport:
                     self._deliver(raw_packet)
 
             except Exception as e:
-                if not self._stop.is_set():
+                if not stop.is_set():
                     logger.error(f"Error in TCP thread: {e}")
                 break
 
@@ -165,19 +170,20 @@ class InSimTransport:
 
         # Unexpected end of the receive loop (LFS closed or network error):
         # let the owner know so it can reconnect. A deliberate close() sets
-        # _stop first and must NOT trigger this.
-        if not self._stop.is_set():
+        # this connection's stop event first and must NOT trigger this.
+        if not stop.is_set():
             self._notify_connection_lost()
 
     def _udp_listen_loop(self, sock: socket.socket, buffer_size: int = 4096):
         """UDP receive loop (OutSim/OutGauge frames need no reassembly)."""
-        while not self._stop.is_set():
+        stop = self._stop   # this connection's stop event (see _tcp_listen_loop)
+        while not stop.is_set():
             try:
                 data, _ = sock.recvfrom(buffer_size)
                 if data:
                     self._deliver(data)
             except Exception as e:
-                if not self._stop.is_set():
+                if not stop.is_set():
                     logger.error(f"Error in UDP thread: {e}")
                 break
 
@@ -206,7 +212,16 @@ class InSimTransport:
     def close(self) -> None:
         """Stop the receiver threads and close both sockets.
 
-        The transport is reusable afterwards (connect_* can be called again).
+        Deterministic shutdown: signals the receivers, closes the sockets
+        (waking any recv blocked on them) and waits for the receiver
+        threads to exit before returning. The stop event is then REPLACED
+        with a fresh one, never cleared: each receiver holds the event of
+        its own connection, so one waking up after this close can never
+        mistake a deliberate close for a lost connection.
+
+        The transport is reusable afterwards (connect_* can be called
+        again). Safe to call from a receiver thread (it skips joining
+        itself; the loop then exits on its captured, still-set event).
         """
         self._stop.set()
 
@@ -225,4 +240,18 @@ class InSimTransport:
 
         self._tcp_sock = None
         self._udp_sock = None
-        self._stop.clear()
+
+        current = threading.current_thread()
+        for thread in (self._tcp_thread, self._udp_thread):
+            if thread is not None and thread is not current:
+                thread.join(timeout=2.0)
+                if thread.is_alive():
+                    logger.warning(
+                        f"Receiver thread {thread.name} did not exit within 2 s"
+                    )
+        self._tcp_thread = None
+        self._udp_thread = None
+
+        # Fresh event so the transport can be reused; the old one stays set
+        # forever for any receiver of the closed connection still winding down.
+        self._stop = threading.Event()

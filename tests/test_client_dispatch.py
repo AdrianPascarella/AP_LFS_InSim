@@ -13,7 +13,9 @@ activos y los filtros pre/post-decode ya están en test_active_packet_registry.p
     apps sin el hook;
   - cola + worker de dispatch (P2): la recepción solo encola (un handler
     lento no la bloquea), el worker entrega en orden FIFO y stop() vacía
-    lo pendiente antes de salir.
+    lo pendiente antes de salir;
+  - apagado limpio (Fase 3): stop() concurrente ejecuta la secuencia de
+    apagado UNA sola vez (check-and-set atómico de `running`).
 """
 import threading
 import time
@@ -368,3 +370,66 @@ class TestColaYWorkerDeDispatch(_Base):
             assert client._dispatch_thread is hilo
         finally:
             client._stop_dispatch_worker()
+
+
+class TestStopConcurrente(_Base):
+    """Apagado limpio (Fase 3): la secuencia de stop() corre UNA sola vez."""
+
+    def test_stops_simultaneos_despachan_on_disconnect_una_vez(self):
+        # Carrera del check-and-set de `running`: dos hilos parando a la vez
+        # (p. ej. un handler que llama a stop() y un Ctrl+C simultáneo)
+        # pasaban ambos la guarda y despachaban on_disconnect dos veces.
+        client = InSimClient(config={})
+        client.running = True
+        client.connected = True
+
+        desconexiones = []
+
+        class _Testigo:
+            name = 'testigo'
+
+            def on_disconnect(self):
+                desconexiones.append('off')
+
+        client.register(_Testigo())
+
+        n_hilos = 8
+        barrera = threading.Barrier(n_hilos)
+
+        def parar():
+            barrera.wait(2.0)
+            client.stop()
+
+        hilos = [threading.Thread(target=parar) for _ in range(n_hilos)]
+        for h in hilos:
+            h.start()
+        for h in hilos:
+            h.join(2.0)
+
+        assert desconexiones == ['off']
+        assert client.running is False
+
+    def test_stop_reentrante_desde_on_disconnect_no_se_bloquea(self):
+        # El lock solo cubre el flip del flag: un hook on_disconnect que
+        # llame a stop() otra vez debe volver al instante, sin deadlock.
+        client = InSimClient(config={})
+        client.running = True
+        client.connected = True
+
+        desconexiones = []
+
+        class _Reentrante:
+            name = 'reentrante'
+
+            def on_disconnect(self):
+                desconexiones.append('off')
+                client.stop()   # reentrada deliberada
+
+        client.register(_Reentrante())
+
+        hilo = threading.Thread(target=client.stop, daemon=True)
+        hilo.start()
+        hilo.join(2.0)
+
+        assert not hilo.is_alive()   # sin deadlock
+        assert desconexiones == ['off']

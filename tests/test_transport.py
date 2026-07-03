@@ -6,7 +6,9 @@ Cubre la capa de red sin LFS real:
     (paquetes fragmentados y pegados), byte Size=0, cierre de conexión,
     errores de recv y stop event;
   - `_udp_listen_loop` con socket guionizado: un datagrama = un paquete;
-  - `close()`: cierre de sockets por instancia (sin estado global);
+  - `close()`: cierre de sockets por instancia (sin estado global); cierre
+    determinista — espera a los receptores y un cierre deliberado nunca
+    dispara `on_connection_lost` (carrera detectada en S11);
   - `connect_tcp` / `connect_udp`: fallo de conexión e integración real por
     loopback contra la fixture `fake_lfs` (conftest.py);
   - **criterio de aceptación de Fase 2 (P13): dos clientes coexisten en un
@@ -23,6 +25,7 @@ Comportamientos que se conservan de la caracterización de Fase 1:
     ver P12 en DIAGNOSTICO.md).
 """
 import socket
+import threading
 import time
 from unittest.mock import MagicMock
 
@@ -98,6 +101,27 @@ class _SocketTcpGuionizado:
         if isinstance(paso, BaseException):
             raise paso
         return paso
+
+
+class _SocketTcpBloqueante:
+    """Socket falso que bloquea en recv() hasta que se cierra, y que tras el
+    cierre tarda `retardo` en despertar (simula el jitter del SO al despertar
+    un recv bloqueado — la ventana exacta de la carrera de S11)."""
+
+    def __init__(self, retardo=0.05):
+        self._cerrado = threading.Event()
+        self._retardo = retardo
+
+    def recv(self, bufsize):
+        self._cerrado.wait(2.0)
+        time.sleep(self._retardo)
+        raise OSError("socket cerrado")
+
+    def shutdown(self, how):
+        pass
+
+    def close(self):
+        self._cerrado.set()
 
 
 class _SocketUdpGuionizado:
@@ -288,6 +312,50 @@ class TestClose:
         assert transporte._tcp_sock is None
         assert transporte._udp_sock is None
 
+    def test_close_espera_a_los_receptores_y_no_avisa_connection_lost(self):
+        # Carrera S11: close() re-armaba _stop sin esperar a los receptores;
+        # un receptor que despertara TARDE por el socket cerrado veía el
+        # evento ya limpio → log de error falso + on_connection_lost espurio
+        # (posible intento de reconexión tras un cierre deliberado).
+        transporte = InSimTransport()
+        avisos = []
+        transporte.on_connection_lost = lambda: avisos.append('perdida')
+
+        sock = _SocketTcpBloqueante()
+        transporte._tcp_sock = sock
+        hilo = threading.Thread(
+            target=transporte._tcp_listen_loop, args=(sock,), daemon=True
+        )
+        transporte._tcp_thread = hilo
+        hilo.start()
+
+        transporte.close()
+
+        assert not hilo.is_alive(), "close() debe esperar a que el receptor salga"
+        assert avisos == [], "un cierre deliberado no debe disparar on_connection_lost"
+        assert not transporte._stop.is_set()   # transporte re-armado (reutilizable)
+
+    def test_close_desde_el_propio_hilo_receptor_no_bloquea_ni_avisa(self):
+        # Un callback puede cerrar el transporte desde el hilo receptor:
+        # close() no puede hacer join de sí mismo, pero el bucle debe salir
+        # limpio (sin releer) y sin aviso espurio.
+        transporte = InSimTransport()
+        avisos = []
+        transporte.on_connection_lost = lambda: avisos.append('perdida')
+        transporte.on_raw = lambda data: transporte.close()
+
+        sock = _SocketTcpGuionizado(TINY, VER)
+        hilo = threading.Thread(
+            target=transporte._tcp_listen_loop, args=(sock,), daemon=True
+        )
+        transporte._tcp_thread = hilo
+        hilo.start()
+
+        hilo.join(2.0)
+        assert not hilo.is_alive()
+        assert sock.llamadas == 1   # tras close() el bucle no vuelve a leer
+        assert avisos == []
+
 
 # ---------------------------------------------------------------------------
 # Fallos de conexión y envío
@@ -402,6 +470,21 @@ class TestIntegracionConLFSFalso:
         hilo.join(2.0)
         assert not hilo.is_alive()
         assert c.transport._tcp_sock is None
+
+    def test_transporte_reutilizable_tras_close(self, fake_lfs, cliente_factory):
+        # Invariante del docstring de close(): el transporte queda re-armado
+        # y una conexión posterior recibe con normalidad.
+        c = cliente_factory()
+        c.transport.connect_tcp(fake_lfs.host, fake_lfs.port)
+        assert fake_lfs.espera_conexion()
+        c.transport.close()
+
+        c.transport.connect_tcp(fake_lfs.host, fake_lfs.port)
+        assert fake_lfs.espera_conexiones(2)
+        fake_lfs.enviar(VER)
+
+        assert _esperar(lambda: len(c.paquetes) == 1)
+        assert isinstance(c.paquetes[0], ISP_VER)
 
     def test_udp_datagrama_llega_decodificado(self, cliente_factory):
         c = cliente_factory()
