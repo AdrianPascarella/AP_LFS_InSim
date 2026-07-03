@@ -9,6 +9,8 @@ Uso:
     lfs-insim list              Lista InSims disponibles
     lfs-insim info <nombre>     Muestra información de un InSim
     lfs-insim init <nombre>     Crea un nuevo InSim
+    lfs-insim stubs             Regenera los stubs de tipos (.pyi)
+    lfs-insim update-all        Regenera todos los artefactos generados
 """
 import argparse
 import json
@@ -270,7 +272,21 @@ class {class_name}(InSimApp):
     print(f"  1. Edita {insim_dir / 'main.py'}")
     print(f"  2. Ejecuta: lfs-insim run {args.name}")
     print()
-    
+
+    return 0
+
+
+def cmd_stubs(args: argparse.Namespace) -> int:
+    """Regenera los stubs de tipos (.pyi) para el autocompletado del IDE."""
+    from . import generate_stubs
+    generate_stubs.main()
+    return 0
+
+
+def cmd_update_all(args: argparse.Namespace) -> int:
+    """Regenera todos los artefactos generados: stubs .pyi + lista de InSims del README."""
+    from . import update_all
+    update_all.main()
     return 0
 
 
@@ -286,6 +302,8 @@ Ejemplos:
   lfs-insim run mi_bot            Ejecuta el InSim 'mi_bot'
   lfs-insim init nuevo_insim      Crea un nuevo InSim llamado 'nuevo_insim'
   lfs-insim info ai_control       Muestra información del InSim 'ai_control'
+  lfs-insim stubs                 Regenera los stubs de tipos (.pyi)
+  lfs-insim update-all            Regenera stubs y la lista de InSims del README
 """
     )
     
@@ -315,7 +333,16 @@ Ejemplos:
     init_parser = subparsers.add_parser('init', help='Crear un nuevo InSim')
     init_parser.add_argument('name', help='Nombre del nuevo InSim')
     init_parser.set_defaults(func=cmd_init)
-    
+
+    # Comando: stubs (antes el script global 'generate-stubs')
+    stubs_parser = subparsers.add_parser('stubs', help='Regenerar los stubs de tipos (.pyi)')
+    stubs_parser.set_defaults(func=cmd_stubs)
+
+    # Comando: update-all (antes el script global 'update-all')
+    update_all_parser = subparsers.add_parser(
+        'update-all', help='Regenerar todos los artefactos generados (stubs + README)')
+    update_all_parser.set_defaults(func=cmd_update_all)
+
     args = parser.parse_args(argv)
     
     if args.verbose:

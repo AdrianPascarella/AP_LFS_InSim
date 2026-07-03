@@ -39,11 +39,11 @@ Homepage = "https://github.com/AdrianPascarella/AP_LFS_InSim"
 Repository = "https://github.com/AdrianPascarella/AP_LFS_InSim"
 Issues = "https://github.com/AdrianPascarella/AP_LFS_InSim/issues"
 
-# CLI - Comando lfs-insim
+# CLI - único console-script. Los generadores (antes 'generate-stubs' y
+# 'update-all', comandos globales que invadían el PATH ajeno) son ahora
+# subcomandos: 'lfs-insim stubs' y 'lfs-insim update-all'.
 [project.scripts]
 lfs-insim = "lfs_insim.cli:main"
-generate-stubs = "lfs_insim.generate_stubs:main"
-update-all = "lfs_insim.update_all:main"
 
 [project.optional-dependencies]
 # matplotlib no es del core: lo necesita el InSim ai_control (map_renderer);

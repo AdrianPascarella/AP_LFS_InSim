@@ -50,12 +50,16 @@ lfs-insim info <name>
 # Create a new InSim scaffold
 lfs-insim init <name>
 
-# Install git hooks (auto-generates .pyi stubs on commit)
+# Regenerate the .pyi type stubs
+lfs-insim stubs                     # or: python -m lfs_insim.generate_stubs
+
+# Regenerate all generated artifacts (stubs + README insims list)
+lfs-insim update-all
+
+# Install git hooks (points core.hooksPath at .githooks; the pre-commit is
+# currently a disabled no-op — if re-enabled, call `lfs-insim stubs`)
 bash scripts/install-git-hooks.sh   # Linux/Mac
 ./scripts/install-git-hooks.ps1     # Windows
-
-# Regenerate type stubs manually
-python src/lfs_insim/generate_stubs.py
 ```
 
 No linter/formatter is configured. The core (`src/lfs_insim/`) has no external dependencies — pure Python 3.9+ stdlib. The `ai_control` InSim additionally requires `matplotlib` (declared in its `insim.json` and in the `[dev]` extra).

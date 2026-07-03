@@ -64,12 +64,16 @@ lfs-insim info users_management
 # Crear un nuevo InSim vacío
 lfs-insim init mi_modulo
 
-# Instalar git hooks (genera stubs .pyi en cada commit)
+# Regenerar los stubs de tipo (.pyi)
+lfs-insim stubs                      # o: python -m lfs_insim.generate_stubs
+
+# Regenerar todos los artefactos generados (stubs + lista de InSims del README)
+lfs-insim update-all
+
+# Instalar git hooks (fija core.hooksPath a .githooks; el pre-commit está
+# hoy deshabilitado — si se reactiva, que llame a `lfs-insim stubs`)
 bash scripts/install-git-hooks.sh    # Linux/Mac
 ./scripts/install-git-hooks.ps1      # Windows
-
-# Regenerar stubs de tipo manualmente
-python src/lfs_insim/generate_stubs.py
 ```
 
 ---
