@@ -1,6 +1,6 @@
 # 📍 Estado actual
 
-> Actualizado: **2026-07-03** — sesión S11
+> Actualizado: **2026-07-03** — sesión S12
 > **Rama de trabajo: `refactor/estabilizacion`.** Todo el refactor ocurre aquí; `main`
 > queda intacta hasta el merge final (cuando el proyecto esté estable). **Sync por GitHub:**
 > `git pull` al arrancar y `git push` al cerrar (permite continuar desde otro dispositivo).
@@ -8,8 +8,22 @@
 ## Estado
 
 **Fases 1 y 2 COMPLETADAS (validadas en LFS). Fase 3 ACTIVA: P12, P2-core,
-P18 y P19 hechos y VALIDADOS en LFS (P12/P2-core en S10; P18/P19 al cierre
-de S11). Suite 438/438 verde. Sin validaciones pendientes.**
+P18, P19 y apagado limpio hechos (los cuatro primeros VALIDADOS en LFS).
+Suite 443/443 verde. Validación pendiente (rápida): el apagado limpio de S12
+(ver "Próximo paso").**
+
+**Apagado limpio (ítem de Fase 3, hecho en S12):** resuelta la carrera de
+`InSimTransport.close()` detectada en S11 — cada bucle receptor **captura su
+evento de stop al arrancar** y `close()` lo deja puesto y lo **REEMPLAZA**
+por uno nuevo (nunca `clear()`), además de esperar (join, timeout 2 s) a los
+receptores antes de volver. Un receptor que despierte tarde por el socket
+cerrado ya no puede disparar `on_connection_lost` espurio tras un cierre
+deliberado; `close()` es seguro incluso desde el propio hilo receptor y el
+transporte sigue siendo reutilizable. De propina: `InSimClient.stop()` con
+check-and-set atómico de `running` (lock solo en el flip del flag) — stops
+concurrentes ejecutan el apagado UNA vez y la reentrada desde `on_disconnect`
+no se bloquea. La carrera se reprodujo EN ROJO antes del fix (2 tests);
+5 tests nuevos en total. Commit `7ee9f38`.
 
 **P18 (envío UDP, hecho en S11):** eliminado el parámetro `use_udp` de
 `transport.send` — el envío es **siempre TCP** (LFS solo recibe InSim por TCP;
@@ -116,25 +130,21 @@ P11–P21 en `DIAGNOSTICO.md`. Queda gordo: P12 (reconexión, Fase 3).
 
 ## Fase activa
 
-**Fase 3 — Robustez en runtime**; ver `PLAN.md`. Hecho: P12, P2-core (validados
-en LFS), P18, P19. Extras S10: P22 resuelto, P23 mitigado. Pendiente: apagado
-limpio y determinista, política de errores de handlers. También heredado de
-Fase 2/S07: decidir si `on_tick` debe ser configurable.
+**Fase 3 — Robustez en runtime**; ver `PLAN.md`. Hecho: P12, P2-core, P18,
+P19 (validados en LFS) y apagado limpio (S12, validación pendiente). Extras
+S10: P22 resuelto, P23 mitigado. Pendiente: política de errores de handlers.
+También heredado de Fase 2/S07: decidir si `on_tick` debe ser configurable.
 
 ## ▶️ Próximo paso concreto (empezar AQUÍ la próxima sesión)
 
-1. **Apagado limpio y determinista.** Punto de entrada: carrera detectada (S11,
-   sin arreglar) en `InSimTransport.close()` — hace `_stop.clear()` al final
-   SIN esperar (join) a que los hilos receptores salgan; un receptor que
-   despierte por la excepción del socket cerrado puede ver el evento ya limpio
-   y disparar `_notify_connection_lost()` espurio (→ log de error falso y
-   posible intento de reconexión tras un cierre deliberado). Fix probable:
-   join de los hilos receptores en `close()` antes de `clear()` (con timeout;
-   ojo si close() se llama desde el propio hilo receptor).
-2. **Política de errores de handlers configurable** (resiliente en prod,
+0. **Validación en LFS del apagado limpio (S12, rápida):** con el insim
+   conectado y AIs rodando, Ctrl+C → debe cerrar en el acto, sin
+   "Connection with LFS lost", sin intento de reconexión y sin traceback;
+   el log termina con "Framework stopped".
+1. **Política de errores de handlers configurable** (resiliente en prod,
    fail-fast en dev) — hoy `_execute_handler` traga y loguea siempre.
-3. Decisión heredada: ¿`on_tick` configurable? (hoy fijo a ~100 ms).
-4. Idea DX apuntada en S10 (sin fase): el connect inicial fallido imprime un
+2. Decisión heredada: ¿`on_tick` configurable? (hoy fijo a ~100 ms).
+3. Idea DX apuntada en S10 (sin fase): el connect inicial fallido imprime un
    traceback feo (`exc_info=True` + re-raise); valorar mensaje limpio y/o una
    opción `connect_retry` para poder arrancar el insim antes que LFS.
 

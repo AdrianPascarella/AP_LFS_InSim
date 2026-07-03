@@ -141,7 +141,13 @@ un proceso (test); los 3 insims corren con la nueva API; tests de Fase 1 adaptad
       del decoder (los espacios antes del null se conservan). Goldens actualizados
       (2 cambios deliberados) + 1 golden nuevo del caso borde len == N.
       **Validado por el usuario en LFS (S11)**
-- [ ] Apagado limpio y determinista (STOP_EVENT compartido/carreras en `stop_all_threads`)
+- [x] Apagado limpio y determinista (STOP_EVENT compartido/carreras en `stop_all_threads`) —
+      S12: `InSimTransport.close()` espera (join) a los receptores y REEMPLAZA el evento de
+      stop en vez de limpiarlo (cada bucle captura el evento de SU conexión → imposible el
+      `on_connection_lost` espurio tras un cierre deliberado, incluso llamando a close()
+      desde el propio receptor); `InSimClient.stop()` con check-and-set atómico de `running`
+      (un solo apagado ante stops concurrentes; reentrada desde on_disconnect sin deadlock).
+      5 tests nuevos (carrera reproducida en rojo primero). Suite 443/443
 - [ ] Política de errores de handlers configurable (resiliente en prod, fail-fast en dev)
 
 **Criterio de aceptación:** matar/levantar LFS con el InSim corriendo → se reconecta solo;

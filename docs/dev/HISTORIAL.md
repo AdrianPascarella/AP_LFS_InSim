@@ -5,6 +5,46 @@
 
 ---
 
+## S12 — 2026-07-03 — Fase 3: apagado limpio y determinista (carrera de `close()` + stop() atómico)
+
+**Arranque en dispositivo nuevo:** no había `.venv` — creado (Python 3.14.3),
+`pip install -e ".[dev]"`, `settings_local.py` copiado del example y git hooks
+instalados (`install-git-hooks.ps1`). La suite heredada pasó 438/438 antes de tocar.
+
+**Qué se hizo:**
+
+- **Apagado limpio (ítem de Fase 3, resuelto):** la carrera de S11 en
+  `InSimTransport.close()` se reprodujo primero EN ROJO con dos tests
+  (socket falso que despierta con retardo tras el cierre — la ventana exacta
+  del jitter del SO; y `close()` llamado desde el propio hilo receptor, que
+  con el código viejo re-armaba el bucle y seguía leyendo: 3 recv en vez de 1).
+- **Fix (más robusto que el join propuesto en S11):** cada bucle receptor
+  **captura su evento de stop al arrancar**, y `close()` lo deja puesto para
+  siempre y lo **REEMPLAZA** por uno nuevo (nunca `clear()`), además de hacer
+  join (timeout 2 s) de los receptores antes de volver. Consecuencias:
+  un receptor que despierte tarde ya no puede confundir un cierre deliberado
+  con una caída (ni log de error falso ni `on_connection_lost` espurio);
+  `close()` es determinista (al volver, los hilos han salido); y es seguro
+  llamarlo desde el propio receptor (no se hace join a sí mismo — el bucle
+  sale por su evento capturado). El transporte sigue siendo reutilizable
+  (test de reconexión tras close por loopback).
+- **`InSimClient.stop()` atómico (de propina, mismo ítem):** el check-and-set
+  de `running` no era atómico — dos stops simultáneos (handler + Ctrl+C)
+  podían despachar `on_disconnect` dos veces. Lock SOLO alrededor del flip
+  del flag: la reentrada desde un hook `on_disconnect` retorna al instante
+  sin deadlock (2 tests: 8 stops con barrera → un solo apagado; reentrante).
+- Suite **443/443** (438 + 3 transporte + 2 stop); smoke `lfs-insim list` OK;
+  stubs sin cambios. Commit `7ee9f38`.
+
+**Qué probar en LFS (validación pendiente, rápida):** con el insim conectado
+y AIs rodando, Ctrl+C → debe cerrar en el acto, sin "Connection with LFS
+lost", sin intento de reconexión y sin traceback; log con "Framework stopped".
+
+**Próxima sesión:** política de errores de handlers configurable
+(resiliente en prod, fail-fast en dev); decisión de `on_tick` configurable.
+
+---
+
 ## S11 — 2026-07-03 — Fase 3: P18 (envío UDP eliminado) + P19 (una sola ruta de serialización)
 
 **Qué se hizo:**
