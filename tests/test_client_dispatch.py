@@ -11,14 +11,29 @@ activos y los filtros pre/post-decode ya están en test_active_packet_registry.p
   - keep-alive reactivo: un ISP_TINY con SubT=NONE se contesta con otro igual;
   - dispatch de lifecycle (on_connect/on_tick/...): orden, aislamiento y
     apps sin el hook;
-  - enrutado según use_thread_pool (inline vs executor).
+  - cola + worker de dispatch (P2): la recepción solo encola (un handler
+    lento no la bloquea), el worker entrega en orden FIFO y stop() vacía
+    lo pendiente antes de salir.
 """
-from unittest.mock import MagicMock, patch
+import threading
+import time
+
+from unittest.mock import patch
 
 import lfs_insim.insim_state as state
 from lfs_insim.insim_client import InSimClient
 from lfs_insim.insim_enums import TINY
 from lfs_insim.packets import ISP_MSO, ISP_TINY
+
+
+def _esperar(condicion, timeout=2.0):
+    """Sondea `condicion()` hasta que sea verdadera o venza el timeout."""
+    limite = time.monotonic() + timeout
+    while time.monotonic() < limite:
+        if condicion():
+            return True
+        time.sleep(0.005)
+    return condicion()
 
 
 class _ClienteGrabador(InSimClient):
@@ -234,24 +249,122 @@ class TestDispatchLifecycle(_Base):
         client._dispatch_lifecycle('on_evento_que_no_existe')
 
 
-class TestRutaThreadPool(_Base):
+class _AppAcumuladora:
+    """App que acumula los Msg de los MSO recibidos, en orden de llegada."""
 
-    def test_sin_pool_despacha_inline(self):
+    def __init__(self, bloqueo=None):
+        self.name = 'acumuladora'
+        self.procesados = []
+        self._bloqueo = bloqueo   # Event: si existe, el handler espera en él
+
+    def on_ISP_MSO(self, packet):
+        if self._bloqueo is not None:
+            self._bloqueo.wait(2.0)
+        self.procesados.append(packet.Msg)
+
+
+class TestColaYWorkerDeDispatch(_Base):
+    """P2: la recepción encola; un worker dedicado despacha en FIFO."""
+
+    def test_on_packet_received_solo_encola(self):
+        # Sin worker corriendo, el paquete queda en la cola y nadie lo despacha
         client = InSimClient(config={})
-        assert client._executor is None
-
         pkt = ISP_MSO()
+
         with patch.object(client, '_dispatch_packet') as mock_dispatch:
             client.on_packet_received(pkt)
 
-        mock_dispatch.assert_called_once_with(pkt)
+        mock_dispatch.assert_not_called()
+        assert client._dispatch_queue.get_nowait() is pkt
 
-    def test_con_pool_encola_en_el_executor(self):
-        client = InSimClient(config={'use_thread_pool': True})
-        client._executor.shutdown(wait=False)
-        client._executor = MagicMock()
+    def test_worker_despacha_en_orden_fifo(self):
+        client = InSimClient(config={})
+        app = _AppAcumuladora()
+        client.register(app)
+        client._active_handler_names = {'on_ISP_MSO'}
 
-        pkt = ISP_MSO()
-        client.on_packet_received(pkt)
+        client._start_dispatch_worker()
+        try:
+            for i in range(20):
+                client.on_packet_received(ISP_MSO(Msg=str(i)))
+            assert _esperar(lambda: len(app.procesados) == 20)
+        finally:
+            client._stop_dispatch_worker()
 
-        client._executor.submit.assert_called_once_with(client._dispatch_packet, pkt)
+        assert app.procesados == [str(i) for i in range(20)]
+
+    def test_handler_lento_no_bloquea_la_recepcion(self):
+        # Criterio de Fase 3: con el handler BLOQUEADO, on_packet_received
+        # (lo que llama el hilo de IO) sigue aceptando paquetes al instante.
+        bloqueo = threading.Event()
+        client = InSimClient(config={})
+        app = _AppAcumuladora(bloqueo=bloqueo)
+        client.register(app)
+        client._active_handler_names = {'on_ISP_MSO'}
+
+        client._start_dispatch_worker()
+        try:
+            client.on_packet_received(ISP_MSO(Msg='0'))
+            # El worker está dentro del handler, esperando en `bloqueo`
+            assert _esperar(lambda: not client._dispatch_queue.qsize())
+
+            inicio = time.monotonic()
+            for i in range(1, 51):
+                client.on_packet_received(ISP_MSO(Msg=str(i)))
+            assert time.monotonic() - inicio < 0.5   # no esperó al handler
+            assert app.procesados == []              # sigue en el primero
+
+            # El keep-alive tampoco espera al handler: se contesta en el acto
+            with patch.object(client, 'send') as mock_send:
+                client.on_packet_received(ISP_TINY(SubT=TINY.NONE))
+            assert mock_send.call_count == 1
+
+            bloqueo.set()
+            assert _esperar(lambda: len(app.procesados) == 51)
+            assert app.procesados == [str(i) for i in range(51)]
+        finally:
+            bloqueo.set()
+            client._stop_dispatch_worker()
+
+    def test_stop_despacha_lo_pendiente_antes_de_salir(self):
+        # El centinela entra DETRÁS de lo encolado: nada se pierde al parar
+        client = InSimClient(config={})
+        app = _AppAcumuladora()
+        client.register(app)
+        client._active_handler_names = {'on_ISP_MSO'}
+
+        for i in range(5):
+            client.on_packet_received(ISP_MSO(Msg=str(i)))
+
+        client._start_dispatch_worker()
+        client._stop_dispatch_worker()
+
+        assert app.procesados == [str(i) for i in range(5)]
+        assert client._dispatch_thread is None
+
+    def test_worker_sobrevive_a_un_handler_que_explota(self):
+        diario = []
+        client = InSimClient(config={})
+        client.register(_AppGrabadora('A', diario, explota=True))
+        client.register(_AppGrabadora('B', diario))
+        client._active_handler_names = {'on_ISP_MSO'}
+
+        client._start_dispatch_worker()
+        try:
+            client.on_packet_received(ISP_MSO())
+            client.on_packet_received(ISP_MSO())
+            assert _esperar(lambda: diario.count('B') == 2)
+        finally:
+            client._stop_dispatch_worker()
+
+        assert diario == ['B', 'B']
+
+    def test_start_dispatch_worker_es_idempotente(self):
+        client = InSimClient(config={})
+        client._start_dispatch_worker()
+        hilo = client._dispatch_thread
+        try:
+            client._start_dispatch_worker()
+            assert client._dispatch_thread is hilo
+        finally:
+            client._stop_dispatch_worker()

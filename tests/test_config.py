@@ -56,8 +56,7 @@ class TestBuildConfig:
         # deben existir en los defaults (si falta una, el .get() escondería el hueco).
         for clave in ('tcp_host', 'tcp_port', 'insim_name', 'admin_pass',
                       'insim_ver', 'prefix', 'interval', 'insim_udp_port',
-                      'udp_host', 'udp_port', 'udp_buffer',
-                      'use_thread_pool', 'max_workers'):
+                      'udp_host', 'udp_port', 'udp_buffer'):
             assert clave in DEFAULT_CONFIG, f"falta '{clave}' en DEFAULT_CONFIG"
 
 

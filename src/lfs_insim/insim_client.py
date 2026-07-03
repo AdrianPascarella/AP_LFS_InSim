@@ -6,12 +6,23 @@ events to every registered app (InSimApp). One client, N apps: apps are
 attached with `client.register(app)` and receive packets in registration
 order (dependencies first, since the loader registers them before their
 dependents).
+
+Threading model (contract for module authors):
+  - `on_ISP_*` handlers run on the client's dispatch worker thread, one
+    packet at a time in strict FIFO order — never on the transport's IO
+    threads (P2). A slow handler does not block reception, but it delays
+    the packets queued behind it.
+  - Lifecycle hooks (`on_connect`, `on_tick`, `on_disconnect`,
+    `on_reconnect`) run on the main thread (the one that called `start()`).
+    There is no cross-thread ordering guarantee between lifecycle hooks and
+    packet handlers.
+  - `send()` is thread-safe and may be called from any thread.
 """
 
+import queue
 import threading
 import time
 import logging
-from concurrent.futures import ThreadPoolExecutor
 from typing import Callable, List, Any, Optional
 
 from .config import build_config
@@ -22,6 +33,11 @@ from .insim_packet_decoders import decode_packet
 from .packets import ISP_ISI, ISP_TINY
 from .insim_enums import ISF, TINY, OSO
 from .exceptions import InSimError, InSimConnectionError
+
+# Queued behind every pending packet to tell the dispatch worker to exit
+# (see InSimClient._stop_dispatch_worker).
+_DISPATCH_STOP = object()
+
 
 class InSimClient:
     def __init__(self, config: Optional[dict] = None, name: str = "DeepInSim",
@@ -52,11 +68,12 @@ class InSimClient:
         self.transport.on_raw = self._on_raw_bytes
         self.transport.on_connection_lost = self._connection_lost.set
 
-        # Optional thread pool for asynchronous packet dispatch
-        self.use_thread_pool = self.config.get('use_thread_pool', False)
-        self._executor = ThreadPoolExecutor(
-            max_workers=self.config.get('max_workers', 5)
-        ) if self.use_thread_pool else None
+        # Dispatch queue + worker (P2): the IO threads only decode and
+        # enqueue; a dedicated worker thread delivers packets to the apps in
+        # FIFO order, so a slow handler never blocks reception. The thread
+        # is created in start() and stopped in stop().
+        self._dispatch_queue: "queue.Queue[Any]" = queue.Queue()
+        self._dispatch_thread: Optional[threading.Thread] = None
 
         # OutSim: client base opts; apps contribute theirs via set_outsim()
         self.outsim_opts: OSO = OSO.NONE
@@ -210,6 +227,11 @@ class InSimClient:
                 f"Active packet types ({len(active_names)}): {', '.join(active_names)}"
             )
 
+            # Dispatch worker (P2): handlers run on this dedicated thread,
+            # never on the transport's IO threads. Started before connecting
+            # so the first packets already flow through the queue.
+            self._start_dispatch_worker()
+
             # 1. Physical TCP connection
             host = self.config.get('tcp_host', '127.0.0.1')
             port = self.config.get('tcp_port', 29999)
@@ -297,12 +319,12 @@ class InSimClient:
             self._dispatch_lifecycle('on_disconnect')
             self.on_disconnect()
 
-        # Shut down the thread pool
-        if self._executor:
-            self._executor.shutdown(wait=False)
-
-        # Close sockets and receiver threads
+        # Close sockets and receiver threads (no more packets get enqueued)
         self.transport.close()
+
+        # Stop the dispatch worker: the sentinel queues BEHIND any pending
+        # packets, so they are still delivered before the worker exits.
+        self._stop_dispatch_worker()
 
         self.logger.info("Framework stopped.")
 
@@ -385,17 +407,68 @@ class InSimClient:
 
     def on_packet_received(self, packet: Any):
         """
-        Callback invoked from the IO thread when a packet arrives.
+        Entry point for every decoded packet, called from the transport's
+        IO threads: replies to keep-alive pings and hands the packet to the
+        dispatch worker, so handlers never block reception (P2).
         """
-        # 1. Internal handling (keep-alive pings)
+        # 1. Keep-alive pings: answered right here on the IO thread, so a
+        # busy dispatch queue can never delay them (LFS drops the connection
+        # when the ping is not answered in time). The packet still goes
+        # through the queue afterwards, in case some app handles ISP_TINY.
         if isinstance(packet, ISP_TINY) and packet.SubT == TINY.NONE:
             self.send(ISP_TINY(ReqI=0, SubT=TINY.NONE))
 
-        # 2. Dispatch to the apps
-        if self.use_thread_pool and self._executor:
-            self._executor.submit(self._dispatch_packet, packet)
-        else:
-            self._dispatch_packet(packet)
+        # 2. Enqueue for the dispatch worker (FIFO)
+        self._dispatch_queue.put(packet)
+
+    # ------------------------------------------------------------------ #
+    # Dispatch worker (P2)
+    # ------------------------------------------------------------------ #
+
+    def _start_dispatch_worker(self) -> None:
+        """Start the dispatch worker thread (idempotent)."""
+        if self._dispatch_thread is not None and self._dispatch_thread.is_alive():
+            return
+        self._dispatch_thread = threading.Thread(
+            target=self._dispatch_loop,
+            name="InSim_Dispatch_Worker",
+            daemon=True,
+        )
+        self._dispatch_thread.start()
+
+    def _stop_dispatch_worker(self) -> None:
+        """Ask the worker to exit once the queue is drained, and wait for it."""
+        thread = self._dispatch_thread
+        if thread is None or not thread.is_alive():
+            self._dispatch_thread = None
+            return
+        self._dispatch_queue.put(_DISPATCH_STOP)
+        # A handler itself may call stop(); never join our own thread.
+        if thread is not threading.current_thread():
+            thread.join(timeout=2.0)
+            if thread.is_alive():
+                self.logger.warning(
+                    "Dispatch worker did not finish in time (a handler may be blocked)."
+                )
+        self._dispatch_thread = None
+
+    def _dispatch_loop(self) -> None:
+        """
+        Dispatch worker main loop. Takes decoded packets from the queue and
+        delivers them in FIFO order. Handler errors are already isolated in
+        _execute_handler; the extra guard here keeps the worker alive against
+        anything unexpected.
+        """
+        while True:
+            item = self._dispatch_queue.get()
+            if item is _DISPATCH_STOP:
+                break
+            try:
+                self._dispatch_packet(item)
+            except Exception as e:
+                self.logger.error(
+                    f"Error dispatching {type(item).__name__}: {e}", exc_info=True
+                )
 
     def _dispatch_packet(self, packet: Any):
         """Deliver the packet to this client and then to every app."""

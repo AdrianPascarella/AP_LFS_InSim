@@ -37,10 +37,6 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     'udp_port':   30000,
     'udp_buffer': 4096,
 
-    # --- Dispatch ---
-    'use_thread_pool': False,   # dispatch packets through a thread pool
-    'max_workers': 5,           # pool size when use_thread_pool is True
-
     # --- Reconnection (P12) ---
     # When LFS drops the TCP connection, the client's main loop retries with
     # exponential backoff, resends the ISI and re-requests the state
