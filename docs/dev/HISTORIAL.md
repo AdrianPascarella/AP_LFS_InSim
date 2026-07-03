@@ -26,9 +26,10 @@
 **Commits:** `0292a01` refactor(insims): migrar ai_control fuera de la facade
 deprecada (cierre P15).
 
-**Pendiente del usuario:** validar en LFS el estado post-migración
-(`lfs-insim run ai_control`, comandos y conducción). Si va bien, **Fase 2 queda
-CERRADA** y la próxima sesión abre Fase 3 (P12 reconexión, P2, P18, P19).
+**Validación del usuario (misma sesión):** probado en LFS el estado
+post-migración — todo funcionó correctamente. **FASE 2 CERRADA.** Se abre
+**Fase 3** (robustez en runtime); próximo: P12 (reconexión automática),
+empezando por tests con `FakeLFS` que simulen caída/vuelta del servidor.
 
 ---
 

@@ -65,7 +65,7 @@ fallarían ante una regresión; base para refactorizar con confianza.
 
 ---
 
-## Fase 2 — Arquitectura del core (composición y API)  ◀️ ACTIVA
+## Fase 2 — Arquitectura del core (composición y API)  ✅ COMPLETADA (S08, 2026-07-03)
 
 **Objetivo:** eliminar los defectos estructurales de raíz. **Rompe la API de los insims**
 (aceptado por el usuario en S04).
@@ -97,11 +97,11 @@ fallarían ante una regresión; base para refactorizar con confianza.
       fail-fast en el loader — S06/S07: `_resolve_dependencies` (S06); `INST` duplicado
       eliminado, CLAUDE.md alineado (constraints SÍ se aplican), fail-fast con cadena
       de dependencias en el mensaje (S07). `on_tick` configurable → Fase 3
-- [ ] Migrar `users_management`, `ai_control` y `test_insim` a la nueva API — S06: tras
+- [x] Migrar `users_management`, `ai_control` y `test_insim` a la nueva API — S06: tras
       P11 los 3 cargan sin cambios; S07: tras P15, `test_insim`/`prueba_botones`
       actualizados (enums explícitos); S08: `ai_control` migrado (10 imports, 9
       archivos; `users_management` ya estaba); smoke sin facade + suite 420/420;
-      **queda solo**: validación del usuario en LFS → al pasarla, marcar y cerrar Fase 2
+      **validado por el usuario en LFS (S08)** — todo correcto
 - [x] Decisión de diseño: idioma de la API pública del core — S06, decidido con el usuario:
       **inglés en el core** (identificadores, docstrings y errores del código nuevo/refactorizado);
       español en docs/dev, tests, insims y comunicación. El código viejo se traduce al tocarlo
@@ -111,7 +111,7 @@ un proceso (test); los 3 insims corren con la nueva API; tests de Fase 1 adaptad
 
 ---
 
-## Fase 3 — Robustez en runtime
+## Fase 3 — Robustez en runtime  ◀️ ACTIVA
 
 **Objetivo:** comportamiento profesional ante fallos y carga.
 

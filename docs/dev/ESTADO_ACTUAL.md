@@ -7,9 +7,10 @@
 
 ## Estado
 
-**Fase 1 COMPLETADA. Fase 2 con TODO el código hecho: P11, P13, P14, P15, P17 y P20,
-y la migración de insims (S08). Suite 420/420 verde. Falta SOLO la validación del
-usuario en LFS del estado post-migración para declarar Fase 2 cerrada.**
+**Fases 1 y 2 COMPLETADAS. Fase 2 cerrada en S08: P11, P13, P14, P15, P17, P20 y
+migración de insims, todo validado por el usuario en LFS (incluido el estado
+post-migración — todo funcionó correctamente). Suite 420/420 verde. Sin
+validaciones pendientes. Fase 3 (robustez en runtime) ACTIVA; primer objetivo: P12.**
 
 **Migración de insims (hecha en S08):** `ai_control` ya no importa la facade
 deprecada — los 10 imports de `insim_packet_class` (9 archivos) pasaron a
@@ -52,26 +53,27 @@ TCP/UDP, hilos receptores, stop y lock **por instancia**; el cliente lo posee
 (Command/CMDManager/RouteManager). **Dos clientes coexisten en un proceso** (test de
 aceptación en `test_transport.py`). Smoke: `ai_control` carga, CLI OK.
 
-**Validación en LFS (S07):** el usuario probó el estado post-P15 en LFS real
-(`!test` incluido) — todo bien. **Pendiente (S08): validar el estado
-post-migración de `ai_control`** (ver "Próximo paso").
+**Validación en LFS (S08):** el usuario probó el estado post-migración en LFS
+real — todo funcionó correctamente. No hay validaciones pendientes.
 
 **Contexto del plan (S04):** framework a nivel profesional; romper insims aceptable.
 P11–P21 en `DIAGNOSTICO.md`. Queda gordo: P12 (reconexión, Fase 3).
 
 ## Fase activa
 
-**Fase 2 — Arquitectura del core** (composición y API); ver `PLAN.md`.
-Hecho: P11, P13, P14, P15, P17, P20, decisión de idioma y migración de insims (S08).
-Queda: validación del usuario en LFS (última casilla).
+**Fase 3 — Robustez en runtime**; ver `PLAN.md`. Pendiente: P12 (reconexión),
+P2-core (dispatch fuera del hilo IO), P18 (envío UDP), P19 (una sola ruta de
+serialización), apagado limpio, política de errores de handlers. También heredado
+de Fase 2/S07: decidir si `on_tick` debe ser configurable.
 
 ## ▶️ Próximo paso concreto (empezar AQUÍ la próxima sesión)
 
-**Validación del usuario en LFS del estado post-migración** (el código ya está):
-arrancar `lfs-insim run ai_control`, probar comandos habituales (`!test` incluido)
-y comportamiento de la IA. Si todo bien → **Fase 2 CERRADA** y se abre **Fase 3**
-(P12 reconexión — el gordo pendiente — y P2/P18/P19). Si algo falla, el cambio es
-solo de imports (commit `0292a01`), fácil de acotar.
+**P12 — reconexión automática:** diseñar y implementar backoff configurable en
+`InSimClient`/`InSimTransport`, hooks `on_disconnect`/`on_reconnect` para las apps,
+reenvío de ISI y re-solicitud de estado (TINY.NCN/NPL) al reconectar. Empezar por
+tests con `FakeLFS` (conftest) que simulen caída y vuelta del servidor — red de
+seguridad antes de tocar el transporte. Criterio: matar/levantar LFS con el InSim
+corriendo → se reconecta solo (validación del usuario).
 
 ## Bloqueos / esperando
 
