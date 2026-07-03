@@ -79,6 +79,12 @@ class UsersManagement(InSimApp):
             funct=self._remove_user_to_cmds_white_list
         ).submit()
     
+    def on_reconnect(self):
+        # El core ya reenvió el ISI y re-solicitó NCN/NPL al reconectar (P12);
+        # partir de cero para no arrastrar conexiones/jugadores que cambiaron
+        # mientras estábamos caídos (los NCN/NPL entrantes repueblan todo).
+        self._clear_all_memory()
+
     def on_ISP_ISM(self, packet):
         # Sincronización al conectarse a un servidor online
         self.send_ISP_TINY(ReqI=1, SubT=TINY.NCN)

@@ -28,6 +28,12 @@ class InSimTransport:
         # InSimClient assigns it; tests can plug a recorder here.
         self.on_raw = on_raw
 
+        # Callback invoked (from the dying receiver thread) when the TCP
+        # connection is lost UNEXPECTEDLY — i.e. the receive loop ends
+        # without close() having been called. The owning InSimClient uses
+        # it to drive reconnection (P12).
+        self.on_connection_lost: Optional[Callable[[], None]] = None
+
         self._tcp_sock: Optional[socket.socket] = None
         self._udp_sock: Optional[socket.socket] = None
         self._stop = threading.Event()
@@ -40,7 +46,17 @@ class InSimTransport:
     # ------------------------------------------------------------------ #
 
     def connect_tcp(self, host: str, port: int) -> None:
-        """Open the main TCP connection with LFS and start the receiver."""
+        """Open the main TCP connection with LFS and start the receiver.
+
+        Reconnecting over a dead connection is allowed: any previous TCP
+        socket is closed and replaced.
+        """
+        if self._tcp_sock is not None:
+            try:
+                self._tcp_sock.close()
+            except OSError:
+                pass
+            self._tcp_sock = None
         try:
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.settimeout(5.0)
@@ -139,6 +155,12 @@ class InSimTransport:
 
         logger.debug("TCP thread finished.")
 
+        # Unexpected end of the receive loop (LFS closed or network error):
+        # let the owner know so it can reconnect. A deliberate close() sets
+        # _stop first and must NOT trigger this.
+        if not self._stop.is_set():
+            self._notify_connection_lost()
+
     def _udp_listen_loop(self, sock: socket.socket, buffer_size: int = 4096):
         """UDP receive loop (OutSim/OutGauge frames need no reassembly)."""
         while not self._stop.is_set():
@@ -159,6 +181,15 @@ class InSimTransport:
             self.on_raw(data)
         except Exception as e:
             logger.error(f"Error handling packet: {e}", exc_info=True)
+
+    def _notify_connection_lost(self):
+        """Invoke the connection-lost callback, isolating its errors."""
+        if self.on_connection_lost is None:
+            return
+        try:
+            self.on_connection_lost()
+        except Exception as e:
+            logger.error(f"Error in connection-lost callback: {e}", exc_info=True)
 
     # ------------------------------------------------------------------ #
     # Shutdown

@@ -140,9 +140,13 @@ class InSimApp(PacketSenderMixin):
         """
         pass
 
-    # Empty lifecycle hooks (the client calls them if defined)
+    # Empty lifecycle hooks (the client calls them if defined).
+    # on_disconnect fires when the connection is lost (or the client stops);
+    # on_reconnect fires after the client re-establishes the session (the
+    # client already resent the ISI and re-requested TINY.NCN/NPL).
     def on_connect(self): pass
     def on_disconnect(self): pass
+    def on_reconnect(self): pass
     def on_tick(self): pass
 
     # send() and send_ISP_*() inherited from PacketSenderMixin

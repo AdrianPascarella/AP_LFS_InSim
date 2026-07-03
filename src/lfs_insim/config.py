@@ -40,6 +40,16 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     # --- Dispatch ---
     'use_thread_pool': False,   # dispatch packets through a thread pool
     'max_workers': 5,           # pool size when use_thread_pool is True
+
+    # --- Reconnection (P12) ---
+    # When LFS drops the TCP connection, the client's main loop retries with
+    # exponential backoff, resends the ISI and re-requests the state
+    # (TINY.NCN/NPL) so app trackers rebuild themselves.
+    'reconnect': True,             # auto-reconnect on connection loss
+    'reconnect_delay': 1.0,        # initial delay between attempts (seconds)
+    'reconnect_backoff': 2.0,      # delay multiplier after each failed attempt
+    'reconnect_max_delay': 30.0,   # upper bound for the delay
+    'reconnect_max_attempts': 0,   # 0 = retry forever
 }
 
 

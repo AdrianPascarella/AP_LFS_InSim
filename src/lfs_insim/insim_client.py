@@ -21,7 +21,7 @@ from .insim_packet_sender import encode_packet
 from .insim_packet_decoders import decode_packet
 from .packets import ISP_ISI, ISP_TINY
 from .insim_enums import ISF, TINY, OSO
-from .exceptions import InSimError
+from .exceptions import InSimError, InSimConnectionError
 
 class InSimClient:
     def __init__(self, config: Optional[dict] = None, name: str = "DeepInSim",
@@ -30,6 +30,15 @@ class InSimClient:
         self.name = name
         self.logger = logging.getLogger(f"InSim.{name}")
         self.running = False
+
+        # True while there is a live session with LFS (TCP up + ISI sent).
+        # Cleared on connection loss and on stop().
+        self.connected = False
+
+        # Set by the transport (from its dying receiver thread) when the TCP
+        # connection drops unexpectedly; the main loop in start() reacts to
+        # it, dispatching on_disconnect and reconnecting (P12).
+        self._connection_lost = threading.Event()
 
         # Initialization packet (ISI) state
         self.isi = ISP_ISI()
@@ -41,6 +50,7 @@ class InSimClient:
         # Injectable for tests or custom transports.
         self.transport = transport or InSimTransport()
         self.transport.on_raw = self._on_raw_bytes
+        self.transport.on_connection_lost = self._connection_lost.set
 
         # Optional thread pool for asynchronous packet dispatch
         self.use_thread_pool = self.config.get('use_thread_pool', False)
@@ -245,6 +255,7 @@ class InSimClient:
             # 3. Send the FINAL initialization packet (ISI)
             self.logger.info(f"Sending final ISI with flags: {self.isi.Flags}")
             self.send(self.isi)
+            self.connected = True
 
             # 4. Notify every app about the connection
             self.on_connect()  # own hook
@@ -255,6 +266,11 @@ class InSimClient:
             # 5. Main loop
             # NOTE: keep-alive is reactive (see on_packet_received below)
             while self.running:
+                if self._connection_lost.is_set():
+                    # Connection dropped: handle it (and reconnect) from the
+                    # main thread; on_tick pauses until the session is back.
+                    self._handle_connection_lost()
+                    continue
                 self.on_tick()  # own hook
                 self._dispatch_lifecycle('on_tick')
                 time.sleep(0.1)  # 10 base ticks/s to avoid hogging the CPU
@@ -275,9 +291,11 @@ class InSimClient:
         self.running = False
         self.logger.info("Stopping framework...")
 
-        # Notify disconnection
-        self._dispatch_lifecycle('on_disconnect')
-        self.on_disconnect()
+        # Notify disconnection (skip when the connection-loss path already did)
+        if self.connected:
+            self.connected = False
+            self._dispatch_lifecycle('on_disconnect')
+            self.on_disconnect()
 
         # Shut down the thread pool
         if self._executor:
@@ -287,6 +305,83 @@ class InSimClient:
         self.transport.close()
 
         self.logger.info("Framework stopped.")
+
+    # ------------------------------------------------------------------ #
+    # Reconnection (P12)
+    # ------------------------------------------------------------------ #
+
+    def _handle_connection_lost(self):
+        """
+        React to an unexpected connection loss. Runs in the MAIN thread
+        (called from the loop in start()), so on_disconnect/on_reconnect are
+        dispatched from the same thread as on_connect and on_tick.
+        """
+        self._connection_lost.clear()
+        self.connected = False
+        self.logger.warning("Connection with LFS lost.")
+        self._dispatch_lifecycle('on_disconnect')
+        self.on_disconnect()
+
+        if not self.config.get('reconnect', True):
+            self.logger.error("Auto-reconnect is disabled; stopping the client.")
+            self.stop()
+            return
+
+        self._reconnect()
+
+    def _reconnect(self):
+        """Retry the TCP connection with exponential backoff and restore
+        the session. Gives up (stopping the client) only when
+        `reconnect_max_attempts` > 0 is exhausted."""
+        host = self.config.get('tcp_host', '127.0.0.1')
+        port = self.config.get('tcp_port', 29999)
+        delay = float(self.config.get('reconnect_delay', 1.0))
+        backoff = float(self.config.get('reconnect_backoff', 2.0))
+        max_delay = float(self.config.get('reconnect_max_delay', 30.0))
+        max_attempts = int(self.config.get('reconnect_max_attempts', 0))
+
+        attempt = 0
+        while self.running:
+            attempt += 1
+            if max_attempts and attempt > max_attempts:
+                self.logger.error(
+                    f"Could not reconnect after {max_attempts} attempts; stopping the client."
+                )
+                self.stop()
+                return
+
+            self.logger.info(f"Reconnecting to LFS at {host}:{port} (attempt {attempt})...")
+            try:
+                # Anything signalled before this instant belongs to the dead
+                # connection; events set from here on come from the new one.
+                self._connection_lost.clear()
+                self.transport.connect_tcp(host, port)
+                self._restore_session()
+            except InSimConnectionError as e:
+                self.logger.warning(f"Reconnect attempt {attempt} failed: {e}")
+                self._sleep_while_running(delay)
+                delay = min(delay * backoff, max_delay)
+                continue
+
+            self.logger.info(f"Reconnected to LFS after {attempt} attempt(s).")
+            return
+
+    def _restore_session(self):
+        """Resend the ISI and re-request the state after reconnecting."""
+        self.send(self.isi)
+        # Ask LFS for connections and players again so app trackers
+        # (on_ISP_NCN / on_ISP_NPL handlers) rebuild their state.
+        self.send(ISP_TINY(ReqI=1, SubT=TINY.NCN))
+        self.send(ISP_TINY(ReqI=1, SubT=TINY.NPL))
+        self.connected = True
+        self.on_reconnect()  # own hook
+        self._dispatch_lifecycle('on_reconnect')
+
+    def _sleep_while_running(self, seconds: float) -> None:
+        """Sleep up to `seconds`, waking early if the client stops."""
+        deadline = time.monotonic() + seconds
+        while self.running and time.monotonic() < deadline:
+            time.sleep(min(0.05, max(0.0, deadline - time.monotonic())))
 
     def on_packet_received(self, packet: Any):
         """
@@ -344,4 +439,5 @@ class InSimClient:
     # Empty hooks for subclasses
     def on_connect(self): pass
     def on_disconnect(self): pass
+    def on_reconnect(self): pass
     def on_tick(self): pass

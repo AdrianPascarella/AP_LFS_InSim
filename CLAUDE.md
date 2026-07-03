@@ -107,7 +107,9 @@ The loader reads `entry_point` (not `entry`) to find the file, then looks for a 
 1. Socket receives raw bytes → `insim_transport.py` (`InSimTransport`, one per client) buffers/assembles full packets (TCP) or reads frames (UDP) and hands them to `InSimClient._on_raw_bytes`
 2. `insim_packet_decoders.py` maps header byte → dataclass instance
 3. Client dispatches `on_ISP_<TYPE>(packet)` sequentially to itself, then each registered app in registration (= dependency) order
-4. Lifecycle hooks: `on_connect()`, `on_tick()` (fixed ~100 ms main-loop cadence, independent of `interval`), `on_disconnect()`. `INSIM_CONFIG["interval"]` (default 10 ms) controls how often LFS sends NLP/MCI, not `on_tick`.
+4. Lifecycle hooks: `on_connect()`, `on_tick()` (fixed ~100 ms main-loop cadence, independent of `interval`), `on_disconnect()`, `on_reconnect()`. `INSIM_CONFIG["interval"]` (default 10 ms) controls how often LFS sends NLP/MCI, not `on_tick`.
+
+**Auto-reconnection (P12)**: if LFS drops the TCP connection, the client's main loop detects it (≤100 ms), dispatches `on_disconnect()` and retries with exponential backoff (`reconnect*` keys in `DEFAULT_CONFIG`; `reconnect_max_attempts: 0` = forever). On success it resends the ISI, re-requests `TINY.NCN`/`TINY.NPL` (so trackers rebuild via their `on_ISP_NCN/NPL` handlers) and dispatches `on_reconnect()`. With `reconnect: False` (or attempts exhausted) the client stops cleanly instead. Lifecycle hooks always run on the main thread; `on_tick` pauses while reconnecting.
 
 `on_ISP_*` handlers are called from the IO receiver thread — avoid blocking; heavy work should be deferred.
 
