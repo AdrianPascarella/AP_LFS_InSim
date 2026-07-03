@@ -29,20 +29,20 @@ Threading model (contract for module authors):
     shutdown sequence completes.
 """
 
+import logging
 import queue
 import threading
 import time
-import logging
-from typing import Callable, List, Any, Optional
+from typing import Any, List, Optional
 
 from .config import build_config
-from .insim_transport import InSimTransport
-from .insim_state import set_insim_client
-from .insim_packet_sender import encode_packet
+from .exceptions import InSimConfigurationError, InSimConnectionError
+from .insim_enums import OSO, TINY
 from .insim_packet_decoders import decode_packet
+from .insim_packet_sender import encode_packet
+from .insim_state import set_insim_client
+from .insim_transport import InSimTransport
 from .packets import ISP_ISI, ISP_TINY
-from .insim_enums import ISF, TINY, OSO
-from .exceptions import InSimError, InSimConnectionError, InSimConfigurationError
 
 # Queued behind every pending packet to tell the dispatch worker to exit
 # (see InSimClient._stop_dispatch_worker).
@@ -196,8 +196,8 @@ class InSimClient:
         Note: detects class methods (mixins included via MRO). Handlers added
         dynamically as instance attributes are NOT detected.
         """
-        from .packets import INSIM_PACKETS
         from .insim_enums import ISP
+        from .packets import INSIM_PACKETS
 
         handler_names: set[str] = set()
         for instance in [self] + self.apps:
@@ -229,8 +229,8 @@ class InSimClient:
         Build OutSimPack2 for combined_oso, register it in OUTSIM_PACKETS
         and open the UDP socket.
         """
-        from .packets.outsim import build_outsim_pack2
         from .packets import OUTSIM_PACKETS
+        from .packets.outsim import build_outsim_pack2
 
         OutSimPack2 = build_outsim_pack2(combined_oso)
         OUTSIM_PACKETS[OutSimPack2().get_size()] = OutSimPack2

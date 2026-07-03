@@ -2,12 +2,13 @@
 
 from dataclasses import dataclass, field
 from typing import Any
+
 from lfs_insim.insim_enums import *
 from lfs_insim.utils import (
-    lfs_pos_to_meters,
-    lfs_angvel_to_degrees_per_second,
-    lfs_speed_to_kmh,
     lfs_angle_to_degrees,
+    lfs_angvel_to_degrees_per_second,
+    lfs_pos_to_meters,
+    lfs_speed_to_kmh,
 )
 
 # ---------------------------------------------------------

@@ -1,26 +1,13 @@
 from dataclasses import dataclass, field
-from .base import PacketFunctions, repeat
-from .structures import (
-    Vec,
-    Vector,
-    NodeLap,
-    CompCar,
-    CarContact,
-    CarContOBJ,
-    ObjectInfo,
-    CarHCP,
-    PlayerHCap,
-    AIInputVal,
-)
-from .outsim import OSMain
+
 from lfs_insim.insim_enums import (
     AD_NOAD,
     AI_FLAGS,
     AXO_INDEX,
     BFN,
     BYF,
-    CARS,
     CAR_CONFIG,
+    CARS,
     CHARS,
     CIM,
     CONF,
@@ -83,6 +70,20 @@ from lfs_insim.insim_enums import (
     VOTE,
     WEATHER,
     WIND,
+)
+
+from .base import PacketFunctions, repeat
+from .outsim import OSMain
+from .structures import (
+    AIInputVal,
+    CarContact,
+    CarContOBJ,
+    CarHCP,
+    CompCar,
+    NodeLap,
+    ObjectInfo,
+    PlayerHCap,
+    Vec,
 )
 
 # Public API of this module (P15): one dataclass per InSim packet type,

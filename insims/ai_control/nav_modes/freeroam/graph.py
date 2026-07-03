@@ -1,11 +1,11 @@
 from __future__ import annotations
+
 from dataclasses import dataclass, field
-from typing import List, Optional, Literal
+from typing import List, Literal, Optional
 
-from lfs_insim.insim_enums import CSVAL
-from insims.users_management.main import Coordinates
 from insims.ai_control.nav_modes.freeroam.enums import TrafficRule
-
+from insims.users_management.main import Coordinates
+from lfs_insim.insim_enums import CSVAL
 
 # ==========================================
 # 1. EL GRAFO DE NAVEGACIÓN (Enlaces)

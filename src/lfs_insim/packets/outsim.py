@@ -1,7 +1,9 @@
 from dataclasses import dataclass, field, make_dataclass
+
+from lfs_insim.insim_enums import OSO
+
 from .base import PacketFunctions, repeat
 from .structures import Vec, Vector
-from lfs_insim.insim_enums import OSO
 
 __all__ = [
     "OSMain",

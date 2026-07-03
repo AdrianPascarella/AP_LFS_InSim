@@ -12,21 +12,21 @@ Public API (P15) — recommended import points:
 __version__ = "0.2.0"
 
 from .config import DEFAULT_CONFIG, build_config
-from .insim_client import InSimClient
+from .exceptions import (
+    InSimCommandError,
+    InSimConfigurationError,
+    InSimConnectionError,
+    InSimError,
+    InSimModuleError,
+    InSimPacketError,
+    InSimProtocolError,
+)
 from .insim_app import InSimApp
+from .insim_client import InSimClient
 from .insim_loader import InSimLoader
+from .insim_packet_sender import mute_send_logs, unmute_send_logs
 from .insim_transport import InSimTransport
 from .packet_sender_mixin import PacketSenderMixin
-from .exceptions import (
-    InSimError,
-    InSimConnectionError,
-    InSimConfigurationError,
-    InSimPacketError,
-    InSimModuleError,
-    InSimProtocolError,
-    InSimCommandError,
-)
-from .insim_packet_sender import mute_send_logs, unmute_send_logs
 
 __all__ = [
     "__version__",

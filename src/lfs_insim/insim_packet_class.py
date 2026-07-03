@@ -18,5 +18,5 @@ warnings.warn(
     stacklevel=2,
 )
 
-from lfs_insim.packets import *  # noqa: E402,F401,F403
 from lfs_insim.insim_enums import *  # noqa: E402,F401,F403
+from lfs_insim.packets import *  # noqa: E402,F401,F403

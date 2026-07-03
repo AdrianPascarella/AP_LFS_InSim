@@ -1,7 +1,8 @@
 from lfs_insim import InSimApp
+from lfs_insim.insim_enums import BFN, INST, ISB_CLICK, ISB_STYLE, ISF, TYPEIN_FLAGS
 from lfs_insim.packets import *
-from lfs_insim.insim_enums import ISF, ISB_STYLE, ISB_CLICK, BFN, INST, TYPEIN_FLAGS
-from lfs_insim.utils import CMDManager, separate_command_args, TextColors as c
+from lfs_insim.utils import CMDManager, separate_command_args
+from lfs_insim.utils import TextColors as c
 
 # ClickIDs reservados para cada prueba
 CID_COLORES = range(1, 9)  # 1-8:  8 colores

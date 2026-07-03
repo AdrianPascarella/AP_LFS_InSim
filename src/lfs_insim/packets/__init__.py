@@ -6,14 +6,15 @@ Recommended import point for every packet class:
 Protocol enums live in `lfs_insim.insim_enums` and are NOT re-exported here.
 """
 
+from . import base as _base
+from . import insim as _insim
+from . import outsim as _outsim
+from . import structures as _structures
 from .base import *
-from .structures import *
 from .insim import *
-from .outsim import *
 from .maps import INSIM_PACKETS
-
-from . import base as _base, structures as _structures
-from . import insim as _insim, outsim as _outsim
+from .outsim import *
+from .structures import *
 
 __all__ = [
     *_base.__all__,

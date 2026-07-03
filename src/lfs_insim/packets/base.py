@@ -1,6 +1,5 @@
-from dataclasses import dataclass, field, fields, is_dataclass
-from typing import Optional, List, Any
 import struct
+from dataclasses import fields, is_dataclass
 
 __all__ = ["repeat", "PacketFunctions"]
 

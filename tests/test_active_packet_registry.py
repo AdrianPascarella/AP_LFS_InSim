@@ -6,15 +6,12 @@ insim_packet_io._process_raw_bytes), and the post-decode filter in
 _dispatch_packet().
 """
 
-import struct
-from unittest.mock import MagicMock, patch, call
-import pytest
+from unittest.mock import MagicMock, patch
 
 import lfs_insim.insim_state as state
 from lfs_insim.insim_client import InSimClient
 from lfs_insim.insim_enums import ISP
 from lfs_insim.packets import INSIM_PACKETS
-
 
 # ---------------------------------------------------------------------------
 # Helpers

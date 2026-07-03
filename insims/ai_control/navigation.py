@@ -1,24 +1,25 @@
 from __future__ import annotations
-import math
-import time
-import random
-from typing import TYPE_CHECKING, Optional, List, Tuple, Literal
 
-from lfs_insim.packets import AIInputVal as AIV
-from lfs_insim.insim_enums import CSVAL, CS
-from lfs_insim.utils import (
-    calc_dist_3d,
-    get_closest_node_index,
-    determine_smart_spawn_index,
-    apply_antilag_window,
-    evaluate_dynamic_capture,
-)
-from insims.ai_control.behavior import AIBehavior, GearMode
-from insims.ai_control.nav_modes.route.mode import RouteMode
-from insims.ai_control.nav_modes.freeroam.mode import FreeroamMode
-from insims.ai_control.nav_modes.freeroam.graph import RoadLink, LocationContext
-from insims.ai_control.nav_modes.freeroam.geometry import calc_dist_point_to_segment_2d
+import math
+import random
+import time
+from typing import TYPE_CHECKING, List, Literal, Optional, Tuple
+
 from insims.ai_control.base import _MixinBase
+from insims.ai_control.behavior import AIBehavior
+from insims.ai_control.nav_modes.freeroam.geometry import calc_dist_point_to_segment_2d
+from insims.ai_control.nav_modes.freeroam.graph import LocationContext, RoadLink
+from insims.ai_control.nav_modes.freeroam.mode import FreeroamMode
+from insims.ai_control.nav_modes.route.mode import RouteMode
+from lfs_insim.insim_enums import CS, CSVAL
+from lfs_insim.packets import AIInputVal as AIV
+from lfs_insim.utils import (
+    apply_antilag_window,
+    calc_dist_3d,
+    determine_smart_spawn_index,
+    evaluate_dynamic_capture,
+    get_closest_node_index,
+)
 
 if TYPE_CHECKING:
     from insims.users_management.main import AI, Coordinates

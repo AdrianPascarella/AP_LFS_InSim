@@ -1,7 +1,7 @@
 """Tests for on_ISP_MSO dispatch and _cmd_users / _cmd_players commands."""
 
-from lfs_insim.packets import ISP_MSO, ISP_NCN, ISP_NPL, ISP_MSL
 from lfs_insim.insim_enums import PTYPE
+from lfs_insim.packets import ISP_MSL, ISP_MSO, ISP_NCN, ISP_NPL
 
 
 def _ncn(ucid=1, uname="User") -> ISP_NCN:

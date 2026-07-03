@@ -39,7 +39,6 @@ from lfs_insim.insim_enums import ISP
 from lfs_insim.insim_transport import InSimTransport
 from lfs_insim.packets import ISP_TINY, ISP_VER
 
-
 # Paquetes reales mínimos para las trazas (mismos bytes que los golden-decode).
 TINY = bytes([1, ISP.TINY, 0, 0])
 VER = (

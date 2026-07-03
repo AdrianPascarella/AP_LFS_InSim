@@ -1,7 +1,7 @@
 """Tests for ISP_NPL and ISP_PLL handlers (human players and AIs)."""
 
-from lfs_insim.packets import ISP_NCN, ISP_NPL, ISP_PLL
 from lfs_insim.insim_enums import PTYPE
+from lfs_insim.packets import ISP_NCN, ISP_NPL, ISP_PLL
 
 
 def _ncn(ucid=1, uname="User") -> ISP_NCN:

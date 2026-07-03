@@ -11,12 +11,12 @@ automatically) and the client dispatches to them.
 import json
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict, List, Optional
 
 from .config import build_config
-from .packets import ISP_ISI
-from .packet_sender_mixin import PacketSenderMixin
 from .insim_enums import OSO
+from .packet_sender_mixin import PacketSenderMixin
+from .packets import ISP_ISI
 
 if TYPE_CHECKING:
     from .insim_client import InSimClient

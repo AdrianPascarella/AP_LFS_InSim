@@ -12,7 +12,8 @@ import logging
 import re
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional
+
 from .exceptions import InSimModuleError
 
 

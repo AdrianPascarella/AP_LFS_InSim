@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
-from .base import PacketFunctions, repeat
-from lfs_insim.insim_enums import CCI, PHC, CS, CSVAL, OSO
+
+from lfs_insim.insim_enums import CCI, CS, CSVAL, PHC
+
+from .base import PacketFunctions
 
 __all__ = [
     "Vec",

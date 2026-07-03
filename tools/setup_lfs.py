@@ -1,6 +1,6 @@
-import sys
-import os
 import logging
+import os
+import sys
 
 # Añadir raíz al path
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -12,7 +12,7 @@ if project_root not in sys.path:
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 try:
-    from config.settings import LFS_DIR, DESIRED_LFS_CONFIG
+    from config.settings import DESIRED_LFS_CONFIG, LFS_DIR
     from src.lfs_insim.configuration import LFSConfigManager
 except ImportError as e:
     logging.error(f"Error importando módulos del proyecto: {e}")
@@ -45,7 +45,7 @@ def run_setup():
                 # Si ambos son hex válidos
                 if int(current_val, 16) == int(desired_val, 16):
                     continue
-            except:
+            except Exception:
                 pass  # No eran números comparables
 
             print(f"  [!] DIFERENCIA en {key}:")

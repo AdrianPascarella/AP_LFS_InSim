@@ -6,11 +6,13 @@ el que se registra la app. Los helpers sin `client` propio (CMDManager...)
 caen en el cliente por defecto, que es este mismo (el primero creado).
 """
 
-import pytest
 from unittest.mock import patch
+
+import pytest
+
 import lfs_insim.insim_state as state
-from lfs_insim.insim_client import InSimClient
 from insims.test_insim.main import TestInsim
+from lfs_insim.insim_client import InSimClient
 
 
 @pytest.fixture(autouse=True)

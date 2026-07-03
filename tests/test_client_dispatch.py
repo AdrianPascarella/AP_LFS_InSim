@@ -28,7 +28,6 @@ activos y los filtros pre/post-decode ya están en test_active_packet_registry.p
 
 import threading
 import time
-
 from unittest.mock import patch
 
 import pytest

@@ -1,18 +1,20 @@
 """Tests for utility functions: unit conversions, geometry, colors, PID."""
 
 import math
+
 import pytest
+
 from lfs_insim.utils import (
-    strip_lfs_colors,
-    lfs_pos_to_meters,
-    lfs_speed_to_kmh,
+    PIDController,
+    calc_deviation_angle,
+    calc_dist_3d,
+    calc_dist_point_to_segment_3d,
+    get_heading_diff,
     lfs_angle_to_degrees,
     lfs_angvel_to_degrees_per_second,
-    calc_dist_3d,
-    get_heading_diff,
-    calc_deviation_angle,
-    calc_dist_point_to_segment_3d,
-    PIDController,
+    lfs_pos_to_meters,
+    lfs_speed_to_kmh,
+    strip_lfs_colors,
 )
 
 

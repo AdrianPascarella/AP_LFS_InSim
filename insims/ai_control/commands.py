@@ -1,19 +1,19 @@
 from __future__ import annotations
+
+import random
 import threading
 import time
-import random
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
-from lfs_insim.packets import AIInputVal as AIV
-from lfs_insim.insim_enums import SND, CSVAL, CS
-from lfs_insim.utils import TextColors, CMDManager
-from insims.ai_control.behavior import AIBehavior, AdaptiveSpeedConfig
-from insims.ai_control.nav_modes.route.mode import RouteMode
-from insims.ai_control.nav_modes.freeroam.mode import FreeroamMode
 from insims.ai_control.base import _MixinBase
+from insims.ai_control.behavior import AdaptiveSpeedConfig, AIBehavior
+from insims.ai_control.nav_modes.freeroam.mode import FreeroamMode
+from insims.ai_control.nav_modes.route.mode import RouteMode
+from lfs_insim.insim_enums import CS, CSVAL
+from lfs_insim.packets import AIInputVal as AIV
+from lfs_insim.utils import CMDManager, TextColors
 
 if TYPE_CHECKING:
-    from insims.users_management.main import AI
     from lfs_insim.packets import ISP_MSO
 
 
@@ -447,7 +447,7 @@ class _CommandsMixin(_MixinBase):
             modo_str = type(mode).__name__ if mode else "Ninguno (Parada/Desactivada)"
             self.send_ISP_MSL(Msg=f"^7Modo Activo: ^3{modo_str}")
 
-        self.send_ISP_MSL(Msg=f"^3======================================")
+        self.send_ISP_MSL(Msg="^3======================================")
 
     # ==========================================
     # 4. TEST'S Y UTILIDADES DE DESARROLLO

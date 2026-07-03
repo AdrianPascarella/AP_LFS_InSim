@@ -6,26 +6,28 @@ Cubre: CPR, LAP, SPX, PIT, PSF, PLA, CCH, PEN, TOC, FLG, PFL, FIN, RES,
 """
 
 from __future__ import annotations
-from typing import Optional, TYPE_CHECKING
-from lfs_insim.packets import *
-from lfs_insim.utils import CMDManager, TextColors as c
+
+from typing import TYPE_CHECKING, Optional
+
 from lfs_insim.insim_enums import (
-    PITLANE,
-    VIEW,
-    PENALTY,
-    PENR,
+    AXO_INDEX,
     BYF,
-    OFFON,
-    VOTE,
     CIM,
     CSC,
-    UCO,
+    HLVC,
+    OFFON,
+    PENALTY,
+    PENR,
+    PITLANE,
     PMO,
     RESULT,
-    HLVC,
-    AXO_INDEX,
-    OBH,
+    UCO,
+    VIEW,
+    VOTE,
 )
+from lfs_insim.packets import *
+from lfs_insim.utils import CMDManager
+from lfs_insim.utils import TextColors as c
 
 if TYPE_CHECKING:
     from lfs_insim import InSimApp as _Base

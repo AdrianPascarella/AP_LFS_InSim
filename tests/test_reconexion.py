@@ -31,7 +31,6 @@ from lfs_insim.insim_packet_sender import encode_packet
 from lfs_insim.insim_transport import InSimTransport
 from lfs_insim.packets import ISP_TINY
 
-
 TINY_KEEPALIVE = bytes([1, ISP.TINY, 0, 0])
 
 

@@ -1,12 +1,13 @@
 import json
 import logging
 import os
+
 import matplotlib
 
 # [!] FORZAR MOTOR NO INTERACTIVO (Debe ir antes de importar pyplot)
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+import matplotlib.pyplot as plt
 
 logger = logging.getLogger(__name__)
 

@@ -7,6 +7,7 @@ viven aquí (cada cliente tiene su InSimTransport).
 """
 
 import pytest
+
 import lfs_insim.insim_state as state
 
 

@@ -5,23 +5,24 @@ Cubre: MSL, MST, MSX, MTC, BTN, BFN, SCC, SSH, SMALL,
 """
 
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
-from lfs_insim.packets import *
+
 from lfs_insim.insim_enums import (
     BFN,
     ISB_STYLE,
     ISS_SFP,
-    LFS,
     OCO,
     OFFON,
     SCH_FLAGS,
     SMALL,
     SND,
-    SSH,
     TTC,
     VIEW,
 )
-from lfs_insim.utils import CMDManager, TextColors as c
+from lfs_insim.packets import *
+from lfs_insim.utils import CMDManager
+from lfs_insim.utils import TextColors as c
 
 if TYPE_CHECKING:
     from lfs_insim import InSimApp as _Base
@@ -160,7 +161,7 @@ class _SendMixin(_Base):
 
     def _cmd_mtc(self):
         self.send_ISP_MTC(
-            UCID=0, PLID=0, Text=f"[MTC] Mensaje de prueba ISP_MTC a UCID=0"
+            UCID=0, PLID=0, Text="[MTC] Mensaje de prueba ISP_MTC a UCID=0"
         )
         self.send_ISP_MSL(Msg=f"{c.GREEN}[MTC] {c.WHITE}ISP_MTC enviado a UCID=0")
 
@@ -174,7 +175,7 @@ class _SendMixin(_Base):
             T=80,
             W=120,
             H=30,
-            Text=f"^2[BTN] Prueba OK - usa !test_insim bfn para borrar",
+            Text="^2[BTN] Prueba OK - usa !test_insim bfn para borrar",
         )
         self.send_ISP_MSL(
             Msg=f"{c.GREEN}[BTN] {c.WHITE}Boton mostrado (ClickID={_BTN_ID})"

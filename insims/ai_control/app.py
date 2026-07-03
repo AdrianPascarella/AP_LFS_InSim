@@ -1,36 +1,37 @@
 from __future__ import annotations
+
 import random
-import logging
-from typing import TYPE_CHECKING, Optional, Literal
+from typing import TYPE_CHECKING, Literal, Optional
 
 from lfs_insim import InSimApp, mute_send_logs
+from lfs_insim.insim_enums import SND
 from lfs_insim.packets import (
-    ISP_MCI,
-    ISP_RST,
     ISP_CRS,
+    ISP_MCI,
     ISP_MSO,
     ISP_PLL,
+    ISP_RST,
+)
+from lfs_insim.packets import (
     AIInputVal as AIV,
 )
-from lfs_insim.insim_enums import CS, SND
-from lfs_insim.utils import PIDController, separate_command_args, TextColors
+from lfs_insim.utils import PIDController, TextColors, separate_command_args
 
 mute_send_logs("ISP_AIC")
 
 from insims.ai_control.behavior import AIBehavior, GearMode
-from insims.ai_control.nav_modes.route.mode import RouteMode
-from insims.ai_control.nav_modes.route.manager import RouteManager
-from insims.ai_control.nav_modes.freeroam.mode import FreeroamMode
-from insims.ai_control.nav_modes.freeroam.map_recorder import MapRecorder
-
 from insims.ai_control.commands import _CommandsMixin
-from insims.ai_control.physics import _PhysicsMixin
-from insims.ai_control.navigation import _NavigationMixin
-from insims.ai_control.traffic import _TrafficMixin
 from insims.ai_control.map_ui import _MapUIMixin
+from insims.ai_control.nav_modes.freeroam.map_recorder import MapRecorder
+from insims.ai_control.nav_modes.freeroam.mode import FreeroamMode
+from insims.ai_control.nav_modes.route.manager import RouteManager
+from insims.ai_control.nav_modes.route.mode import RouteMode
+from insims.ai_control.navigation import _NavigationMixin
+from insims.ai_control.physics import _PhysicsMixin
+from insims.ai_control.traffic import _TrafficMixin
 
 if TYPE_CHECKING:
-    from insims.users_management.main import UsersManagement, AI, Telemetry, Coordinates
+    from insims.users_management.main import UsersManagement
 
 
 class AIControl(

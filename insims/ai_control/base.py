@@ -1,15 +1,15 @@
 from __future__ import annotations
+
 import logging
-from typing import TYPE_CHECKING, Optional, Any
+from typing import TYPE_CHECKING, Any, Optional
 
 if TYPE_CHECKING:
-    from insims.users_management.main import UsersManagement
-    from insims.ai_control.nav_modes.route.manager import RouteManager
+    from insims.ai_control.behavior import AIBehavior
+    from insims.ai_control.nav_modes.freeroam.graph import LateralLink
     from insims.ai_control.nav_modes.freeroam.map_recorder import MapRecorder
     from insims.ai_control.nav_modes.freeroam.mode import FreeroamMode
-    from insims.ai_control.nav_modes.freeroam.graph import RoadLink, LateralLink
-    from insims.ai_control.behavior import AIBehavior
-    from insims.users_management.main import AI, Coordinates
+    from insims.ai_control.nav_modes.route.manager import RouteManager
+    from insims.users_management.main import AI, Coordinates, UsersManagement
     from lfs_insim.utils import PIDController
 
 

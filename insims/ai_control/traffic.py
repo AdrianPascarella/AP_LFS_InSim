@@ -1,27 +1,25 @@
 from __future__ import annotations
+
 import math
 import time
-import random
-from typing import TYPE_CHECKING, Optional, List, Tuple
+from typing import TYPE_CHECKING, List, Optional, Tuple
 
-from lfs_insim.insim_enums import CSVAL
-from lfs_insim.utils import calc_dist_3d
+from insims.ai_control.base import _MixinBase
 from insims.ai_control.behavior import AIBehavior
-from insims.ai_control.nav_modes.freeroam.mode import FreeroamMode
-from insims.ai_control.nav_modes.freeroam.graph import (
-    IntersectionZone,
-    LateralLink,
-    RoadLink,
-    SpecialRule,
-)
+from insims.ai_control.nav_modes.freeroam.enums import AIManeuverState, TrafficRule
 from insims.ai_control.nav_modes.freeroam.geometry import (
     calc_dist_point_to_segment_2d,
     get_dist_to_polygon_edge_2d,
     is_point_in_polygon_2d,
 )
-from insims.ai_control.nav_modes.freeroam.enums import TrafficRule, AIManeuverState
+from insims.ai_control.nav_modes.freeroam.graph import (
+    IntersectionZone,
+    LateralLink,
+)
+from insims.ai_control.nav_modes.freeroam.mode import FreeroamMode
 from insims.users_management.main import Coordinates
-from insims.ai_control.base import _MixinBase
+from lfs_insim.insim_enums import CSVAL
+from lfs_insim.utils import calc_dist_3d
 
 if TYPE_CHECKING:
     from insims.users_management.main import AI

@@ -1,11 +1,12 @@
 from __future__ import annotations
+
 import random
 from dataclasses import dataclass, field
-from typing import Optional, List, Literal
+from typing import List, Literal, Optional
 
-from lfs_insim.insim_enums import CSVAL
 from insims.ai_control.nav_modes import AINavModeState
 from insims.ai_control.nav_modes.freeroam.enums import AIManeuverState
+from lfs_insim.insim_enums import CSVAL
 
 
 @dataclass

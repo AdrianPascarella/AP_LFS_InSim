@@ -11,12 +11,12 @@ Arquitectura:
     4. _get_static_size() - Calcula tamaños para campos de longitud variable
 """
 
-import struct
 import logging
-from typing import Any, Optional, Tuple, Type, Union
+import struct
+from typing import Any, Optional, Tuple, Type
 
-from .packets import INSIM_PACKETS, OUTSIM_PACKETS
 from .exceptions import InSimPacketError
+from .packets import INSIM_PACKETS, OUTSIM_PACKETS
 
 logger = logging.getLogger(__name__)
 

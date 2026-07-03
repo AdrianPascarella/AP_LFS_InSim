@@ -13,8 +13,8 @@ Several transports can coexist in the same process: all state (sockets,
 stop event, send lock) is per-instance — there are no module globals.
 """
 
-import socket
 import logging
+import socket
 import threading
 from typing import Callable, Optional
 

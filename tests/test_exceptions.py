@@ -1,14 +1,15 @@
 """Tests for the custom exception hierarchy."""
 
 import pytest
+
 from lfs_insim.exceptions import (
-    InSimError,
-    InSimConnectionError,
-    InSimConfigurationError,
-    InSimPacketError,
-    InSimModuleError,
-    InSimProtocolError,
     InSimCommandError,
+    InSimConfigurationError,
+    InSimConnectionError,
+    InSimError,
+    InSimModuleError,
+    InSimPacketError,
+    InSimProtocolError,
 )
 
 

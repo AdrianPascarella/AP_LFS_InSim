@@ -75,3 +75,21 @@ extend-exclude = ["*.pyi"]
 # Arranque conservador (decidido en S16): pycodestyle E/W, pyflakes F, isort I.
 # Se ampliara en pasadas posteriores (UP, B, C4, SIM...) como cambios revisables.
 select = ["E", "F", "I", "W"]
+# ruff format es el dueno del ancho de linea; con el formatter adoptado, E501
+# solo saltaria en strings, comentarios o URLs que no se pueden partir.
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+# Los insims usan star-imports como patron establecido (um_class re-exporta los
+# enums del protocolo; test_insim/users_management/prueba_botones los consumen
+# con `import *`), imports tras sys.path/mute_send_logs (E402) y nombres de una
+# sola letra en codigo pendiente de refactor. Se iran quitando al limpiar cada
+# insim (Fase 5-6).
+"insims/**" = ["F403", "F405", "E402", "E741"]
+# packets/__init__ y packets/maps.py agregan la API publica via star-import
+# guiado por __all__ (patron de paquete, con __all__ explicito: no es una fuga).
+"src/lfs_insim/packets/__init__.py" = ["F403", "F405"]
+"src/lfs_insim/packets/maps.py" = ["F403", "F405"]
+# insim_enums define constantes del protocolo LFS con nombres de una sola letra
+# (I, O) que reflejan la spec y no se pueden renombrar.
+"src/lfs_insim/insim_enums.py" = ["E741"]

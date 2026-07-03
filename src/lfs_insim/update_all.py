@@ -5,11 +5,10 @@ generator and the README insims updater so developers can run a
 single command to refresh all generated files.
 """
 
-import logging
-from pathlib import Path
-import runpy
 import importlib
-import sys
+import logging
+import runpy
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 

@@ -1,15 +1,16 @@
 from __future__ import annotations
+
 import copy
 import math
 import os
 import time
 from typing import Optional
 
-from lfs_insim.insim_enums import ISB_STYLE, BFN, TYPEIN_FLAGS
-from lfs_insim.packets import ISP_BTC, ISP_BTT, ISP_MSO
-from lfs_insim.utils import TextColors as c
 from insims.ai_control.base import _MixinBase
 from insims.ai_control.nav_modes.freeroam.mode import FreeroamMode
+from lfs_insim.insim_enums import BFN, ISB_STYLE, TYPEIN_FLAGS
+from lfs_insim.packets import ISP_BTC, ISP_BTT, ISP_MSO
+from lfs_insim.utils import TextColors as c
 
 
 class _FakePkt:
@@ -773,7 +774,7 @@ class _MapUIMixin(_MixinBase):
             T=21,
             W=32,
             H=6,
-            Text=f"→ A",
+            Text="→ A",
         )
         self.send_ISP_BTN(
             ReqI=1,
@@ -784,7 +785,7 @@ class _MapUIMixin(_MixinBase):
             T=21,
             W=32,
             H=6,
-            Text=f"→ B",
+            Text="→ B",
         )
 
         if not all_roads:
@@ -2461,7 +2462,6 @@ class _MapUIMixin(_MixinBase):
                 self._map_ui_redraw_content()
 
     def _map_ui_click_info(self, cid: int):
-        fake = _FakePkt(self._ui_ucid)
         if cid == 110:
             self._ui_info_stats = not self._ui_info_stats
             self._map_ui_redraw_content()

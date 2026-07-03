@@ -5,12 +5,10 @@ Analiza las clases de paquetes (dataclasses) y genera firmas de métodos
 para InSimApp, permitiendo autocompletado en métodos on_ISP_* y send_ISP_*.
 """
 
-import sys
 import logging
-from pathlib import Path
+import sys
 from dataclasses import fields, is_dataclass
-import inspect
-from typing import Any
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -19,8 +17,7 @@ src_path = Path(__file__).parent.parent
 if str(src_path) not in sys.path:
     sys.path.insert(0, str(src_path))
 
-from lfs_insim.packets import RECEIVE, SEND
-from lfs_insim import insim_enums
+from lfs_insim.packets import RECEIVE, SEND  # noqa: E402
 
 
 def _get_type_hint(field_obj) -> str:

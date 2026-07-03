@@ -1,6 +1,6 @@
 """Tests for ISP_NCN and ISP_CNL handlers."""
 
-from lfs_insim.packets import ISP_NCN, ISP_CNL
+from lfs_insim.packets import ISP_CNL, ISP_NCN
 
 
 def _ncn(ucid=1, uname="TestUser", pname="Test Player") -> ISP_NCN:

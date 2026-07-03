@@ -17,6 +17,17 @@ NOTA: desde P13 `encode` ES la función real (`encode_packet`), extraída de
 
 import pytest
 
+from lfs_insim.insim_enums import (
+    BFN,
+    CS,
+    ISF,
+    JRR,
+    SMALL,
+    SND,
+    TINY,
+    TTC,
+    VIEW,
+)
 from lfs_insim.insim_packet_sender import encode_packet as encode
 from lfs_insim.packets import (
     ALLOWED_PACKETS,
@@ -52,17 +63,6 @@ from lfs_insim.packets import (
     ObjectInfo,
     PlayerHCap,
     Vec,
-)
-from lfs_insim.insim_enums import (
-    BFN,
-    CS,
-    ISF,
-    JRR,
-    SMALL,
-    SND,
-    TINY,
-    TTC,
-    VIEW,
 )
 
 

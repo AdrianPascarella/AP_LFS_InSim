@@ -1,42 +1,41 @@
 from __future__ import annotations
-import logging
-import os
-import json
+
 import copy
+import json
+import logging
 import math
+import os
 import threading
-from dataclasses import dataclass, field, asdict, fields
-from typing import Dict, Optional, List, Callable
+from dataclasses import asdict, fields
 from enum import Enum
+from typing import Callable, Dict, List, Optional
 
-from insims.users_management.main import Coordinates
-from lfs_insim.packets import ISP_MSL, ISP_MSO
-from lfs_insim.insim_enums import CSVAL, SND
-from lfs_insim.packet_sender_mixin import PacketSenderMixin
-from lfs_insim.utils import (
-    CMDManager,
-    calc_dist_3d,
-    TextColors,
-    calc_deviation_angle,
-    calc_dist_point_to_segment_3d,
-)
-
-from insims.ai_control.nav_modes.freeroam.enums import TrafficRule, AIManeuverState
-from insims.ai_control.nav_modes.freeroam.graph import (
-    RoadLink,
-    LateralLink,
-    IntersectionZone,
-    RoadSegment,
-    LocationContext,
-    SpecialRule,
-)
+from insims.ai_control.nav_modes.freeroam.enums import TrafficRule
 from insims.ai_control.nav_modes.freeroam.geometry import (
-    get_dist_to_polygon_edge_2d,
     calc_dist_point_to_segment_2d,
+    get_dist_to_polygon_edge_2d,
     is_point_in_polygon_2d,
 )
-from insims.ai_control.nav_modes.freeroam.mode import FreeroamMode
+from insims.ai_control.nav_modes.freeroam.graph import (
+    IntersectionZone,
+    LateralLink,
+    LocationContext,
+    RoadLink,
+    RoadSegment,
+    SpecialRule,
+)
 from insims.ai_control.nav_modes.freeroam.map_renderer import generate_map_image
+from insims.users_management.main import Coordinates
+from lfs_insim.insim_enums import CSVAL, SND
+from lfs_insim.packet_sender_mixin import PacketSenderMixin
+from lfs_insim.packets import ISP_MSL, ISP_MSO
+from lfs_insim.utils import (
+    CMDManager,
+    TextColors,
+    calc_deviation_angle,
+    calc_dist_3d,
+    calc_dist_point_to_segment_3d,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -107,7 +106,7 @@ class MapRecorder(PacketSenderMixin):
         # 2. Si es el primer punto de la grabación, lo metemos directo
         if not nodes_list:
             nodes_list.append(current_node)
-            logger.info(f"[Auto-Rec] Nodo #1 guardado (Motivo: Punto de Origen).")
+            logger.info("[Auto-Rec] Nodo #1 guardado (Motivo: Punto de Origen).")
             if self._node_flash_callback:
                 self._node_flash_callback(1, False)
             return

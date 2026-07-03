@@ -1,18 +1,19 @@
 from __future__ import annotations
+
 import time
 from typing import TYPE_CHECKING
 
+from insims.ai_control.base import _MixinBase
+from insims.ai_control.behavior import AdaptiveSpeedConfig, AIBehavior, GearMode
+from insims.users_management.main import Coordinates
+from lfs_insim.insim_enums import CS, CSVAL
 from lfs_insim.packets import AIInputVal as AIV
-from lfs_insim.insim_enums import CSVAL, CS
 from lfs_insim.utils import (
     calc_dist_3d,
     calc_target_heading,
     get_heading_diff,
     lfs_pos_to_meters,
 )
-from insims.ai_control.behavior import AIBehavior, AdaptiveSpeedConfig, GearMode
-from insims.users_management.main import Coordinates
-from insims.ai_control.base import _MixinBase
 
 if TYPE_CHECKING:
     from insims.users_management.main import AI, Telemetry

@@ -1,13 +1,14 @@
 from __future__ import annotations  # SIEMPRE EN LA LÍNEA 1
-from lfs_insim.packets import ISP_MSO, ISP_MSL
+
+import logging
+import math
+import re
+from dataclasses import dataclass
+from typing import Any, Callable
+
 from lfs_insim.insim_enums import SND
 from lfs_insim.packet_sender_mixin import PacketSenderMixin
-from dataclasses import dataclass, field
-from typing import Any, Callable
-import re
-import math
-import logging
-from lfs_insim.exceptions import InSimCommandError
+from lfs_insim.packets import ISP_MSL, ISP_MSO
 
 __all__ = [
     # Chat / comandos
@@ -501,9 +502,6 @@ def calc_deviation_angle(x1: int, y1: int, x2: int, y2: int, x3: int, y3: int) -
 
     # 4. Convertimos de radianes a unidades LFS (pi radianes = 32768 unidades)
     return int((diff_rad / math.pi) * 32768)
-
-
-import math
 
 
 def calc_dist_point_to_segment_3d(px, py, pz, ax, ay, az, bx, by, bz):

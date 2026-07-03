@@ -1,7 +1,8 @@
+import logging
 import os
 import shutil
-import logging
-from typing import Dict, Any, Optional
+from typing import Dict
+
 from .exceptions import InSimConfigurationError
 
 
@@ -93,7 +94,6 @@ class LFSConfigManager:
                     continue
 
                 # Chequeamos si esta línea corresponde a alguna key a actualizar
-                parts = stripped.split(maxsplit=1)
 
                 # Lógica de coincidencia robusta (LFS keys a veces tienen espacios, pero cfg.txt suele ser Key Value)
                 # En cfg.txt las claves multi-palabra como "OutSim Opts" suelen empezar la línea.

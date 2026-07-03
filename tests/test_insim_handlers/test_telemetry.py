@@ -2,7 +2,6 @@
 
 from lfs_insim.packets import ISP_MCI, ISP_NPL
 from lfs_insim.packets.structures import CompCar
-from lfs_insim.insim_enums import PTYPE
 
 
 def _npl_human(plid=10, ucid=1) -> ISP_NPL:

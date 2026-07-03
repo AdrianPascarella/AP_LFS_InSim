@@ -42,8 +42,8 @@ class TestAllPorModulo:
         assert _all_resuelve(mod) == []
 
     def test_all_sin_duplicados(self):
-        import lfs_insim.packets as p
         import lfs_insim.insim_enums as e
+        import lfs_insim.packets as p
 
         assert len(p.__all__) == len(set(p.__all__))
         assert len(e.__all__) == len(set(e.__all__))
@@ -108,6 +108,7 @@ class TestVersionUnica:
 
     def test_version_definida_y_exportada(self):
         import re
+
         import lfs_insim
 
         assert re.fullmatch(
@@ -118,6 +119,7 @@ class TestVersionUnica:
     def test_version_coincide_con_metadata_instalada(self):
         # Si falla tras un bump de versión, reinstala: pip install -e ".[dev]"
         from importlib.metadata import version
+
         import lfs_insim
 
         assert version("lfs-insim") == lfs_insim.__version__

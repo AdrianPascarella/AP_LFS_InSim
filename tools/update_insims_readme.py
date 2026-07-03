@@ -55,7 +55,7 @@ def get_description(p: Path) -> str:
     readme = p / "README.md"
     if readme.exists():
         first = readme.read_text(encoding="utf-8").splitlines()[0:2]
-        return " ".join(l.strip() for l in first if l.strip())
+        return " ".join(ln.strip() for ln in first if ln.strip())
     return "Plantilla o ejemplo."
 
 

@@ -17,8 +17,8 @@ import argparse
 import json
 import logging
 import logging.config
-import sys
 import os
+import sys
 from pathlib import Path
 
 # Añadir directorio actual al path para importar configuración local
@@ -180,12 +180,12 @@ def cmd_info(args: argparse.Namespace) -> int:
     print(f"  Directorio: {manifest.directory}")
 
     if manifest.insim_dependencies:
-        print(f"\n  Dependencias InSim:")
+        print("\n  Dependencias InSim:")
         for dep, version in manifest.insim_dependencies.items():
             print(f"    - {dep} {version}")
 
     if manifest.python_dependencies:
-        print(f"\n  Dependencias Python:")
+        print("\n  Dependencias Python:")
         for dep in manifest.python_dependencies:
             print(f"    - {dep}")
 
@@ -278,7 +278,7 @@ class {class_name}(InSimApp):
         f.write(main_content)
 
     print(f"\nInSim '{args.name}' creado en: {insim_dir}")
-    print(f"\nSiguientes pasos:")
+    print("\nSiguientes pasos:")
     print(f"  1. Edita {insim_dir / 'main.py'}")
     print(f"  2. Ejecuta: lfs-insim run {args.name}")
     print()

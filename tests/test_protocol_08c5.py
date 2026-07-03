@@ -5,20 +5,19 @@ CCI.RETIRED, NLP_MAX_CARS=48 y los nuevos HOSTF.
 """
 
 import struct
-import pytest
 
 from lfs_insim.insim_enums import (
-    ISP,
-    ISF,
     CCI,
     HOSTF,
-    RIF,
-    SAI,
-    RIF_SAI_SHIFTS,
+    ISF,
+    ISP,
     LFS_LIMITS,
+    RIF,
+    RIF_SAI_SHIFTS,
+    SAI,
 )
-from lfs_insim.packets import ISP_SET, ISP_NPL, INSIM_PACKETS
 from lfs_insim.insim_packet_decoders import decode_packet
+from lfs_insim.packets import INSIM_PACKETS, ISP_NPL, ISP_SET
 
 
 class TestEnums08C5:
