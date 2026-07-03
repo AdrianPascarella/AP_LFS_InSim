@@ -64,6 +64,11 @@ class TestBuildConfig:
         # por defecto: aislar y loguear, nunca tirar el cliente en prod.
         assert DEFAULT_CONFIG['handler_errors'] == 'log'
 
+    def test_tick_interval_por_defecto_es_01(self):
+        # La cadencia de on_tick (Fase 3) debe reproducir por defecto el
+        # comportamiento histórico del bucle principal (~100 ms).
+        assert DEFAULT_CONFIG['tick_interval'] == 0.1
+
 
 class TestCoreSinConfigDelProyecto:
     """P14: el core funciona con `config.settings` inimportable."""

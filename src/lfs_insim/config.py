@@ -53,6 +53,16 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     'reconnect_max_attempts': 0,   # 0 = retry forever
     'reconnect_stable_time': 10.0, # session shorter than this keeps the backoff escalating (P24)
 
+    # --- Main loop tick ---
+    # Seconds between on_tick dispatches (client hook + apps). The main
+    # loop's internal poll stays at <=100 ms regardless, so a slow tick
+    # never delays connection-loss detection (P12) or fail-fast handler
+    # errors. Not a precision timer (rides on time.sleep granularity,
+    # ~15 ms on Windows): high-frequency work belongs in packet handlers
+    # (MCI/OutSim), not in on_tick. Minimum 0.01; there is no catch-up
+    # after a stall (e.g. while reconnecting).
+    'tick_interval': 0.1,
+
     # --- Error policy ---
     # What to do when an app packet handler (`on_ISP_*`) or lifecycle hook
     # raises:

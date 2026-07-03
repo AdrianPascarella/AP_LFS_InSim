@@ -14,8 +14,11 @@ Threading model (contract for module authors):
     the packets queued behind it.
   - Lifecycle hooks (`on_connect`, `on_tick`, `on_disconnect`,
     `on_reconnect`) run on the main thread (the one that called `start()`).
-    There is no cross-thread ordering guarantee between lifecycle hooks and
-    packet handlers.
+    `on_tick` fires every `tick_interval` seconds (default 0.1, min 0.01;
+    best-effort, no catch-up) — the main loop's internal poll stays at
+    <=100 ms regardless, so a slow tick never delays connection-loss
+    detection or fail-fast errors. There is no cross-thread ordering
+    guarantee between lifecycle hooks and packet handlers.
   - `send()` is thread-safe and may be called from any thread.
   - App errors follow the `handler_errors` config key: 'log' (default)
     isolates them — logged with traceback, the client keeps running;
@@ -60,6 +63,19 @@ class InSimClient:
             raise InSimConfigurationError(
                 f"Invalid 'handler_errors' value: {policy!r} "
                 "(expected 'log' or 'raise')"
+            )
+
+        # Tick cadence: validated here so a bad value fails at creation,
+        # not minutes later inside start().
+        raw_tick = self.config.get('tick_interval', 0.1)
+        try:
+            tick = float(raw_tick)
+        except (TypeError, ValueError):
+            tick = None
+        if tick is None or tick < 0.01:
+            raise InSimConfigurationError(
+                f"Invalid 'tick_interval' value: {raw_tick!r} "
+                "(expected a number >= 0.01 seconds)"
             )
 
         # With handler_errors='raise', the dispatch worker parks the first
@@ -336,6 +352,14 @@ class InSimClient:
 
             # 5. Main loop
             # NOTE: keep-alive is reactive (see on_packet_received below)
+            # on_tick fires every `tick_interval` seconds, with no catch-up
+            # after a stall (a reconnection must not be followed by a burst
+            # of owed ticks). The loop itself polls at <=100 ms so
+            # connection-loss detection and fail-fast handler errors never
+            # wait on a slow tick.
+            tick_interval = float(self.config.get('tick_interval', 0.1))
+            poll = min(0.1, tick_interval)
+            next_tick = time.monotonic()   # first tick fires immediately
             while self.running:
                 if self._handler_error is not None:
                     # Fail-fast policy (handler_errors='raise'): a handler
@@ -348,9 +372,11 @@ class InSimClient:
                     # main thread; on_tick pauses until the session is back.
                     self._handle_connection_lost()
                     continue
-                self.on_tick()  # own hook
-                self._dispatch_lifecycle('on_tick')
-                time.sleep(0.1)  # 10 base ticks/s to avoid hogging the CPU
+                if time.monotonic() >= next_tick:
+                    self.on_tick()  # own hook
+                    self._dispatch_lifecycle('on_tick')
+                    next_tick = time.monotonic() + tick_interval
+                time.sleep(poll)
 
         except KeyboardInterrupt:
             self.logger.info("Shutdown requested by the user.")

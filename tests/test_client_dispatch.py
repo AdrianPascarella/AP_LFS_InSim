@@ -19,7 +19,11 @@ activos y los filtros pre/post-decode ya están en test_active_packet_registry.p
   - política de errores de handlers (Fase 3): `handler_errors` = 'log'
     (default, aísla y loguea) | 'raise' (fail-fast: el primer error detiene
     el cliente y se propaga desde start()); durante stop() los errores de
-    on_disconnect se aíslan siempre para que el apagado se complete.
+    on_disconnect se aíslan siempre para que el apagado se complete;
+  - tick configurable (Fase 3): `tick_interval` controla la cadencia de
+    on_tick (default 0.1 s = comportamiento de siempre) SIN tocar el sondeo
+    interno del bucle principal (≤100 ms), que sigue detectando caídas de
+    conexión y errores fail-fast aunque el tick sea lento.
 """
 import threading
 import time
@@ -581,3 +585,85 @@ class TestPoliticaDeErroresDeHandlers(_Base):
 
         assert desconexiones == ['off']
         assert client.running is False
+
+
+class _AppTicker(InSimApp):
+    """App que apunta el instante de cada on_tick recibido."""
+
+    def __init__(self):
+        super().__init__(name='ticker')
+        self.ticks = []
+
+    def on_tick(self):
+        self.ticks.append(time.monotonic())
+
+
+class TestTickInterval(_Base):
+    """Fase 3: `tick_interval` regula on_tick sin tocar el sondeo interno."""
+
+    def _arrancar(self, fake_lfs, config_extra):
+        config = {
+            'tcp_host': fake_lfs.host,
+            'tcp_port': fake_lfs.port,
+            'reconnect_delay': 0.02,
+            'reconnect_backoff': 1.0,
+        }
+        config.update(config_extra)
+        app = _AppTicker()
+        client = InSimClient(config=config, name='Tick')
+        client.register(app)
+        hilo = threading.Thread(target=client.start, daemon=True)
+        hilo.start()
+        return client, hilo, app
+
+    def test_valor_invalido_falla_al_crear_el_cliente(self):
+        # No numérico, cero/negativo o por debajo del suelo (0.01 s)
+        for malo in ('rapido', None, 0, -1, 0.001):
+            with pytest.raises(InSimConfigurationError):
+                InSimClient(config={'tick_interval': malo})
+
+    def test_on_tick_respeta_un_intervalo_mas_lento(self, fake_lfs):
+        # Con tick_interval=0.3 los ticks no pueden llegar a la cadencia
+        # vieja de ~100 ms: cada hueco entre ticks debe rondar el intervalo.
+        client, hilo, app = self._arrancar(fake_lfs, {'tick_interval': 0.3})
+        try:
+            assert fake_lfs.espera_conexion()
+            assert _esperar(lambda: len(app.ticks) >= 3, timeout=3.0)
+
+            huecos = [b - a for a, b in zip(app.ticks, app.ticks[1:])]
+            assert all(h >= 0.25 for h in huecos), huecos   # margen de jitter
+        finally:
+            client.stop()
+            hilo.join(2.0)
+            client.transport.close()
+
+    def test_on_tick_puede_ir_mas_rapido_que_el_poll_viejo(self, fake_lfs):
+        # Con tick_interval=0.02, acumular 12 ticks debe costar MUCHO menos
+        # que a la cadencia vieja (11 huecos de 100 ms ≥ 1.1 s).
+        client, hilo, app = self._arrancar(fake_lfs, {'tick_interval': 0.02})
+        try:
+            assert fake_lfs.espera_conexion()
+            assert _esperar(lambda: len(app.ticks) >= 12, timeout=3.0)
+
+            assert app.ticks[11] - app.ticks[0] < 0.9
+        finally:
+            client.stop()
+            hilo.join(2.0)
+            client.transport.close()
+
+    def test_un_tick_lento_no_retrasa_la_deteccion_de_caida(self, fake_lfs):
+        # El sondeo interno queda desacoplado: con tick_interval=5.0 la
+        # caída se detecta y reconecta igual en fracciones de segundo.
+        client, hilo, app = self._arrancar(fake_lfs, {'tick_interval': 5.0})
+        try:
+            assert fake_lfs.espera_conexion()
+            assert _esperar(lambda: client.connected)
+
+            fake_lfs.cerrar_conexion()
+
+            assert fake_lfs.espera_conexiones(2, timeout=2.0)   # << 5 s
+            assert _esperar(lambda: client.connected)
+        finally:
+            client.stop()
+            hilo.join(2.0)
+            client.transport.close()
