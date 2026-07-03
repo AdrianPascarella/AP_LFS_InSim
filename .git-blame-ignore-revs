@@ -1,0 +1,6 @@
+# Revisiones que git blame debe ignorar (reformateos mecanicos masivos).
+# GitHub lo usa automaticamente. En local, activar con:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# style(ruff): formato inicial del repo con ruff format (line-length 88)
+a3bea569c207a7c9e1ea493e10d398860137d963
