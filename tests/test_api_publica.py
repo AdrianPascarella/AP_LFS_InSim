@@ -91,3 +91,25 @@ class TestFacadeDeprecada:
         assert hasattr(facade, 'AIInputVal')     # estructura
         assert hasattr(facade, 'SND')            # enum
         assert hasattr(facade, 'ALLOWED_PACKETS')
+
+
+class TestVersionUnica:
+    """Fuente única de versión (Fase 4): `lfs_insim.__version__`.
+
+    pyproject.toml la lee de aquí (`dynamic = ["version"]`), así que el
+    número vive en UN solo sitio.
+    """
+
+    def test_version_definida_y_exportada(self):
+        import re
+        import lfs_insim
+        assert re.fullmatch(r"\d+\.\d+\.\d+([abc.]|rc|dev|post|\d)*",
+                            lfs_insim.__version__), \
+            f"__version__ no parece PEP 440: {lfs_insim.__version__!r}"
+        assert '__version__' in lfs_insim.__all__
+
+    def test_version_coincide_con_metadata_instalada(self):
+        # Si falla tras un bump de versión, reinstala: pip install -e ".[dev]"
+        from importlib.metadata import version
+        import lfs_insim
+        assert version("lfs-insim") == lfs_insim.__version__

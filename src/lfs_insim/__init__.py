@@ -8,6 +8,9 @@ Public API (P15) — recommended import points:
     lfs_insim.utils        helpers (commands, colors, PID, geometry)
 """
 
+# Single source of version: pyproject.toml reads it from here (dynamic).
+__version__ = "0.2.0"
+
 from .config import DEFAULT_CONFIG, build_config
 from .insim_client import InSimClient
 from .insim_app import InSimApp
@@ -21,6 +24,7 @@ from .exceptions import (
 from .insim_packet_sender import mute_send_logs, unmute_send_logs
 
 __all__ = [
+    '__version__',
     'DEFAULT_CONFIG',
     'build_config',
     'InSimClient',

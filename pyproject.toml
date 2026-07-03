@@ -1,26 +1,43 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+# setuptools>=77: soporte de licencia SPDX (license = "MIT" + license-files)
+requires = ["setuptools>=77.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "lfs-insim"
-version = "0.2.0"
+# Fuente única de versión: src/lfs_insim/__init__.py (__version__)
+dynamic = ["version"]
 authors = [
   { name="Adrian Pascarella" },
 ]
-description = "Framework modular para Live for Speed InSim"
-readme = "README"
+description = "Composable Python framework for the Live for Speed InSim protocol"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.9"
+keywords = [
+    "lfs", "live-for-speed", "insim", "outsim", "outgauge",
+    "racing", "simulator", "telemetry",
+]
 classifiers = [
-    "Programming Language :: Python :: 3",
-    "Operating System :: OS Independent",
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Games/Entertainment :: Simulation",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/AdrianPascarella/Aprendiendo-InSim-LFS"
+Homepage = "https://github.com/AdrianPascarella/AP_LFS_InSim"
+Repository = "https://github.com/AdrianPascarella/AP_LFS_InSim"
+Issues = "https://github.com/AdrianPascarella/AP_LFS_InSim/issues"
 
 # CLI - Comando lfs-insim
 [project.scripts]
@@ -33,10 +50,12 @@ update-all = "lfs_insim.update_all:main"
 # va en dev para que el entorno de desarrollo/tests sea reproducible.
 dev = ["pytest>=7.0", "matplotlib"]
 
+[tool.setuptools.dynamic]
+version = { attr = "lfs_insim.__version__" }
+
 # Detección automática de paquetes en src/
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-
