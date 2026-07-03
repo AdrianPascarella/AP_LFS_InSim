@@ -6,6 +6,9 @@ to LFS (TCP for InSim, optional UDP for OutSim/OutGauge or NLP/MCI). It
 reassembles the TCP byte stream into individual packets and hands every raw
 packet to the `on_raw` callback (set by the owning InSimClient).
 
+Sending is always TCP — LFS only accepts InSim packets on the TCP
+connection; the UDP socket is receive-only.
+
 Several transports can coexist in the same process: all state (sockets,
 stop event, send lock) is per-instance — there are no module globals.
 """
@@ -98,9 +101,14 @@ class InSimTransport:
     # Sending
     # ------------------------------------------------------------------ #
 
-    def send(self, data: bytes, use_udp: bool = False) -> bool:
-        """Send raw bytes to LFS (thread-safe)."""
-        sock = self._udp_sock if use_udp else self._tcp_sock
+    def send(self, data: bytes) -> bool:
+        """Send raw bytes to LFS over TCP (thread-safe).
+
+        Sending is always TCP: LFS only accepts InSim packets on the TCP
+        connection. The UDP socket is receive-only (OutSim/OutGauge frames
+        or NLP/MCI when `UDPPort` is set in the ISI).
+        """
+        sock = self._tcp_sock
         if sock is None:
             raise InSimConnectionError("Could not send: socket not available (disconnected?)", host=None, port=None)
         try:

@@ -319,6 +319,18 @@ class TestConexionFallida:
         with pytest.raises(InSimConnectionError):
             InSimTransport().send(TINY)
 
+    def test_enviar_es_siempre_tcp_aunque_haya_socket_udp(self):
+        # P18: el envío UDP se eliminó — LFS solo recibe InSim por TCP y el
+        # socket UDP es solo de escucha. Sin TCP, send falla aunque haya UDP.
+        transporte = InSimTransport()
+        transporte._udp_sock = MagicMock()
+        try:
+            with pytest.raises(InSimConnectionError):
+                transporte.send(TINY)
+            transporte._udp_sock.sendall.assert_not_called()
+        finally:
+            transporte._udp_sock = None
+
 
 # ---------------------------------------------------------------------------
 # Integración por loopback con el "LFS falso" (fixtures de conftest.py)

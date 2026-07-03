@@ -246,11 +246,14 @@ protocolo. No cuentan como deuda.)
 - **Acción:** borrar lo muerto, alinear comentarios, y decidir si `on_tick` debe ser
   configurable.
 
-### P18 — Envío por UDP roto (BAJA, funcional)
-- `send_packet(use_udp=True)` usa el socket UDP que está `bind()` para **escuchar**, sin
-  `connect()` ni destino: `sendall()` fallaría. Nadie lo usa hoy.
-- **Acción:** eliminarlo o implementarlo bien (socket de envío con destino) cuando se
-  encapsule el transporte (P13).
+### P18 — Envío por UDP roto (BAJA, funcional) ✅ RESUELTO (S11, eliminado)
+- **Resolución (S11):** eliminado el parámetro `use_udp` de `InSimTransport.send` —
+  el envío es **siempre TCP** (LFS solo recibe InSim por TCP; el socket UDP es solo
+  de bajada: OutSim/OutGauge, NLP/MCI). Documentado en el docstring del transporte y
+  en CLAUDE.md; test del contrato en `test_transport.py`
+  (`test_enviar_es_siempre_tcp_aunque_haya_socket_udp`).
+- `send_packet(use_udp=True)` usaba el socket UDP que está `bind()` para **escuchar**,
+  sin `connect()` ni destino: `sendall()` fallaría. Nadie lo usaba.
 
 ### P19 — Duplicación en el camino de serialización (BAJA)
 - `_extract_values()` recalcula el padding de strings que ya hizo

@@ -131,7 +131,9 @@ un proceso (test); los 3 insims corren con la nueva API; tests de Fase 1 adaptad
       `use_thread_pool`/`max_workers` retirados; contrato de threading documentado en
       CLAUDE.md y en el docstring de `insim_client.py`; 6 tests nuevos en
       `test_client_dispatch.py`. Suite 435/435
-- [ ] **P18**: eliminar o implementar bien el envío UDP
+- [x] **P18**: eliminar o implementar bien el envío UDP — S11: **eliminado** el parámetro
+      `use_udp` de `transport.send`; el envío es siempre TCP (LFS solo recibe InSim por
+      TCP; UDP es solo de bajada). Documentado (docstring + CLAUDE.md) y fijado con test
 - [ ] **P19**: una sola ruta de serialización (prepare→pack) apoyada en los golden-bytes;
       revisar `.strip()` del decoder (espacios significativos)
 - [ ] Apagado limpio y determinista (STOP_EVENT compartido/carreras en `stop_all_threads`)

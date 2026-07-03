@@ -120,7 +120,7 @@ self.send_ISP_MSL(Msg="hello")           # preferred: magic via PacketSenderMixi
 self.send(ISP_MSL(Msg="hello"))          # explicit: only when building the packet separately
 ```
 
-Sending is thread-safe: `client.send(packet)` = `encode_packet()` (pure serialization in `insim_packet_sender.py`) + `transport.send(bytes)` (per-instance lock). Mixin `send`/`send_ISP_*` route through `self.client`, falling back to the process's default client for helper classes.
+Sending is thread-safe: `client.send(packet)` = `encode_packet()` (pure serialization in `insim_packet_sender.py`) + `transport.send(bytes)` (per-instance lock). Sending is **always TCP** — LFS only accepts InSim packets over TCP; the UDP socket is receive-only (OutSim/OutGauge, NLP/MCI). Mixin `send`/`send_ISP_*` route through `self.client`, falling back to the process's default client for helper classes.
 
 ### Writing a module
 
