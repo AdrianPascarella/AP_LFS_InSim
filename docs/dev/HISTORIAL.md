@@ -5,7 +5,7 @@
 
 ---
 
-## S13 — 2026-07-03 — Fase 3: política de errores de handlers configurable (`handler_errors`)
+## S13 — 2026-07-03 — Fase 3 COMPLETADA: `handler_errors` + `tick_interval`
 
 **Arranque:** repo limpio y sincronizado (HEAD `f2995e5`, cierre S12); suite
 heredada 450/450 antes de tocar.
@@ -46,8 +46,34 @@ en desarrollo un bug en un handler pasaba desapercibido entre los logs.
 comportamiento (los 450 tests previos pasan intactos) y el modo 'raise' es
 una herramienta de desarrollo cubierta por la integración con FakeLFS.
 
-**Pendiente de Fase 3:** nada — este era el último ítem. Queda la decisión
-heredada de S07 (¿`on_tick` configurable?) antes de dar la fase por cerrada.
+**Remate de S13 — `tick_interval` (decisión heredada de S07, resuelta con
+el usuario):** SÍ es configurable, pero desacoplando el tick de las apps
+del sondeo interno del bucle principal — el `time.sleep(0.1)` viejo
+controlaba a la vez la cadencia de `on_tick`, la detección de caídas (P12)
+y el fail-fast de S13; configurarlo sin desacoplar habría sido un footgun.
+
+- Clave `tick_interval` (segundos, default 0.1 = comportamiento histórico;
+  mínimo 0.01, validado al crear el cliente con `InSimConfigurationError`,
+  como `handler_errors`).
+- El bucle principal sondea SIEMPRE a `min(0.1, tick_interval)` para
+  `_connection_lost` y `_handler_error`, y despacha `on_tick` solo cuando
+  vence el intervalo (acumulador con `time.monotonic()`; el primer tick
+  sale inmediato, como siempre). Sin catch-up tras un stall: una
+  reconexión larga no dispara una ráfaga de ticks debidos.
+- Documentado (CLAUDE.md, docstring del cliente, `config.py`): no es un
+  timer de precisión (~15 ms de resolución en Windows); el trabajo de alta
+  frecuencia va en handlers MCI/OutSim; cadencias por app → contadores
+  módulo sobre el tick del cliente.
+- **5 tests nuevos, rojo primero** (`TestTickInterval`): intervalo lento
+  respetado (huecos ≥ intervalo), tick rápido (12 ticks en < 0.9 s, contra
+  ≥ 1.1 s de la cadencia vieja), y la guardia clave — con
+  `tick_interval=5.0` la caída se detecta y reconecta en < 2 s.
+  Suite **463/463**.
+
+**FASE 3 COMPLETADA.** Sus ítems de runtime están validados en LFS
+(S08–S12); los dos de S13 no cambian defaults (la cadencia efectiva sigue
+siendo ~100 ms). Próxima: **Fase 4 — DX y packaging** (metadata, CLI,
+ruff/mypy, CI, docs de usuario, CHANGELOG; decisión pendiente: PyPI).
 
 ---
 

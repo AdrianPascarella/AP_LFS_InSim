@@ -7,11 +7,21 @@
 
 ## Estado
 
-**Fases 1 y 2 COMPLETADAS (validadas en LFS). Fase 3 con TODOS sus ítems
-hechos: P12, P2-core, P18, P19, apagado limpio, P24 y política de errores
-de handlers (S13). Suite 458/458 verde. Sin validaciones pendientes en LFS.
-Antes de dar Fase 3 por cerrada queda una decisión heredada: ¿`on_tick`
-configurable? (hoy fijo a ~100 ms).**
+**Fases 1, 2 y 3 COMPLETADAS. Fase 3 cerrada en S13 con sus dos últimos
+ítems: política de errores de handlers (`handler_errors`) y tick
+configurable (`tick_interval`). Suite 463/463 verde. Sin validaciones
+pendientes en LFS (los ítems de S13 no cambian defaults; los de runtime se
+validaron en S08–S12). FASE 4 ACTIVA: DX y packaging.**
+
+**`tick_interval` (cierre de Fase 3, hecho en S13):** la cadencia de
+`on_tick` es configurable (segundos, default 0.1 = comportamiento
+histórico; mínimo 0.01, valor inválido → `InSimConfigurationError` al
+crear el cliente). Clave del diseño: el tick queda DESACOPLADO del sondeo
+interno del bucle principal, que sigue fijo a ≤100 ms para
+`_connection_lost` y `_handler_error` — un tick lento nunca retrasa la
+reconexión (P12) ni el fail-fast. Sin catch-up tras un stall. No es un
+timer de precisión; alta frecuencia → handlers MCI/OutSim. 5 tests
+(`TestTickInterval`), rojo primero.
 
 **Política de errores de handlers (último ítem de Fase 3, hecho en S13):**
 clave `handler_errors` en `DEFAULT_CONFIG` — `'log'` (default) aísla y
@@ -165,21 +175,21 @@ P11–P21 en `DIAGNOSTICO.md`. Queda gordo: P12 (reconexión, Fase 3).
 
 ## Fase activa
 
-**Fase 3 — Robustez en runtime**; ver `PLAN.md`. TODOS los ítems hechos:
-P12, P2-core, P18, P19, apagado limpio, P24 y política de errores de
-handlers (S13). Extras S10: P22 resuelto, P23 mitigado. Para cerrar la fase
-solo falta la decisión heredada de Fase 2/S07: ¿`on_tick` configurable?
+**Fase 4 — Experiencia de desarrollador (DX) y packaging**; ver `PLAN.md`.
+Fase 3 quedó COMPLETADA en S13 (último ítem: `tick_interval`; la decisión
+"¿on_tick configurable?" se resolvió con el usuario: SÍ, desacoplado del
+sondeo interno).
 
 ## ▶️ Próximo paso concreto (empezar AQUÍ la próxima sesión)
 
-1. **Decisión con el usuario: ¿`on_tick` configurable?** (hoy fijo a
-   ~100 ms en el bucle principal). Con eso se cierra Fase 3 y se pasa a
-   Fase 4 (DX y packaging).
-2. Idea DX apuntada (sin fase, candidata a Fase 4): el connect inicial
-   fallido imprime un traceback feo (`exc_info=True` + re-raise) — valorar
-   mensaje limpio y/o `connect_retry` para arrancar el insim antes que LFS.
-   (La pista de ISI rechazado ya está hecha; el fallback de cfg.txt está
-   apuntado en PLAN § Ideas.)
+1. **Arrancar Fase 4** — orden sugerido: metadata del paquete (readme,
+   license, versión única, quitar requirements.txt) → subcomandos del CLI
+   (`lfs-insim stubs`, ...) → ruff + mypy gradual → CI (GitHub Actions) →
+   docs de usuario → CHANGELOG. Decisión pendiente con el usuario: ¿PyPI?
+2. Idea DX de Fase 4 ya apuntada: el connect inicial fallido imprime un
+   traceback feo (`exc_info=True` + re-raise) — valorar mensaje limpio y/o
+   `connect_retry` para arrancar el insim antes que LFS. (La pista de ISI
+   rechazado ya está hecha; el fallback de cfg.txt está en PLAN § Ideas.)
 
 ## Bloqueos / esperando
 

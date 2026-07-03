@@ -111,7 +111,7 @@ un proceso (test); los 3 insims corren con la nueva API; tests de Fase 1 adaptad
 
 ---
 
-## Fase 3 — Robustez en runtime  ◀️ ACTIVA
+## Fase 3 — Robustez en runtime  ✅ COMPLETADA (S13, 2026-07-03)
 
 **Objetivo:** comportamiento profesional ante fallos y carga.
 
@@ -164,13 +164,22 @@ un proceso (test); los 3 insims corren con la nueva API; tests de Fase 1 adaptad
       `InSimConfigurationError` al crear el cliente. De propina: los errores de lifecycle
       en modo 'log' ahora se loguean con traceback (`exc_info=True`). 8 tests nuevos
       (rojo primero). Suite 458/458
+- [x] Decisión heredada de S07: ¿`on_tick` configurable? — S13: SÍ, clave `tick_interval`
+      (segundos, default 0.1 = comportamiento histórico; mínimo 0.01, validado al crear el
+      cliente con `InSimConfigurationError`). El tick de las apps queda DESACOPLADO del
+      sondeo interno del bucle principal (fijo a ≤100 ms): un tick lento nunca retrasa la
+      detección de caídas (P12) ni el fail-fast de `handler_errors`. Sin catch-up tras un
+      stall (una reconexión no dispara una ráfaga de ticks debidos); documentado que no es
+      un timer de precisión y que el trabajo de alta frecuencia va en handlers MCI/OutSim.
+      5 tests nuevos (rojo primero). Suite 463/463
 
 **Criterio de aceptación:** matar/levantar LFS con el InSim corriendo → se reconecta solo;
-un handler lento no bloquea la recepción; suite verde.
+un handler lento no bloquea la recepción; suite verde. **Cumplido y validado en LFS**
+(P12/P2 en S08–S10; apagado limpio y P24 en S12; los ítems de S13 no cambian defaults).
 
 ---
 
-## Fase 4 — Experiencia de desarrollador (DX) y packaging
+## Fase 4 — Experiencia de desarrollador (DX) y packaging  ◀️ ACTIVA
 
 **Objetivo:** que un tercero pueda instalar, crear y publicar un InSim sin leer el código
 fuente. (**P16**)
