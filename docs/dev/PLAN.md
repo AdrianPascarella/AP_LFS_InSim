@@ -204,8 +204,22 @@ fuente. (**P16**)
       ya no afirman que el hook autogenera). 4 tests nuevos (`test_cli.py`,
       rojo primero) + reinstalación editable que elimina los `.exe` viejos.
       Suite 469/469
-- [ ] Adoptar **ruff** (lint + format) y **mypy** gradual (empezando por el core)
-- [ ] **CI** (GitHub Actions): pytest + ruff en push/PR a la rama de trabajo y main
+- [x] Adoptar **ruff** (lint + format) y **mypy** gradual (empezando por el core) — S16:
+      ruff con line-length **88** y reglas conservadoras **E/F/I/W** (decidido con el
+      usuario); `ruff format` en commit propio (79 archivos, cero comportamiento) +
+      `.git-blame-ignore-revs`; lint con autofix seguro (137) + 5 fixes a mano e ignores
+      acotados (E501 lo posee el formatter; per-file para star-imports intencionales,
+      imports no-top y enums de una letra del protocolo). **mypy** gradual sobre el core:
+      vigila los ~14 módulos limpios, backlog por módulo con `ignore_errors`
+      (packets/loader/decoders/utils); `follow_imports=silent`, exclude de los `.pyi`,
+      target 3.10. 2 errores type-only del core que los stubs enmascaraban, corregidos
+      (`ISF(0)`; narrowing de `f.name`). ruff limpio, mypy limpio, suite 469/469
+- [x] **CI** (GitHub Actions): pytest + ruff en push/PR a la rama de trabajo y main — S16:
+      `.github/workflows/ci.yml` con jobs **lint** (ruff check + format --check, ruff
+      pineado a `0.15.*`), **test** (pytest en matriz Python 3.9/3.11/3.13 en ubuntu +
+      Windows 3.13) y **typecheck** (mypy, `continue-on-error` = no bloquea). Dispara en
+      push/PR a `main` y `refactor/estabilizacion`; `MPLBACKEND=Agg`. **Nota:** la 1ª
+      ejecución real se dispara con el push de cierre de S16 (primera validación en Linux)
 - [ ] Docs de usuario: quickstart "tu primer InSim en 5 min", guía de módulos y dependencias,
       referencia de la API pública; revisar plantilla de `lfs-insim init`
 - [ ] CHANGELOG.md y convención de versionado (semver)
@@ -259,7 +273,10 @@ El merge lo decide y autoriza el usuario. Tras el merge, se continúa desde `mai
 ## Ideas / pendientes sin fase asignada
 
 - **P9**: decidir qué hacer con `tools/setup_lfs.py` (roto: importa `DESIRED_LFS_CONFIG`,
-  que no existe en `settings.py`) — recuperarlo o eliminarlo.
+  que no existe en `settings.py`) — recuperarlo o eliminarlo. **En bloque con
+  `src/lfs_insim/configuration.py`** (`LFSConfigManager`), que quedó **huérfano** (S16):
+  su único consumidor es ese tool roto. Reutilizable para el fallback de `admin_pass`
+  desde cfg.txt (idea de abajo).
 - **Fallback opcional de `admin_pass` desde cfg.txt** (idea S12, tras el incidente del
   ISI rechazado): que `config/settings.py` (capa de proyecto — NUNCA el core, P14) lea
   `Game Admin` de `{LFS_DIR}/cfg.txt` solo si `admin_pass` está vacío y `tcp_host` es

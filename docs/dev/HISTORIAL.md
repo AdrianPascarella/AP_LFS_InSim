@@ -5,6 +5,73 @@
 
 ---
 
+## S16 — 2026-07-04 — Fase 4: ruff (format+lint) + CI + mypy gradual
+
+**Arranque:** repo limpio y sincronizado (HEAD `f3b4a6b`, cierre S15); suite
+heredada 469/469 antes de tocar. Sin mapas freeroam sin commitear que proteger.
+
+**Decisiones al arrancar (con el usuario):** line-length **88** (mi
+recomendación; medí el core: 95,8% de las líneas ya ≤79 y solo 105 superan 88
+→ pasada de format barata) y reglas de lint **conservadoras E, F, I, W** (se
+ampliará con UP/B/C4/SIM en pasadas futuras).
+
+**Qué se hizo (el bloque grande de Fase 4, en 6 commits):**
+
+- **ruff format** (`a3bea56`, commit propio): pasada mecánica sobre 79 archivos
+  (comillas dobles, línea en blanco tras docstrings, envoltura de firmas/llamadas
+  largas, comas finales). Cero comportamiento — los 469 tests son la red. Config
+  de ruff en commit aparte (`4ec9db1`); `.git-blame-ignore-revs` con el hash del
+  format (`5564530`) para que `git blame` no apunte al reformateo masivo (GitHub
+  lo usa solo; en local `git config blame.ignoreRevsFile .git-blame-ignore-revs`).
+- **ruff lint** (`c5a736b`): 793 hallazgos. Autofix seguro (137): orden de
+  imports (I001), imports sin usar (F401, incluido un `import math` duplicado en
+  utils y un `insim_enums`/`field` muertos), f-strings sin placeholder (F541). A
+  mano (5): dead vars `parts`/`fake` (F841), bare-except → Exception (E722), loop
+  var `l`→`ln` (E741), noqa E402 en el import diferido de generate_stubs (va tras
+  `sys.path.insert`). Ignores acotados: **E501** (el formatter es el dueño del
+  ancho); per-file para los star-imports intencionales (insims + packets/__init__
+  + packets/maps, guiados por __all__), imports no-top (E402) y nombres de una
+  letra del protocolo (insim_enums I/O) o de código insim pendiente de refactor.
+- **CI** (`838edac`): `.github/workflows/ci.yml` con jobs **lint** (ruff check +
+  format --check, ruff pineado a `0.15.*`) y **test** (pytest en matriz Python
+  3.9/3.11/3.13 en ubuntu + Windows 3.13 para paridad con el equipo). Dispara en
+  push/PR a `main` y a la rama de refactor; `MPLBACKEND=Agg` (runner headless);
+  concurrency cancela runs en vuelo. El extra `[dev]` pinea ruff al mismo
+  `0.15.*` (local == CI).
+- **mypy gradual** (`8a64881`): mypy sobre `src/lfs_insim` vigilando los ~14
+  módulos ya limpios (client, transport, app, config, cli, sender, mixin, state,
+  exceptions...). Backlog explícito (`ignore_errors` por módulo) para los de
+  fricción: packets (dataclasses de protocolo con `field(metadata=)` +
+  star-imports), insim_loader (importlib `ModuleSpec | None` + kwargs inyectados)
+  y decoders/utils (2 errores puntuales cada uno). Config:
+  `ignore_missing_imports`, `follow_imports=silent` (no reporta `config.settings`
+  del CLI), exclude de los `.pyi`, target 3.10 (mypy 2.x no acepta 3.9; el
+  runtime 3.9 lo cubre pytest). Job de CI `typecheck` con `continue-on-error`
+  (NO bloquea el merge).
+
+**Dos errores reales del core que los stubs `.pyi` enmascaraban** (aflorados al
+excluir los `.pyi` de mypy), corregidos, type-only y cubiertos por los tests:
+`insim_app` (`self.isi.Flags = ISF(0)` en vez de `0`: int → ISF) e `insim_client`
+(narrowing de `f.name`, que typeshed tipa `str | None`, en el join de OSO).
+
+**Hallazgo registrado (amplía P9):** `configuration.py` (`LFSConfigManager`)
+está **huérfano** — su único consumidor es el `tools/setup_lfs.py` roto.
+Decidir recuperar/eliminar en bloque. Backlog de tipado gradual (quitar los
+overrides módulo a módulo) apuntado en PLAN.
+
+**No requiere validación en LFS:** solo tooling/packaging + 2 fixes type-only.
+Estado local al cierre: **ruff limpio, mypy limpio (24 ficheros), suite
+469/469**.
+
+**Pendiente de verificar (no bloqueante):** la **primera ejecución del CI** se
+dispara con el push de este cierre y valida por PRIMERA vez la suite en
+**Linux** (en local solo se corre en Windows). `gh` CLI no está instalado en
+este equipo → revisar el resultado en GitHub Actions. Si algo peta en Linux,
+es material de la próxima sesión (probablemente algún supuesto de plataforma;
+el barrido previo de los tests no encontró ninguno).
+
+---
+
 ## S15 — 2026-07-03 — Fase 4: subcomandos del CLI (fin de los scripts globales)
 
 **Arranque:** repo limpio y sincronizado (HEAD `459bc4c`, cierre S14); suite

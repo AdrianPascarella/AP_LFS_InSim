@@ -56,13 +56,18 @@ lfs-insim stubs                     # or: python -m lfs_insim.generate_stubs
 # Regenerate all generated artifacts (stubs + README insims list)
 lfs-insim update-all
 
+# Lint + format (ruff) and gradual type-check (mypy) — config in pyproject.toml
+python -m ruff check          # lint (E, F, I, W); add --fix to autofix
+python -m ruff format         # format (line-length 88); --check to verify only
+python -m mypy                # type-check the core (src/lfs_insim)
+
 # Install git hooks (points core.hooksPath at .githooks; the pre-commit is
 # currently a disabled no-op — if re-enabled, call `lfs-insim stubs`)
 bash scripts/install-git-hooks.sh   # Linux/Mac
 ./scripts/install-git-hooks.ps1     # Windows
 ```
 
-No linter/formatter is configured. The core (`src/lfs_insim/`) has no external dependencies — pure Python 3.9+ stdlib. The `ai_control` InSim additionally requires `matplotlib` (declared in its `insim.json` and in the `[dev]` extra).
+Tooling (all configured in `pyproject.toml`, part of the `[dev]` extra): **ruff** for lint + format (line-length 88; rules `E`, `F`, `I`, `W`; generated `.pyi` excluded) and **mypy** for gradual type-checking of the core (noisy modules are opted out per-module via `ignore_errors`, tightened over time). CI (`.github/workflows/ci.yml`) runs ruff + pytest on push/PR; the mypy job is non-blocking. The big `ruff format` commit is listed in `.git-blame-ignore-revs`. The core (`src/lfs_insim/`) has no external runtime dependencies — pure Python 3.9+ stdlib. The `ai_control` InSim additionally requires `matplotlib` (declared in its `insim.json` and in the `[dev]` extra).
 
 ## Architecture
 

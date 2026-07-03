@@ -1,6 +1,6 @@
 # 📍 Estado actual
 
-> Actualizado: **2026-07-03** — sesión S15
+> Actualizado: **2026-07-04** — sesión S16
 > **Rama de trabajo: `refactor/estabilizacion`.** Todo el refactor ocurre aquí; `main`
 > queda intacta hasta el merge final (cuando el proyecto esté estable). **Sync por GitHub:**
 > `git pull` al arrancar y `git push` al cerrar (permite continuar desde otro dispositivo).
@@ -8,8 +8,27 @@
 ## Estado
 
 **Fases 1, 2 y 3 COMPLETADAS. FASE 4 ACTIVA (DX y packaging): metadata
-(S14) y subcomandos del CLI (S15) hechos. Suite 469/469 verde. Sin
-validaciones pendientes en LFS (packaging/CLI de tooling no tocan runtime).**
+(S14), subcomandos del CLI (S15) y el bloque ruff+CI+mypy (S16) hechos.
+Suite 469/469 verde; ruff limpio; mypy limpio (core vigilado). Sin
+validaciones pendientes en LFS (tooling/packaging no tocan runtime).
+Queda de Fase 4: docs de usuario + CHANGELOG.**
+
+**ruff + CI + mypy (bloque grande de Fase 4, hecho en S16):** adoptado
+**ruff** (lint+format, **line-length 88**, reglas conservadoras **E, F, I,
+W**; decidido con el usuario). `ruff format` en commit propio (`a3bea56`, 79
+archivos, cero comportamiento) con `.git-blame-ignore-revs` para que blame no
+apunte al reformateo; lint (`c5a736b`) con autofix seguro + 5 fixes a mano e
+ignores acotados (E501 lo posee el formatter; per-file para star-imports
+intencionales, imports no-top y enums de una letra del protocolo). **CI**
+(`838edac`, `.github/workflows/ci.yml`): jobs lint (ruff) y test (pytest en
+matriz Python 3.9/3.11/3.13 + Windows), dispara en push/PR a main y a la rama
+de refactor. **mypy gradual** (`8a64881`): vigila los ~14 módulos limpios del
+core; backlog por módulo (`ignore_errors`) para packets/loader/decoders/utils;
+job de CI `typecheck` con `continue-on-error` (NO bloquea). De paso, 2 errores
+type-only del core que los stubs enmascaraban, corregidos (`ISF(0)`; narrowing
+de `f.name`). **No requiere validación en LFS.** OJO: la 1ª ejecución del CI
+(al pushear este cierre) valida por primera vez la suite en **Linux** —
+verificar en GitHub Actions (gh no instalado aquí).
 
 **Subcomandos del CLI (segundo ítem de Fase 4, hecho en S15):** los antiguos
 entry points `generate-stubs` y `update-all` se instalaban como comandos
@@ -212,19 +231,24 @@ sondeo interno).
 
 Orden de Fase 4 acordado con el usuario (S14): **CLI → ruff + CI → docs →
 CHANGELOG**; PyPI se prepara pero NO se dispara hasta el merge a `main`.
-El ítem del CLI quedó HECHO en S15 (ver "Estado").
+CLI (S15) y ruff+CI+mypy (S16) HECHOS (ver "Estado").
 
-1. **Siguiente ítem — el bloque grande: ruff + CI juntos.** ruff
-   (lint+format) ANTES de escribir más código — el `ruff format` es un diff
-   grande pero de pura forma (cero comportamiento) y los 469 tests son la red
-   que lo prueba; se paga una vez. Decisiones a tomar al arrancar: qué
-   `line-length` y qué reglas activar (empezar conservador: `E`,`F`,`I` y
-   subir), y si `format` va en una pasada única commiteada aparte del lint.
-   Después CI (GitHub Actions: pytest + ruff en push/PR a la rama de trabajo
-   y a main). mypy gradual sobre el core, sin bloquear el merge.
-2. Después: docs de usuario (quickstart "tu primer InSim en 5 min", guía de
-   módulos/dependencias, referencia de API; revisar la plantilla de
-   `lfs-insim init`) → CHANGELOG.md + convención semver.
+0. **PRIMERO al arrancar:** verificar en **GitHub Actions** que el primer run
+   del CI (disparado por el push de cierre de S16) está en verde — es la
+   PRIMERA vez que la suite corre en **Linux**. Si algo peta ahí (probable
+   supuesto de plataforma; el barrido de S16 no encontró ninguno), arreglarlo
+   antes de seguir. `gh` CLI no estaba instalado en S16 (valorar instalarlo).
+1. **Siguiente ítem — docs de usuario:** quickstart "tu primer InSim en 5
+   min", guía de módulos/dependencias, referencia de la API pública; revisar
+   la plantilla de `lfs-insim init`. Luego **CHANGELOG.md** + convención
+   semver. Con eso se cierra la Fase 4 (salvo la decisión de PyPI).
+2. Backlog de **tipado gradual** (ir quitando overrides de `[tool.mypy]` en
+   pyproject, módulo a módulo, cuando se toque cada uno): los módulos
+   `packets` (dataclasses de protocolo), `insim_loader` (fricción con
+   `importlib`: `ModuleSpec | None` sin None-check + kwargs inyectados en
+   InSimApp — merece None-checks reales, no `type: ignore`), y
+   `insim_packet_decoders`/`utils` (2 errores puntuales cada uno). No urge;
+   mypy no bloquea.
 3. Idea DX de Fase 4 ya apuntada: el connect inicial fallido imprime un
    traceback feo (`exc_info=True` + re-raise) — valorar mensaje limpio y/o
    `connect_retry` para arrancar el insim antes que LFS. (La pista de ISI
@@ -244,6 +268,11 @@ El ítem del CLI quedó HECHO en S15 (ver "Estado").
 ## Notas para la próxima sesión
 
 - Comando de tests: `.venv\Scripts\python.exe -m pytest -q`.
+- Tooling nuevo (S16): `python -m ruff check` y `python -m ruff format` (lint+format),
+  `python -m mypy` (tipos del core; lee `[tool.mypy]` de pyproject). Config toda en
+  `pyproject.toml`. El commit de formato masivo (`a3bea56`) está en
+  `.git-blame-ignore-revs`; para que `git blame` local lo salte:
+  `git config blame.ignoreRevsFile .git-blame-ignore-revs`.
 - Idioma (decisión S06): código nuevo del core en **inglés**; docs/dev, tests e insims
   en español. Ver `MODUS_OPERANDI.md` § 5.
 - Los golden-bytes y tests de packet_io de Fase 1 siguen válidos; los de loader y

@@ -132,6 +132,11 @@ protocolo. No cuentan como deuda.)
   (descubierto en S03 al limpiar settings). Probablemente se borró/renombró en algún refactor.
 - **Acción:** decidir si el tool se recupera (definir `DESIRED_LFS_CONFIG` con los valores
   de cfg.txt deseados: puerto InSim, OutSim, etc.) o se elimina. No bloquea nada.
+- **Ampliación (S16, hallado al tipar con mypy):** `src/lfs_insim/configuration.py`
+  (`LFSConfigManager`, que escribe cfg.txt) está **huérfano** — su ÚNICO consumidor es
+  este `tools/setup_lfs.py` roto. Son un par: la decisión de recuperar/eliminar debería
+  tomarse en bloque (configuration.py + setup_lfs.py). Encaja con la idea del fallback de
+  `admin_pass` desde cfg.txt (PLAN § Ideas), que reutilizaría justo esta clase.
 
 ### P10 — matplotlib: dependencia externa sin declarar  ✅ RESUELTO (S03)
 - `map_renderer.py:4` importa `matplotlib`, pero ni `insim.json` ni `pyproject.toml` lo
@@ -231,11 +236,16 @@ protocolo. No cuentan como deuda.)
   manifests).
 - **Acción:** arreglar metadata, adoptar ruff + mypy gradual, CI con pytest en push/PR,
   CHANGELOG y política de versiones.
-- **Resolución (parcial, S14–S15):** metadata saneada (readme `.md`, licencia SPDX,
+- **Resolución (parcial, S14–S16):** metadata saneada (readme `.md`, licencia SPDX,
   `requirements.txt` fuera, versión única en `lfs_insim.__version__`) en S14;
   `generate-stubs`/`update-all` plegados en subcomandos `lfs-insim stubs` /
   `lfs-insim update-all` y fuera de `[project.scripts]` en S15 (ya no invaden el
-  PATH ajeno). **Pendiente:** ruff, mypy gradual, CI y CHANGELOG (resto de Fase 4).
+  PATH ajeno). **S16:** adoptado **ruff** (lint+format, line-length 88, reglas
+  E/F/I/W; `.git-blame-ignore-revs` para el commit de formato), **mypy gradual**
+  sobre el core (vigila los módulos limpios, backlog por módulo con
+  `ignore_errors`; no bloquea) y **CI** (GitHub Actions: ruff + pytest en matriz
+  Python 3.9–3.13 y Windows). **Pendiente:** docs de usuario + CHANGELOG (cierre
+  de Fase 4).
 
 ### P17 — Código muerto y comentarios que mienten (BAJA) ✅ RESUELTO (S06/S07)
 - **Resolución:** `_resolve_dependencies` eliminado (S06, con P11); comentarios del
