@@ -5,6 +5,45 @@
 
 ---
 
+## S11 — 2026-07-03 — Fase 3: P18 (envío UDP eliminado) + P19 (una sola ruta de serialización)
+
+**Qué se hizo:**
+
+- **P18 (resuelto, eliminado):** fuera el parámetro `use_udp` de
+  `InSimTransport.send` — el envío es **siempre TCP** (LFS solo recibe InSim
+  por TCP; el socket UDP es solo de bajada: OutSim/OutGauge, NLP/MCI).
+  Documentado (docstring del transporte + CLAUDE.md) y fijado con test nuevo
+  en `test_transport.py` (sin TCP, `send` falla aunque haya socket UDP).
+  Nadie pasaba `use_udp`; el único llamador es `client.send`. Commit `844feed`.
+- **P19 (resuelto):** una sola autoridad para el layout de strings.
+  - Encode: `validate_string_lengths()` (prepare) fija truncado y padding de
+    TODOS los strings — gana el truncado de los fijos `'Ns'` a N-1 (el null
+    final siempre cabe; antes vivía en `_extract_values` recortando bytes);
+    `_extract_values()` ya solo codifica a latin-1 (`struct.pack` rellena los
+    fijos; los variables resuelven su fmt de `len(val)`). Desaparece el
+    recálculo "por seguridad" del padding (las tres capas se pisaban y el
+    truncado de `struct.pack` disimulaba la discrepancia).
+  - Decode: eliminado el `.strip()` (2 sitios) — se corta en el primer null y
+    se conservan los espacios significativos.
+  - **Dos cambios deliberados de comportamiento**, actualizados en los goldens:
+    string fijo con `len == N` pierde 1 char por el null terminator (antes
+    salía SIN terminador, contra la spec; golden nuevo del caso) y los strings
+    decodificados conservan los espacios previos al null (los parsers de
+    comandos hacen su propio strip → sin impacto esperado). Commit `720315a`.
+- De paso: hallada (sin arreglar) una **carrera en `InSimTransport.close()`**
+  — `_stop.clear()` sin join de los receptores puede disparar
+  `_notify_connection_lost()` espurio tras un cierre deliberado. Registrada
+  como punto de entrada del ítem "apagado limpio" en ESTADO_ACTUAL.
+- Suite **438/438** (436 + test P18 + golden P19); smoke `lfs-insim list` OK.
+
+**Pendiente de validar en LFS (ligero):** una pasada normal (chat + comandos +
+AIs) para confirmar que nada dependía de los strings recortados del decoder.
+
+**Próxima sesión:** apagado limpio y determinista (carrera de `close()`),
+política de errores de handlers, decisión de `on_tick` configurable.
+
+---
+
 ## S10 — 2026-07-03 — Validación de P2-core en LFS + P22 resuelto + P23 (QuickEdit)
 
 **Validación del usuario (P2-core), con análisis forense del log:**

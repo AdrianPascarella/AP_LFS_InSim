@@ -1,15 +1,33 @@
 # 📍 Estado actual
 
-> Actualizado: **2026-07-03** — sesión S10
+> Actualizado: **2026-07-03** — sesión S11
 > **Rama de trabajo: `refactor/estabilizacion`.** Todo el refactor ocurre aquí; `main`
 > queda intacta hasta el merge final (cuando el proyecto esté estable). **Sync por GitHub:**
 > `git pull` al arrancar y `git push` al cerrar (permite continuar desde otro dispositivo).
 
 ## Estado
 
-**Fases 1 y 2 COMPLETADAS (validadas en LFS). Fase 3 ACTIVA: P12 y P2-core
-hechos y VALIDADOS en LFS (S10). P22 resuelto y P23 (congelación por consola
-QuickEdit) mitigado en S10 — suite 436/436 verde. Sin validaciones pendientes.**
+**Fases 1 y 2 COMPLETADAS (validadas en LFS). Fase 3 ACTIVA: P12, P2-core,
+P18 y P19 hechos (P12/P2-core validados en LFS en S10). Suite 438/438 verde.
+Validación ligera pendiente en LFS del cambio de decode de P19 (ver abajo).**
+
+**P18 (envío UDP, hecho en S11):** eliminado el parámetro `use_udp` de
+`transport.send` — el envío es **siempre TCP** (LFS solo recibe InSim por TCP;
+el socket UDP es solo de bajada: OutSim/OutGauge, NLP/MCI). Documentado en el
+docstring del transporte y CLAUDE.md; contrato fijado con test. Commit `844feed`.
+
+**P19 (una sola ruta de serialización, hecho en S11):**
+`validate_string_lengths()` (prepare) es la única autoridad del layout de
+strings — gana el truncado de los fijos `'Ns'` a N-1 (null final garantizado;
+antes vivía en `_extract_values`); `_extract_values()` ya solo codifica a
+latin-1 y `struct.pack` rellena los fijos. El decoder ya **no hace `.strip()`**
+(corta en el primer null; los espacios significativos se conservan). Dos
+cambios deliberados de comportamiento reflejados en los goldens: string fijo
+con `len == N` pierde 1 char por el null (antes salía SIN terminador, contra
+la spec) y los strings decodificados conservan espacios previos al null.
+**Validación ligera en LFS:** una pasada normal (chat + comandos + AIs) para
+confirmar que nada dependía de los strings recortados (los parsers de comandos
+hacen su propio strip; riesgo bajo). Commit `720315a`.
 
 **Validación de P2-core en LFS (S10):** el usuario probó conexión + AIs rodando,
 cierre abrupto del juego, reapertura del puerto y arranque con el juego cerrado.
@@ -99,20 +117,25 @@ P11–P21 en `DIAGNOSTICO.md`. Queda gordo: P12 (reconexión, Fase 3).
 
 ## Fase activa
 
-**Fase 3 — Robustez en runtime**; ver `PLAN.md`. Hecho y validado: P12, P2-core.
-Extras S10: P22 resuelto, P23 mitigado. Pendiente: P18 (envío UDP), P19 (una
-sola ruta de serialización), apagado limpio, política de errores de handlers.
-También heredado de Fase 2/S07: decidir si `on_tick` debe ser configurable.
+**Fase 3 — Robustez en runtime**; ver `PLAN.md`. Hecho: P12, P2-core (validados
+en LFS), P18, P19. Extras S10: P22 resuelto, P23 mitigado. Pendiente: apagado
+limpio y determinista, política de errores de handlers. También heredado de
+Fase 2/S07: decidir si `on_tick` debe ser configurable.
 
 ## ▶️ Próximo paso concreto (empezar AQUÍ la próxima sesión)
 
-1. **P18 — envío UDP roto:** decidir eliminarlo o implementarlo bien (hoy
-   `transport.send(use_udp=True)` usaría el socket bind() de escucha, sin
-   destino; nadie lo usa). Recomendación: eliminarlo y documentar que el envío
-   es siempre TCP (LFS solo recibe InSim por TCP; UDP es solo de bajada).
-2. **P19 — una sola ruta de serialización** (prepare→pack), apoyada en los
-   golden-bytes; revisar el `.strip()` del decoder (espacios significativos).
-3. Idea DX apuntada en S10 (sin fase): el connect inicial fallido imprime un
+1. **Apagado limpio y determinista.** Punto de entrada: carrera detectada (S11,
+   sin arreglar) en `InSimTransport.close()` — hace `_stop.clear()` al final
+   SIN esperar (join) a que los hilos receptores salgan; un receptor que
+   despierte por la excepción del socket cerrado puede ver el evento ya limpio
+   y disparar `_notify_connection_lost()` espurio (→ log de error falso y
+   posible intento de reconexión tras un cierre deliberado). Fix probable:
+   join de los hilos receptores en `close()` antes de `clear()` (con timeout;
+   ojo si close() se llama desde el propio hilo receptor).
+2. **Política de errores de handlers configurable** (resiliente en prod,
+   fail-fast en dev) — hoy `_execute_handler` traga y loguea siempre.
+3. Decisión heredada: ¿`on_tick` configurable? (hoy fijo a ~100 ms).
+4. Idea DX apuntada en S10 (sin fase): el connect inicial fallido imprime un
    traceback feo (`exc_info=True` + re-raise); valorar mensaje limpio y/o una
    opción `connect_retry` para poder arrancar el insim antes que LFS.
 
