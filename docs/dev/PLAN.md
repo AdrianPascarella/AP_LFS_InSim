@@ -155,7 +155,15 @@ un proceso (test); los 3 insims corren con la nueva API; tests de Fase 1 adaptad
       `reconnect_stable_time` (10 s) retoma la racha (espera previa + escalado + cuenta
       para `max_attempts`). 3 tests (`TestReconexionProvisional`). Suite 446/446.
       **Validado por el usuario en LFS (S12)**
-- [ ] Política de errores de handlers configurable (resiliente en prod, fail-fast en dev)
+- [x] Política de errores de handlers configurable (resiliente en prod, fail-fast en dev) —
+      S13: clave `handler_errors` en `DEFAULT_CONFIG` ('log' default = comportamiento de
+      siempre; 'raise' = fail-fast: el primer error de un handler o hook detiene el cliente
+      y se re-lanza desde `start()` con su traceback — el worker aparca la excepción y el
+      bucle principal la re-lanza). Excepción deliberada: los `on_disconnect` de `stop()`
+      se aíslan SIEMPRE (el apagado debe completarse). Valor inválido →
+      `InSimConfigurationError` al crear el cliente. De propina: los errores de lifecycle
+      en modo 'log' ahora se loguean con traceback (`exc_info=True`). 8 tests nuevos
+      (rojo primero). Suite 458/458
 
 **Criterio de aceptación:** matar/levantar LFS con el InSim corriendo → se reconecta solo;
 un handler lento no bloquea la recepción; suite verde.

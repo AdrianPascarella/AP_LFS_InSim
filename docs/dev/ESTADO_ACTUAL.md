@@ -1,17 +1,30 @@
 # 📍 Estado actual
 
-> Actualizado: **2026-07-03** — sesión S12
+> Actualizado: **2026-07-03** — sesión S13
 > **Rama de trabajo: `refactor/estabilizacion`.** Todo el refactor ocurre aquí; `main`
 > queda intacta hasta el merge final (cuando el proyecto esté estable). **Sync por GitHub:**
 > `git pull` al arrancar y `git push` al cerrar (permite continuar desde otro dispositivo).
 
 ## Estado
 
-**Fases 1 y 2 COMPLETADAS (validadas en LFS). Fase 3 ACTIVA: P12, P2-core,
-P18, P19, apagado limpio y P24 hechos y VALIDADOS en LFS (apagado limpio y
-P24 al cierre de S12). Suite 450/450 verde. Sin validaciones pendientes
-(la pista de diagnóstico del final de S12 es solo un log nuevo — se verá
-sola la próxima vez que un ISI sea rechazado).**
+**Fases 1 y 2 COMPLETADAS (validadas en LFS). Fase 3 con TODOS sus ítems
+hechos: P12, P2-core, P18, P19, apagado limpio, P24 y política de errores
+de handlers (S13). Suite 458/458 verde. Sin validaciones pendientes en LFS.
+Antes de dar Fase 3 por cerrada queda una decisión heredada: ¿`on_tick`
+configurable? (hoy fijo a ~100 ms).**
+
+**Política de errores de handlers (último ítem de Fase 3, hecho en S13):**
+clave `handler_errors` en `DEFAULT_CONFIG` — `'log'` (default) aísla y
+loguea con traceback como siempre; `'raise'` (fail-fast, desarrollo) hace
+que el primer error de un handler `on_ISP_*` o hook de lifecycle detenga el
+cliente: el worker aparca la excepción en `_handler_error` y sale, y el
+bucle principal de `start()` la re-lanza con el traceback original.
+Excepción deliberada: los `on_disconnect` de `stop()` se aíslan SIEMPRE
+(el apagado se completa y todas las apps se enteran). Valor inválido →
+`InSimConfigurationError` al crear el cliente. De propina: los errores de
+lifecycle en modo 'log' ahora llevan `exc_info=True`. 8 tests nuevos (rojo
+primero), incluida integración con FakeLFS. No requiere validación en LFS
+(el default no cambia nada). Documentado en CLAUDE.md § Handler error policy.
 
 **Pista de diagnóstico de ISI rechazado (hecho al cierre de S12):** LFS no
 da feedback en el socket al rechazar un ISI — solo cierra. El cliente marca
@@ -152,17 +165,17 @@ P11–P21 en `DIAGNOSTICO.md`. Queda gordo: P12 (reconexión, Fase 3).
 
 ## Fase activa
 
-**Fase 3 — Robustez en runtime**; ver `PLAN.md`. Hecho y validado: P12,
-P2-core, P18, P19, apagado limpio, P24. Extras S10: P22 resuelto, P23
-mitigado. Pendiente: política de errores de handlers. También heredado de
-Fase 2/S07: decidir si `on_tick` es configurable.
+**Fase 3 — Robustez en runtime**; ver `PLAN.md`. TODOS los ítems hechos:
+P12, P2-core, P18, P19, apagado limpio, P24 y política de errores de
+handlers (S13). Extras S10: P22 resuelto, P23 mitigado. Para cerrar la fase
+solo falta la decisión heredada de Fase 2/S07: ¿`on_tick` configurable?
 
 ## ▶️ Próximo paso concreto (empezar AQUÍ la próxima sesión)
 
-1. **Política de errores de handlers configurable** (resiliente en prod,
-   fail-fast en dev) — hoy `_execute_handler` traga y loguea siempre.
-2. Decisión heredada: ¿`on_tick` configurable? (hoy fijo a ~100 ms).
-3. Idea DX apuntada (sin fase, candidata a Fase 4): el connect inicial
+1. **Decisión con el usuario: ¿`on_tick` configurable?** (hoy fijo a
+   ~100 ms en el bucle principal). Con eso se cierra Fase 3 y se pasa a
+   Fase 4 (DX y packaging).
+2. Idea DX apuntada (sin fase, candidata a Fase 4): el connect inicial
    fallido imprime un traceback feo (`exc_info=True` + re-raise) — valorar
    mensaje limpio y/o `connect_retry` para arrancar el insim antes que LFS.
    (La pista de ISI rechazado ya está hecha; el fallback de cfg.txt está

@@ -5,6 +5,52 @@
 
 ---
 
+## S13 — 2026-07-03 — Fase 3: política de errores de handlers configurable (`handler_errors`)
+
+**Arranque:** repo limpio y sincronizado (HEAD `f2995e5`, cierre S12); suite
+heredada 450/450 antes de tocar.
+
+**Qué se hizo (último ítem de Fase 3):** hasta hoy `_execute_handler` tragaba
+y logueaba SIEMPRE los errores de las apps — resiliente en producción, pero
+en desarrollo un bug en un handler pasaba desapercibido entre los logs.
+
+- **Clave nueva `handler_errors` en `DEFAULT_CONFIG`** ('log' | 'raise'):
+  - `'log'` (default): comportamiento de siempre — el error se aísla, se
+    loguea con traceback y el dispatch continúa. Nadie nota el cambio.
+  - `'raise'` (fail-fast, para desarrollo): el primer error de un handler
+    `on_ISP_*` o de un hook de lifecycle detiene el cliente. Plomería: el
+    handler re-lanza → el worker aparca la excepción en `_handler_error`,
+    loguea CRITICAL y sale (lo pendiente en cola se descarta a propósito);
+    el bucle principal de `start()` la ve en ≤100 ms y la re-lanza en el
+    hilo principal → `start()` muere con el traceback ORIGINAL del handler
+    (las excepciones conservan el traceback del hilo del worker) y `stop()`
+    limpia en el finally.
+  - Valor inválido → `InSimConfigurationError` al crear el cliente (la
+    validación de la política es en sí fail-fast).
+- **Excepción deliberada:** los `on_disconnect` despachados desde `stop()`
+  se aíslan SIEMPRE (`_dispatch_lifecycle(..., isolate=True)`) — el apagado
+  debe completarse y todas las apps deben recibir su on_disconnect aunque
+  una explote, también en modo 'raise'.
+- **De propina:** los errores de lifecycle en modo 'log' ahora se loguean
+  con `exc_info=True` (antes salían sin traceback — inservibles para
+  depurar).
+- Contrato documentado en CLAUDE.md (§ Handler error policy), docstring del
+  módulo y `config.py`; `insim_client.pyi` actualizado a mano (el generador
+  solo produce `insim_app.pyi`).
+- **8 tests nuevos, rojo primero** (`TestPoliticaDeErroresDeHandlers` en
+  `test_client_dispatch.py` + default en `test_config.py`), incluida la
+  integración completa contra FakeLFS: keep-alive → handler explota →
+  `start()` propaga ValueError y el cliente queda parado. Suite **458/458**.
+
+**No requiere validación en LFS:** el default no cambia ningún
+comportamiento (los 450 tests previos pasan intactos) y el modo 'raise' es
+una herramienta de desarrollo cubierta por la integración con FakeLFS.
+
+**Pendiente de Fase 3:** nada — este era el último ítem. Queda la decisión
+heredada de S07 (¿`on_tick` configurable?) antes de dar la fase por cerrada.
+
+---
+
 ## S12 — 2026-07-03 — Fase 3: apagado limpio y determinista (carrera de `close()` + stop() atómico)
 
 **Arranque en dispositivo nuevo:** no había `.venv` — creado (Python 3.14.3),
