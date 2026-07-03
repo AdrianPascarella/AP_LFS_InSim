@@ -8,7 +8,8 @@
 ## Estado
 
 **Fase 1 COMPLETADA. Fase 2 casi cerrada: P11, P13, P14, P15, P17 y P20 hechos.
-Suite 420/420 verde. P11/P13/P14/P21 validados por el usuario en LFS (S07).**
+Suite 420/420 verde. TODO lo anterior validado por el usuario en LFS (S07):
+P13/P14/P21 y también el estado post-P15 (`!test` OK). Sin validaciones pendientes.**
 
 **P15 (API pública, hecho en S07):** `__all__` en todos los módulos públicos
 (`lfs_insim`, `packets/*`, `insim_enums`, `utils`, `exceptions`, `config`). Puntos de
@@ -43,9 +44,8 @@ TCP/UDP, hilos receptores, stop y lock **por instancia**; el cliente lo posee
 (Command/CMDManager/RouteManager). **Dos clientes coexisten en un proceso** (test de
 aceptación en `test_transport.py`). Smoke: `ai_control` carga, CLI OK.
 
-**⚠️ Pendiente del usuario:** validar en LFS tras P15 (los insims `test_insim` y
-`prueba_botones` cambiaron imports; `ai_control` carga vía facade deprecada). Con un
-arranque de `ai_control` + `!test` básico basta — P13/P14/P21 ya quedaron validados.
+**Validación en LFS (S07):** el usuario probó el estado post-P15 en LFS real
+(`!test` incluido) — todo bien. No hay validaciones pendientes.
 
 **Contexto del plan (S04):** framework a nivel profesional; romper insims aceptable.
 P11–P21 en `DIAGNOSTICO.md`. Queda gordo: P12 (reconexión, Fase 3).

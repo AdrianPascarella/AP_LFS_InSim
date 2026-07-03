@@ -43,7 +43,9 @@ usuario P13/P14/P21 en LFS con `!test hcp` OK):
   `ai_control`); `lfs-insim list` OK.
 - **Validación del usuario (inicio del bloque):** P13/P14/P21 probados en LFS real —
   todo bien, incluido `!test hcp`.
-- Pendiente del usuario: re-validar en LFS tras P15 (cambiaron imports de insims).
+- **Cierre de sesión:** el usuario validó en LFS también el estado post-P15
+  (`!test` OK) — S07 termina sin validaciones pendientes. Próxima sesión: migrar
+  `ai_control`/`users_management` fuera de la facade deprecada y cerrar Fase 2.
 
 **Qué se hizo (primer bloque):**
 - **`src/lfs_insim/config.py` (nuevo):** `DEFAULT_CONFIG` (defaults del framework:
