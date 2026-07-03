@@ -41,11 +41,17 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     # When LFS drops the TCP connection, the client's main loop retries with
     # exponential backoff, resends the ISI and re-requests the state
     # (TINY.NCN/NPL) so app trackers rebuild themselves.
+    # A reconnect is only PROVISIONAL: LFS may accept the TCP connection and
+    # drop it right after the ISI (e.g. admin password mismatch). If the
+    # session dies again within `reconnect_stable_time` seconds, the next
+    # cycle resumes the escalating backoff instead of retrying at full
+    # speed (P24 — otherwise a rejected ISI becomes a connection storm).
     'reconnect': True,             # auto-reconnect on connection loss
     'reconnect_delay': 1.0,        # initial delay between attempts (seconds)
     'reconnect_backoff': 2.0,      # delay multiplier after each failed attempt
     'reconnect_max_delay': 30.0,   # upper bound for the delay
     'reconnect_max_attempts': 0,   # 0 = retry forever
+    'reconnect_stable_time': 10.0, # session shorter than this keeps the backoff escalating (P24)
 }
 
 

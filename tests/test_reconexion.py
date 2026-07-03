@@ -307,3 +307,83 @@ class TestReconexionDelCliente:
 
         hilo.join(2.0)
         assert not hilo.is_alive()
+
+
+class TestReconexionProvisional:
+    """P24: una reconexión solo es PROVISIONAL — LFS puede aceptar el TCP y
+    tirar la conexión justo tras el ISI (p. ej. admin password incorrecta).
+    Antes, cada "reconexión con éxito" reseteaba el backoff → tormenta de
+    ~10 conexiones/s contra LFS (visto en vivo en S12: "InSim - TCP excess").
+    Si la sesión muere antes de `reconnect_stable_time`, el siguiente ciclo
+    retoma la racha: espera el delay acumulado y sigue escalando."""
+
+    def _cliente(self, **config_extra):
+        config = {
+            'reconnect_delay': 1.0,
+            'reconnect_backoff': 2.0,
+            'reconnect_max_delay': 30.0,
+            'reconnect_stable_time': 10.0,
+        }
+        config.update(config_extra)
+        cliente = InSimClient(config=config, name='Tormenta')
+        cliente.running = True
+        return cliente
+
+    def _estado_post_start(self, cliente):
+        """Deja al cliente como lo deja start() al levantar la sesión inicial."""
+        cliente._session_started_at = time.monotonic()
+        cliente._reconnect_attempt = 0
+        cliente._reconnect_delay = 1.0
+
+    def test_sesion_que_muere_joven_retoma_el_backoff(self):
+        cliente = self._cliente()
+        esperas = []
+
+        with patch.object(cliente, '_sleep_while_running',
+                          side_effect=esperas.append), \
+             patch.object(cliente.transport, 'connect_tcp'), \
+             patch.object(cliente, '_restore_session'):
+            self._estado_post_start(cliente)
+            # Siete caídas inmediatas seguidas: cada _reconnect "tiene éxito"
+            # (TCP + ISI enviados) pero la sesión nunca llega a estable.
+            for _ in range(7):
+                cliente._reconnect()
+
+        # Espera acumulada ANTES de cada reintento, con tope en max_delay —
+        # sin el fix no había NINGUNA espera (tormenta a toda velocidad).
+        assert esperas == [1.0, 2.0, 4.0, 8.0, 16.0, 30.0, 30.0]
+
+    def test_sesion_estable_resetea_el_backoff(self):
+        cliente = self._cliente()
+        esperas = []
+
+        with patch.object(cliente, '_sleep_while_running',
+                          side_effect=esperas.append), \
+             patch.object(cliente.transport, 'connect_tcp'), \
+             patch.object(cliente, '_restore_session'):
+            # Resto de una racha vieja, pero la sesión duró 60 s (> estable)
+            cliente._session_started_at = time.monotonic() - 60.0
+            cliente._reconnect_attempt = 7
+            cliente._reconnect_delay = 30.0
+            cliente._reconnect()
+
+        assert esperas == []                     # reintento inmediato
+        assert cliente._reconnect_attempt == 1   # racha nueva
+
+    def test_la_racha_cuenta_para_max_attempts(self):
+        # Antes, cada ciclo de la tormenta contaba como "attempt 1" y
+        # reconnect_max_attempts no agotaba nunca.
+        cliente = self._cliente(reconnect_max_attempts=3)
+        esperas = []
+
+        with patch.object(cliente, '_sleep_while_running',
+                          side_effect=esperas.append), \
+             patch.object(cliente.transport, 'connect_tcp'), \
+             patch.object(cliente, '_restore_session'):
+            self._estado_post_start(cliente)
+            for _ in range(4):
+                if not cliente.running:
+                    break
+                cliente._reconnect()
+
+        assert not cliente.running   # la racha agotó los intentos y paró

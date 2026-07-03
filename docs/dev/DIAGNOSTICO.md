@@ -322,6 +322,24 @@ protocolo. No cuentan como deuda.)
   (`_disable_console_quick_edit`, best effort, solo win32); (3) traza explícita
   "Reconnection abandoned" cuando el bucle de reconexión sale por parada del cliente.
 
+### P24 — Tormenta de reconexión: un ISI rechazado reseteaba el backoff (ALTA, operacional) — detectado en S12 ✅ RESUELTO (S12)
+- `_reconnect` daba la reconexión por buena en cuanto el TCP conectaba y el ISI se
+  ENVIABA — nada confirma que LFS lo acepte. Si LFS tiraba la conexión justo después
+  (p. ej. admin password incorrecta), cada ciclo arrancaba con backoff fresco
+  ("attempt 1") y sin espera → **~10 conexiones/s** contra LFS. Visto EN VIVO en S12:
+  ~250 conexiones en 25 s con `Admin=''` contra un LFS con `Game Admin` puesto, hasta
+  que LFS respondió **"InSim - TCP excess : 127.0.0.1"** y el rechazo original
+  (password) quedó enterrado bajo el ruido. Diagnóstico confirmado con sondas ISI
+  contra el LFS vivo (todas las variantes sin password rechazadas en <50 ms; con
+  password, VIVA y con IS_VER de vuelta). `reconnect_max_attempts` tampoco agotaba
+  nunca (cada ciclo contaba como intento 1).
+- **Resolución (S12):** la reconexión es **PROVISIONAL** — el cliente registra cuándo
+  arrancó la sesión y, si muere antes de `reconnect_stable_time` (config, default 10 s),
+  el siguiente `_reconnect` RETOMA la racha: espera el delay acumulado ANTES de
+  reintentar, sigue escalando (tope `reconnect_max_delay`) y la racha cuenta para
+  `reconnect_max_attempts`. Una sesión que supera el umbral resetea el backoff.
+  Tests en `test_reconexion.py::TestReconexionProvisional` (reproducido en rojo).
+
 ---
 
 ## Mapa de zonas de `ai_control` (para orientarse)

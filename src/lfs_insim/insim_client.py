@@ -61,6 +61,13 @@ class InSimClient:
         # it, dispatching on_disconnect and reconnecting (P12).
         self._connection_lost = threading.Event()
 
+        # Reconnection streak state (P24): set whenever a session comes up;
+        # lets _reconnect distinguish a stable session (fresh backoff) from
+        # one that died right after the ISI (resume the escalating backoff).
+        self._session_started_at: Optional[float] = None
+        self._reconnect_attempt = 0
+        self._reconnect_delay: Optional[float] = None
+
         # Initialization packet (ISI) state
         self.isi = ISP_ISI()
 
@@ -283,6 +290,11 @@ class InSimClient:
             self.logger.info(f"Sending final ISI with flags: {self.isi.Flags}")
             self.send(self.isi)
             self.connected = True
+            # Fresh reconnection-streak state (P24): if this session dies
+            # before `reconnect_stable_time`, _reconnect resumes from here.
+            self._session_started_at = time.monotonic()
+            self._reconnect_attempt = 0
+            self._reconnect_delay = float(self.config.get('reconnect_delay', 1.0))
 
             # 4. Notify every app about the connection
             self.on_connect()  # own hook
@@ -362,15 +374,40 @@ class InSimClient:
     def _reconnect(self):
         """Retry the TCP connection with exponential backoff and restore
         the session. Gives up (stopping the client) only when
-        `reconnect_max_attempts` > 0 is exhausted."""
+        `reconnect_max_attempts` > 0 is exhausted.
+
+        A reconnect is only PROVISIONAL: LFS may accept the TCP connection
+        and drop it right after the ISI (e.g. admin password mismatch) —
+        nothing confirms the ISI was accepted. If the restored session dies
+        before `reconnect_stable_time` seconds, this method resumes the
+        previous backoff (waiting BEFORE the next attempt, and counting the
+        streak towards `reconnect_max_attempts`) instead of starting fresh;
+        otherwise a rejected ISI would turn into a full-speed connection
+        storm against LFS (P24, seen live in S12: "InSim - TCP excess")."""
         host = self.config.get('tcp_host', '127.0.0.1')
         port = self.config.get('tcp_port', 29999)
         delay = float(self.config.get('reconnect_delay', 1.0))
         backoff = float(self.config.get('reconnect_backoff', 2.0))
         max_delay = float(self.config.get('reconnect_max_delay', 30.0))
         max_attempts = int(self.config.get('reconnect_max_attempts', 0))
+        stable_time = float(self.config.get('reconnect_stable_time', 10.0))
 
         attempt = 0
+        uptime = (time.monotonic() - self._session_started_at
+                  if self._session_started_at is not None else None)
+        if (uptime is not None and uptime < stable_time
+                and self._reconnect_delay is not None):
+            # The previous session died young: the streak continues. Wait
+            # before reconnecting and keep escalating instead of hammering.
+            attempt = self._reconnect_attempt
+            delay = self._reconnect_delay
+            self.logger.warning(
+                f"Session died after {uptime:.1f}s (< {stable_time:.0f}s); "
+                f"resuming backoff: waiting {delay:.1f}s before reconnecting."
+            )
+            self._sleep_while_running(delay)
+            delay = min(delay * backoff, max_delay)
+
         while self.running:
             attempt += 1
             if max_attempts and attempt > max_attempts:
@@ -393,6 +430,11 @@ class InSimClient:
                 delay = min(delay * backoff, max_delay)
                 continue
 
+            # Provisional success: keep the streak state so a session that
+            # dies before stable_time resumes this backoff (see docstring).
+            self._reconnect_attempt = attempt
+            self._reconnect_delay = delay
+            self._session_started_at = time.monotonic()
             self.logger.info(f"Reconnected to LFS after {attempt} attempt(s).")
             return
 
