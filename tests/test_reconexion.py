@@ -16,6 +16,7 @@ conexiones sucesivas.
 """
 import threading
 import time
+from unittest.mock import patch
 
 import pytest
 
@@ -200,6 +201,36 @@ class TestReconexionDelCliente:
             + encode_packet(ISP_TINY(ReqI=1, SubT=TINY.NPL))
         )
         assert _esperar(lambda: fake_lfs.recibido == esperado)
+
+    def test_on_reconnect_se_despacha_antes_de_resolicitar_estado(self):
+        # P22: la limpieza de estado de las apps (on_reconnect) debe ocurrir
+        # ANTES de enviar TINY.NCN/NPL — así sus respuestas nunca pueden
+        # llegar antes que la limpieza y ser borradas por ella.
+        orden = []
+
+        class _EspiaReconnect(InSimApp):
+            def on_reconnect(self):
+                orden.append('reconnect')
+
+        cliente = InSimClient(config={}, name='OrdenRestauracion')
+        cliente.register(_EspiaReconnect(name='A'))
+
+        def _capturar(packet):
+            if isinstance(packet, ISP_TINY):
+                orden.append(('tiny', int(packet.SubT)))
+            else:
+                orden.append(type(packet).__name__)
+
+        with patch.object(cliente, 'send', side_effect=_capturar):
+            cliente._restore_session()
+
+        assert orden == [
+            'ISP_ISI',
+            'reconnect',
+            ('tiny', int(TINY.NCN)),
+            ('tiny', int(TINY.NPL)),
+        ]
+        assert cliente.connected
 
     def test_dos_caidas_seguidas_reconecta_las_dos_veces(self, fake_lfs, arrancar_cliente):
         cliente, _ = arrancar_cliente()

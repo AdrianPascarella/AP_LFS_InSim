@@ -388,16 +388,23 @@ class InSimClient:
             self.logger.info(f"Reconnected to LFS after {attempt} attempt(s).")
             return
 
+        # running went False mid-backoff (stop() during the wait): leave an
+        # explicit trace — a silent end here already misled one diagnosis.
+        self.logger.info("Reconnection abandoned: the client is stopping.")
+
     def _restore_session(self):
         """Resend the ISI and re-request the state after reconnecting."""
         self.send(self.isi)
+        self.connected = True
+        # on_reconnect BEFORE re-requesting the state (P22): apps reset their
+        # per-session memory here, so the NCN/NPL replies triggered below can
+        # never race against that cleanup and get wiped.
+        self.on_reconnect()  # own hook
+        self._dispatch_lifecycle('on_reconnect')
         # Ask LFS for connections and players again so app trackers
         # (on_ISP_NCN / on_ISP_NPL handlers) rebuild their state.
         self.send(ISP_TINY(ReqI=1, SubT=TINY.NCN))
         self.send(ISP_TINY(ReqI=1, SubT=TINY.NPL))
-        self.connected = True
-        self.on_reconnect()  # own hook
-        self._dispatch_lifecycle('on_reconnect')
 
     def _sleep_while_running(self, seconds: float) -> None:
         """Sleep up to `seconds`, waking early if the client stops."""
