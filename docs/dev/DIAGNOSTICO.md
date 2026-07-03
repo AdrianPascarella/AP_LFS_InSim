@@ -181,12 +181,18 @@ protocolo. No cuentan como deuda.)
   (fallback del mixin para Command/CMDManager/RouteManager sin `client`). Test de
   aceptación: dos clientes coexisten en un proceso con recepción y envío independientes.
 
-### P14 — El core importa `config.settings` del CWD (MEDIA, packaging)
+### P14 — El core importa `config.settings` del CWD (MEDIA, packaging) ✅ RESUELTO (S07)
 - `InSimClient.__init__` hace `from config.settings import get_config` y `cli.py` hace
   `sys.path.insert(0, os.getcwd())` para que funcione. Un paquete instalable **no puede
   depender de un `config/` del directorio del proyecto**: rompe fuera del repo y en tests.
 - **Acción:** defaults internos en el paquete (`lfs_insim/config.py` o dataclass
   `InSimConfig`); el CLI (no el core) carga la config de proyecto/env si existe.
+- **Resolución (S07):** `lfs_insim/config.py` con `DEFAULT_CONFIG` + `build_config`
+  (dict plano; conserva `self.config.get(...)`); cliente y app usan `build_config`;
+  `InSimLoader(config=...)` propaga al cliente perezoso y las apps heredan la config
+  del cliente; el CLI carga `config.settings.INSIM_CONFIG`/env con
+  `_load_project_config()`. El `sys.path` hack del CLI se queda para los **insims**
+  que importan config del proyecto (legítimo); el core ya no lo necesita.
 
 ### P15 — API pública indefinida (MEDIA, DX)
 - `lfs_insim/__init__.py` exporta 9 nombres, pero los tutoriales/insims importan de

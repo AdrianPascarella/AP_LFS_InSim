@@ -82,8 +82,12 @@ fallarían ante una regresión; base para refactorizar con confianza.
       `InSimTransport` por instancia; `encode_packet` puro extraído (adelanta parte de P19);
       `insim_state` reducido a "cliente por defecto" (azúcar del mixin); test de dos
       clientes coexistiendo. Suite 388/388
-- [ ] **P14**: config del paquete con defaults internos (`InSimConfig` o similar); el CLI
-      carga config de proyecto/env; el core no importa `config.settings` del CWD
+- [x] **P14**: config del paquete con defaults internos (`InSimConfig` o similar); el CLI
+      carga config de proyecto/env; el core no importa `config.settings` del CWD —
+      S07: `lfs_insim/config.py` (`DEFAULT_CONFIG` + `build_config`, dict plano para
+      conservar `self.config.get(...)`); CLI con `_load_project_config()`; el loader
+      propaga la config al cliente perezoso y las apps heredan la del cliente.
+      Suite 402/402
 - [ ] **P15**: definir API pública — exports en `lfs_insim/__init__.py`, `__all__` por
       módulo, deprecar `insim_packet_class` (facade), eliminar `import *` internos
 - [ ] **P17/P20 (de paso)**: borrar `_resolve_dependencies` muerto, alinear comentarios,

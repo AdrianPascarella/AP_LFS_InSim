@@ -5,6 +5,42 @@
 
 ---
 
+## S07 — 2026-07-03 — Fase 2: P14 (config del paquete con defaults internos)
+
+**Qué se hizo:**
+- **`src/lfs_insim/config.py` (nuevo):** `DEFAULT_CONFIG` (defaults del framework:
+  TCP/ISI/UDP/dispatch; sin valores por máquina como `user_name` o env) y
+  `build_config(overrides)` (copia fusionada). Se mantiene **dict plano** en vez de
+  dataclass para conservar la superficie `self.config.get(...)` de todos los insims
+  (decisión: tipado fuerte puede venir con P15 si compensa).
+- **Core sin CWD:** `InSimClient.__init__` e `InSimApp.__init__` usan `build_config`;
+  eliminados los dos `from config.settings import get_config`. El core ya no depende
+  de ningún archivo del proyecto.
+- **Loader:** `InSimLoader(config=...)` — la guarda y la usa al crear el cliente
+  perezoso; al instanciar cada app le pasa `config=self.client.config`, así **las apps
+  heredan la config efectiva del cliente** (antes cada app releía el CWD por su
+  cuenta). Con cliente inyectado, la config del loader se ignora (documentado).
+- **CLI:** `_load_project_config()` — `config.settings.INSIM_CONFIG` del CWD si existe
+  (ya aplica `settings_local.py` y env) > fallback env `LFS_ADMIN_PASS` > `None`
+  (defaults del paquete). `get_loader()` la pasa al loader. El hack
+  `sys.path.insert(0, os.getcwd())` se queda: los insims (p. ej. `RouteManager`)
+  siguen importando `config.settings` legítimamente — P14 solo exige que el **core**
+  no lo haga.
+- **Exports:** `DEFAULT_CONFIG` y `build_config` añadidos a `lfs_insim/__init__.py`.
+- **Tests:** `tests/test_config.py` (8: defaults/copia/fusión + cliente, app e ISI
+  funcionando con el paquete `config` **bloqueado** en `sys.modules`) y
+  `TestConfigDelLoader` en `test_loader.py` (3: propagación al cliente perezoso y a
+  las apps; cliente inyectado manda). Suite **402/402**.
+- **Smokes:** `lfs-insim list` + carga de `ai_control` dentro del proyecto (llegan
+  `insim_name`/`prefix` del proyecto); cliente, app y CLI desde un CWD sin `config/`
+  funcionan con defaults.
+- CLAUDE.md actualizado (bullet de Config; el viejo mencionaba `OUT_CONFIG`, que ya
+  no existe).
+- Pendiente del usuario: validar en LFS P13 + P14 (ISI con nombre/prefijo/admin del
+  proyecto; comandos respondiendo; re-probar `!test hcp`).
+
+---
+
 ## S06 — 2026-07-02 — Fase 1 COMPLETADA; P11 (composición), P13 (transporte) y P21
 
 **Qué se hizo (cuarto bloque, misma sesión) — fix de P21, adelantado de Fase 3:**
