@@ -147,7 +147,14 @@ un proceso (test); los 3 insims corren con la nueva API; tests de Fase 1 adaptad
       `on_connection_lost` espurio tras un cierre deliberado, incluso llamando a close()
       desde el propio receptor); `InSimClient.stop()` con check-and-set atómico de `running`
       (un solo apagado ante stops concurrentes; reentrada desde on_disconnect sin deadlock).
-      5 tests nuevos (carrera reproducida en rojo primero). Suite 443/443
+      5 tests nuevos (carrera reproducida en rojo primero). Suite 443/443.
+      **Validado por el usuario en LFS (S12)**
+- [x] **P24** (extra S12, incidente en vivo): un ISI rechazado por LFS (admin password)
+      reseteaba el backoff en cada ciclo → tormenta de ~10 conexiones/s ("InSim - TCP
+      excess"). Fix: reconexión **provisional** — sesión que muere antes de
+      `reconnect_stable_time` (10 s) retoma la racha (espera previa + escalado + cuenta
+      para `max_attempts`). 3 tests (`TestReconexionProvisional`). Suite 446/446.
+      **Validado por el usuario en LFS (S12)**
 - [ ] Política de errores de handlers configurable (resiliente en prod, fail-fast en dev)
 
 **Criterio de aceptación:** matar/levantar LFS con el InSim corriendo → se reconecta solo;

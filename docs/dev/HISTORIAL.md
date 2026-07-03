@@ -56,11 +56,9 @@ para `reconnect_max_attempts`, que antes no agotaba nunca). 3 tests nuevos
 Verificado en vivo: `test_insim` conectado y estable 8 s contra el LFS del
 usuario. Commit `759f224`.
 
-**Qué probar en LFS (validación pendiente, rápida):** (a) conexión normal
-(password ya puesta); (b) Ctrl+C con el insim conectado → cierre en el
-acto, sin "Connection with LFS lost", sin reconexión ni traceback, log
-terminando en "Framework stopped"; (c) opcional P24: vaciar `admin_pass`
-y arrancar → reintentos con esperas crecientes, no a toda velocidad.
+**Validación del usuario (cierre de S12):** probado en LFS tras los fixes —
+"todo funciona correctamente" (conexión normal con la password puesta y
+apagado limpio). **S12 termina sin validaciones pendientes.**
 
 **Próxima sesión:** política de errores de handlers configurable
 (resiliente en prod, fail-fast en dev); decisión de `on_tick` configurable.

@@ -8,8 +8,8 @@
 ## Estado
 
 **Fases 1 y 2 COMPLETADAS (validadas en LFS). Fase 3 ACTIVA: P12, P2-core,
-P18, P19, apagado limpio y P24 hechos. Suite 446/446 verde. Validación
-pendiente (rápida): apagado limpio + P24 de S12 (ver "Próximo paso").**
+P18, P19, apagado limpio y P24 hechos y VALIDADOS en LFS (apagado limpio y
+P24 al cierre de S12). Suite 446/446 verde. Sin validaciones pendientes.**
 
 **P24 (tormenta de reconexión, hecho en S12 — incidente EN VIVO):** al
 intentar conectar desde el dispositivo nuevo, LFS rechazaba el ISI
@@ -141,25 +141,22 @@ P11–P21 en `DIAGNOSTICO.md`. Queda gordo: P12 (reconexión, Fase 3).
 
 ## Fase activa
 
-**Fase 3 — Robustez en runtime**; ver `PLAN.md`. Hecho: P12, P2-core, P18,
-P19 (validados en LFS), apagado limpio y P24 (S12, validación pendiente).
-Extras S10: P22 resuelto, P23 mitigado. Pendiente: política de errores de
-handlers. También heredado de Fase 2/S07: decidir si `on_tick` es configurable.
+**Fase 3 — Robustez en runtime**; ver `PLAN.md`. Hecho y validado: P12,
+P2-core, P18, P19, apagado limpio, P24. Extras S10: P22 resuelto, P23
+mitigado. Pendiente: política de errores de handlers. También heredado de
+Fase 2/S07: decidir si `on_tick` es configurable.
 
 ## ▶️ Próximo paso concreto (empezar AQUÍ la próxima sesión)
 
-0. **Validación en LFS de S12 (rápida):** (a) conectar normal y rodar (la
-   password ya está en settings_local de este equipo); (b) Ctrl+C con el
-   insim conectado → cierre en el acto, sin "Connection with LFS lost", sin
-   reconexión y sin traceback, log terminando en "Framework stopped";
-   (c) opcional P24: vaciar `admin_pass` a propósito y arrancar → debe
-   reintentar con esperas crecientes (1 s, 2 s, 4 s...), no a toda velocidad.
 1. **Política de errores de handlers configurable** (resiliente en prod,
    fail-fast en dev) — hoy `_execute_handler` traga y loguea siempre.
 2. Decisión heredada: ¿`on_tick` configurable? (hoy fijo a ~100 ms).
-3. Idea DX apuntada en S10 (sin fase): el connect inicial fallido imprime un
-   traceback feo (`exc_info=True` + re-raise); valorar mensaje limpio y/o una
-   opción `connect_retry` para poder arrancar el insim antes que LFS.
+3. Ideas DX apuntadas (sin fase, candidatas a Fase 4): (a) el connect
+   inicial fallido imprime un traceback feo (`exc_info=True` + re-raise) —
+   valorar mensaje limpio y/o `connect_retry` para arrancar el insim antes
+   que LFS; (b) tras el incidente de S12: cuando la sesión muere joven tras
+   el ISI sin haber recibido NADA de LFS, loguear una pista explícita
+   ("revisa admin_pass / versión InSim") — LFS no da feedback en el socket.
 
 ## Bloqueos / esperando
 
