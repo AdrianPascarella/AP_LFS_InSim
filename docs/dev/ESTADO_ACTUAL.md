@@ -8,8 +8,9 @@
 ## Estado
 
 **Fases 1 y 2 COMPLETADAS (validadas en LFS). Fase 3 ACTIVA: P12 (reconexión
-automática) implementado en S08 con 11 tests nuevos — suite 431/431 verde.
-Pendiente: validación del usuario en LFS (matar/levantar LFS con el InSim corriendo).**
+automática) implementado en S08 con 11 tests nuevos — suite 431/431 verde — y
+VALIDADO por el usuario en LFS (matar/levantar LFS → reconecta solo).
+Sin validaciones pendientes.**
 
 **P12 (reconexión, hecho en S08):** el transporte avisa con `on_connection_lost`
 cuando el bucle receptor TCP muere sin `close()`; el bucle principal de `start()`
@@ -62,29 +63,31 @@ TCP/UDP, hilos receptores, stop y lock **por instancia**; el cliente lo posee
 (Command/CMDManager/RouteManager). **Dos clientes coexisten en un proceso** (test de
 aceptación en `test_transport.py`). Smoke: `ai_control` carga, CLI OK.
 
-**Validación en LFS (S08):** el usuario probó el estado post-migración en LFS
-real — todo funcionó correctamente (Fase 2 cerrada). **Pendiente: validar P12**
-(ver "Próximo paso").
+**Validación en LFS (S08):** el usuario probó el estado post-migración (Fase 2
+cerrada) y también P12 — la reconexión funcionó al matar/levantar LFS con el
+InSim corriendo. No hay validaciones pendientes.
 
 **Contexto del plan (S04):** framework a nivel profesional; romper insims aceptable.
 P11–P21 en `DIAGNOSTICO.md`. Queda gordo: P12 (reconexión, Fase 3).
 
 ## Fase activa
 
-**Fase 3 — Robustez en runtime**; ver `PLAN.md`. Hecho: P12 (falta validación en
-LFS). Pendiente: P2-core (dispatch fuera del hilo IO), P18 (envío UDP), P19 (una
+**Fase 3 — Robustez en runtime**; ver `PLAN.md`. Hecho y validado: P12.
+Pendiente: P2-core (dispatch fuera del hilo IO), P18 (envío UDP), P19 (una
 sola ruta de serialización), apagado limpio, política de errores de handlers.
 También heredado de Fase 2/S07: decidir si `on_tick` debe ser configurable.
 
 ## ▶️ Próximo paso concreto (empezar AQUÍ la próxima sesión)
 
-**1) Validación de P12 en LFS** (criterio de aceptación de Fase 3): con
-`lfs-insim run ai_control` corriendo, cerrar LFS (o `/insim 0` y reactivar) y
-volver a abrirlo → el InSim debe reconectar solo (ver logs "Reconnecting...",
-"Reconnected"), los comandos deben volver a responder y `users_management` debe
-repoblar usuarios/jugadores. **2) Después: P2-core** — sacar el dispatch del hilo
-de IO (cola + worker dedicado), documentar el contrato de threading y
-revisar/retirar `use_thread_pool`.
+**P2-core — sacar el dispatch del hilo de IO:** hoy los `on_ISP_*` se ejecutan
+en el hilo receptor del transporte (un handler lento bloquea la recepción).
+Plan: cola + hilo worker dedicado en el cliente (el receptor solo decodifica y
+encola; el worker despacha en orden), documentar el contrato de threading para
+autores de módulos, y revisar/retirar `use_thread_pool` (orden no garantizado —
+probablemente muerto tras esto). Red de seguridad: los tests de dispatch de
+Fase 1 (`test_client_dispatch.py`) ya cubren orden y aislamiento; añadir tests
+de la cola (handler lento no bloquea recepción; orden FIFO se conserva).
+Criterio de Fase 3: un handler lento no bloquea la recepción; suite verde.
 
 ## Bloqueos / esperando
 

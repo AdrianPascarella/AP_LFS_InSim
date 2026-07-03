@@ -121,7 +121,8 @@ un proceso (test); los 3 insims corren con la nueva API; tests de Fase 1 adaptad
       (hooks desde el hilo principal; claves `reconnect*` en `DEFAULT_CONFIG`;
       sin zombie al desactivarla o agotar intentos); `users_management.on_reconnect`
       limpia memoria; 11 tests en `test_reconexion.py`; FakeLFS multi-conexión.
-      Suite 431/431. **Pendiente: validación del usuario en LFS** (matar/levantar LFS)
+      Suite 431/431. **Validado por el usuario en LFS (S08)**: matar/levantar LFS
+      con el InSim corriendo → reconecta solo
 - [ ] **P2 (parte core)**: sacar el dispatch del hilo de IO (cola + worker dedicado);
       documentar el contrato de threading para autores de módulos; revisar/retirar
       `use_thread_pool` (orden no garantizado)

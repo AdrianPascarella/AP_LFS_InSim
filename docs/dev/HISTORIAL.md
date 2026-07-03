@@ -43,8 +43,10 @@
   DIAGNOSTICO.md (P12 resuelto), PLAN.md (casilla P12 de Fase 3).
 - Suite **431/431**; smoke de carga de insims y CLI OK.
 
-**Pendiente del usuario:** validar P12 en LFS (matar/levantar LFS con el InSim
-corriendo → reconecta solo y los comandos vuelven a responder).
+**Validación del usuario (cierre de sesión):** P12 probado en LFS real —
+matar/levantar LFS con el InSim corriendo → reconectó solo, prueba exitosa.
+S08 termina sin validaciones pendientes. Próxima sesión: **P2-core** (sacar el
+dispatch del hilo de IO: cola + worker; ver "Próximo paso" en ESTADO_ACTUAL).
 
 ---
 
