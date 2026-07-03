@@ -36,9 +36,31 @@ instalados (`install-git-hooks.ps1`). La suite heredada pasó 438/438 antes de t
 - Suite **443/443** (438 + 3 transporte + 2 stop); smoke `lfs-insim list` OK;
   stubs sin cambios. Commit `7ee9f38`.
 
-**Qué probar en LFS (validación pendiente, rápida):** con el insim conectado
-y AIs rodando, Ctrl+C → debe cerrar en el acto, sin "Connection with LFS
-lost", sin intento de reconexión y sin traceback; log con "Framework stopped".
+**Incidente en vivo (misma sesión) → P24 resuelto:** al intentar conectar,
+LFS mostró "InSim - TCP excess : 127.0.0.1". Forense del log + sondas ISI
+contra el LFS vivo (0.8C17): el LFS de este equipo tiene `Game Admin abc`
+y el `settings_local.py` recién copiado del example llevaba `admin_pass: ''`
+→ LFS aceptaba el TCP y tiraba la conexión ~10 ms tras el ISI (sin enviar
+un solo byte). El defecto del framework: `_reconnect` daba cada ciclo por
+bueno (TCP + ISI enviados, nada confirma la aceptación) y reseteaba el
+backoff → **tormenta de ~10 conexiones/s** (~250 en 25 s); el "TCP excess"
+era LFS quejándose del aluvión y el mensaje del rechazo real (password)
+quedó enterrado. Sonda con `Admin='abc'` → VIVA con IS_VER de vuelta
+(confirmación al 100%). **Fixes:** (1) `admin_pass: 'abc'` en el
+settings_local de este equipo; (2) **P24 en el core** — reconexión
+provisional: si la sesión muere antes de `reconnect_stable_time` (config
+nueva, default 10 s), el siguiente `_reconnect` retoma la racha (espera el
+delay acumulado ANTES de reintentar, sigue escalando, y la racha cuenta
+para `reconnect_max_attempts`, que antes no agotaba nunca). 3 tests nuevos
+(`TestReconexionProvisional`, en rojo primero). Suite **446/446**.
+Verificado en vivo: `test_insim` conectado y estable 8 s contra el LFS del
+usuario. Commit `759f224`.
+
+**Qué probar en LFS (validación pendiente, rápida):** (a) conexión normal
+(password ya puesta); (b) Ctrl+C con el insim conectado → cierre en el
+acto, sin "Connection with LFS lost", sin reconexión ni traceback, log
+terminando en "Framework stopped"; (c) opcional P24: vaciar `admin_pass`
+y arrancar → reintentos con esperas crecientes, no a toda velocidad.
 
 **Próxima sesión:** política de errores de handlers configurable
 (resiliente en prod, fail-fast en dev); decisión de `on_tick` configurable.
