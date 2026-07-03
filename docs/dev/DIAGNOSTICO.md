@@ -39,7 +39,7 @@ refactorizar.
   5 rojos en `tests/test_packet_base.py::TestValidateStringLengths`. Investigado: **los tests
   estaban mal, no el código** (ver P8). Corregidos → **221/221 verde**.
 
-### P2 — Lógica frágil en traffic / navigation / radar
+### P2 — Lógica frágil en traffic / navigation / radar — parte core ✅ RESUELTA (S09)
 - Los últimos ~15 commits son casi todos *fixes* de los mismos ficheros (radar, traffic,
   freeroam, overtake). Churn: `map_ui.py` ×36, `traffic.py` ×22, `navigation.py` ×12.
 - Señal explícita de fragilidad: `traffic.py:655` — comentario "PARCHE DE SEGURIDAD
@@ -47,6 +47,12 @@ refactorizar.
 - Bucle caliente `AIControl.on_ISP_MCI` (`app.py:150`) ejecuta navegación + física +
   tráfico para **cada** coche, en el **hilo de IO**, a la frecuencia de MCI.
 - **Acción:** tests de caracterización (Fase 1) → estabilizar causa raíz (Fase 2).
+- **Resolución parte core (S09, Fase 3):** el dispatch salió del hilo de IO — el receptor
+  solo decodifica, contesta el keep-alive y encola; un **worker dedicado**
+  (`InSim_Dispatch_Worker`) despacha en FIFO. Un handler lento ya no bloquea la recepción
+  ni el keep-alive (sí retrasa los paquetes que vienen detrás, inherente al orden).
+  `use_thread_pool`/`max_workers` retirados (orden no garantizado, sin usuarios).
+  La parte ai_control (lógica frágil de traffic/navigation/radar) sigue pendiente → Fase 5.
 
 ---
 
@@ -283,6 +289,15 @@ protocolo. No cuentan como deuda.)
   defaults hasta la longitud fija) y los items multi-valor de listas variables (`'4B'`).
   Tests de excepción sustituidos por golden-bytes reales
   (`TestGoldenSecuenciasFijas`); REO/HCP reincorporados al test estructural.
+
+### P22 — Carrera en `_restore_session`: on_reconnect limpia DESPUÉS de re-solicitar estado (BAJA) — detectado en S09
+- `_restore_session()` envía `TINY.NCN/NPL` **antes** de despachar `on_reconnect`. Si LFS
+  contesta muy rápido, un `ISP_NCN/NPL` nuevo puede despacharse (worker) antes de que
+  `on_reconnect` (hilo principal) ejecute `_clear_all_memory()` de `users_management` →
+  ese estado nuevo se borraría y no se repoblaría. Ventana de µs–ms; preexistente a P2
+  (con dispatch en el hilo de IO la carrera ya existía).
+- **Acción:** invertir el orden (despachar `on_reconnect` primero, re-solicitar
+  `TINY.NCN/NPL` después) y ajustar el orden fijado en `test_reconexion.py`.
 
 ---
 

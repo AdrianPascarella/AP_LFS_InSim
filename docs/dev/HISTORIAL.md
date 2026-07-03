@@ -5,6 +5,54 @@
 
 ---
 
+## S09 — 2026-07-03 — Fase 3: P2-core (dispatch fuera del hilo de IO)
+
+**Arranque de sesión:** había mapeo de South City sin commitear (+5.605 líneas
+en `south_city.json` + render); por instrucción permanente del usuario se
+protegió ANTES del `git pull`: backup fuera del repo + commit `7cb7562` + push.
+La regla quedó registrada en `MODUS_OPERANDI.md` § 1 paso 2 (commit `edc4c09`).
+
+**Qué se hizo — P2-core (cola + worker de dispatch):**
+
+- **Cliente:** los hilos de IO ya no ejecutan handlers. `on_packet_received`
+  (llamado por el transporte) contesta el keep-alive `TINY.NONE` en el acto
+  —una cola ocupada nunca retrasa el ping a LFS— y encola el paquete;
+  el worker dedicado `InSim_Dispatch_Worker` (hilo daemon, arrancado en
+  `start()` antes de conectar) saca de la cola y llama a `_dispatch_packet`
+  en orden FIFO estricto. Bucle del worker con guarda propia: nada lo mata.
+- **Apagado:** `stop()` cierra el transporte (deja de entrar) y mete un
+  centinela `_DISPATCH_STOP` al FINAL de la cola → lo pendiente se despacha
+  antes de salir; `join` con timeout 2 s y protección contra `stop()` llamado
+  desde el propio worker (un handler puede parar el cliente sin deadlock).
+- **Retirado `use_thread_pool`/`max_workers`** (cliente + `DEFAULT_CONFIG` +
+  tests): dispatch por pool no garantizaba orden y no tenía usuarios.
+- **Contrato de threading documentado** (CLAUDE.md § Packet lifecycle +
+  docstring de `insim_client.py`): handlers `on_ISP_*` en el worker, FIFO, de
+  uno en uno (un handler lento no bloquea la recepción pero retrasa a los que
+  vienen detrás); hooks de ciclo de vida en el hilo principal; sin garantía de
+  orden entre ambos mundos; `send()` thread-safe desde cualquier hilo.
+- **Tests:** 6 nuevos en `test_client_dispatch.py` (`TestColaYWorkerDeDispatch`):
+  la recepción solo encola; FIFO end-to-end; handler bloqueado no frena
+  `on_packet_received` ni el keep-alive (criterio de Fase 3); `stop()` vacía lo
+  pendiente; el worker sobrevive a un handler que explota; arranque idempotente.
+  Retirados los 2 del thread pool. Suite **435/435**; `lfs-insim list` OK.
+- **Limpieza:** `insim_client.pyi` reescrito — estaba desfasado desde Fase 2
+  (aún declaraba `register_module`, `modules[]`, `on_first`...); el generador
+  de stubs solo cubre `insim_app.pyi`, este va a mano.
+- **Descubierto P22 (BAJA, preexistente):** en `_restore_session` los
+  `TINY.NCN/NPL` se piden ANTES de despachar `on_reconnect`; una respuesta muy
+  rápida podría procesarse antes del `_clear_all_memory()` y perderse. Fix
+  propuesto (invertir orden) registrado en DIAGNOSTICO; no se tocó para no
+  mezclar cambios de comportamiento con P2.
+
+**Pendiente de validar en LFS (usuario):** funcionamiento normal de
+`ai_control` + una reconexión. No debería notarse ningún cambio.
+
+**Próxima sesión:** P18 (envío UDP: recomendación eliminar), luego P19
+(una ruta de serialización) + P22 de paso.
+
+---
+
 ## S08 — 2026-07-03 — Fase 2 cerrada + Fase 3: P12 (reconexión automática)
 
 **Qué se hizo (segundo bloque, misma sesión) — P12, reconexión automática:**

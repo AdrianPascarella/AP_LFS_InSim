@@ -1,16 +1,31 @@
 # 📍 Estado actual
 
-> Actualizado: **2026-07-03** — sesión S08
+> Actualizado: **2026-07-03** — sesión S09
 > **Rama de trabajo: `refactor/estabilizacion`.** Todo el refactor ocurre aquí; `main`
 > queda intacta hasta el merge final (cuando el proyecto esté estable). **Sync por GitHub:**
 > `git pull` al arrancar y `git push` al cerrar (permite continuar desde otro dispositivo).
 
 ## Estado
 
-**Fases 1 y 2 COMPLETADAS (validadas en LFS). Fase 3 ACTIVA: P12 (reconexión
-automática) implementado en S08 con 11 tests nuevos — suite 431/431 verde — y
-VALIDADO por el usuario en LFS (matar/levantar LFS → reconecta solo).
-Sin validaciones pendientes.**
+**Fases 1 y 2 COMPLETADAS (validadas en LFS). Fase 3 ACTIVA: P12 hecho y
+validado; P2-core (dispatch fuera del hilo de IO) hecho en S09 — suite
+435/435 verde. PENDIENTE DE VALIDAR EN LFS (funcionamiento normal de
+ai_control: nada debería cambiar visiblemente).**
+
+**P2-core (dispatch fuera del hilo de IO, hecho en S09):** los hilos de IO del
+transporte ya NO ejecutan handlers — decodifican, contestan el keep-alive en el
+acto (para que una cola ocupada nunca retrase el ping a LFS) y encolan; un
+**worker dedicado** (`InSim_Dispatch_Worker`, arrancado en `start()`) despacha
+`on_ISP_*` en orden FIFO estricto. Un handler lento ya no bloquea la recepción.
+`stop()` cierra el transporte y mete un centinela al FINAL de la cola: lo
+pendiente se despacha antes de que el worker salga (join con timeout 2 s,
+protegido contra `stop()` llamado desde un handler). `use_thread_pool` y
+`max_workers` RETIRADOS de config y cliente (orden no garantizado, sin usuarios).
+Contrato de threading documentado (CLAUDE.md + docstring de `insim_client.py`):
+handlers en el worker (FIFO); hooks de ciclo de vida en el hilo principal; sin
+garantía de orden entre ambos; `send()` thread-safe. `insim_client.pyi`
+reescrito (estaba desfasado desde Fase 2). Detectado de paso **P22** (carrera
+menor en `_restore_session`, ver DIAGNOSTICO).
 
 **P12 (reconexión, hecho en S08):** el transporte avisa con `on_connection_lost`
 cuando el bucle receptor TCP muere sin `close()`; el bucle principal de `start()`
@@ -65,29 +80,33 @@ aceptación en `test_transport.py`). Smoke: `ai_control` carga, CLI OK.
 
 **Validación en LFS (S08):** el usuario probó el estado post-migración (Fase 2
 cerrada) y también P12 — la reconexión funcionó al matar/levantar LFS con el
-InSim corriendo. No hay validaciones pendientes.
+InSim corriendo. **Validación pendiente (S09): P2-core** (ver "Próximo paso").
 
 **Contexto del plan (S04):** framework a nivel profesional; romper insims aceptable.
 P11–P21 en `DIAGNOSTICO.md`. Queda gordo: P12 (reconexión, Fase 3).
 
 ## Fase activa
 
-**Fase 3 — Robustez en runtime**; ver `PLAN.md`. Hecho y validado: P12.
-Pendiente: P2-core (dispatch fuera del hilo IO), P18 (envío UDP), P19 (una
-sola ruta de serialización), apagado limpio, política de errores de handlers.
-También heredado de Fase 2/S07: decidir si `on_tick` debe ser configurable.
+**Fase 3 — Robustez en runtime**; ver `PLAN.md`. Hecho: P12 (validado en LFS),
+P2-core (pendiente de validar en LFS). Pendiente: P18 (envío UDP), P19 (una
+sola ruta de serialización), P22 (carrera menor en `_restore_session`),
+apagado limpio, política de errores de handlers. También heredado de Fase 2/S07:
+decidir si `on_tick` debe ser configurable.
 
 ## ▶️ Próximo paso concreto (empezar AQUÍ la próxima sesión)
 
-**P2-core — sacar el dispatch del hilo de IO:** hoy los `on_ISP_*` se ejecutan
-en el hilo receptor del transporte (un handler lento bloquea la recepción).
-Plan: cola + hilo worker dedicado en el cliente (el receptor solo decodifica y
-encola; el worker despacha en orden), documentar el contrato de threading para
-autores de módulos, y revisar/retirar `use_thread_pool` (orden no garantizado —
-probablemente muerto tras esto). Red de seguridad: los tests de dispatch de
-Fase 1 (`test_client_dispatch.py`) ya cubren orden y aislamiento; añadir tests
-de la cola (handler lento no bloquea recepción; orden FIFO se conserva).
-Criterio de Fase 3: un handler lento no bloquea la recepción; suite verde.
+1. **Validar P2-core en LFS** (lo hace el usuario): correr `ai_control` con
+   normalidad — comandos, conducción, botones, y una reconexión (matar/levantar
+   LFS). No debería notarse ningún cambio; los handlers ahora corren en el
+   worker de dispatch en vez del hilo de IO.
+2. **P18 — envío UDP roto:** decidir eliminarlo o implementarlo bien (hoy
+   `transport.send(use_udp=True)` usaría el socket bind() de escucha, sin
+   destino; nadie lo usa). Recomendación: eliminarlo y documentar que el envío
+   es siempre TCP (LFS solo recibe InSim por TCP; UDP es solo de bajada).
+3. **P19 — una sola ruta de serialización** (prepare→pack), apoyada en los
+   golden-bytes; revisar el `.strip()` del decoder (espacios significativos).
+   De paso, **P22** (invertir orden en `_restore_session` + ajustar
+   `test_reconexion.py`).
 
 ## Bloqueos / esperando
 

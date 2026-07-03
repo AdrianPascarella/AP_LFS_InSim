@@ -123,9 +123,14 @@ un proceso (test); los 3 insims corren con la nueva API; tests de Fase 1 adaptad
       limpia memoria; 11 tests en `test_reconexion.py`; FakeLFS multi-conexión.
       Suite 431/431. **Validado por el usuario en LFS (S08)**: matar/levantar LFS
       con el InSim corriendo → reconecta solo
-- [ ] **P2 (parte core)**: sacar el dispatch del hilo de IO (cola + worker dedicado);
+- [x] **P2 (parte core)**: sacar el dispatch del hilo de IO (cola + worker dedicado);
       documentar el contrato de threading para autores de módulos; revisar/retirar
-      `use_thread_pool` (orden no garantizado)
+      `use_thread_pool` (orden no garantizado) — S09: el receptor decodifica, contesta
+      el keep-alive en el acto y encola; worker `InSim_Dispatch_Worker` despacha en FIFO;
+      `stop()` vacía lo pendiente antes de salir (centinela al final de la cola);
+      `use_thread_pool`/`max_workers` retirados; contrato de threading documentado en
+      CLAUDE.md y en el docstring de `insim_client.py`; 6 tests nuevos en
+      `test_client_dispatch.py`. Suite 435/435
 - [ ] **P18**: eliminar o implementar bien el envío UDP
 - [ ] **P19**: una sola ruta de serialización (prepare→pack) apoyada en los golden-bytes;
       revisar `.strip()` del decoder (espacios significativos)
