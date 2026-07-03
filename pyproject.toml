@@ -48,7 +48,8 @@ lfs-insim = "lfs_insim.cli:main"
 [project.optional-dependencies]
 # matplotlib no es del core: lo necesita el InSim ai_control (map_renderer);
 # va en dev para que el entorno de desarrollo/tests sea reproducible.
-dev = ["pytest>=7.0", "matplotlib"]
+# ruff: lint + format (Fase 4). No es dependencia de runtime.
+dev = ["pytest>=7.0", "matplotlib", "ruff>=0.6"]
 
 [tool.setuptools.dynamic]
 version = { attr = "lfs_insim.__version__" }
@@ -59,3 +60,18 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.ruff]
+# line-length 88: default del ecosistema (ruff/black); el core ya cabe casi
+# entero (98% de las lineas <=88), asi que la pasada de format es minima.
+line-length = 88
+# Python minimo soportado (coherente con requires-python = ">=3.9").
+target-version = "py39"
+# Los .pyi son artefactos autogenerados (lfs-insim stubs): no los toca ruff,
+# los regenera el generador. .venv/build/dist ya estan en el exclude por defecto.
+extend-exclude = ["*.pyi"]
+
+[tool.ruff.lint]
+# Arranque conservador (decidido en S16): pycodestyle E/W, pyflakes F, isort I.
+# Se ampliara en pasadas posteriores (UP, B, C4, SIM...) como cambios revisables.
+select = ["E", "F", "I", "W"]
