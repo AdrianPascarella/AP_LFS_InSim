@@ -231,11 +231,22 @@ fuente. (**P16**)
       faltaba `InSimProtocolError`). Corregido de paso CLAUDE.md: el loader instancia la
       PRIMERA subclase de `InSimApp` del entry_point, no casa por nombre CamelCase (por eso
       `AIControl` funciona). Sin cambios de runtime; suite intacta
-- [ ] CHANGELOG.md y convención de versionado (semver)
+- [x] CHANGELOG.md y convención de versionado (semver) — S17: `CHANGELOG.md` en
+      formato Keep a Changelog (español, coherente con README/`docs/guia/`) +
+      sección de convención semver. Historial verificado: la versión ha sido
+      `0.2.0` desde el "Starting point" (nunca hubo 0.1.0, sin tags ni releases),
+      así que el changelog documenta la 0.2.0 como **primera versión en
+      preparación** (sección `[Sin publicar]`, sin fecha hasta el release),
+      recogiendo todo el refactor por categorías (Añadido/Cambiado/Obsoleto/
+      Eliminado/Corregido) con los cambios que rompen la API marcados. URL de
+      Changelog añadida a `[project.urls]` de pyproject (apunta a `blob/main`, ok
+      tras el merge) y enlace en el README. Tests de packaging verdes (23/23)
 - [ ] (Opcional, decidir con el usuario) publicación en PyPI
 
 **Criterio de aceptación:** `pip install` desde el repo funciona fuera del proyecto;
 CI verde; un desarrollador externo puede seguir el quickstart sin ayuda.
+**Cumplido** salvo la decisión (opcional) de publicar en PyPI: wheel construye
+limpio (S14), CI verde (S16), quickstart + guías (S17). Fase 4 lista para cerrar.
 
 ---
 

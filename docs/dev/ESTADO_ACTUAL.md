@@ -7,11 +7,24 @@
 
 ## Estado
 
-**Fases 1, 2 y 3 COMPLETADAS. FASE 4 ACTIVA (DX y packaging): metadata
-(S14), subcomandos del CLI (S15), ruff+CI+mypy (S16) y docs de usuario (S17)
-hechos. Suite 469/469 verde; ruff limpio; mypy limpio (core vigilado). Sin
-validaciones pendientes en LFS (tooling/packaging/docs no tocan runtime).
-Queda de Fase 4: CHANGELOG.md + convención semver (y la decisión de PyPI).**
+**Fases 1, 2 y 3 COMPLETADAS. FASE 4 (DX y packaging) con TODOS sus ítems de
+contenido hechos: metadata (S14), subcomandos del CLI (S15), ruff+CI+mypy
+(S16), docs de usuario (S17) y CHANGELOG + semver (S17). Suite 469/469 verde;
+ruff limpio; mypy limpio (core vigilado). Sin validaciones pendientes en LFS
+(tooling/packaging/docs no tocan runtime). Solo queda de Fase 4 la decisión
+OPCIONAL de publicar en PyPI (recomendación: preparar sí, disparar tras el
+merge a `main`). Con eso, el proyecto quedaría listo para valorar el merge.**
+
+**CHANGELOG + convención semver (último ítem de contenido de Fase 4, hecho en
+S17):** `CHANGELOG.md` en formato Keep a Changelog (español, coherente con el
+resto de docs) + sección de convención de versionado. Historial verificado con
+git: la versión ha sido `0.2.0` desde el "Starting point" (2026-04-21), **nunca
+hubo 0.1.0**, sin tags ni releases → el changelog documenta la 0.2.0 como
+**primera versión en preparación** (sección `[Sin publicar]`, sin fecha hasta el
+release real), recogiendo todo el refactor por categorías con los cambios que
+rompen la API marcados. URL de Changelog en `[project.urls]` (apunta a
+`blob/main`, correcto tras el merge) + enlace en el README. Tests de packaging
+verdes (23/23). No requiere validación en LFS.
 
 **Docs de usuario (penúltimo ítem de Fase 4, hecho en S17):** nueva carpeta
 `docs/guia/` con 4 guías en español, verificadas contra el código:
@@ -263,14 +276,18 @@ sondeo interno).
 
 Orden de Fase 4 acordado con el usuario (S14): **CLI → ruff + CI → docs →
 CHANGELOG**; PyPI se prepara pero NO se dispara hasta el merge a `main`.
-CLI (S15), ruff+CI+mypy (S16) y docs de usuario (S17) HECHOS (ver "Estado").
+CLI (S15), ruff+CI+mypy (S16), docs de usuario (S17) y CHANGELOG (S17)
+HECHOS — **todos los ítems de contenido de Fase 4 completados** (ver "Estado").
 
-1. **Siguiente ítem — CHANGELOG.md + convención semver.** Es el ÚLTIMO ítem de
-   contenido de Fase 4. Estructura sugerida: formato "Keep a Changelog",
-   versión `0.2.0` (la actual, `lfs_insim.__version__`) con lo hecho hasta
-   ahora, y una nota de convención semver (bumps → recordar reinstalar editable
-   por el test de versión única de S14). Con eso se cierra la Fase 4 salvo la
-   decisión de PyPI (ver Bloqueos).
+1. **Decidir con el usuario: ¿cerrar Fase 4 y valorar el merge a `main`, o hacer
+   antes el ensayo de PyPI?** Es lo único que queda de Fase 4 (ítem opcional).
+   Recomendación (heredada de S14): **preparar la publicación pero no dispararla**
+   hasta el merge — ensayar contra **TestPyPI** y dejar listo un workflow de
+   publicación, dejando el `pip install` real a PyPI para DESPUÉS del merge
+   (acción pública e irreversible). El nombre `lfs-insim` está libre (S14). Si el
+   usuario prefiere no tocar PyPI aún, Fase 4 se puede dar por cerrada y pasar a
+   valorar el **merge a `main`** (criterio en PLAN § Merge: fases hechas + pytest
+   verde + validación en LFS — que ya se ha ido haciendo por ítem).
    (Nota: para que Claude mire el CI por sí mismo, valorar instalar `gh` CLI +
    `gh auth login`; `.venv39` / Docker sirven para probar en 3.9 en local — ver
    Notas.)

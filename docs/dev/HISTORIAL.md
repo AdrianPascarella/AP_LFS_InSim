@@ -5,7 +5,7 @@
 
 ---
 
-## S17 — 2026-07-04 — Fase 4: docs de usuario (`docs/guia/` + README landing)
+## S17 — 2026-07-04 — Fase 4: docs de usuario + CHANGELOG (cierra el contenido de Fase 4)
 
 **Arranque:** repo limpio y sincronizado (HEAD `8398cde`, cierre S16); CI en
 verde. Sin mapas freeroam sin commitear que proteger. No se corrió la suite (el
@@ -70,8 +70,35 @@ usa la API pública (`from lfs_insim import InSimApp`, `.packets`, `.insim_enums
 **No requiere validación en LFS:** solo documentación (`.md`), cero cambios de
 runtime. Suite heredada 469/469 intacta.
 
-**Próxima sesión:** **CHANGELOG.md + convención semver** (último ítem de contenido
-de Fase 4). Luego, la decisión de PyPI (preparar sí, disparar tras el merge).
+**Segundo bloque (misma sesión) — CHANGELOG.md + convención semver (último ítem
+de contenido de Fase 4):** `CHANGELOG.md` en formato Keep a Changelog (español,
+coherente con README y `docs/guia/`) + sección de convención de versionado.
+
+- **Historial de versiones verificado con git antes de escribir** (para no
+  inventar): la versión ha sido `0.2.0` desde el "Starting point" (`775636c`,
+  2026-04-21); `git log -S'0.1.0'` no devuelve nada (**nunca hubo 0.1.0**);
+  `git tag -l` vacío (sin releases). → El changelog documenta la 0.2.0 como
+  **primera versión en preparación**: sección `## [Sin publicar] — v0.2.0 en
+  preparación` (sin fecha hasta el release real; al cortarla pasa a
+  `[0.2.0] - fecha`), recogiendo todo el refactor por categorías
+  (Añadido/Cambiado/Obsoleto/Eliminado/Corregido), con los cambios que **rompen
+  la API** marcados (composición, dispatch, etc.).
+- **Convención semver** documentada: 0.x puede romper en MINOR; fuente única de
+  versión en `lfs_insim.__version__` + recordatorio de reinstalar editable tras
+  un bump (el test de S14 lo exige).
+- **`pyproject.toml`:** URL `Changelog` en `[project.urls]` (apunta a
+  `blob/main/CHANGELOG.md` — correcto porque el publish a PyPI es post-merge).
+  Enlace al CHANGELOG en el README.
+- **Verificado:** tests de packaging/CLI (`test_cli.py` + `test_api_publica.py`)
+  **23/23** tras tocar pyproject (el contrato de `[project.scripts]` y el de
+  versión única siguen verdes).
+
+**Con esto quedan hechos TODOS los ítems de contenido de Fase 4.** Solo resta la
+decisión OPCIONAL de PyPI. Sin cambios de runtime en toda la sesión.
+
+**Próxima sesión:** decidir con el usuario si **cerrar Fase 4 y valorar el merge
+a `main`** o hacer antes el **ensayo de PyPI** (TestPyPI + workflow listo, publish
+real tras el merge). Ver ESTADO_ACTUAL § Próximo paso y § Bloqueos.
 
 ---
 
