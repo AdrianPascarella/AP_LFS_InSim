@@ -7,13 +7,26 @@
 
 ## Estado
 
-**Fases 1, 2 y 3 COMPLETADAS. FASE 4 (DX y packaging) con TODOS sus ítems de
-contenido hechos: metadata (S14), subcomandos del CLI (S15), ruff+CI+mypy
-(S16), docs de usuario (S17) y CHANGELOG + semver (S17). Suite 469/469 verde;
-ruff limpio; mypy limpio (core vigilado). Sin validaciones pendientes en LFS
-(tooling/packaging/docs no tocan runtime). Solo queda de Fase 4 la decisión
-OPCIONAL de publicar en PyPI (recomendación: preparar sí, disparar tras el
-merge a `main`). Con eso, el proyecto quedaría listo para valorar el merge.**
+**Fases 1, 2, 3 y 4 COMPLETADAS.** FASE 4 (DX y packaging) cerrada en S17:
+metadata (S14), subcomandos del CLI (S15), ruff+CI+mypy (S16), docs de usuario
+(S17), CHANGELOG + semver (S17) y **PyPI preparado sin publicar** (S17). Suite
+469/469 verde; ruff limpio; mypy limpio (core vigilado); wheel construye limpio
+y `twine check` pasa. Sin validaciones pendientes en LFS
+(tooling/packaging/docs no tocan runtime). **Próximo hito grande: decidir el
+merge a `main`** (con validación global en LFS) o abrir **Fase 5** (robustez de
+`ai_control` ante reconexiones). El publish real a PyPI se dispara en/tras el
+merge.
+
+**PyPI preparado sin publicar (último ítem de Fase 4, hecho en S17):** decisión
+del usuario = preparar sí, disparar no hasta el merge. Build local validado
+(`python -m build` → sdist + wheel `py3-none-any`; `twine check` PASSED); extra
+`[publish]` (build+twine) para el ensayo local; workflow
+`.github/workflows/publish.yml` con **Trusted Publishing (OIDC, sin tokens)** e
+**inerte** — solo `workflow_dispatch`→TestPyPI y `release: published`→PyPI, y
+solo operable desde `main`, así que no publica nada por sí solo. Runbook
+completo en `docs/dev/PUBLICACION.md` (ensayo local en TestPyPI, configurar
+trusted publishers, publish real post-merge). El upload real —incluido el ensayo
+en TestPyPI— lo lanza el usuario con sus credenciales (Claude no las tiene).
 
 **CHANGELOG + convención semver (último ítem de contenido de Fase 4, hecho en
 S17):** `CHANGELOG.md` en formato Keep a Changelog (español, coherente con el
@@ -267,27 +280,30 @@ P11–P21 en `DIAGNOSTICO.md`. Queda gordo: P12 (reconexión, Fase 3).
 
 ## Fase activa
 
-**Fase 4 — Experiencia de desarrollador (DX) y packaging**; ver `PLAN.md`.
-Fase 3 quedó COMPLETADA en S13 (último ítem: `tick_interval`; la decisión
-"¿on_tick configurable?" se resolvió con el usuario: SÍ, desacoplado del
-sondeo interno).
+**Ninguna fase de core activa: Fases 1-4 COMPLETADAS (S17).** El core está
+estabilizado, documentado y empaquetado. Dos caminos abiertos, a decidir con el
+usuario (ver Próximo paso): (a) **merge a `main`** (cierra el refactor del core)
+y/o disparar la publicación en PyPI; (b) **Fase 5 — `ai_control`** (robustez ante
+reconexiones y red de seguridad de la lógica de IA). Ver `PLAN.md`.
 
 ## ▶️ Próximo paso concreto (empezar AQUÍ la próxima sesión)
 
-Orden de Fase 4 acordado con el usuario (S14): **CLI → ruff + CI → docs →
-CHANGELOG**; PyPI se prepara pero NO se dispara hasta el merge a `main`.
-CLI (S15), ruff+CI+mypy (S16), docs de usuario (S17) y CHANGELOG (S17)
-HECHOS — **todos los ítems de contenido de Fase 4 completados** (ver "Estado").
+**Fase 4 COMPLETADA en S17** (CLI S15, ruff+CI+mypy S16, docs+CHANGELOG S17, PyPI
+preparado sin publicar S17). Fases 1-4 hechas: el core está estabilizado,
+documentado y empaquetado. Toca decidir el rumbo con el usuario:
 
-1. **Decidir con el usuario: ¿cerrar Fase 4 y valorar el merge a `main`, o hacer
-   antes el ensayo de PyPI?** Es lo único que queda de Fase 4 (ítem opcional).
-   Recomendación (heredada de S14): **preparar la publicación pero no dispararla**
-   hasta el merge — ensayar contra **TestPyPI** y dejar listo un workflow de
-   publicación, dejando el `pip install` real a PyPI para DESPUÉS del merge
-   (acción pública e irreversible). El nombre `lfs-insim` está libre (S14). Si el
-   usuario prefiere no tocar PyPI aún, Fase 4 se puede dar por cerrada y pasar a
-   valorar el **merge a `main`** (criterio en PLAN § Merge: fases hechas + pytest
-   verde + validación en LFS — que ya se ha ido haciendo por ítem).
+1. **Decisión de rumbo (empezar AQUÍ):** hay dos caminos, no excluyentes:
+   - **(a) Merge a `main` + publicación.** Cerrar el refactor del core mergeando
+     `refactor/estabilizacion` a `main` (lo autoriza el usuario; criterio en
+     PLAN § Merge: fases hechas + pytest verde + **validación global en LFS**).
+     Tras el merge, disparar el publish (crear un GitHub Release → PyPI). Opcional
+     antes: **ensayo en TestPyPI**, que lanza el usuario en local con su token
+     (comandos en `docs/dev/PUBLICACION.md`; el build ya está validado, `twine
+     check` PASSED).
+   - **(b) Fase 5 — `ai_control`.** Si se prefiere no mergear aún: robustez de
+     `ai_control` ante reconexiones (hoy su hilo `_run_test_freeroam` muere o
+     enloquece tras un on_reconnect — visto en S10) y red de seguridad de la
+     lógica de IA (navigation/traffic/physics). Ver PLAN § Fase 5.
    (Nota: para que Claude mire el CI por sí mismo, valorar instalar `gh` CLI +
    `gh auth login`; `.venv39` / Docker sirven para probar en 3.9 en local — ver
    Notas.)
@@ -305,14 +321,16 @@ HECHOS — **todos los ítems de contenido de Fase 4 completados** (ver "Estado"
 
 ## Bloqueos / esperando
 
-- Decisión pendiente (Fase 4): ¿publicar en PyPI? Recomendación S14:
-  **preparar sí, disparar no todavía.** El nombre `lfs-insim` está LIBRE
-  (verificado en S14: `pypi.org/pypi/lfs-insim/json` → 404). Plan: cuando
-  llegue CI, ensayar contra **TestPyPI** y dejar un workflow de publicación
-  listo; el `pip install` real a PyPI queda para DESPUÉS del merge a `main`
-  (acción de cara al público y difícilmente reversible: versión liberada no
-  se reutiliza, nombre reclamado). Sin urgencia por reservar el nombre (nicho
-  + PyPI desaconseja el squatting). La metadata ya quedó lista para ello (S14).
+- **PyPI: decidido y PREPARADO (S17), publish real pendiente del merge.** El
+  usuario eligió "preparar sí, disparar no". Ya hecho: build validado, extra
+  `[publish]`, workflow inerte con Trusted Publishing, runbook
+  `docs/dev/PUBLICACION.md`. El nombre `lfs-insim` está LIBRE (S14). Queda, cuando
+  el usuario quiera: (1) opcional, **ensayo en TestPyPI** en local (lo lanza el
+  usuario con su token); (2) tras el merge a `main`, el **publish real** creando
+  un GitHub Release. Acción pública e irreversible (versión liberada no se
+  reutiliza, nombre reclamado): por eso va después del merge.
+- **Decisión de rumbo abierta (S17):** merge a `main` (+ publish) vs. abrir Fase 5
+  (`ai_control`). Ver Próximo paso. La autoriza el usuario.
 
 ## Notas para la próxima sesión
 

@@ -5,7 +5,7 @@
 
 ---
 
-## S17 — 2026-07-04 — Fase 4: docs de usuario + CHANGELOG (cierra el contenido de Fase 4)
+## S17 — 2026-07-04 — Fase 4 COMPLETADA: docs de usuario + CHANGELOG + PyPI preparado
 
 **Arranque:** repo limpio y sincronizado (HEAD `8398cde`, cierre S16); CI en
 verde. Sin mapas freeroam sin commitear que proteger. No se corrió la suite (el
@@ -93,12 +93,40 @@ coherente con README y `docs/guia/`) + sección de convención de versionado.
   **23/23** tras tocar pyproject (el contrato de `[project.scripts]` y el de
   versión única siguen verdes).
 
-**Con esto quedan hechos TODOS los ítems de contenido de Fase 4.** Solo resta la
-decisión OPCIONAL de PyPI. Sin cambios de runtime en toda la sesión.
+**Tercer bloque (misma sesión) — PyPI preparado sin publicar (último ítem de
+Fase 4; el usuario eligió "preparar sí, disparar no"):**
 
-**Próxima sesión:** decidir con el usuario si **cerrar Fase 4 y valorar el merge
-a `main`** o hacer antes el **ensayo de PyPI** (TestPyPI + workflow listo, publish
-real tras el merge). Ver ESTADO_ACTUAL § Próximo paso y § Bloqueos.
+- **Build local validado (seguro, no sube nada):** `python -m build` produce
+  `lfs_insim-0.2.0.tar.gz` (sdist) y `lfs_insim-0.2.0-py3-none-any.whl` (wheel
+  puro); **`twine check` PASSED** en ambos. Inspeccionado el contenido: el wheel
+  lleva el paquete completo + stubs `.pyi` + LICENSE + METADATA; el sdist lleva
+  src/tests/README/LICENSE/pyproject. Artefactos borrados tras validar (`dist/`
+  está gitignorado).
+- **Extra `[publish]`** en pyproject (`build`, `twine`) para el ensayo local
+  reproducible (`pip install -e ".[publish]"`).
+- **Workflow `.github/workflows/publish.yml`** con **Trusted Publishing (OIDC, sin
+  tokens)**, deliberadamente **inerte**: solo `workflow_dispatch`→TestPyPI y
+  `release: published`→PyPI, y —como GitHub solo ofrece estos disparadores desde
+  la rama por defecto— **no operable hasta el merge a `main`**. Jobs: build (con
+  `twine check`) + testpypi/pypi condicionados por evento, con environments
+  `testpypi`/`pypi`.
+- **Runbook `docs/dev/PUBLICACION.md`** (+ fila en `00_INDEX.md`): ensayo local en
+  TestPyPI (comandos exactos, necesita cuenta+token del usuario), configurar
+  trusted publishers en (Test)PyPI, publish real post-merge (GitHub Release →
+  PyPI), recordatorios semver. URL `Changelog` ya estaba en `[project.urls]`.
+- **Lo que NO hago yo:** el upload real —incluido el ensayo en TestPyPI— lo lanza
+  el usuario con sus credenciales (acción pública; Claude no las tiene). Dejo los
+  comandos listos en la doc.
+
+**FASE 4 COMPLETADA.** Fases 1-4 hechas: core estabilizado, documentado y
+empaquetado. Cero cambios de runtime en toda la sesión S17 (solo docs, packaging
+y CI). Suite heredada 469/469 intacta; tests de packaging/CLI 23/23.
+
+**Próxima sesión:** decidir el rumbo con el usuario — **(a)** merge a `main`
+(requiere su validación global en LFS) + publish (opcional ensayo previo en
+TestPyPI, que lanza él), o **(b)** abrir **Fase 5** (`ai_control`: robustez ante
+reconexiones + red de seguridad de la lógica de IA). Ver ESTADO_ACTUAL § Próximo
+paso.
 
 ---
 

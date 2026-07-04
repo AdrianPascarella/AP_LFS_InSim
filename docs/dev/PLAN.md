@@ -179,7 +179,7 @@ un handler lento no bloquea la recepción; suite verde. **Cumplido y validado en
 
 ---
 
-## Fase 4 — Experiencia de desarrollador (DX) y packaging  ◀️ ACTIVA
+## Fase 4 — Experiencia de desarrollador (DX) y packaging  ✅ COMPLETADA (S17)
 
 **Objetivo:** que un tercero pueda instalar, crear y publicar un InSim sin leer el código
 fuente. (**P16**)
@@ -241,12 +241,21 @@ fuente. (**P16**)
       Eliminado/Corregido) con los cambios que rompen la API marcados. URL de
       Changelog añadida a `[project.urls]` de pyproject (apunta a `blob/main`, ok
       tras el merge) y enlace en el README. Tests de packaging verdes (23/23)
-- [ ] (Opcional, decidir con el usuario) publicación en PyPI
+- [x] Publicación en PyPI — **PREPARADA (S17), publish real diferido a post-merge**
+      (decidido con el usuario: preparar sí, disparar no hasta el merge a `main`).
+      Hecho: build local validado (`python -m build` → sdist+wheel `py3-none-any`,
+      `twine check` PASSED); extra `[publish]` (build+twine); workflow
+      `.github/workflows/publish.yml` con Trusted Publishing (OIDC, sin tokens) e
+      **inerte** (solo `workflow_dispatch`→TestPyPI y `release: published`→PyPI, y
+      solo operable desde `main`); runbook `docs/dev/PUBLICACION.md` (ensayo local
+      en TestPyPI, config de trusted publishers, publish real). El upload real
+      (incluido el ensayo en TestPyPI) lo lanza el usuario con sus credenciales.
 
 **Criterio de aceptación:** `pip install` desde el repo funciona fuera del proyecto;
 CI verde; un desarrollador externo puede seguir el quickstart sin ayuda.
-**Cumplido** salvo la decisión (opcional) de publicar en PyPI: wheel construye
-limpio (S14), CI verde (S16), quickstart + guías (S17). Fase 4 lista para cerrar.
+**CUMPLIDO:** wheel construye limpio y `twine check` pasa (S14/S17), CI verde
+(S16), quickstart + guías (S17), PyPI preparado (S17). El publish real a PyPI se
+dispara en/tras el merge a `main`.
 
 ---
 
