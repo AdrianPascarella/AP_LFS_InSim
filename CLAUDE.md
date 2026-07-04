@@ -109,7 +109,7 @@ registration. There is no "Master" module and no coup d'état anymore.
 }
 ```
 
-The loader reads `entry_point` (not `entry`) to find the file, then looks for a class whose name matches the module's name in CamelCase (e.g. `ai_control` → `AiControl`). Version constraints in `insim_dependencies` are enforced (`InSimModuleError` if unsatisfied), and a dependency that fails to load aborts the dependent's load (fail-fast, P20).
+The loader reads `entry_point` (not `entry`) to find the file, then instantiates the first class in it that subclasses `InSimApp` (the class name is not what locates it — by convention it's the module name in CamelCase, e.g. `ai_control` → `AIControl`, but the loader matches by inheritance). Keep one `InSimApp` subclass per entry point. Version constraints in `insim_dependencies` are enforced (`InSimModuleError` if unsatisfied), and a dependency that fails to load aborts the dependent's load (fail-fast, P20).
 
 ### Packet lifecycle
 
