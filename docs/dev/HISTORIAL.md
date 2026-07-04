@@ -122,11 +122,19 @@ Fase 4; el usuario eligió "preparar sí, disparar no"):**
 empaquetado. Cero cambios de runtime en toda la sesión S17 (solo docs, packaging
 y CI). Suite heredada 469/469 intacta; tests de packaging/CLI 23/23.
 
-**Próxima sesión:** decidir el rumbo con el usuario — **(a)** merge a `main`
-(requiere su validación global en LFS) + publish (opcional ensayo previo en
-TestPyPI, que lanza él), o **(b)** abrir **Fase 5** (`ai_control`: robustez ante
-reconexiones + red de seguridad de la lógica de IA). Ver ESTADO_ACTUAL § Próximo
-paso.
+**Rumbo decidido con el usuario (cierre de S17): seguir con FASE 5 (`ai_control`).**
+Matices acordados: (1) el framework/core (Fases 1-4) ya es publicable, pero
+`ai_control` es el escaparate y se pule antes para un primer release cohesionado
+(sin prisa); (2) **el merge a `main` se hará cuando Fase 5 esté terminada +
+validada en LFS — NO se espera a Fase 6** (refactor estructural de ai_control,
+cosmético, va después del merge en `main`); (3) el publish a PyPI se dispara tras
+el merge. **Arranque de Fase 5 acordado:** red de seguridad primero (fixtures
+sintéticos + tests de caracterización de navigation/traffic/physics), luego el fix
+de reconexión de ai_control. Registrado en ESTADO_ACTUAL § Fase activa / § Próximo
+paso y en PLAN § Fase 5 / § Merge.
+
+**Próxima sesión:** arrancar Fase 5 por la red de seguridad (ver ESTADO_ACTUAL
+§ Próximo paso).
 
 ---
 

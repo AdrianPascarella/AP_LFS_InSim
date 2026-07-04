@@ -259,7 +259,13 @@ dispara en/tras el merge a `main`.
 
 ---
 
-## Fase 5 — ai_control: red de seguridad y estabilización (antiguo plan F1–F2)
+## Fase 5 — ai_control: red de seguridad y estabilización (antiguo plan F1–F2)  ◀️ ACTIVA (S17)
+
+> **Arranque acordado con el usuario (S17):** empezar por la RED DE SEGURIDAD
+> (modus operandi §3 — `ai_control` no tiene tests y se toca lógica frágil):
+> primero infra de fixtures (telemetría + grafo sintéticos, sin LFS), luego tests
+> de caracterización de navigation/traffic/physics, y solo entonces el fix de
+> reconexión (primer ítem de abajo). Ver ESTADO_ACTUAL § Próximo paso.
 
 - [ ] Hacer `ai_control` consciente de la reconexión (visto en S10): parar/pausar
       `_run_test_freeroam` en `on_disconnect` (hoy el hilo muere con `InSimConnectionError`
@@ -296,6 +302,14 @@ hasta el merge. **Criterio para mergear a `main` ("estable"):**
 - Las fases del plan acordadas están completadas.
 - `pytest` en **verde** desde `.venv` (+ CI verde cuando exista, Fase 4).
 - El usuario ha **validado el comportamiento en LFS** (no hay regresiones funcionales).
+
+**Momento del merge (decidido con el usuario, S17):** mergear cuando **Fase 5 esté
+terminada + validada en LFS**. La **Fase 6 va DESPUÉS del merge** (es refactor
+estructural de ai_control —partir archivos, limpiar nombres—, cosmético y sin
+cambio de comportamiento, así que puede hacerse ya en `main`). El framework (core,
+Fases 1-4) es publicable hoy; se pule ai_control antes para un primer release
+cohesionado, sin prisa. El publish a PyPI se dispara tras el merge (ver
+`docs/dev/PUBLICACION.md`).
 
 El merge lo decide y autoriza el usuario. Tras el merge, se continúa desde `main`.
 

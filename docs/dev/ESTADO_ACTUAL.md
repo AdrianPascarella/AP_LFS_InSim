@@ -12,10 +12,9 @@ metadata (S14), subcomandos del CLI (S15), ruff+CI+mypy (S16), docs de usuario
 (S17), CHANGELOG + semver (S17) y **PyPI preparado sin publicar** (S17). Suite
 469/469 verde; ruff limpio; mypy limpio (core vigilado); wheel construye limpio
 y `twine check` pasa. Sin validaciones pendientes en LFS
-(tooling/packaging/docs no tocan runtime). **Próximo hito grande: decidir el
-merge a `main`** (con validación global en LFS) o abrir **Fase 5** (robustez de
-`ai_control` ante reconexiones). El publish real a PyPI se dispara en/tras el
-merge.
+(tooling/packaging/docs no tocan runtime). **Rumbo decidido al cierre de S17:
+seguir con FASE 5 (`ai_control`)**; el merge a `main` + publish a PyPI esperan a
+que Fase 5 esté terminada y validada en LFS (ver "Fase activa").
 
 **PyPI preparado sin publicar (último ítem de Fase 4, hecho en S17):** decisión
 del usuario = preparar sí, disparar no hasta el merge. Build local validado
@@ -280,33 +279,40 @@ P11–P21 en `DIAGNOSTICO.md`. Queda gordo: P12 (reconexión, Fase 3).
 
 ## Fase activa
 
-**Ninguna fase de core activa: Fases 1-4 COMPLETADAS (S17).** El core está
-estabilizado, documentado y empaquetado. Dos caminos abiertos, a decidir con el
-usuario (ver Próximo paso): (a) **merge a `main`** (cierra el refactor del core)
-y/o disparar la publicación en PyPI; (b) **Fase 5 — `ai_control`** (robustez ante
-reconexiones y red de seguridad de la lógica de IA). Ver `PLAN.md`.
+**Fase 5 — `ai_control`** (decidido con el usuario al cierre de S17). Fases 1-4
+(el core) COMPLETADAS: el framework está estabilizado, documentado y empaquetado.
+
+**Decisión de rumbo (S17):** continuar con **Fase 5** ahora. `ai_control` es una
+insim de ejemplo **sobre** el framework (el escaparate que demuestra para qué
+sirve), no el framework en sí — por eso se pule antes de publicar, para un primer
+release cohesionado (no hay prisa; el nombre PyPI está libre). **Criterio de
+merge acordado:** mergear a `main` cuando **Fase 5 esté terminada + validada en
+LFS**; **NO se espera a Fase 6** (refactor estructural de ai_control — cosmético,
+no cambia comportamiento; puede hacerse ya en `main` tras el merge). El publish a
+PyPI se dispara tras el merge (el framework en sí ya es publicable hoy).
 
 ## ▶️ Próximo paso concreto (empezar AQUÍ la próxima sesión)
 
-**Fase 4 COMPLETADA en S17** (CLI S15, ruff+CI+mypy S16, docs+CHANGELOG S17, PyPI
-preparado sin publicar S17). Fases 1-4 hechas: el core está estabilizado,
-documentado y empaquetado. Toca decidir el rumbo con el usuario:
+**Decisión tomada al cierre de S17: seguir con Fase 5 — `ai_control`.** El merge a
+`main` + publish esperan a que Fase 5 esté terminada y validada en LFS (Fase 6 va
+DESPUÉS del merge; ver "Fase activa" y PLAN § Merge). Empezar AQUÍ:
 
-1. **Decisión de rumbo (empezar AQUÍ):** hay dos caminos, no excluyentes:
-   - **(a) Merge a `main` + publicación.** Cerrar el refactor del core mergeando
-     `refactor/estabilizacion` a `main` (lo autoriza el usuario; criterio en
-     PLAN § Merge: fases hechas + pytest verde + **validación global en LFS**).
-     Tras el merge, disparar el publish (crear un GitHub Release → PyPI). Opcional
-     antes: **ensayo en TestPyPI**, que lanza el usuario en local con su token
-     (comandos en `docs/dev/PUBLICACION.md`; el build ya está validado, `twine
-     check` PASSED).
-   - **(b) Fase 5 — `ai_control`.** Si se prefiere no mergear aún: robustez de
-     `ai_control` ante reconexiones (hoy su hilo `_run_test_freeroam` muere o
-     enloquece tras un on_reconnect — visto en S10) y red de seguridad de la
-     lógica de IA (navigation/traffic/physics). Ver PLAN § Fase 5.
-   (Nota: para que Claude mire el CI por sí mismo, valorar instalar `gh` CLI +
-   `gh auth login`; `.venv39` / Docker sirven para probar en 3.9 en local — ver
-   Notas.)
+1. **Arrancar Fase 5 por la RED DE SEGURIDAD** (modus operandi §3: caracterizar
+   ANTES de tocar lógica frágil). Clave: **`ai_control` no tiene tests** — es la
+   parte del proyecto sin cubrir, y toca traffic/navigation/física (frágil).
+   Orden acordado con el usuario:
+   1. **Infra de fixtures sin LFS:** telemetría sintética + grafo de calles
+      sintético, para poder ejercitar navigation/traffic/physics en tests.
+   2. **Tests de caracterización** de esa lógica frágil que congelen el
+      comportamiento ACTUAL (red de seguridad).
+   3. **Fix de reconexión** (el ítem concreto de S10, con test primero): hacer
+      `ai_control` consciente de la reconexión — parar/pausar el hilo daemon
+      `_run_test_freeroam` en `on_disconnect` (hoy muere con `InSimConnectionError`
+      al enviar desconectado) y resetear estado propio + ownership de IAs en
+      `on_reconnect` (hoy ve "0 coches" tras la limpieza de memoria y crea/arranca
+      IAs con ownership desincronizado → "La AI X no es una de tus AI's").
+   (Antes de tocar: releer PLAN § Fase 5 y, del análisis de S10, la entrada de
+   HISTORIAL de S10. Nota: `gh` CLI / `.venv39` / Docker siguen disponibles.)
 2. Backlog de **tipado gradual** (ir quitando overrides de `[tool.mypy]` en
    pyproject, módulo a módulo, cuando se toque cada uno): los módulos
    `packets` (dataclasses de protocolo), `insim_loader` (fricción con
