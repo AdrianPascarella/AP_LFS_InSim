@@ -35,9 +35,10 @@ de `f.name`). **No requiere validación en LFS.**
 `HLVC: HLVC` en ISP_HLV (recursión del `repr` de dataclasses en 3.9) →
 forward-ref `"HLVC"`. Guardas: regla ruff **FA102** + la matriz de CI ya
 incluye 3.9. Suite 3.9: 467 passed, 2 skipped; 3.14 sigue en 469.
-⚠️ **El push de `a077f41` quedó SIN HACER** (Git Credential Manager pedía
-reauth interactiva que Claude no puede dar) — hay que pushear y confirmar el
-CI en verde.
+✅ **Pusheado (tip `e40cfec`) y CI en VERDE** — confirmado por la API de GitHub
+(run de `e40cfec` = success) y reproducido en Docker (Linux 3.9.25 → 467 passed,
+2 skipped). El "exit 4" que se veía en Actions era el run VIEJO (`b0d0541`,
+pre-fix), no el actual.
 
 **Subcomandos del CLI (segundo ítem de Fase 4, hecho en S15):** los antiguos
 entry points `generate-stubs` y `update-all` se instalaban como comandos
@@ -242,15 +243,11 @@ Orden de Fase 4 acordado con el usuario (S14): **CLI → ruff + CI → docs →
 CHANGELOG**; PyPI se prepara pero NO se dispara hasta el merge a `main`.
 CLI (S15) y ruff+CI+mypy (S16) HECHOS (ver "Estado").
 
-0. **PRIMERO al arrancar: `git push`** — el commit `a077f41` (`fix(py39)`) y
-   el cierre de docs de S16 **quedaron sin pushear** (Git Credential Manager
-   pedía reauth interactiva que Claude no puede dar; los push los lanza el
-   usuario con `! git push origin refactor/estabilizacion`). Luego **verificar
-   el CI en verde** en GitHub Actions (alta confianza: la suite ya pasa en un
-   Python 3.9.13 real en local, lo mismo que corre el CI). El primer run de
-   S16 ya cazó 2 incompatibilidades de 3.9, ya arregladas (ver "Estado"). Si
-   quedara algo, arreglarlo antes de seguir. Valorar instalar `gh` CLI (y
-   `gh auth login`) para que Claude pueda mirar el CI por sí mismo.
+0. **S16 cerrado del todo: CI en VERDE** en `e40cfec` (confirmado por la API de
+   GitHub + reproducido en Docker Linux 3.9.25), rama en sync con origin, nada
+   pendiente de push. Empezar directo por el punto 1. (Nota: para que Claude
+   mire el CI por sí mismo, valorar instalar `gh` CLI + `gh auth login`; y
+   `.venv39` / Docker sirven para probar en 3.9 en local — ver Notas.)
 1. **Siguiente ítem — docs de usuario:** quickstart "tu primer InSim en 5
    min", guía de módulos/dependencias, referencia de la API pública; revisar
    la plantilla de `lfs-insim init`. Luego **CHANGELOG.md** + convención

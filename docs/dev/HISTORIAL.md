@@ -87,11 +87,14 @@ de CI ya incluye 3.9. **Verificado en 3.9.13 real:** 467 passed, 2 skipped
 regresión en 3.14 (469); ruff limpio con FA102; stub `.pyi` sin cambios.
 `.gitignore`: `.venv/` → `.venv*/` (para el venv `.venv39`).
 
-**PENDIENTE al abrir la próxima sesión:** el push de `a077f41` + este cierre
-**quedó sin hacer** — Git Credential Manager pedía reauth interactiva que la
-sesión de Claude no puede dar (los push los tiene que lanzar el usuario). Hay
-que **hacer `git push`** y **confirmar el CI en verde** en GitHub Actions
-(alta confianza: la suite ya pasa en 3.9 real en local, mismo que corre el CI).
+**Cierre confirmado:** el push (`a077f41` + docs) necesitó varios intentos (Git
+Credential Manager pedía reauth interactiva; los push los lanza el usuario),
+pero se completó — origin en `e40cfec`. **CI en VERDE** en ese commit,
+confirmado por la API de GitHub (run `e40cfec` = success) y **reproducido en
+Docker (Linux 3.9.25 → 467 passed, 2 skipped)**, idéntico al runner. El "exit 4"
+que aparecía en Actions era el run VIEJO (`b0d0541`, pre-fix), no el actual.
+Herramientas nuevas de esta sesión para verificar en Linux/3.9 sin depender del
+CI: venv `.venv39` (Python 3.9.13) y `docker run python:3.9` con el repo montado.
 
 ---
 
