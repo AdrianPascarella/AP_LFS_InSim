@@ -38,6 +38,7 @@ classifiers = [
 Homepage = "https://github.com/AdrianPascarella/AP_LFS_InSim"
 Repository = "https://github.com/AdrianPascarella/AP_LFS_InSim"
 Issues = "https://github.com/AdrianPascarella/AP_LFS_InSim/issues"
+Changelog = "https://github.com/AdrianPascarella/AP_LFS_InSim/blob/main/CHANGELOG.md"
 
 # CLI - único console-script. Los generadores (antes 'generate-stubs' y
 # 'update-all', comandos globales que invadían el PATH ajeno) son ahora

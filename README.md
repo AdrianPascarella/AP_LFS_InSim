@@ -38,6 +38,8 @@ Guías de usuario en **[`docs/guia/`](docs/guia/)**:
 
 Referencia del protocolo binario: **`docs/tutorial/`** (por paquete) y **`docs/InSim.txt`** (fuente de verdad).
 
+Cambios entre versiones: **[`CHANGELOG.md`](CHANGELOG.md)**.
+
 ---
 
 ## CLI
