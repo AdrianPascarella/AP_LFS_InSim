@@ -5,6 +5,76 @@
 
 ---
 
+## S17 — 2026-07-04 — Fase 4: docs de usuario (`docs/guia/` + README landing)
+
+**Arranque:** repo limpio y sincronizado (HEAD `8398cde`, cierre S16); CI en
+verde. Sin mapas freeroam sin commitear que proteger. No se corrió la suite (el
+trabajo es solo documentación; cero cambios de runtime).
+
+**Decisión de estructura (con el usuario):** **README slim + `docs/guia/`** (frente
+a un README único ampliado). El README queda como landing page con enlaces; el
+grueso va a páginas separadas.
+
+**Qué se hizo (penúltimo ítem de Fase 4 — docs de usuario):** 4 guías nuevas en
+`docs/guia/`, todas en español y **verificadas leyendo el código fuente** (no
+copiando el README viejo, que estaba obsoleto):
+
+- **`quickstart.md`** — "tu primer InSim en 5 min": instalar → copiar
+  `settings_local.example.py` y poner `admin_pass` → `/insim 29999` en LFS →
+  `lfs-insim init` → módulo generado (idéntico a la plantilla real) → `run` →
+  `!<modulo> hola` en el chat. Con la nota del `admin_pass` (pista de ISI
+  rechazado).
+- **`modulos-y-deps.md`** — anatomía del módulo, manifiesto `insim.json` (tabla
+  de campos), **cómo el loader localiza la clase** (primera subclase de
+  `InSimApp`, no por nombre), dependencias (`insim_dependencies` con constraints
+  de versión, orden de carga = orden de dispatch, `get_insim`, fail-fast P20),
+  estado compartido vía `.extra`, comandos con CMDManager (args tipados,
+  `is_mso_required`), mixins con el truco `TYPE_CHECKING`.
+- **`api-publica.md`** — puntos de import; exports de `lfs_insim`; superficie de
+  `InSimApp` (atributos de clase/instancia, hooks, métodos); **TODAS las claves
+  de `DEFAULT_CONFIG` con sus defaults reales** (tablas por grupo); las **7**
+  excepciones; los **21** nombres de `utils` agrupados; paquetes y enums.
+- **`arquitectura.md`** — composición (un cliente, N apps), tabla de objetos del
+  core, ciclo de vida del paquete (IO → cola → worker), contrato de hilos (P2),
+  política de errores de handlers, envío siempre-TCP, auto-reconexión (P12 +
+  provisional P24), config en dos capas. **Reemplaza la sección obsoleta del
+  README.**
+
+**README reducido a landing page** + tabla de enlaces a las 4 guías (arriba del
+todo), CLI, módulos incluidos, telemetría OutSim (compacta, sin guía dedicada),
+protocolo y tests. Enlaces internos verificados (archivos + anclas GitHub).
+
+**Erratas del README viejo corregidas (eran FALSAS, no solo incompletas):**
+- Sección Arquitectura describía el patrón **"coup d'état" / Master / `modules[]`
+  / `insim_packet_io.py`** — TODO eliminado en Fase 2 (composición P11, transporte
+  P13). Verificado en el código: `self.apps`, `insim_transport.py`, sin master.
+- Afirmaba que los stubs `.pyi` **se generan por git hook en cada commit** —
+  falso (el hook es un no-op deshabilitado desde S15). Se quita la sección; la
+  regeneración es `lfs-insim stubs` (ya en la sección CLI).
+- `insim_name` default documentado como `"InSimApp"`; el real es `"LFS-InSim"`.
+- Jerarquía de excepciones incompleta (faltaba `InSimProtocolError`; son 7).
+- "LFS v0.7F" → "0.7F o superior (probado en 0.8C)".
+- Recuento de tutoriales 72 → 73 (`recibir/` pasó de 42 a 43).
+
+**Corregido de paso CLAUDE.md** (§ insim.json manifest schema): decía que el
+loader "looks for a class whose name matches the module's name in CamelCase
+(ai_control → AiControl)". La regla REAL (leída en `insim_loader.py:244-263`) es
+que instancia la **primera subclase de `InSimApp`** que encuentra en el
+entry_point — el nombre no la localiza (por eso `AIControl` funciona). Corregido
+a la descripción por herencia + "una sola clase InSimApp por entry point".
+
+**La plantilla de `lfs-insim init` revisada:** al día. Genera un `main.py` que ya
+usa la API pública (`from lfs_insim import InSimApp`, `.packets`, `.insim_enums`,
+`.utils`) y CMDManager fluido con `.submit()`. No hubo que tocarla.
+
+**No requiere validación en LFS:** solo documentación (`.md`), cero cambios de
+runtime. Suite heredada 469/469 intacta.
+
+**Próxima sesión:** **CHANGELOG.md + convención semver** (último ítem de contenido
+de Fase 4). Luego, la decisión de PyPI (preparar sí, disparar tras el merge).
+
+---
+
 ## S16 — 2026-07-04 — Fase 4: ruff (format+lint) + CI + mypy gradual
 
 **Arranque:** repo limpio y sincronizado (HEAD `f3b4a6b`, cierre S15); suite

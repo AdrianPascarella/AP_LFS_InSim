@@ -1,6 +1,6 @@
 # 📍 Estado actual
 
-> Actualizado: **2026-07-04** — sesión S16
+> Actualizado: **2026-07-04** — sesión S17
 > **Rama de trabajo: `refactor/estabilizacion`.** Todo el refactor ocurre aquí; `main`
 > queda intacta hasta el merge final (cuando el proyecto esté estable). **Sync por GitHub:**
 > `git pull` al arrancar y `git push` al cerrar (permite continuar desde otro dispositivo).
@@ -8,10 +8,32 @@
 ## Estado
 
 **Fases 1, 2 y 3 COMPLETADAS. FASE 4 ACTIVA (DX y packaging): metadata
-(S14), subcomandos del CLI (S15) y el bloque ruff+CI+mypy (S16) hechos.
-Suite 469/469 verde; ruff limpio; mypy limpio (core vigilado). Sin
-validaciones pendientes en LFS (tooling/packaging no tocan runtime).
-Queda de Fase 4: docs de usuario + CHANGELOG.**
+(S14), subcomandos del CLI (S15), ruff+CI+mypy (S16) y docs de usuario (S17)
+hechos. Suite 469/469 verde; ruff limpio; mypy limpio (core vigilado). Sin
+validaciones pendientes en LFS (tooling/packaging/docs no tocan runtime).
+Queda de Fase 4: CHANGELOG.md + convención semver (y la decisión de PyPI).**
+
+**Docs de usuario (penúltimo ítem de Fase 4, hecho en S17):** nueva carpeta
+`docs/guia/` con 4 guías en español, verificadas contra el código:
+`quickstart.md` (primer InSim en 5 min: instalar → settings_local → `/insim` →
+`lfs-insim init` → `run` → probar en el chat), `modulos-y-deps.md` (manifiesto,
+dependencias con constraints de versión y fail-fast, `get_insim`, estado
+compartido vía `.extra`, comandos con CMDManager, mixins), `api-publica.md`
+(exports de `lfs_insim`, superficie de `InSimApp`, TODAS las claves de
+`DEFAULT_CONFIG` con sus defaults reales, las 7 excepciones, los 21 nombres de
+`utils`) y `arquitectura.md` (composición/lifecycle/contrato de hilos/política
+de errores/auto-reconexión P12+P24 — reemplaza la sección obsoleta del README).
+**README reducido a landing page + enlaces** a las guías. La plantilla de
+`lfs-insim init` revisada y al día (usa la API pública y CMDManager fluido; no
+hubo que tocarla). Corregidas afirmaciones FALSAS del README viejo: la sección
+Arquitectura describía el patrón "coup d'état"/Master/`modules[]`/
+`insim_packet_io.py`, TODO eliminado en Fase 2; decía que los stubs `.pyi` se
+generan por git hook (falso, el hook es un no-op); `insim_name` default es
+`LFS-InSim`, no `InSimApp`; faltaba `InSimProtocolError` en la jerarquía.
+De paso corregido **CLAUDE.md**: el loader instancia la PRIMERA subclase de
+`InSimApp` del entry_point (matching por herencia, no por nombre CamelCase —
+por eso `AIControl` funciona pese a que el CamelCase de `ai_control` sería
+`AiControl`). Solo docs; cero cambios de runtime. **No requiere validación en LFS.**
 
 **ruff + CI + mypy (bloque grande de Fase 4, hecho en S16):** adoptado
 **ruff** (lint+format, **line-length 88**, reglas conservadoras **E, F, I,
@@ -241,17 +263,17 @@ sondeo interno).
 
 Orden de Fase 4 acordado con el usuario (S14): **CLI → ruff + CI → docs →
 CHANGELOG**; PyPI se prepara pero NO se dispara hasta el merge a `main`.
-CLI (S15) y ruff+CI+mypy (S16) HECHOS (ver "Estado").
+CLI (S15), ruff+CI+mypy (S16) y docs de usuario (S17) HECHOS (ver "Estado").
 
-0. **S16 cerrado del todo: CI en VERDE** en `e40cfec` (confirmado por la API de
-   GitHub + reproducido en Docker Linux 3.9.25), rama en sync con origin, nada
-   pendiente de push. Empezar directo por el punto 1. (Nota: para que Claude
-   mire el CI por sí mismo, valorar instalar `gh` CLI + `gh auth login`; y
-   `.venv39` / Docker sirven para probar en 3.9 en local — ver Notas.)
-1. **Siguiente ítem — docs de usuario:** quickstart "tu primer InSim en 5
-   min", guía de módulos/dependencias, referencia de la API pública; revisar
-   la plantilla de `lfs-insim init`. Luego **CHANGELOG.md** + convención
-   semver. Con eso se cierra la Fase 4 (salvo la decisión de PyPI).
+1. **Siguiente ítem — CHANGELOG.md + convención semver.** Es el ÚLTIMO ítem de
+   contenido de Fase 4. Estructura sugerida: formato "Keep a Changelog",
+   versión `0.2.0` (la actual, `lfs_insim.__version__`) con lo hecho hasta
+   ahora, y una nota de convención semver (bumps → recordar reinstalar editable
+   por el test de versión única de S14). Con eso se cierra la Fase 4 salvo la
+   decisión de PyPI (ver Bloqueos).
+   (Nota: para que Claude mire el CI por sí mismo, valorar instalar `gh` CLI +
+   `gh auth login`; `.venv39` / Docker sirven para probar en 3.9 en local — ver
+   Notas.)
 2. Backlog de **tipado gradual** (ir quitando overrides de `[tool.mypy]` en
    pyproject, módulo a módulo, cuando se toque cada uno): los módulos
    `packets` (dataclasses de protocolo), `insim_loader` (fricción con

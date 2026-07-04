@@ -220,8 +220,17 @@ fuente. (**P16**)
       Windows 3.13) y **typecheck** (mypy, `continue-on-error` = no bloquea). Dispara en
       push/PR a `main` y `refactor/estabilizacion`; `MPLBACKEND=Agg`. **Nota:** la 1ª
       ejecución real se dispara con el push de cierre de S16 (primera validación en Linux)
-- [ ] Docs de usuario: quickstart "tu primer InSim en 5 min", guía de módulos y dependencias,
-      referencia de la API pública; revisar plantilla de `lfs-insim init`
+- [x] Docs de usuario: quickstart "tu primer InSim en 5 min", guía de módulos y dependencias,
+      referencia de la API pública; revisar plantilla de `lfs-insim init` — S17: nueva carpeta
+      `docs/guia/` con 4 guías (quickstart, modulos-y-deps, api-publica, arquitectura), en
+      español y verificadas contra el código; README reducido a landing page + enlaces. La
+      plantilla de `lfs-insim init` revisada: al día (usa la API pública, CMDManager fluido).
+      Corregidas afirmaciones FALSAS del README viejo (sección Arquitectura describía el
+      "coup d'état"/Master/`modules[]`/`insim_packet_io.py` — todo eliminado en Fase 2; los
+      stubs NO se generan por git hook; `insim_name` default es `LFS-InSim`, no `InSimApp`;
+      faltaba `InSimProtocolError`). Corregido de paso CLAUDE.md: el loader instancia la
+      PRIMERA subclase de `InSimApp` del entry_point, no casa por nombre CamelCase (por eso
+      `AIControl` funciona). Sin cambios de runtime; suite intacta
 - [ ] CHANGELOG.md y convención de versionado (semver)
 - [ ] (Opcional, decidir con el usuario) publicación en PyPI
 
