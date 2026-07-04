@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from typing import Union
 
 from lfs_insim.insim_enums import (
     AD_NOAD,
@@ -845,7 +846,12 @@ class ISP_HLV(PacketFunctions):
     Type: ISP = field(default=ISP.HLV, metadata={"fmt": "B"})
     ReqI: int = field(default=0, metadata={"fmt": "B"})
     PLID: int = field(default=0, metadata={"fmt": "B"})
-    HLVC: HLVC = field(default=0, metadata={"fmt": "B"})
+    # "HLVC" como forward-ref (string) a proposito: el campo se llama igual que
+    # su enum, y en Python 3.9 la anotacion SIN comillas resuelve al Field ya
+    # asignado (no al enum) -> el autogenerado de __doc__ de dataclasses recursa
+    # al hacer repr() del Field. Las comillas evitan evaluar la anotacion. NO
+    # quitar sin probar en 3.9 (el CI lo cubre).
+    HLVC: "HLVC" = field(default=0, metadata={"fmt": "B"})
     Sp1: int = field(default=0, metadata={"fmt": "B"})
     SpW: int = field(default=0, metadata={"fmt": "H"})
     Time: int = field(default=0, metadata={"fmt": "I"})
@@ -1003,7 +1009,7 @@ class ISP_CIM(PacketFunctions):
     ReqI: int = field(default=0, metadata={"fmt": "B"})
     UCID: int = field(default=0, metadata={"fmt": "B"})
     Mode: CIM = field(default=0, metadata={"fmt": "B"})
-    SubMode: NRM | GRG | FVM = field(default=0, metadata={"fmt": "B"})
+    SubMode: Union[NRM, GRG, FVM] = field(default=0, metadata={"fmt": "B"})
     SelType: MARSH = field(default=0, metadata={"fmt": "B"})
     Sp3: int = field(default=0, metadata={"fmt": "B"})
 

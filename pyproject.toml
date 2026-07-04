@@ -76,7 +76,10 @@ extend-exclude = ["*.pyi"]
 [tool.ruff.lint]
 # Arranque conservador (decidido en S16): pycodestyle E/W, pyflakes F, isort I.
 # Se ampliara en pasadas posteriores (UP, B, C4, SIM...) como cambios revisables.
-select = ["E", "F", "I", "W"]
+# FA102: usa union PEP 604 (`X | Y`) sin `from __future__ import annotations` ->
+# revienta en runtime en Python 3.9 (soportado). Lo cazo en lint, no en el CI de
+# 3.9 (S16: se coló justamente esto). No activo FA100 (solo sugiere estilo).
+select = ["E", "F", "FA102", "I", "W"]
 # ruff format es el dueno del ancho de linea; con el formatter adoptado, E501
 # solo saltaria en strings, comentarios o URLs que no se pueden partir.
 ignore = ["E501"]

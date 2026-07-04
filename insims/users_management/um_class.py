@@ -1,7 +1,7 @@
 """um_class.py"""
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Optional
 
 from lfs_insim.insim_enums import *
 from lfs_insim.utils import (
@@ -158,7 +158,7 @@ class User:
     admin: AD_NOAD
     connection_type: NCN_FLAGS
     plids_ais_actives: set[int] = field(default_factory=set)
-    plid: int | None = None
+    plid: Optional[int] = None
     extra: dict[str, Any] = field(default_factory=dict)
 
 
@@ -186,7 +186,7 @@ class Player:
     configuration: int
     starting_fuel: int
     ucid: int
-    telemetry: Telemetry | None = None
+    telemetry: Optional[Telemetry] = None
     extra: dict[str, Any] = field(default_factory=dict)
 
 

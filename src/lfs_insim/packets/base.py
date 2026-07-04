@@ -1,10 +1,11 @@
 import struct
 from dataclasses import fields, is_dataclass
+from typing import Union
 
 __all__ = ["repeat", "PacketFunctions"]
 
 
-def repeat(fmt: str | dict, times) -> list:
+def repeat(fmt: Union[str, dict], times) -> list:
     return [fmt for _ in range(times)]
 
 

@@ -16,7 +16,7 @@ htmlcov/
 
 # --- Entornos Virtuales ---
 venv/
-.venv/
+.venv*/
 env/
 
 # --- IDEs y Editores ---
