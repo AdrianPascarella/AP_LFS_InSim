@@ -1,0 +1,76 @@
+name: publish
+
+# ---------------------------------------------------------------------------
+# PREPARADO PERO INERTE (S17): publicar es una acción pública e irreversible,
+# así que este workflow NO se dispara solo. Dos caminos deliberados:
+#   - workflow_dispatch (manual)  ->  TestPyPI   (ensayo)
+#   - release: published          ->  PyPI       (publicación real)
+#
+# Además, GitHub solo ofrece estos disparadores desde la rama por DEFECTO:
+# hasta el merge a `main`, este workflow permanece dormido (el ensayo previo
+# al merge se hace en LOCAL — ver docs/dev/PUBLICACION.md).
+#
+# Autenticación: Trusted Publishing (OIDC), SIN tokens. Requiere configurar un
+# "trusted publisher" en (Test)PyPI apuntando a este repo + este workflow +
+# el environment correspondiente (`pypi` / `testpypi`). Pasos en la doc.
+# ---------------------------------------------------------------------------
+
+on:
+  workflow_dispatch: {} # ensayo manual -> TestPyPI
+  release:
+    types: [published] # publicación real -> PyPI
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false # nunca cancelar una publicación en curso
+
+jobs:
+  build:
+    name: Build (sdist + wheel)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build + check
+        run: |
+          python -m pip install --upgrade pip build twine
+          python -m build
+          twine check dist/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  testpypi:
+    name: Publish to TestPyPI (ensayo)
+    needs: build
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    environment: testpypi
+    permissions:
+      id-token: write # OIDC para Trusted Publishing
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
+  pypi:
+    name: Publish to PyPI
+    needs: build
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write # OIDC para Trusted Publishing
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1

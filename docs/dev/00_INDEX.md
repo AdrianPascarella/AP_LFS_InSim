@@ -30,6 +30,7 @@ versión corta como *"arranca la sesión según tu protocolo de inicio"* funcion
 | `PLAN.md` | Plan por fases con checklists y criterios de aceptación | Al completar tareas o replanificar |
 | `DIAGNOSTICO.md` | Escaneo del proyecto y problemas detectados | Cuando se descubre algo nuevo |
 | `MODUS_OPERANDI.md` | Protocolo de trabajo y reglas | Cuando cambian las reglas |
+| `PUBLICACION.md` | Runbook de publicación en PyPI (no es lectura de arranque) | Al preparar o hacer una release |
 
 El arranque automático está enganchado en **`/CLAUDE.md`** (sección "Contexto de trabajo persistente"),
 que instruye a Claude a leer estos archivos al inicio de cada sesión.
