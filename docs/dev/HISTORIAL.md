@@ -63,12 +63,35 @@ overrides módulo a módulo) apuntado en PLAN.
 Estado local al cierre: **ruff limpio, mypy limpio (24 ficheros), suite
 469/469**.
 
-**Pendiente de verificar (no bloqueante):** la **primera ejecución del CI** se
-dispara con el push de este cierre y valida por PRIMERA vez la suite en
-**Linux** (en local solo se corre en Windows). `gh` CLI no está instalado en
-este equipo → revisar el resultado en GitHub Actions. Si algo peta en Linux,
-es material de la próxima sesión (probablemente algún supuesto de plataforma;
-el barrido previo de los tests no encontró ninguno).
+**El primer run del CI cazó 2 incompatibilidades reales con Python 3.9**
+(commit `a077f41`, `fix(py39)`), invisibles en local (3.14). Se instaló un
+Python 3.9.13 real (`winget`, venv `.venv39`) para reproducir y verificar:
+
+1. **Union PEP 604 (`X | Y`) en anotaciones evaluadas en runtime:** el `|`
+   sobre tipos solo existe desde 3.10 (`TypeError` al importar en 3.9).
+   Convertidas a `Union`/`Optional` (estilo ya usado en el core):
+   `packets/base.py` (`repeat`), `packets/insim.py` (`ISP_CIM.SubMode`) y
+   `um_class.py` (`User.plid`, `Player.telemetry`).
+2. **Campo self-shadow `HLVC: HLVC` en `ISP_HLV`:** el campo se llama igual
+   que su enum; en 3.9 la anotación sin comillas resuelve al `Field` ya
+   asignado (orden de evaluación) y el autogenerado de `__doc__` de
+   `dataclasses` recursa al hacer su `repr`. Convertido a forward-ref con
+   comillas (`HLVC: "HLVC"`) — produce el MISMO stub y no evalúa la anotación.
+   Único caso en el repo (escaneado con regex-backref en Python, ripgrep no los
+   soporta).
+
+**Guardas para que no recurra:** regla ruff **FA102** (PEP 604 sin
+`from __future__ import annotations`) — lo habría cazado en lint; y la matriz
+de CI ya incluye 3.9. **Verificado en 3.9.13 real:** 467 passed, 2 skipped
+(los 2 skips = test de packaging con `tomllib`, stdlib solo desde 3.11). Sin
+regresión en 3.14 (469); ruff limpio con FA102; stub `.pyi` sin cambios.
+`.gitignore`: `.venv/` → `.venv*/` (para el venv `.venv39`).
+
+**PENDIENTE al abrir la próxima sesión:** el push de `a077f41` + este cierre
+**quedó sin hacer** — Git Credential Manager pedía reauth interactiva que la
+sesión de Claude no puede dar (los push los tiene que lanzar el usuario). Hay
+que **hacer `git push`** y **confirmar el CI en verde** en GitHub Actions
+(alta confianza: la suite ya pasa en 3.9 real en local, mismo que corre el CI).
 
 ---
 

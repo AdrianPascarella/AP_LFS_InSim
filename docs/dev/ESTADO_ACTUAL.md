@@ -26,9 +26,18 @@ de refactor. **mypy gradual** (`8a64881`): vigila los ~14 módulos limpios del
 core; backlog por módulo (`ignore_errors`) para packets/loader/decoders/utils;
 job de CI `typecheck` con `continue-on-error` (NO bloquea). De paso, 2 errores
 type-only del core que los stubs enmascaraban, corregidos (`ISF(0)`; narrowing
-de `f.name`). **No requiere validación en LFS.** OJO: la 1ª ejecución del CI
-(al pushear este cierre) valida por primera vez la suite en **Linux** —
-verificar en GitHub Actions (gh no instalado aquí).
+de `f.name`). **No requiere validación en LFS.**
+
+**El primer run del CI cazó 2 incompatibilidades reales con Python 3.9**
+(`fix(py39)`, commit `a077f41`), ya arregladas y verificadas en un Python
+3.9.13 real (venv `.venv39`): union PEP 604 (`X | Y`) en anotaciones runtime
+→ `Union`/`Optional` (base.py, insim.py, um_class.py); y el campo self-shadow
+`HLVC: HLVC` en ISP_HLV (recursión del `repr` de dataclasses en 3.9) →
+forward-ref `"HLVC"`. Guardas: regla ruff **FA102** + la matriz de CI ya
+incluye 3.9. Suite 3.9: 467 passed, 2 skipped; 3.14 sigue en 469.
+⚠️ **El push de `a077f41` quedó SIN HACER** (Git Credential Manager pedía
+reauth interactiva que Claude no puede dar) — hay que pushear y confirmar el
+CI en verde.
 
 **Subcomandos del CLI (segundo ítem de Fase 4, hecho en S15):** los antiguos
 entry points `generate-stubs` y `update-all` se instalaban como comandos
@@ -233,11 +242,15 @@ Orden de Fase 4 acordado con el usuario (S14): **CLI → ruff + CI → docs →
 CHANGELOG**; PyPI se prepara pero NO se dispara hasta el merge a `main`.
 CLI (S15) y ruff+CI+mypy (S16) HECHOS (ver "Estado").
 
-0. **PRIMERO al arrancar:** verificar en **GitHub Actions** que el primer run
-   del CI (disparado por el push de cierre de S16) está en verde — es la
-   PRIMERA vez que la suite corre en **Linux**. Si algo peta ahí (probable
-   supuesto de plataforma; el barrido de S16 no encontró ninguno), arreglarlo
-   antes de seguir. `gh` CLI no estaba instalado en S16 (valorar instalarlo).
+0. **PRIMERO al arrancar: `git push`** — el commit `a077f41` (`fix(py39)`) y
+   el cierre de docs de S16 **quedaron sin pushear** (Git Credential Manager
+   pedía reauth interactiva que Claude no puede dar; los push los lanza el
+   usuario con `! git push origin refactor/estabilizacion`). Luego **verificar
+   el CI en verde** en GitHub Actions (alta confianza: la suite ya pasa en un
+   Python 3.9.13 real en local, lo mismo que corre el CI). El primer run de
+   S16 ya cazó 2 incompatibilidades de 3.9, ya arregladas (ver "Estado"). Si
+   quedara algo, arreglarlo antes de seguir. Valorar instalar `gh` CLI (y
+   `gh auth login`) para que Claude pueda mirar el CI por sí mismo.
 1. **Siguiente ítem — docs de usuario:** quickstart "tu primer InSim en 5
    min", guía de módulos/dependencias, referencia de la API pública; revisar
    la plantilla de `lfs-insim init`. Luego **CHANGELOG.md** + convención
@@ -268,6 +281,10 @@ CLI (S15) y ruff+CI+mypy (S16) HECHOS (ver "Estado").
 ## Notas para la próxima sesión
 
 - Comando de tests: `.venv\Scripts\python.exe -m pytest -q`.
+- **Tests en Python 3.9** (mínimo soportado; el CI y S16 cazaron bugs solo-3.9):
+  venv `.venv39` ya creado (Python 3.9.13, gitignorado). Correr con
+  `$env:MPLBACKEND='Agg'; .venv39\Scripts\python.exe -m pytest -q`. Reproduce el
+  job de CI de 3.9 sin esperar a GitHub. (2 skips esperados: `tomllib` es 3.11+.)
 - Tooling nuevo (S16): `python -m ruff check` y `python -m ruff format` (lint+format),
   `python -m mypy` (tipos del core; lee `[tool.mypy]` de pyproject). Config toda en
   `pyproject.toml`. El commit de formato masivo (`a3bea56`) está en
