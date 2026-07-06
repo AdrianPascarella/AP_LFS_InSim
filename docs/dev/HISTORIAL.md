@@ -5,6 +5,62 @@
 
 ---
 
+## S19 — 2026-07-06 — Fase 5: caracterización de `traffic.py`
+
+**Arranque:** protocolo de inicio; ya en `refactor/estabilizacion`, `git pull` "Already up
+to date" (tip `7137949`, cierre S18). Repo limpio, sin mapas freeroam sin commitear que
+proteger. Próximo paso documentado: caracterizar `traffic.py`.
+
+**Qué se hizo — red de seguridad de `traffic.py`** (`tests/insims/ai_control/test_traffic.py`,
+**81 tests**, escritos por bloques y verificados en verde en cada uno). Reutiliza los
+fixtures de `conftest.py` (grafo + telemetría sintéticos). Cubre la lógica DETERMINISTA:
+
+- **ACC de 3 zonas** `_apply_adaptive_cruise_control` (roja/naranja/amarilla/fuera de rango),
+  **incluido su "PARCHE DE SEGURIDAD MATEMÁTICO"** (dos tests fijan cómo empuja `min_dist` y
+  `max_dist` hacia arriba). Se CONGELA el comportamiento actual; la sustitución sigue
+  pendiente en PLAN §Fase 5.
+- **Matemática de adelantamiento:** `_estimate_overtake_distance` (delta ≤ 0.1 m/s → `inf`),
+  `_get_relative_dist_to_cover` (lógica de convoy + **ordena su lista de entrada in-place**,
+  documentado), `_calc_path_length` (2D, ignora Z; índice negativo → longitud completa),
+  `_get_lookahead_point` (adelante/reverse/lista vacía).
+- **Geometría de zonas:** `_get_zone_centroid`, `_is_point_in_zone`, `_get_dist_to_zone_edge`
+  con los 4 casos por nº de nodos (vacía / círculo / cápsula / polígono), y
+  `_is_priority_vehicle_active_at_zone` (dentro / lejos-para-su-velocidad / cerca-apuntando /
+  cerca-alejándose). Helper local `_zone` + heading LFS 0=+Y (Norte), 32768=-Y (Sur).
+- **Selección de carril** `_find_valid_overtake_lane` (RHT→izquierda, LHT→derecha, vía
+  `_get_indicator_to_use` de navigation) y **helpers del FSM** `_trigger_return` /
+  `_finish_overtake` (mutaciones de estado del `mode`).
+- **Radar:** `_scan_lane_ahead` (14 tests: mismo segmento, índice detrás, empate de distancia
+  al nodo con desempate por PLID, producto cruzado para índices cercanos y su bypass para
+  índices lejanos, `max_dist`, orden, coche en el próximo RoadLink), `_scan_target_lane` y
+  `_scan_return_lane_gap` (separa delante/detrás). Y el guardián `_get_available_overtake_distance`
+  / `_is_lane_safe_to_overtake` (salida, límite físico, tráfico mismo sentido y contrario).
+
+**Decisión de diseño (clave):** el radar se ejercita **solo con vehículos IA**. La rama de IA
+lee la topología directa de `extra['aic'].active_mode` (determinista); la de humanos usa
+`time.time()` + `get_location_context`. Usar IAs evita el no-determinismo temporal y aísla
+la lógica de filtrado, que es lo valioso. Detalle de fixtures aprendido: un "otro" AI sin
+`active_mode` (o con `extra['aic']` ausente) NO es detectable — cae en la rama de humano; por
+eso los helpers de radar (`_place_ai`) siempre adjuntan un `FreeroamMode` con `current_id` /
+`current_road_id` según el escáner.
+
+**Sin cubrir a propósito:** el orquestador `_update_traffic_behavior` (Sense-Think-Act con
+`time.time()` y mutación masiva de estado), mismo criterio que los métodos gordos de
+`navigation.py`. Con esto, la **red de caracterización de Fase 5 queda COMPLETA** (física +
+navegación + tráfico).
+
+**Verificación:** suite **601/601** (520 + 81). `ruff check .` y `ruff format --check .`
+limpios en todo el repo (el archivo nuevo se pasó por `ruff format`). mypy no aplica (solo
+tests). **No requiere validación en LFS:** cero cambios de runtime.
+
+**Próximo:** el **fix de reconexión de `ai_control`** (ítem de S10), ahora ya CON LA RED
+PUESTA; después, revisar el "PARCHE" (ya congelado) y auditar el hot-loop `on_ISP_MCI`.
+
+**Commits:** `test(ai_control): caracterización de traffic.py (81 tests)` + el commit de
+docs de cierre de esta sesión.
+
+---
+
 ## S18 — 2026-07-06 — Fase 5: caracterización de `navigation.py` + fixture de grafo
 
 **Arranque:** `git pull` al iniciar trajo un bloque grande desde el otro equipo. Por un

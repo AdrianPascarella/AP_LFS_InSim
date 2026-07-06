@@ -277,7 +277,13 @@ dispara en/tras el merge a `main`.
       planificación: `_get_raw_candidates` / `_calculate_next_link` / `_plan_next_link`).
       Los grandes métodos de integración con tiempo/estado (`_update_freeroam_navigation`,
       `_get_radar_speed_limit`, `_update_route_navigation`) quedan sin cubrir a propósito
-- [ ] Tests de caracterización de `traffic.py` (radar / `_scan_lane_ahead`, ACC, overtake)
+- [x] Tests de caracterización de `traffic.py` (radar / `_scan_lane_ahead`, ACC, overtake) —
+      S19: `tests/insims/ai_control/test_traffic.py`, 81 tests (ACC de 3 zonas + parche,
+      matemática de adelantamiento, geometría de zonas, `_find_valid_overtake_lane`, FSM
+      `_trigger_return`/`_finish_overtake`, radar `_scan_lane_ahead`/`_scan_target_lane`/
+      `_scan_return_lane_gap` con vehículos IA, guardián `_is_lane_safe_to_overtake`). El
+      orquestador `_update_traffic_behavior` queda sin cubrir a propósito (tiempo + estado).
+      Con esto la red de caracterización de Fase 5 está COMPLETA (física + nav + tráfico)
 - [x] Tests de `physics.py` (volante/pedales/marchas) con telemetría sintética — hecho
       (otro equipo, sin documentar; llegó en el commit `9605dc6`):
       `tests/insims/ai_control/test_physics.py`, 20 tests (steering / pedals / gears /
@@ -286,7 +292,9 @@ dispara en/tras el merge a `main`.
       telemetría + harness de la app (`tests/insims/ai_control/conftest.py`, otro equipo)
       + **grafo sintético** (`make_road` / `make_road_link` / `make_lateral_link` /
       `populate_graph`, puebla un MapRecorder real keyeado como producción; S18)
-- [ ] Revisar el "PARCHE DE SEGURIDAD MATEMÁTICO" (`traffic.py:655`) y sustituirlo por lógica correcta
+- [ ] Revisar el "PARCHE DE SEGURIDAD MATEMÁTICO" (en `_apply_adaptive_cruise_control`,
+      ~`traffic.py:812`; el `:655` de notas viejas está obsoleto) y sustituirlo por lógica
+      correcta — YA CONGELADO por `test_traffic.py::TestApplyAdaptiveCruiseControl` (S19)
 - [ ] Auditar el hot-loop `on_ISP_MCI` (coste por tick, frecuencia real) — con el dispatch
       ya fuera del hilo IO (Fase 3)
 - [ ] Consolidar radar/geometría en unidad testeable; revisar FSM de adelantamiento

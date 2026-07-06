@@ -1,11 +1,34 @@
 # 📍 Estado actual
 
-> Actualizado: **2026-07-06** — sesión S18 (en curso)
+> Actualizado: **2026-07-06** — sesión S19 (en curso)
 > **Rama de trabajo: `refactor/estabilizacion`.** Todo el refactor ocurre aquí; `main`
 > queda intacta hasta el merge final (cuando el proyecto esté estable). **Sync por GitHub:**
 > `git pull` al arrancar y `git push` al cerrar (permite continuar desde otro dispositivo).
 
 ## Estado
+
+**S19 (2026-07-06) — Fase 5: caracterización de `traffic.py`:** completada la red de
+seguridad de `traffic.py` en `tests/insims/ai_control/test_traffic.py` (**81 tests**),
+reutilizando los fixtures de grafo/telemetría de `conftest.py`. Congela la lógica
+DETERMINISTA: el **ACC de 3 zonas** `_apply_adaptive_cruise_control` **incluido su "PARCHE
+DE SEGURIDAD MATEMÁTICO"** (congelado, NO corregido — la sustitución sigue pendiente en
+PLAN §Fase 5); la matemática de adelantamiento (`_estimate_overtake_distance`,
+`_get_relative_dist_to_cover` —ojo: **ordena su lista de entrada in-place**—,
+`_calc_path_length`, `_get_lookahead_point`); la **geometría de zonas** de intersección
+(`_get_zone_centroid` / `_is_point_in_zone` / `_get_dist_to_zone_edge` /
+`_is_priority_vehicle_active_at_zone`, con los 4 casos círculo/cápsula/polígono/vacío); la
+**selección de carril RHT/LHT** (`_find_valid_overtake_lane`); los **helpers del FSM**
+(`_trigger_return` / `_finish_overtake`); el **radar** (`_scan_lane_ahead` /
+`_scan_target_lane` / `_scan_return_lane_gap`) y el **guardián de adelantamiento**
+(`_get_available_overtake_distance` / `_is_lane_safe_to_overtake`). Decisión de diseño
+clave: el radar se ejercita **solo con vehículos IA** (leen topología directa de
+`extra['aic'].active_mode`, determinista) para EVITAR la rama de humanos, que usa
+`time.time()` + `get_location_context`. El gran orquestador `_update_traffic_behavior`
+queda SIN cubrir a propósito (usa `time.time()` y muta muchísimo estado del `mode`, mismo
+criterio que los métodos gordos de `navigation.py`). Suite **601/601** (520 + 81); `ruff
+check .` + `ruff format --check .` limpios en TODO el repo. Solo tests: **no requiere
+validación en LFS**. Próximo: **fix de reconexión de `ai_control`** (ítem de S10), ya CON
+LA RED PUESTA.
 
 **S18 (2026-07-06) — reconciliación de contexto:** el `git pull` de arranque trajo, además
 del cierre completo de Fases 1-4, **trabajo de Fase 5 sin documentar** (commit
@@ -313,22 +336,25 @@ DESPUÉS del merge; ver "Fase activa" y PLAN § Merge). Empezar AQUÍ:
       **grafo de calles sintético** (`make_road` / `make_road_link` /
       `make_lateral_link` / `populate_graph` en `conftest.py`, S18).
    2. **Tests de caracterización** de la lógica frágil (congelan el comportamiento
-      ACTUAL). ✅ `physics.py` (20 tests, otro equipo) y ✅ `navigation.py` (31 tests,
-      S18). **◀️ PRÓXIMO: `traffic.py`** (radar / `_scan_lane_ahead`, ACC, FSM de
-      adelantamiento) — reutilizar el fixture de grafo; ojo al "PARCHE DE SEGURIDAD
-      MATEMÁTICO" (`traffic.py:655`). Los grandes métodos de integración con
-      tiempo/estado de `navigation.py` (`_update_freeroam_navigation`,
-      `_get_radar_speed_limit`, `_update_route_navigation`) quedaron SIN cubrir a
-      propósito (usan `time.time()` y mutan mucho estado) — más adelante si hace falta.
-   3. **Fix de reconexión** (ítem concreto de S10, con test primero, CON LA RED
-      PUESTA): parar/pausar el hilo daemon `_run_test_freeroam` en `on_disconnect`
-      (hoy muere con `InSimConnectionError` al enviar desconectado) y resetear estado
-      propio + ownership de IAs en `on_reconnect` (hoy ve "0 coches" tras la limpieza
-      de memoria y crea/arranca IAs con ownership desincronizado → "La AI X no es una
-      de tus AI's").
-   (Antes de tocar `traffic.py`: releer PLAN § Fase 5 y la entrada S18 de HISTORIAL.
-   Nota: en ESTE equipo ruff 0.15.20 ya está en `.venv`; en otro, `pip install -e ".[dev]"`
-   ya lo incluye. `gh` CLI / `.venv39` / Docker según equipo.)
+      ACTUAL). ✅ `physics.py` (20 tests, otro equipo), ✅ `navigation.py` (31 tests,
+      S18) y ✅ `traffic.py` (**81 tests, S19** — ACC + parche, radar, zonas, FSM de
+      adelantamiento, guardián de adelantamiento; ver Estado S19). La red de
+      seguridad de caracterización de Fase 5 está **COMPLETA**. Los grandes métodos de
+      integración con tiempo/estado (`_update_traffic_behavior`,
+      `_update_freeroam_navigation`, `_get_radar_speed_limit`, `_update_route_navigation`)
+      quedaron SIN cubrir a propósito (usan `time.time()` y mutan mucho estado).
+   3. **◀️ PRÓXIMO — Fix de reconexión** (ítem concreto de S10, con test primero, CON
+      LA RED YA PUESTA): parar/pausar el hilo daemon `_run_test_freeroam` en
+      `on_disconnect` (hoy muere con `InSimConnectionError` al enviar desconectado) y
+      resetear estado propio + ownership de IAs en `on_reconnect` (hoy ve "0 coches"
+      tras la limpieza de memoria y crea/arranca IAs con ownership desincronizado →
+      "La AI X no es una de tus AI's"). Requiere validación en LFS al terminar.
+   (Después de la reconexión quedan en Fase 5: revisar/sustituir el "PARCHE DE SEGURIDAD
+   MATEMÁTICO" (ya CONGELADO por tests en `test_traffic.py::TestApplyAdaptiveCruiseControl`;
+   está en `_apply_adaptive_cruise_control`, ~`traffic.py:812`, NO en el `:655` de notas
+   viejas) y auditar el hot-loop `on_ISP_MCI`. Nota entorno: en ESTE equipo ruff 0.15.20
+   ya está en `.venv`; en otro, `pip install -e ".[dev]"` lo incluye. `gh` / `.venv39` /
+   Docker según equipo.)
 2. Backlog de **tipado gradual** (ir quitando overrides de `[tool.mypy]` en
    pyproject, módulo a módulo, cuando se toque cada uno): los módulos
    `packets` (dataclasses de protocolo), `insim_loader` (fricción con
