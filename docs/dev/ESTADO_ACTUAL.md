@@ -327,7 +327,8 @@ DESPUÉS del merge; ver "Fase activa" y PLAN § Merge). Empezar AQUÍ:
       de memoria y crea/arranca IAs con ownership desincronizado → "La AI X no es una
       de tus AI's").
    (Antes de tocar `traffic.py`: releer PLAN § Fase 5 y la entrada S18 de HISTORIAL.
-   Nota: ruff 0.15.20 ya instalado en `.venv`; `gh` CLI / `.venv39` / Docker según equipo.)
+   Nota: en ESTE equipo ruff 0.15.20 ya está en `.venv`; en otro, `pip install -e ".[dev]"`
+   ya lo incluye. `gh` CLI / `.venv39` / Docker según equipo.)
 2. Backlog de **tipado gradual** (ir quitando overrides de `[tool.mypy]` en
    pyproject, módulo a módulo, cuando se toque cada uno): los módulos
    `packets` (dataclasses de protocolo), `insim_loader` (fricción con
@@ -350,8 +351,10 @@ DESPUÉS del merge; ver "Fase activa" y PLAN § Merge). Empezar AQUÍ:
   usuario con su token); (2) tras el merge a `main`, el **publish real** creando
   un GitHub Release. Acción pública e irreversible (versión liberada no se
   reutiliza, nombre reclamado): por eso va después del merge.
-- **Decisión de rumbo abierta (S17):** merge a `main` (+ publish) vs. abrir Fase 5
-  (`ai_control`). Ver Próximo paso. La autoriza el usuario.
+- **Rumbo: DECIDIDO (S17) y en ejecución.** La duda "merge a `main` (+ publish) ahora
+  vs. abrir Fase 5" se cerró a favor de **Fase 5**, ya en curso (física + navegación
+  caracterizadas en S18). El merge a `main` espera a **Fase 5 terminada + validada en
+  LFS** (ver Fase activa). No es un bloqueo: es trabajo en progreso.
 
 ## Notas para la próxima sesión
 
