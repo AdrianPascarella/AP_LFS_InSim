@@ -60,6 +60,9 @@ class AIControl(
         self._radar_human_cache: dict = {}
         self._target_lane_human_cache: dict = {}
 
+        # Estado compartido de los bucles de tráfico daemon (freeroam y rutas).
+        self._init_traffic_state()
+
         self.logger.info(
             f"Módulo {self.name} inicializado con arquitectura de objetos."
         )
@@ -70,6 +73,29 @@ class AIControl(
         self._init_commands()
         self.map_recorder._post_record_callback = self._map_ui_navigate_to_element
         self.map_recorder._node_flash_callback = self._map_ui_node_flash
+
+    def on_disconnect(self):
+        """Conexión con LFS perdida (P12).
+
+        Detiene los bucles de tráfico daemon para que no mueran enviando sobre un
+        socket caído (visto en S10: `InSimConnectionError` a stderr) ni sigan
+        gestionando IAs mientras estamos desconectados.
+        """
+        self._stop_traffic_loops()
+
+    def on_reconnect(self):
+        """Sesión restablecida (P12).
+
+        El core ya reenvió el ISI y re-solicitó NCN/NPL sobre pizarra limpia, y
+        `users_management` limpió su memoria. Reseteamos NUESTRO estado de sesión
+        (target + cachés de radar por PLID, que ya no son válidas) y NO reanudamos
+        el tráfico automático: reanudarlo arrastraría el UCID viejo capturado por
+        el hilo → "La AI X no es una de tus AI's". El usuario lo reinicia si quiere.
+        """
+        self._stop_traffic_loops()
+        self._target_freeroam_count = 0
+        self._radar_human_cache.clear()
+        self._target_lane_human_cache.clear()
 
     def on_ISP_MSO(self, packet: ISP_MSO):
         """Filtra y redirige comandos de chat a los managers correspondientes."""

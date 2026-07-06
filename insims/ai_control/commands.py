@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import random
 import threading
-import time
 from typing import TYPE_CHECKING
 
 from insims.ai_control.base import _MixinBase
 from insims.ai_control.behavior import AdaptiveSpeedConfig, AIBehavior
 from insims.ai_control.nav_modes.freeroam.mode import FreeroamMode
 from insims.ai_control.nav_modes.route.mode import RouteMode
+from lfs_insim import InSimConnectionError
 from lfs_insim.insim_enums import CS, CSVAL
 from lfs_insim.packets import AIInputVal as AIV
 from lfs_insim.utils import CMDManager, TextColors
@@ -453,10 +453,54 @@ class _CommandsMixin(_MixinBase):
     # 4. TEST'S Y UTILIDADES DE DESARROLLO
     # ==========================================
 
+    # ── Ciclo de vida de los bucles de tráfico (hilos daemon) ──────────────────
+    # `_run_test_freeroam` y `_test` son bucles persistentes que envían a LFS. Si
+    # el socket cae mientras corren mueren con InSimConnectionError (traceback a
+    # stderr) o, tras la limpieza de memoria de la reconexión, recrean IAs con
+    # ownership desincronizado. Comparten una señal de parada (Event) que ambos
+    # consultan en cada espera y que on_disconnect/on_reconnect activan para
+    # detenerlos limpiamente (ver AIControl.on_disconnect / on_reconnect).
+
+    def _init_traffic_state(self):
+        """Inicializa el estado compartido de los bucles de tráfico daemon.
+
+        Llamado desde AIControl.__init__. No fija `_target_freeroam_count` (queda
+        perezoso, como antes, para no alterar el default de la UI en map_ui).
+        """
+        self._traffic_stop_event = threading.Event()
+        self._traffic_threads: list[threading.Thread] = []
+        self._is_freeroam_loop_running = False
+
+    def _start_traffic_loop(self, target, *args) -> threading.Thread:
+        """Lanza un bucle de tráfico daemon rastreado, con la señal en verde.
+
+        daemon=True hace que el hilo muera si se cierra el proceso; la señal de
+        parada permite además detenerlo limpiamente sin cerrar el proceso.
+        """
+        self._traffic_stop_event.clear()
+        self._traffic_threads = [t for t in self._traffic_threads if t.is_alive()]
+        thread = threading.Thread(target=target, args=args, daemon=True)
+        self._traffic_threads.append(thread)
+        thread.start()
+        return thread
+
+    def _stop_traffic_loops(self) -> None:
+        """Detiene TODOS los bucles de tráfico y espera (join corto) a que salgan.
+
+        Idempotente y seguro sin hilos activos. Si se invoca desde uno de los
+        propios hilos no hace join a sí mismo. Deja el flag de UI en 'inactivo'.
+        """
+        self._traffic_stop_event.set()
+        current = threading.current_thread()
+        for thread in self._traffic_threads:
+            if thread.is_alive() and thread is not current:
+                thread.join(timeout=2.0)
+        self._traffic_threads = [t for t in self._traffic_threads if t.is_alive()]
+        self._is_freeroam_loop_running = False
+
     # [!] OJO: Como añadiste el comando con 'True' al final en add_cmd, recibe packet y args
     def _test_routes(self, packet: ISP_MSO, routes: str):
-        # daemon=True hace que el hilo muera automáticamente si cierras InSim
-        threading.Thread(target=self._test, args=(packet, routes), daemon=True).start()
+        self._start_traffic_loop(self._test, packet, routes)
 
     def _test(self, packet: ISP_MSO, routes: str):
         routes_list = routes.strip().split()
@@ -479,65 +523,72 @@ class _CommandsMixin(_MixinBase):
         )
 
         index = 0
-        # Bucle de gestión persistente
-        while True:
-            # Cálculo de ocupación sumando humanos e IAs
-            count_players_ais = len(self.user_manager.players) + len(
-                self.user_manager.ais
-            )
+        stop = self._traffic_stop_event
+        try:
+            # Bucle de gestión persistente (sale al activarse la señal de parada)
+            while not stop.is_set():
+                # Cálculo de ocupación sumando humanos e IAs
+                count_players_ais = len(self.user_manager.players) + len(
+                    self.user_manager.ais
+                )
 
-            # 2. FIX: Si estamos en el límite (39), dormimos el hilo para no quemar la CPU
-            if count_players_ais == 39:
-                time.sleep(5)
-                continue
-
-            # Si nos hemos pasado del límite (40 o más), mandamos a spectate la IA más antigua del usuario
-            if count_players_ais > 39:
-                plid_to_remove = self._get_oldest_my_ai_plid(packet.UCID)
-                if plid_to_remove is not None:
-                    self._cmd_spec(plid_to_remove)
-                    self.logger.info(
-                        f"IA PLID {plid_to_remove} (más antigua del usuario) removida para hacer espacio"
-                    )
-                    time.sleep(1)  # Pequeña pausa para que LFS la procese
-
-            # Si faltan coches (menos de 39)
-            elif count_players_ais < 39:
-                # 1. Mandamos crear una IA
-                self._cmd_add()
-
-                # 2. Esperamos a que LFS la cree y nuestro InSim la procese
-                time.sleep(1.5)
-
-                # 3. FIX: ¡Volvemos a pedir las AIs porque ahora hay una nueva en pista!
-                ais_actualizadas = tuple(self.user_manager.ais.values())
-                if not ais_actualizadas:
+                # 2. FIX: Si estamos en el límite (39), dormimos el hilo para no quemar la CPU
+                if count_players_ais == 39:
+                    stop.wait(5)
                     continue
 
-                ai_nueva = ais_actualizadas[-1]
+                # Si nos hemos pasado del límite (40 o más), mandamos a spectate la IA más antigua del usuario
+                if count_players_ais > 39:
+                    plid_to_remove = self._get_oldest_my_ai_plid(packet.UCID)
+                    if plid_to_remove is not None:
+                        self._cmd_spec(plid_to_remove)
+                        self.logger.info(
+                            f"IA PLID {plid_to_remove} (más antigua del usuario) removida para hacer espacio"
+                        )
+                        stop.wait(1)  # Pequeña pausa para que LFS la procese
 
-                # Buen prunto para añadir extras como luces, etc
+                # Si faltan coches (menos de 39)
+                elif count_players_ais < 39:
+                    # 1. Mandamos crear una IA
+                    self._cmd_add()
 
-                self.send_ISP_AIC(
-                    PLID=ai_nueva.player.plid,
-                    Inputs=[AIV(Input=CS.HEADLIGHTS, Value=CSVAL.HEADLIGHTS.LOW)],
-                )
+                    # 2. Esperamos a que LFS la cree y nuestro InSim la procese
+                    if stop.wait(1.5):
+                        break
 
-                # Turnamos la ruta
-                route = routes_list[index]
-                index += 1
-                if index == len(routes_list):
-                    index = 0
+                    # 3. FIX: ¡Volvemos a pedir las AIs porque ahora hay una nueva en pista!
+                    ais_actualizadas = tuple(self.user_manager.ais.values())
+                    if not ais_actualizadas:
+                        continue
 
-                # 4. Asignación de ruta a la nueva IA
-                self._cmd_route_follow(packet, route, ai_nueva.player.plid)
+                    ai_nueva = ais_actualizadas[-1]
 
-                self.logger.info(
-                    f"IA {ai_nueva.ai_name} (PLID {ai_nueva.player.plid}) asignada a la ruta {route}"
-                )
+                    # Buen prunto para añadir extras como luces, etc
 
-                # Dejamos que la AI recorra camino antes de sacar otra
-                time.sleep(random.uniform(2.5, 6))
+                    self.send_ISP_AIC(
+                        PLID=ai_nueva.player.plid,
+                        Inputs=[AIV(Input=CS.HEADLIGHTS, Value=CSVAL.HEADLIGHTS.LOW)],
+                    )
+
+                    # Turnamos la ruta
+                    route = routes_list[index]
+                    index += 1
+                    if index == len(routes_list):
+                        index = 0
+
+                    # 4. Asignación de ruta a la nueva IA
+                    self._cmd_route_follow(packet, route, ai_nueva.player.plid)
+
+                    self.logger.info(
+                        f"IA {ai_nueva.ai_name} (PLID {ai_nueva.player.plid}) asignada a la ruta {route}"
+                    )
+
+                    # Dejamos que la AI recorra camino antes de sacar otra
+                    stop.wait(random.uniform(2.5, 6))
+        except InSimConnectionError:
+            self.logger.info(
+                "Gestor de tráfico (rutas) detenido: conexión con LFS perdida."
+            )
 
     def _test_freeroam(self, packet: ISP_MSO, num: int):
         # 1. Validación de los límites (entre 1 y 40)
@@ -564,64 +615,70 @@ class _CommandsMixin(_MixinBase):
             Msg=f"{TextColors.YELLOW}[TEST] Iniciando gestor automático de tráfico. Límite: {num}"
         )
 
-        # daemon=True hace que el hilo muera automáticamente si cierras InSim
-        threading.Thread(
-            target=self._run_test_freeroam, args=(packet,), daemon=True
-        ).start()
+        self._start_traffic_loop(self._run_test_freeroam, packet)
 
     def _run_test_freeroam(self, packet: ISP_MSO):
-        # Bucle de gestión persistente
-        while True:
-            # Leemos la meta actual (por si ha cambiado mientras el bucle dormía)
-            target_num = self._target_freeroam_count
+        stop = self._traffic_stop_event
+        try:
+            # Bucle de gestión persistente (sale al activarse la señal de parada)
+            while not stop.is_set():
+                # Leemos la meta actual (por si ha cambiado mientras el bucle dormía)
+                target_num = self._target_freeroam_count
 
-            # Cálculo de ocupación sumando humanos e IAs
-            count_players_ais = len(self.user_manager.players) + len(
-                self.user_manager.ais
-            )
+                # Cálculo de ocupación sumando humanos e IAs
+                count_players_ais = len(self.user_manager.players) + len(
+                    self.user_manager.ais
+                )
 
-            # Si estamos en el límite, dormimos el hilo para no quemar la CPU
-            if count_players_ais == target_num:
-                time.sleep(5)
-                continue
-
-            # Si nos hemos pasado del límite, mandamos a spectate la IA más antigua del usuario
-            if count_players_ais > target_num:
-                plid_to_remove = self._get_oldest_my_ai_plid(packet.UCID)
-                if plid_to_remove is not None:
-                    self._cmd_spec(plid_to_remove)
-                    self.logger.info(
-                        f"IA PLID {plid_to_remove} (más antigua del usuario) removida para ajustar al límite de {target_num}"
-                    )
-                    time.sleep(0.05)  # Pequeña pausa para que LFS la procese
-
-            # Si faltan coches (menos del límite actual)
-            elif count_players_ais < target_num:
-                # 1. Mandamos crear una IA
-                self._cmd_add()
-
-                # 2. Esperamos a que LFS la cree y nuestro InSim la procese
-                time.sleep(1.5)
-
-                # 3. Volvemos a pedir las AIs porque ahora hay una nueva en pista
-                ais_actualizadas = tuple(self.user_manager.ais.values())
-                if not ais_actualizadas:
+                # Si estamos en el límite, dormimos el hilo para no quemar la CPU
+                if count_players_ais == target_num:
+                    stop.wait(5)
                     continue
 
-                ai_nueva = ais_actualizadas[-1]
+                # Si nos hemos pasado del límite, mandamos a spectate la IA más antigua del usuario
+                if count_players_ais > target_num:
+                    plid_to_remove = self._get_oldest_my_ai_plid(packet.UCID)
+                    if plid_to_remove is not None:
+                        self._cmd_spec(plid_to_remove)
+                        self.logger.info(
+                            f"IA PLID {plid_to_remove} (más antigua del usuario) removida para ajustar al límite de {target_num}"
+                        )
+                        stop.wait(0.05)  # Pequeña pausa para que LFS la procese
 
-                # Buen punto para añadir extras como luces, etc
-                self.send_ISP_AIC(
-                    PLID=ai_nueva.player.plid,
-                    Inputs=[AIV(Input=CS.HEADLIGHTS, Value=CSVAL.HEADLIGHTS.LOW)],
-                )
+                # Si faltan coches (menos del límite actual)
+                elif count_players_ais < target_num:
+                    # 1. Mandamos crear una IA
+                    self._cmd_add()
 
-                # 4. Despertamos a la nueva IA en modo Freeroam usando tu comando
-                self._cmd_map_freeroam(packet, ai_nueva.player.plid)
+                    # 2. Esperamos a que LFS la cree y nuestro InSim la procese
+                    if stop.wait(1.5):
+                        break
 
-                self.logger.info(
-                    f"IA {ai_nueva.ai_name} (PLID {ai_nueva.player.plid}) iniciada en Freeroam"
-                )
+                    # 3. Volvemos a pedir las AIs porque ahora hay una nueva en pista
+                    ais_actualizadas = tuple(self.user_manager.ais.values())
+                    if not ais_actualizadas:
+                        continue
 
-                # Dejamos que la AI recorra camino antes de sacar otra
-                time.sleep(getattr(self, "_freeroam_spawn_interval", 2.0))
+                    ai_nueva = ais_actualizadas[-1]
+
+                    # Buen punto para añadir extras como luces, etc
+                    self.send_ISP_AIC(
+                        PLID=ai_nueva.player.plid,
+                        Inputs=[AIV(Input=CS.HEADLIGHTS, Value=CSVAL.HEADLIGHTS.LOW)],
+                    )
+
+                    # 4. Despertamos a la nueva IA en modo Freeroam usando tu comando
+                    self._cmd_map_freeroam(packet, ai_nueva.player.plid)
+
+                    self.logger.info(
+                        f"IA {ai_nueva.ai_name} (PLID {ai_nueva.player.plid}) iniciada en Freeroam"
+                    )
+
+                    # Dejamos que la AI recorra camino antes de sacar otra
+                    stop.wait(getattr(self, "_freeroam_spawn_interval", 2.0))
+        except InSimConnectionError:
+            self.logger.info(
+                "Gestor de tráfico (freeroam) detenido: conexión con LFS perdida."
+            )
+        finally:
+            self._is_freeroam_loop_running = False

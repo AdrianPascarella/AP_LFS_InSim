@@ -3143,7 +3143,7 @@ class _MapUIMixin(_MixinBase):
                 self._test_freeroam(_FakePacket(), self._ui_run_target)
             self._map_ui_redraw_content()
         elif cid == 116:  # Detener
-            self._is_freeroam_loop_running = False
+            self._stop_traffic_loops()
             self._map_ui_redraw_content()
         elif cid == 117:  # Limpiar AIs
             for plid in list(self.user_manager.ais.keys()):
