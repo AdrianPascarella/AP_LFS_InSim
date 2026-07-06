@@ -1,11 +1,21 @@
 # 📍 Estado actual
 
-> Actualizado: **2026-07-04** — sesión S17
+> Actualizado: **2026-07-06** — sesión S18 (en curso)
 > **Rama de trabajo: `refactor/estabilizacion`.** Todo el refactor ocurre aquí; `main`
 > queda intacta hasta el merge final (cuando el proyecto esté estable). **Sync por GitHub:**
 > `git pull` al arrancar y `git push` al cerrar (permite continuar desde otro dispositivo).
 
 ## Estado
+
+**S18 (2026-07-06) — reconciliación de contexto:** el `git pull` de arranque trajo, además
+del cierre completo de Fases 1-4, **trabajo de Fase 5 sin documentar** (commit
+`9605dc6 "mapas (ignorar)"` del otro equipo, que mezcló mapas freeroam con tests): la infra
+de fixtures sin LFS (`tests/insims/ai_control/conftest.py`) y la **caracterización de
+`physics.py`** (`test_physics.py`, 20 tests). **S18 completó la infra de fixtures (grafo
+sintético) y caracterizó `navigation.py`** (`test_navigation.py`, 31 tests). Suite **520/520**;
+`ruff check .` + `ruff format --check .` limpios (se instaló ruff 0.15.20 en `.venv`, que no
+lo tenía); de paso se quitó un import muerto (F401) en `test_physics.py` que dejaba el CI en
+rojo. Próximo: caracterizar `traffic.py` (ver Próximo paso).
 
 **Fases 1, 2, 3 y 4 COMPLETADAS.** FASE 4 (DX y packaging) cerrada en S17:
 metadata (S14), subcomandos del CLI (S15), ruff+CI+mypy (S16), docs de usuario
@@ -297,22 +307,27 @@ PyPI se dispara tras el merge (el framework en sí ya es publicable hoy).
 `main` + publish esperan a que Fase 5 esté terminada y validada en LFS (Fase 6 va
 DESPUÉS del merge; ver "Fase activa" y PLAN § Merge). Empezar AQUÍ:
 
-1. **Arrancar Fase 5 por la RED DE SEGURIDAD** (modus operandi §3: caracterizar
-   ANTES de tocar lógica frágil). Clave: **`ai_control` no tiene tests** — es la
-   parte del proyecto sin cubrir, y toca traffic/navigation/física (frágil).
-   Orden acordado con el usuario:
-   1. **Infra de fixtures sin LFS:** telemetría sintética + grafo de calles
-      sintético, para poder ejercitar navigation/traffic/physics en tests.
-   2. **Tests de caracterización** de esa lógica frágil que congelen el
-      comportamiento ACTUAL (red de seguridad).
-   3. **Fix de reconexión** (el ítem concreto de S10, con test primero): hacer
-      `ai_control` consciente de la reconexión — parar/pausar el hilo daemon
-      `_run_test_freeroam` en `on_disconnect` (hoy muere con `InSimConnectionError`
-      al enviar desconectado) y resetear estado propio + ownership de IAs en
-      `on_reconnect` (hoy ve "0 coches" tras la limpieza de memoria y crea/arranca
-      IAs con ownership desincronizado → "La AI X no es una de tus AI's").
-   (Antes de tocar: releer PLAN § Fase 5 y, del análisis de S10, la entrada de
-   HISTORIAL de S10. Nota: `gh` CLI / `.venv39` / Docker siguen disponibles.)
+1. **Fase 5 va por la RED DE SEGURIDAD** (modus operandi §3: caracterizar ANTES de
+   tocar lógica frágil). `ai_control` no tenía tests. Orden acordado con el usuario:
+   1. **Infra de fixtures sin LFS** — ✅ HECHO: telemetría sintética (otro equipo) +
+      **grafo de calles sintético** (`make_road` / `make_road_link` /
+      `make_lateral_link` / `populate_graph` en `conftest.py`, S18).
+   2. **Tests de caracterización** de la lógica frágil (congelan el comportamiento
+      ACTUAL). ✅ `physics.py` (20 tests, otro equipo) y ✅ `navigation.py` (31 tests,
+      S18). **◀️ PRÓXIMO: `traffic.py`** (radar / `_scan_lane_ahead`, ACC, FSM de
+      adelantamiento) — reutilizar el fixture de grafo; ojo al "PARCHE DE SEGURIDAD
+      MATEMÁTICO" (`traffic.py:655`). Los grandes métodos de integración con
+      tiempo/estado de `navigation.py` (`_update_freeroam_navigation`,
+      `_get_radar_speed_limit`, `_update_route_navigation`) quedaron SIN cubrir a
+      propósito (usan `time.time()` y mutan mucho estado) — más adelante si hace falta.
+   3. **Fix de reconexión** (ítem concreto de S10, con test primero, CON LA RED
+      PUESTA): parar/pausar el hilo daemon `_run_test_freeroam` en `on_disconnect`
+      (hoy muere con `InSimConnectionError` al enviar desconectado) y resetear estado
+      propio + ownership de IAs en `on_reconnect` (hoy ve "0 coches" tras la limpieza
+      de memoria y crea/arranca IAs con ownership desincronizado → "La AI X no es una
+      de tus AI's").
+   (Antes de tocar `traffic.py`: releer PLAN § Fase 5 y la entrada S18 de HISTORIAL.
+   Nota: ruff 0.15.20 ya instalado en `.venv`; `gh` CLI / `.venv39` / Docker según equipo.)
 2. Backlog de **tipado gradual** (ir quitando overrides de `[tool.mypy]` en
    pyproject, módulo a módulo, cuando se toque cada uno): los módulos
    `packets` (dataclasses de protocolo), `insim_loader` (fricción con

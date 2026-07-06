@@ -5,6 +5,66 @@
 
 ---
 
+## S18 — 2026-07-06 — Fase 5: caracterización de `navigation.py` + fixture de grafo
+
+**Arranque:** `git pull` al iniciar trajo un bloque grande desde el otro equipo. Por un
+lado, el **cierre completo de Fases 1-4** (S14-S17: metadata del paquete, subcomandos del
+CLI, ruff+CI+mypy, `docs/guia/`, CHANGELOG, PyPI preparado sin publicar). Por otro,
+**trabajo de Fase 5 sin documentar** en el commit `9605dc6 "mapas (ignorar)"`, que mezcló
+mapas freeroam con tests: la infra de fixtures sin LFS (`conftest.py`) y la caracterización
+de `physics.py` (`test_physics.py`, 20 tests). Repo limpio; sin mapas sin commitear que
+proteger. Suite de partida **489/489**.
+
+**Reconciliación de contexto (con el usuario):** los `.md` decían "Fase 5 sin arrancar",
+falso. Actualizados PLAN/ESTADO para reflejar que fixtures (parcial) + física ya estaban.
+Decisión de rumbo: seguir el orden acordado de Fase 5 (red de seguridad primero) → como
+física ya estaba, el siguiente eslabón es `navigation.py`.
+
+**Qué se hizo — red de seguridad de `navigation.py`:**
+- **Fixture de grafo sintético** añadido a `conftest.py` (lo que el docstring prometía y
+  física no necesitó): factorías `make_road` / `make_road_link` / `make_lateral_link` +
+  `populate_graph`, que pueblan un `MapRecorder` REAL con RoadSegment/RoadLink/LateralLink
+  **keyeados IGUAL que producción** (roads por `road_id`; links por su propiedad `.link_id`,
+  p. ej. `"R1->R2"`, `"R1<<>>R3"` — verificado en `map_recorder.py`). Coordenadas en metros
+  reutilizando `make_coords` (exacto: 1 m = 65536 units).
+- **`test_navigation.py`** — 31 tests de caracterización de la lógica DETERMINISTA:
+  - Geometría pura: `_get_closest_node_index` (nodo más cercano; 2D, empate→índice menor,
+    lista vacía→(0, inf)), `_get_indicator_to_use` (producto cruzado→LEFT/RIGHT/OFF, con el
+    signo ACTUAL congelado), `_is_link_reachable_ahead` (alcance espacial + culling).
+  - Planificación de enlaces: `_get_raw_candidates` (RoadLinks salientes + LatLinks según
+    `allow_*`, excluye `made_to_overtake`), `_calculate_next_link` (filtros de destino
+    abierto/alcanzable + clasificación válida/retorno) y `_plan_next_link`.
+  - El único no-determinismo (`random.choice` cuando hay varias válidas) se congela
+    parcheando `navigation.random` y asertando el CONJUNTO de candidatos.
+  - Los grandes métodos de integración con tiempo/estado (`_update_freeroam_navigation`,
+    `_get_radar_speed_limit`, `_update_route_navigation`) quedan SIN cubrir a propósito
+    (usan `time.time()` y mutan mucho estado).
+
+**Hallazgo caracterizado (NO es bug):** `_is_link_reachable_ahead` (usado por
+`_calculate_next_link`, `max_dist=8`) hace un culling rápido de radio ~38 m medido desde el
+nodo de INICIO de cada segmento → con vías de nodos muy separados un enlace alcanzable se
+descartaría. Las vías reales se graban con nodos densos, así que en producción no ocurre; los
+tests de planificación usan vías a 10 m (helper `_straight_y`) y lo dejan documentado. El
+primer intento de tests (nodos a 50 m) lo cazó en rojo → confirma que la red funciona.
+
+**Fix de higiene (CI):** `test_physics.py` traía un import muerto (`AIInputVal as AIV`, F401)
+que dejaba el `ruff check` del CI en rojo en el tip. Eliminado. Llegó con `9605dc6`.
+
+**Verificación:** suite **520/520** (489 + 31). `ruff check .` y `ruff format --check .`
+limpios en TODO el repo (hubo que instalar **ruff 0.15.20** en `.venv`, que no lo tenía —
+el pin del proyecto es `>=0.15,<0.16`). mypy no aplica (solo se tocan tests).
+
+**No requiere validación en LFS:** solo tests + docs; cero cambios de runtime.
+
+**Próximo:** seguir la red de seguridad con `traffic.py` (radar/`_scan_lane_ahead`, ACC, FSM
+de adelantamiento), reutilizando el fixture de grafo; luego el fix de reconexión de
+`ai_control` (ítem de S10), ya CON LA RED PUESTA.
+
+**Commits:** `818c832` (tests navigation + fixture de grafo), `1efc962` (fix F401 en
+test_physics) y el commit de docs de cierre de esta sesión.
+
+---
+
 ## S17 — 2026-07-04 — Fase 4 COMPLETADA: docs de usuario + CHANGELOG + PyPI preparado
 
 **Arranque:** repo limpio y sincronizado (HEAD `8398cde`, cierre S16); CI en

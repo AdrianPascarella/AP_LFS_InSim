@@ -271,10 +271,21 @@ dispara en/tras el merge a `main`.
       `_run_test_freeroam` en `on_disconnect` (hoy el hilo muere con `InSimConnectionError`
       al enviar desconectado, o enloquece tras la limpieza de memoria), resetear
       estado propio y ownership de AIs en `on_reconnect`
-- [ ] Tests de caracterización de `navigation.py` (planificación de enlaces, nodo más cercano)
+- [x] Tests de caracterización de `navigation.py` (planificación de enlaces, nodo más cercano) —
+      S18: `tests/insims/ai_control/test_navigation.py`, 31 tests (geometría pura:
+      `_get_closest_node_index` / `_get_indicator_to_use` / `_is_link_reachable_ahead`;
+      planificación: `_get_raw_candidates` / `_calculate_next_link` / `_plan_next_link`).
+      Los grandes métodos de integración con tiempo/estado (`_update_freeroam_navigation`,
+      `_get_radar_speed_limit`, `_update_route_navigation`) quedan sin cubrir a propósito
 - [ ] Tests de caracterización de `traffic.py` (radar / `_scan_lane_ahead`, ACC, overtake)
-- [ ] Tests de `physics.py` (volante/pedales/marchas) con telemetría sintética
-- [ ] Infra de fixtures: telemetría y grafo de calles sintéticos, sin conexión a LFS
+- [x] Tests de `physics.py` (volante/pedales/marchas) con telemetría sintética — hecho
+      (otro equipo, sin documentar; llegó en el commit `9605dc6`):
+      `tests/insims/ai_control/test_physics.py`, 20 tests (steering / pedals / gears /
+      handle_steering)
+- [x] Infra de fixtures: telemetría y grafo de calles sintéticos, sin conexión a LFS —
+      telemetría + harness de la app (`tests/insims/ai_control/conftest.py`, otro equipo)
+      + **grafo sintético** (`make_road` / `make_road_link` / `make_lateral_link` /
+      `populate_graph`, puebla un MapRecorder real keyeado como producción; S18)
 - [ ] Revisar el "PARCHE DE SEGURIDAD MATEMÁTICO" (`traffic.py:655`) y sustituirlo por lógica correcta
 - [ ] Auditar el hot-loop `on_ISP_MCI` (coste por tick, frecuencia real) — con el dispatch
       ya fuera del hilo IO (Fase 3)
