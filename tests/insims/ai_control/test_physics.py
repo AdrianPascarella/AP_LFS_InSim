@@ -14,7 +14,6 @@ Convenciones LFS relevantes:
 """
 
 from lfs_insim.insim_enums import CS, CSVAL
-from lfs_insim.packets import AIInputVal as AIV
 
 CENTRE = CSVAL.STEER.CENTRE  # 32768
 HARD_LEFT = CSVAL.STEER.HARD_LEFT  # 1
