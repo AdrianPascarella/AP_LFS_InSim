@@ -349,6 +349,26 @@ DESPUÉS del merge; ver "Fase activa" y PLAN § Merge). Empezar AQUÍ:
       resetear estado propio + ownership de IAs en `on_reconnect` (hoy ve "0 coches"
       tras la limpieza de memoria y crea/arranca IAs con ownership desincronizado →
       "La AI X no es una de tus AI's"). Requiere validación en LFS al terminar.
+
+      **Punto de entrada VERIFICADO (S19), para arrancar S20 sin sorpresas:**
+      - `ai_control` **NO define hoy `on_disconnect`/`on_reconnect`** (solo `on_connect`,
+        `app.py:67`) → hay que **AÑADIR los override** en `AIControl` (`app.py`), no
+        editar unos existentes.
+      - `_run_test_freeroam` (`commands.py:572`) es un `while True` daemon que **solo lee
+        `_target_freeroam_count`** (`commands.py:576`) y **NO consulta** el flag
+        `_is_freeroam_loop_running`; dentro llama a `_cmd_add`/`_cmd_spec`/`send_ISP_AIC`
+        (envían → `InSimConnectionError` si el socket cayó, y el hilo muere). El flag se
+        pone True al arrancar (`commands.py:562`) y a False solo desde la UI
+        (`map_ui.py:3146`), pero como el bucle no lo mira, **poner el flag a False NO
+        detiene el hilo** → hace falta una señal de parada real (p. ej. `threading.Event`)
+        que el `while True` compruebe y con la que despertar de los `time.sleep`.
+      - El error "no es una de tus AI's" sale de `_get_behavior` (`app.py:118-121`,
+        `ai.player.ucid != user_ucid`). Precedente de reseteo de estado por-IA:
+        `on_ISP_RST` / `on_ISP_CRS` (`app.py:147` / `163`). `on_reconnect` sería análogo
+        pero de SESIÓN: resetear hilo/flag + `_target_freeroam_count` + las cachés
+        `_radar_human_cache` / `_target_lane_human_cache` (`app.py:60-61`) y NO actuar
+        sobre ownership viejo (el replay NCN/NPL de la reconexión repuebla
+        users_management sobre pizarra limpia — P22).
    (Después de la reconexión quedan en Fase 5: revisar/sustituir el "PARCHE DE SEGURIDAD
    MATEMÁTICO" (ya CONGELADO por tests en `test_traffic.py::TestApplyAdaptiveCruiseControl`;
    está en `_apply_adaptive_cruise_control`, ~`traffic.py:812`, NO en el `:655` de notas
