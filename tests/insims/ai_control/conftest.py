@@ -30,6 +30,11 @@ os.environ.setdefault("MPLBACKEND", "Agg")
 import pytest
 
 from insims.ai_control.behavior import AIBehavior
+from insims.ai_control.nav_modes.freeroam.graph import (
+    LateralLink,
+    RoadLink,
+    RoadSegment,
+)
 from insims.users_management.um_class import (
     AI,
     Angle,
@@ -197,6 +202,81 @@ def make_behavior():
 @pytest.fixture
 def make_ai():
     return _ai
+
+
+# ─── Grafo de calles sintético ───────────────────────────────────────────────
+#
+# Puebla un MapRecorder REAL con RoadSegment / RoadLink / LateralLink, keyeados
+# IGUAL que producción (roads por road_id; links por su propiedad .link_id, p. ej.
+# "R1->R2" y "R1<<>>R3"), para ejercitar de verdad la planificación de enlaces
+# (_get_raw_candidates / _calculate_next_link / _plan_next_link) y la geometría de
+# navigation.py. (IntersectionZone / SpecialRule se añadirán cuando traffic los pida.)
+
+
+def _graph_nodes(points) -> list:
+    """Lista de Coordinates desde puntos (x_m, y_m) o (x_m, y_m, z_m) en metros."""
+    nodes = []
+    for p in points:
+        x_m, y_m = p[0], p[1]
+        z_m = p[2] if len(p) > 2 else 0.0
+        nodes.append(_coords(x_m, y_m, z_m))
+    return nodes
+
+
+def _road(road_id: str, points, **overrides) -> RoadSegment:
+    """RoadSegment con nodos en metros; cualquier campo se sobreescribe por kwargs."""
+    road = RoadSegment(road_id=road_id, nodes=_graph_nodes(points))
+    for key, value in overrides.items():
+        setattr(road, key, value)
+    return road
+
+
+def _road_link(from_road_id: str, to_road_id: str, points, **overrides) -> RoadLink:
+    """RoadLink longitudinal (from → to); su .link_id es 'from->to' por defecto."""
+    link = RoadLink(
+        from_road_id=from_road_id, to_road_id=to_road_id, nodes=_graph_nodes(points)
+    )
+    for key, value in overrides.items():
+        setattr(link, key, value)
+    return link
+
+
+def _lateral_link(road_a: str, road_b: str, points, **overrides) -> LateralLink:
+    """LateralLink entre carriles (a <<>> b); su .link_id es 'a<<>>b' por defecto."""
+    link = LateralLink(road_a=road_a, road_b=road_b, nodes=_graph_nodes(points))
+    for key, value in overrides.items():
+        setattr(link, key, value)
+    return link
+
+
+def _populate_graph(map_recorder, roads=(), road_links=(), lateral_links=()) -> None:
+    """Vuelca las geometrías en un MapRecorder con la MISMA clave que producción."""
+    for road in roads:
+        map_recorder.roads[road.road_id] = road
+    for link in road_links:
+        map_recorder.road_links[link.link_id] = link
+    for link in lateral_links:
+        map_recorder.lateral_links[link.link_id] = link
+
+
+@pytest.fixture
+def make_road():
+    return _road
+
+
+@pytest.fixture
+def make_road_link():
+    return _road_link
+
+
+@pytest.fixture
+def make_lateral_link():
+    return _lateral_link
+
+
+@pytest.fixture
+def populate_graph():
+    return _populate_graph
 
 
 # ─── Harness de la app (AIControl sin cliente real) ──────────────────────────
