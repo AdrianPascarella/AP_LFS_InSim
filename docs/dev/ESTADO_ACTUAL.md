@@ -366,11 +366,14 @@ DESPUÉS del merge; ver "Fase activa" y PLAN § Merge). Empezar AQUÍ:
       bucles) / `on_reconnect` (para + resetea target y cachés, sin reanudar). 6 tests en
       `test_reconexion.py`. Suite 607/607. El usuario validó en LFS: "todo funciona perfectamente".
 
-   4. **◀️ PRÓXIMO — Revisar/sustituir el "PARCHE DE SEGURIDAD MATEMÁTICO"** (ya CONGELADO por
-      tests en `test_traffic.py::TestApplyAdaptiveCruiseControl`, S19): está en
-      `_apply_adaptive_cruise_control`, ~`traffic.py:812` (NO en el `:655` de notas viejas). Con
-      la red puesta, sustituirlo por lógica correcta y verificar que los tests siguen describiendo
-      el comportamiento deseado (habrá que ajustar los 2 tests del parche a la lógica nueva).
+   4. **◀️ PRÓXIMO — Revisar/sustituir el "PARCHE DE SEGURIDAD MATEMÁTICO".** Diagnóstico
+      read-only ya preparado (S20) en **`DIAGNOSTICO.md` § P25**: qué hace el ACC, el bug que el
+      parche tapa (a baja velocidad `min` toca su suelo de 5 m y `critical` también = 5 → denom
+      naranja 0 → ZeroDivisionError), por qué el parche huele a hack, y **3 opciones (A/B/C) con
+      recomendación = A** (fix matemático localizado: suelo duro explícito + `critical = min·0.5`
+      + clamp de ratios, SIN mover los `min`/`max` del llamador; ajustar los 2 tests del parche).
+      Está en `_apply_adaptive_cruise_control`, ~`traffic.py:812`. Arrancar S21 confirmando la
+      opción con el usuario. Requiere validación en LFS al terminar.
       Después: **auditar el hot-loop `on_ISP_MCI`** (coste por tick, frecuencia real), con el
       dispatch ya fuera del hilo de IO (Fase 3). Nota entorno: en ESTE equipo ruff 0.15.20 ya
       está en `.venv`; en otro, `pip install -e ".[dev]"` lo incluye. `gh` / `.venv39` / Docker

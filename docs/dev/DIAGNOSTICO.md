@@ -42,8 +42,8 @@ refactorizar.
 ### P2 — Lógica frágil en traffic / navigation / radar — parte core ✅ RESUELTA (S09)
 - Los últimos ~15 commits son casi todos *fixes* de los mismos ficheros (radar, traffic,
   freeroam, overtake). Churn: `map_ui.py` ×36, `traffic.py` ×22, `navigation.py` ×12.
-- Señal explícita de fragilidad: `traffic.py:655` — comentario "PARCHE DE SEGURIDAD
-  MATEMÁTICO".
+- Señal explícita de fragilidad: `traffic.py:812` — comentario "PARCHE DE SEGURIDAD
+  MATEMÁTICO" (diagnóstico completo en **P25**; ya congelado por tests, S19).
 - Bucle caliente `AIControl.on_ISP_MCI` (`app.py:150`) ejecuta navegación + física +
   tráfico para **cada** coche, en el **hilo de IO**, a la frecuencia de MCI.
 - **Acción:** tests de caracterización (Fase 1) → estabilizar causa raíz (Fase 2).
@@ -53,6 +53,56 @@ refactorizar.
   ni el keep-alive (sí retrasa los paquetes que vienen detrás, inherente al orden).
   `use_thread_pool`/`max_workers` retirados (orden no garantizado, sin usuarios).
   La parte ai_control (lógica frágil de traffic/navigation/radar) sigue pendiente → Fase 5.
+
+### P25 — El "PARCHE DE SEGURIDAD MATEMÁTICO" del ACC (`traffic.py:812`) — Fase 5, CON RED
+
+> Diagnóstico read-only preparado en S20 para arrancar la sustitución sin sorpresas. Congelado
+> por `test_traffic.py::TestApplyAdaptiveCruiseControl` (S19) → se puede tocar con la red puesta.
+
+**Dónde:** `_apply_adaptive_cruise_control` (`traffic.py:793`), el parche en las líneas 812-817.
+
+**Qué hace el método:** ACC de 3 zonas sobre la distancia al coche de delante:
+`critical = max(5.0, min_dist·0.5)`; ROJA (dist ≤ critical) → 0; NARANJA (≤ min) →
+`closest_speed·(dist−critical)/(min−critical)`; AMARILLA (< max) → lerp hacia
+`min(closest, base)`; fuera (≥ max) → base. El llamador (`_update_traffic_behavior`,
+`traffic.py:298`) ya da un modelo **time-gap**: `min = max(5, v·t_safe)`,
+`max = max(15, v·t_warn)` (con `t` de `behavior.human_safe_gap`/`human_warn_gap`).
+
+**El parche:** `min = max(critical+2, min)`; `max = max(min+5, max)`.
+
+**Por qué existe (bug real que tapa):** el denominador naranja es `min − critical`. A baja
+velocidad `min` toca su suelo (5) y `critical = max(5, min·0.5)` **también vale 5** → denom = 0
+→ **ZeroDivisionError** (con una franja singular alrededor: min≈5.5 → denom 0.5 → ratios
+enormes). El parche empuja `min` a ≥7 para alejarse de la singularidad.
+
+**Por qué está mal (huele a hack):**
+1. **Sobrescribe en silencio los inputs del llamador:** sube el `min`/`max` del modelo time-gap
+   → la IA frena antes/distinto de lo pedido. `test_parche_empuja_min_dist…` documenta la
+   divergencia (6 m sería AMARILLA ≈34 km/h; con parche cae en NARANJA = 15).
+2. **Arregla en la capa equivocada:** el problema es que `critical`, `min`, `max` no garantizan
+   el orden `critical < min < max`; el parche lo fuerza con **constantes mágicas** (+2, +5) sin
+   sentido físico, en vez de con el modelo.
+3. **Acoplamiento circular:** `critical` depende de `min` y el parche re-acopla `min` a
+   `critical`. Por eso los tests eligieron min=10/max=20 como setup "limpio" (parche inerte).
+4. **Números mágicos** sin config ni justificación (`5.0`, `·0.5`, `+2`, `+5`, anti-creep `2.0`).
+
+**Opciones de sustitución (DECISIÓN para arrancar la próxima sesión):**
+- **A (recomendada) — fix matemático localizado, sin mover `min`/`max`:** separar el suelo duro
+  de parada (`if dist ≤ 5: return 0`, absoluto y explícito) de la matemática de zonas; definir
+  `critical = min·0.5` (estrictamente < min, sin el suelo 5 que colisiona → `min−critical =
+  min·0.5 > 0` siempre) y **clampear los ratios a [0,1]** (guardando también `max−min` con ε).
+  Elimina TODA división por cero **sin tocar los inputs del llamador** → el comportamiento solo
+  cambia en la franja hoy rota. De paso, subir los números mágicos a constantes con nombre.
+  Ajustar los 2 tests del parche (documentan el bumping viejo, que desaparece por diseño) a la
+  nueva rama guardada.
+- **B — coherencia de suelos + config:** además de A, hacer el suelo de `critical` (< 5)
+  consistente con el de `min` (5) y exponer `safe_gap`/`warn_gap`/fracciones por config.
+- **C — modelo cinemático de frenado** (`d_safe = v·t_react + v²/(2a)`): "hacerlo bien" pero
+  mayor y requiere tuning en LFS; probable sobre-ingeniería para una insim escaparate. Futuro.
+
+**Recomendación:** **A** (mínimo cambio de comportamiento, mata el hack y la div/0, constantes
+con sentido). Requiere validación en LFS al terminar. Los otros 2 call-sites del ACC
+(overtake `traffic.py:468`, intersección `:645` con `max=yield_range_m`) se benefician igual.
 
 ---
 
