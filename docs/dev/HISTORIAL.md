@@ -5,6 +5,64 @@
 
 ---
 
+## S20 — 2026-07-06 — Fase 5: fix de reconexión de `ai_control`
+
+**Arranque:** protocolo de inicio; ya en `refactor/estabilizacion`, `git pull` "Already up
+to date" (tip `3b6db5d`, cierre S19). Repo limpio al arrancar. **Incidente de mapas (a
+mitad de sesión):** el usuario avisó de cambios manuales en el mapa freeroam de South City
+sin commitear → protegidos según protocolo permanente ANTES de seguir: respaldo fuera del
+repo (`C:\Users\Adrian\backups\AP_LFS_InSim_maps\2026-07-06_S20`) + commit `2b2bc85`
+(`data(ai_control): ampliar el mapa freeroam de South City`, +21251/-325 en `south_city.json`
++ render) + push. **Solo se commitearon los 2 ficheros de mapa** (`git add` selectivo); el
+refactor en curso NO se arrastró.
+
+**Qué se hizo — `ai_control` consciente de la reconexión (P12), CON LA RED PUESTA
+(test primero):** el punto de entrada verificado en S19 se confirmó y se amplió: había
+**DOS** bucles daemon persistentes con el mismo defecto, no uno: `_run_test_freeroam`
+(gestor freeroam) **y `_test`** (cargador masivo de rutas, lanzado por `_test_routes`). Ambos
+eran `while True` con `time.sleep` que morían con `InSimConnectionError` al enviar sobre un
+socket caído (traceback a stderr, S10) e ignoraban toda señal de parada (el flag
+`_is_freeroam_loop_running` no se consultaba en el bucle → ni "Detener" en la UI los paraba).
+
+- **Señal de parada compartida** (`threading.Event`) que ambos bucles consultan en cada
+  espera (`stop.wait(t)` en vez de `time.sleep(t)`, y `while not stop.is_set()`), envuelto en
+  `try/except InSimConnectionError` para cortar limpio si el socket cae mid-envío. Infra nueva
+  en `_CommandsMixin`: `_init_traffic_state` (llamado desde `AIControl.__init__`),
+  `_start_traffic_loop` (lanza + rastrea el hilo, deja la señal en verde) y
+  `_stop_traffic_loops` (set + join corto de todos los hilos, idempotente, no hace join a sí
+  mismo). `_test_routes`/`_test_freeroam` pasan a usar `_start_traffic_loop`.
+- **`AIControl.on_disconnect`** (override nuevo): `_stop_traffic_loops()` → los bucles paran
+  limpiamente al perder la conexión.
+- **`AIControl.on_reconnect`** (override nuevo): `_stop_traffic_loops()` + `_target_freeroam_count
+  = 0` + limpia las cachés de radar por PLID (`_radar_human_cache` / `_target_lane_human_cache`).
+  **Decisión de diseño:** NO se reanuda el tráfico automático — reanudarlo arrastraría el UCID
+  viejo capturado por el hilo → "La AI X no es una de tus AI's". El usuario lo reinicia si quiere.
+- **De propina (mismo root cause):** la UI "Detener" (`map_ui.py`, cid 116) ahora llama a
+  `_stop_traffic_loops()` → **para de verdad** (antes solo ponía el flag a False, que el bucle
+  no miraba). Stub cross-mixin de `_stop_traffic_loops` en `base.py`. Import muerto `time`
+  eliminado de `commands.py`.
+
+**Red primero:** `tests/insims/ai_control/test_reconexion.py`, **6 tests** escritos en ROJO
+(fallaban por falta de la API nueva) y luego en verde: on_disconnect para el freeroam, para el
+cargador de rutas, corte limpio ante `InSimConnectionError` (sin propagar, flag a False por el
+`finally`), on_reconnect resetea estado, on_reconnect no deja vivo un gestor con el UCID viejo,
+y la parada es pronta (< 2 s, no espera el sleep de 5 s).
+
+**Verificación:** suite **607/607** (601 + 6). `ruff check .` + `ruff format --check .` limpios.
+`lfs-insim list` OK (los 4 InSims cargan). **PENDIENTE: validación en LFS** (cambio de runtime;
+no puedo ejecutar LFS). Qué probar: (1) con el gestor freeroam corriendo, matar/levantar LFS →
+el hilo debe parar limpio (sin traceback) y, al reconectar, NO recrear IAs solo; reiniciar el
+gestor a mano y comprobar ownership correcto; (2) el botón "Detener" de la pestaña Run debe
+parar el tráfico de verdad; (3) ídem con `.route test`.
+
+**Próximo:** validar en LFS; después, revisar el "PARCHE DE SEGURIDAD MATEMÁTICO" (ya congelado)
+y auditar el hot-loop `on_ISP_MCI`.
+
+**Commits:** `2b2bc85` (mapa, protección), `fix(ai_control): reconexión — parar los bucles de
+tráfico daemon` (código + 6 tests) y el commit de docs de cierre.
+
+---
+
 ## S19 — 2026-07-06 — Fase 5: caracterización de `traffic.py`
 
 **Arranque:** protocolo de inicio; ya en `refactor/estabilizacion`, `git pull` "Already up
