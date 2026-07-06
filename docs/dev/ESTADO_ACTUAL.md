@@ -19,9 +19,9 @@ y overrides nuevos en `AIControl`: **`on_disconnect`** para los bucles limpiamen
 **sin reanudar el tráfico** (evita arrastrar el UCID viejo → "La AI X no es una de tus AI's").
 De propina, la UI "Detener" ahora para de verdad (antes el flag no se miraba). Red primero:
 `test_reconexion.py`, **6 tests** (rojo→verde). Suite **607/607**; ruff limpio; `lfs-insim list`
-OK. **PENDIENTE: el usuario valida en LFS** (ver Próximo paso para el guion de prueba). Commits:
-`2b2bc85` (protección del mapa South City, incidente de mitad de sesión), `fix(ai_control):
-reconexión…` (código + tests) y docs de cierre.
+OK. **✅ VALIDADO por el usuario en LFS (S20): "todo funciona perfectamente".** Commits:
+`2b2bc85` (protección del mapa South City, incidente de mitad de sesión), `047d8f1`
+(`fix(ai_control): reconexión…`, código + tests) y docs de cierre.
 
 **S19 (2026-07-06) — Fase 5: caracterización de `traffic.py`:** completada la red de
 seguridad de `traffic.py` en `tests/insims/ai_control/test_traffic.py` (**81 tests**),
@@ -359,32 +359,22 @@ DESPUÉS del merge; ver "Fase activa" y PLAN § Merge). Empezar AQUÍ:
       integración con tiempo/estado (`_update_traffic_behavior`,
       `_update_freeroam_navigation`, `_get_radar_speed_limit`, `_update_route_navigation`)
       quedaron SIN cubrir a propósito (usan `time.time()` y mutan mucho estado).
-   3. **Fix de reconexión — ✅ IMPLEMENTADO (S20), PENDIENTE validación en LFS.** Ver el
-      Estado S20 arriba y HISTORIAL S20 para el detalle. Resumen: señal de parada compartida
-      (`threading.Event`) para los DOS bucles daemon (`_run_test_freeroam` + `_test`), infra
-      `_init_traffic_state`/`_start_traffic_loop`/`_stop_traffic_loops` en `_CommandsMixin`,
-      y overrides `AIControl.on_disconnect` (para los bucles) / `on_reconnect` (para + resetea
-      target y cachés, sin reanudar). 6 tests en `test_reconexion.py`. Suite 607/607.
+   3. **Fix de reconexión — ✅ HECHO Y VALIDADO EN LFS (S20).** Ver el Estado S20 arriba y
+      HISTORIAL S20. Señal de parada compartida (`threading.Event`) para los DOS bucles daemon
+      (`_run_test_freeroam` + `_test`), infra `_init_traffic_state`/`_start_traffic_loop`/
+      `_stop_traffic_loops` en `_CommandsMixin`, y overrides `AIControl.on_disconnect` (para los
+      bucles) / `on_reconnect` (para + resetea target y cachés, sin reanudar). 6 tests en
+      `test_reconexion.py`. Suite 607/607. El usuario validó en LFS: "todo funciona perfectamente".
 
-   4. **◀️ PRÓXIMO — Validar el fix de reconexión en LFS** (lo hace el usuario; no puedo
-      ejecutar LFS). **Guion de prueba:**
-      - Con el gestor freeroam corriendo (`.aic test <n>` o la pestaña Run → Iniciar), **matar
-        LFS / cerrar el puerto InSim** y volver a levantarlo: el hilo debe **parar limpio**
-        (sin traceback en el log) y, al reconectar, **NO** debe recrear IAs por su cuenta. Tras
-        reconectar, reiniciar el gestor a mano y comprobar que el ownership es correcto (sin
-        "La AI X no es una de tus AI's").
-      - El botón **"Detener"** de la pestaña Run debe parar el tráfico **de verdad** (antes no
-        lo hacía).
-      - Ídem con el cargador de rutas (`.route test <rutas>`): debe parar al caer la conexión.
-
-      Si algo falla, el punto de entrada del código está en `commands.py` (`_run_test_freeroam`
-      / `_test` / `_stop_traffic_loops`) y `app.py` (`on_disconnect` / `on_reconnect`).
-   (Después de validar la reconexión quedan en Fase 5: revisar/sustituir el "PARCHE DE SEGURIDAD
-   MATEMÁTICO" (ya CONGELADO por tests en `test_traffic.py::TestApplyAdaptiveCruiseControl`;
-   está en `_apply_adaptive_cruise_control`, ~`traffic.py:812`, NO en el `:655` de notas
-   viejas) y auditar el hot-loop `on_ISP_MCI`. Nota entorno: en ESTE equipo ruff 0.15.20
-   ya está en `.venv`; en otro, `pip install -e ".[dev]"` lo incluye. `gh` / `.venv39` /
-   Docker según equipo.)
+   4. **◀️ PRÓXIMO — Revisar/sustituir el "PARCHE DE SEGURIDAD MATEMÁTICO"** (ya CONGELADO por
+      tests en `test_traffic.py::TestApplyAdaptiveCruiseControl`, S19): está en
+      `_apply_adaptive_cruise_control`, ~`traffic.py:812` (NO en el `:655` de notas viejas). Con
+      la red puesta, sustituirlo por lógica correcta y verificar que los tests siguen describiendo
+      el comportamiento deseado (habrá que ajustar los 2 tests del parche a la lógica nueva).
+      Después: **auditar el hot-loop `on_ISP_MCI`** (coste por tick, frecuencia real), con el
+      dispatch ya fuera del hilo de IO (Fase 3). Nota entorno: en ESTE equipo ruff 0.15.20 ya
+      está en `.venv`; en otro, `pip install -e ".[dev]"` lo incluye. `gh` / `.venv39` / Docker
+      según equipo.
 2. Backlog de **tipado gradual** (ir quitando overrides de `[tool.mypy]` en
    pyproject, módulo a módulo, cuando se toque cada uno): los módulos
    `packets` (dataclasses de protocolo), `insim_loader` (fricción con

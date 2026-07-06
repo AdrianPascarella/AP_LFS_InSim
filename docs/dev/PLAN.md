@@ -267,17 +267,17 @@ dispara en/tras el merge a `main`.
 > de caracterización de navigation/traffic/physics, y solo entonces el fix de
 > reconexión (primer ítem de abajo). Ver ESTADO_ACTUAL § Próximo paso.
 
-- [~] Hacer `ai_control` consciente de la reconexión (visto en S10): parar/pausar
+- [x] Hacer `ai_control` consciente de la reconexión (visto en S10): parar/pausar
       los bucles daemon en `on_disconnect` (morían con `InSimConnectionError` al enviar
       desconectados, o enloquecían tras la limpieza de memoria), resetear estado propio y
-      ownership de AIs en `on_reconnect` — **IMPLEMENTADO (S20), PENDIENTE validación en LFS.**
-      Se descubrió que eran DOS bucles con el defecto (`_run_test_freeroam` + `_test`), no uno.
-      Señal de parada compartida (`threading.Event`) + infra `_init_traffic_state` /
-      `_start_traffic_loop` / `_stop_traffic_loops` en `_CommandsMixin`; overrides
-      `AIControl.on_disconnect` / `on_reconnect` (este resetea target + cachés y NO reanuda el
-      tráfico, para no arrastrar el UCID viejo); "Detener" de la UI ahora para de verdad.
-      6 tests en `test_reconexion.py` (rojo→verde). Suite 607/607. `[~]` = código listo; se
-      marcará `[x]` cuando el usuario lo valide en LFS (ver ESTADO_ACTUAL § Próximo paso)
+      ownership de AIs en `on_reconnect` — S20. Se descubrió que eran DOS bucles con el
+      defecto (`_run_test_freeroam` + `_test`), no uno. Señal de parada compartida
+      (`threading.Event`) + infra `_init_traffic_state` / `_start_traffic_loop` /
+      `_stop_traffic_loops` en `_CommandsMixin`; overrides `AIControl.on_disconnect` /
+      `on_reconnect` (este resetea target + cachés y NO reanuda el tráfico, para no arrastrar
+      el UCID viejo); "Detener" de la UI ahora para de verdad. 6 tests en `test_reconexion.py`
+      (rojo→verde). Suite 607/607. **Validado por el usuario en LFS (S20): "todo funciona
+      perfectamente".**
 - [x] Tests de caracterización de `navigation.py` (planificación de enlaces, nodo más cercano) —
       S18: `tests/insims/ai_control/test_navigation.py`, 31 tests (geometría pura:
       `_get_closest_node_index` / `_get_indicator_to_use` / `_is_link_reachable_ahead`;

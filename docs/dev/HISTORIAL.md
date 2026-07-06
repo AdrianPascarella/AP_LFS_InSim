@@ -49,14 +49,13 @@ cargador de rutas, corte limpio ante `InSimConnectionError` (sin propagar, flag 
 y la parada es pronta (< 2 s, no espera el sleep de 5 s).
 
 **Verificación:** suite **607/607** (601 + 6). `ruff check .` + `ruff format --check .` limpios.
-`lfs-insim list` OK (los 4 InSims cargan). **PENDIENTE: validación en LFS** (cambio de runtime;
-no puedo ejecutar LFS). Qué probar: (1) con el gestor freeroam corriendo, matar/levantar LFS →
-el hilo debe parar limpio (sin traceback) y, al reconectar, NO recrear IAs solo; reiniciar el
-gestor a mano y comprobar ownership correcto; (2) el botón "Detener" de la pestaña Run debe
-parar el tráfico de verdad; (3) ídem con `.route test`.
+`lfs-insim list` OK (los 4 InSims cargan). **✅ VALIDADO por el usuario en LFS: "todo funciona
+perfectamente"** (se probó: matar/levantar LFS con el gestor corriendo → parada limpia sin
+traceback y sin recrear IAs solo; "Detener" de la pestaña Run para de verdad; `.route test`
+también para al caer la conexión).
 
-**Próximo:** validar en LFS; después, revisar el "PARCHE DE SEGURIDAD MATEMÁTICO" (ya congelado)
-y auditar el hot-loop `on_ISP_MCI`.
+**Próximo:** revisar/sustituir el "PARCHE DE SEGURIDAD MATEMÁTICO" (ya congelado por tests) y
+auditar el hot-loop `on_ISP_MCI`.
 
 **Commits:** `2b2bc85` (mapa, protección), `fix(ai_control): reconexión — parar los bucles de
 tráfico daemon` (código + 6 tests) y el commit de docs de cierre.
