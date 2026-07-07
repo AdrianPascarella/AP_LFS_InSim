@@ -9,6 +9,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 
 logger = logging.getLogger(__name__)
 
@@ -215,24 +216,54 @@ def generate_map_image(json_path: str):
     ax.set_ylabel("Y (Meters)", fontsize=12)
     ax.grid(True, linestyle=":", alpha=0.6)
 
-    # Leyenda a la derecha pero MULTI-COLUMNA, para que su alto ≈ el del mapa y
-    # no lo aplaste (el problema con mapas de decenas de roads). Fuente reducida.
+    # Leyenda a la derecha: cada COLUMNA baja EXACTAMENTE lo que baja el mapa —
+    # se apilan nombres hacia abajo hasta llegar al fondo del mapa y solo a partir
+    # de ahí se abre la siguiente columna. El nº de filas por columna se MIDE sobre
+    # un render real (alto del recuadro del mapa / alto de una entrada), no se
+    # estima. matplotlib reparte las columnas de forma equilibrada por su cuenta;
+    # para forzar el llenado columna-a-columna (primera columna llena hasta el
+    # fondo, luego la siguiente) se rellena la última con entradas invisibles.
+    fig.tight_layout()
     handles, labels = ax.get_legend_handles_labels()
     if handles:
-        max_rows = 30
-        ncol = max(1, math.ceil(len(labels) / max_rows))
-        ax.legend(
-            handles,
-            labels,
-            bbox_to_anchor=(1.02, 1),
+        legend_fontsize = 7
+        legend_kwargs = dict(
             loc="upper left",
+            bbox_to_anchor=(1.02, 1),
             borderaxespad=0.0,
+            fontsize=legend_fontsize,
+        )
+        # Medición: alto del recuadro del mapa y alto de UNA entrada de leyenda
+        # (probe a 1 columna). El ratio es independiente del dpi.
+        fig.canvas.draw()
+        pad_px = 0.4 * legend_fontsize * fig.dpi / 72.0  # borderpad (arriba+abajo)
+        axes_h = ax.get_window_extent().height
+        probe = ax.legend(handles, labels, ncol=1, **legend_kwargs)
+        fig.canvas.draw()
+        per_entry = max(
+            1.0, (probe.get_window_extent().height - 2 * pad_px) / len(labels)
+        )
+
+        rows_per_col = max(1, int((axes_h - 2 * pad_px) // per_entry))
+        ncol = max(1, math.ceil(len(labels) / rows_per_col))
+
+        # Con ≥2 columnas, rellenar hasta ncol*rows_per_col con entradas invisibles
+        # para que cada columna se llene hasta el fondo del mapa antes de saltar a
+        # la siguiente (si no, matplotlib equilibraría columnas más cortas).
+        h_full, l_full = list(handles), list(labels)
+        if ncol > 1:
+            while len(h_full) < ncol * rows_per_col:
+                h_full.append(Line2D([], [], color="none"))
+                l_full.append(" ")
+
+        ax.legend(
+            h_full,
+            l_full,
             ncol=ncol,
-            fontsize=7,
             handlelength=1.5,
             columnspacing=1.0,
+            **legend_kwargs,
         )
-    fig.tight_layout()
 
     # 7. Save to disk
     script_dir = os.path.dirname(os.path.abspath(__file__))
