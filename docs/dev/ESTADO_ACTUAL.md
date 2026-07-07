@@ -28,9 +28,10 @@ zona roja guarda el denominador naranja: naranja solo se evalúa si `critical < 
 tests del parche reescritos al comportamiento sin parche (rojo→verde: 15→34.44 y 46→50) + 2 tests
 de robustez nuevos (min en el suelo y max==min no lanzan). Suite **609/609** (607 + 2). `ruff
 check .` + `ruff format --check .` limpios; `lfs-insim list` OK. Los otros 2 call-sites del ACC
-(overtake, intersección) se benefician igual. **PENDIENTE: validación en LFS** (qué probar: IA
-siguiendo a otro coche a baja velocidad y en cola —sin tirones ni frenar antes de tiempo— y ceda
-el paso en intersección).
+(overtake, intersección) se benefician igual. **PARCIALMENTE validado en LFS (S21):** el usuario
+confirma que **el frenado/seguimiento funciona bien**. El **ceda el paso en intersección queda SIN
+CONFIRMAR** — el usuario no tiene ninguna intersección creada todavía, así que no se ha podido
+probar ese call-site. Reconfirmar cuando exista una intersección.
 
 **S20 (2026-07-06) — Fase 5: fix de reconexión de `ai_control` (implementado, pendiente
 validación en LFS):** `ai_control` ya es consciente de la reconexión (P12). Se confirmó que

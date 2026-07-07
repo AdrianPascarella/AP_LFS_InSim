@@ -49,8 +49,9 @@ en todo el repo (el formatter reajustó una línea larga del ratio, cero comport
 `lfs-insim list` OK. Los otros 2 call-sites del ACC (overtake `:468`, intersección `:645`) se
 benefician igual.
 
-**PENDIENTE: validación en LFS.** Qué probar en el juego: IA siguiendo a otro coche a baja
-velocidad y en cola (sin tirones ni frenar antes de tiempo) y ceda el paso en intersección.
+**PARCIALMENTE validado en LFS (S21):** el usuario confirma que el **frenado/seguimiento funciona
+bien**. El **ceda el paso en intersección queda SIN CONFIRMAR**: no tiene ninguna intersección
+creada, así que ese call-site (`traffic.py:645`) no se ha podido probar. Reconfirmar cuando exista.
 
 **Commit:** `fix(ai_control): sustituir el PARCHE del ACC por matemática robusta` (código + tests)
 y el commit de docs de cierre.
