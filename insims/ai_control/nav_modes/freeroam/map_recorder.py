@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import itertools
 import json
 import logging
 import math
@@ -223,19 +224,27 @@ class MapRecorder(PacketSenderMixin):
                 )
                 ctx.road_node_idx = closest_node["id"]
 
-        # 2. Buscar el Enlace más cercano
-        if find_links:
-            all_links = {**self.road_links, **self.lateral_links}
-            if all_links:
-                closest_link = self.get_closest_geometry(
-                    px, py, pz, all_links.items(), lambda l: l.nodes
+        # 2. Buscar el Enlace más cercano.
+        # Se recorren road_links y lateral_links ENCADENADOS (mismo orden que el
+        # dict fusionado que había antes, pero sin reconstruirlo en cada llamada:
+        # en un mapa grande y con el radar llamando esto por vehículo humano, esa
+        # allocation de O(enlaces) se acumula). Las claves nunca colisionan
+        # ('A->B' vs 'A<<>>B'), así que el resultado —y el desempate por orden,
+        # que resuelve `<` estricto a favor del primero— es idéntico.
+        if find_links and (self.road_links or self.lateral_links):
+            closest_link = self.get_closest_geometry(
+                px,
+                py,
+                pz,
+                itertools.chain(self.road_links.items(), self.lateral_links.items()),
+                lambda l: l.nodes,
+            )
+            if closest_link["id"] is not None:
+                ctx.link_id = closest_link["id"]
+                ctx.link_dist = closest_link["dist"]
+                ctx.link_type = (
+                    "LatLink" if ctx.link_id in self.lateral_links else "RoadLink"
                 )
-                if closest_link["id"] is not None:
-                    ctx.link_id = closest_link["id"]
-                    ctx.link_dist = closest_link["dist"]
-                    ctx.link_type = (
-                        "LatLink" if ctx.link_id in self.lateral_links else "RoadLink"
-                    )
 
         # 3. Buscar la Zona más cercana
         if find_zones and self.zones:
