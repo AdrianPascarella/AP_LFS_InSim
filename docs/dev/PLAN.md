@@ -299,9 +299,14 @@ dispara en/tras el merge a `main`.
       telemetría + harness de la app (`tests/insims/ai_control/conftest.py`, otro equipo)
       + **grafo sintético** (`make_road` / `make_road_link` / `make_lateral_link` /
       `populate_graph`, puebla un MapRecorder real keyeado como producción; S18)
-- [ ] Revisar el "PARCHE DE SEGURIDAD MATEMÁTICO" (en `_apply_adaptive_cruise_control`,
-      ~`traffic.py:812`; el `:655` de notas viejas está obsoleto) y sustituirlo por lógica
-      correcta — YA CONGELADO por `test_traffic.py::TestApplyAdaptiveCruiseControl` (S19)
+- [x] Revisar el "PARCHE DE SEGURIDAD MATEMÁTICO" (en `_apply_adaptive_cruise_control`) y
+      sustituirlo por lógica correcta — S21: **Opción A** (confirmada con el usuario). Parche
+      eliminado (ya no reescribe los `min`/`max` del llamador); suelo duro de parada explícito;
+      `critical = max(5, min·0.5)` (se mantuvo el suelo por continuidad de la rampa —matiz sobre
+      la letra de A, ver P25/HISTORIAL S21); ratios acotados a [0,1] y denominadores con ε →
+      imposible el ZeroDivisionError; números mágicos → constantes con nombre. 2 tests del parche
+      reescritos + 2 de robustez (rojo→verde). Suite 609/609; ruff limpio. **Pendiente validación
+      en LFS.**
 - [ ] Auditar el hot-loop `on_ISP_MCI` (coste por tick, frecuencia real) — con el dispatch
       ya fuera del hilo IO (Fase 3)
 - [ ] Consolidar radar/geometría en unidad testeable; revisar FSM de adelantamiento

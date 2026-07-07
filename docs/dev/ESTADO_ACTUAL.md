@@ -1,11 +1,36 @@
 # 📍 Estado actual
 
-> Actualizado: **2026-07-06** — sesión S20 (en curso)
+> Actualizado: **2026-07-07** — sesión S21 (fix del PARCHE del ACC implementado, pendiente LFS)
 > **Rama de trabajo: `refactor/estabilizacion`.** Todo el refactor ocurre aquí; `main`
 > queda intacta hasta el merge final (cuando el proyecto esté estable). **Sync por GitHub:**
 > `git pull` al arrancar y `git push` al cerrar (permite continuar desde otro dispositivo).
 
 ## Estado
+
+**S21 (2026-07-07) — Fase 5: sustitución del "PARCHE DE SEGURIDAD MATEMÁTICO" del ACC
+(implementado, pendiente validación en LFS):** eliminado el parche de
+`_apply_adaptive_cruise_control` (`traffic.py`) que **reescribía en silencio** los `min`/`max`
+del modelo time-gap del llamador (los inflaba con constantes mágicas +2/+5 → la IA frenaba
+antes/distinto de lo pedido). **Opción A** confirmada con el usuario (fix matemático localizado,
+SIN tocar los `min`/`max` del llamador). Implementado: **suelo duro de parada explícito**
+(`if dist ≤ 5: return 0`), `critical = max(5, min·0.5)` **con el suelo mantenido**, ratios
+**acotados a [0,1]** y denominadores **blindados con ε** → imposible el ZeroDivisionError.
+Números mágicos subidos a constantes con nombre (`PARADA_ABSOLUTA_M`, `CRITICAL_FRACTION`,
+`ANTICREEP_KMH`, `EPSILON`). **Decisión de diseño (matiz sobre la letra de A en P25):** se mantiene
+`critical = max(5, min·0.5)` en vez del `min·0.5` pelado que proponía el texto. Razón: con el
+suelo la rampa naranja arranca **continua** desde 0 en el umbral rojo; sin él `critical` caería por
+debajo del suelo de 5 m → **salto de velocidad discontinuo** en dist=5 m (justo donde entran los
+`min≈5` reales a baja velocidad). Además así el cambio de conducta se **confina exactamente a la
+franja rota** (`min<7` ∪ `max<min+5`): los 8 tests de setup limpio (min=10/20) quedan idénticos.
+De paso se verificó que el div/0 que el parche decía tapar era en realidad **inalcanzable** (la
+zona roja guarda el denominador naranja: naranja solo se evalúa si `critical < dist ≤ min` ⇒
+`min > critical` ⇒ denom > 0) — el parche solo distorsionaba, no protegía. **Red primero:** los 2
+tests del parche reescritos al comportamiento sin parche (rojo→verde: 15→34.44 y 46→50) + 2 tests
+de robustez nuevos (min en el suelo y max==min no lanzan). Suite **609/609** (607 + 2). `ruff
+check .` + `ruff format --check .` limpios; `lfs-insim list` OK. Los otros 2 call-sites del ACC
+(overtake, intersección) se benefician igual. **PENDIENTE: validación en LFS** (qué probar: IA
+siguiendo a otro coche a baja velocidad y en cola —sin tirones ni frenar antes de tiempo— y ceda
+el paso en intersección).
 
 **S20 (2026-07-06) — Fase 5: fix de reconexión de `ai_control` (implementado, pendiente
 validación en LFS):** `ai_control` ya es consciente de la reconexión (P12). Se confirmó que
@@ -366,18 +391,18 @@ DESPUÉS del merge; ver "Fase activa" y PLAN § Merge). Empezar AQUÍ:
       bucles) / `on_reconnect` (para + resetea target y cachés, sin reanudar). 6 tests en
       `test_reconexion.py`. Suite 607/607. El usuario validó en LFS: "todo funciona perfectamente".
 
-   4. **◀️ PRÓXIMO — Revisar/sustituir el "PARCHE DE SEGURIDAD MATEMÁTICO".** Diagnóstico
-      read-only ya preparado (S20) en **`DIAGNOSTICO.md` § P25**: qué hace el ACC, el bug que el
-      parche tapa (a baja velocidad `min` toca su suelo de 5 m y `critical` también = 5 → denom
-      naranja 0 → ZeroDivisionError), por qué el parche huele a hack, y **3 opciones (A/B/C) con
-      recomendación = A** (fix matemático localizado: suelo duro explícito + `critical = min·0.5`
-      + clamp de ratios, SIN mover los `min`/`max` del llamador; ajustar los 2 tests del parche).
-      Está en `_apply_adaptive_cruise_control`, ~`traffic.py:812`. Arrancar S21 confirmando la
-      opción con el usuario. Requiere validación en LFS al terminar.
-      Después: **auditar el hot-loop `on_ISP_MCI`** (coste por tick, frecuencia real), con el
-      dispatch ya fuera del hilo de IO (Fase 3). Nota entorno: en ESTE equipo ruff 0.15.20 ya
-      está en `.venv`; en otro, `pip install -e ".[dev]"` lo incluye. `gh` / `.venv39` / Docker
-      según equipo.
+   4. **Revisar/sustituir el "PARCHE DE SEGURIDAD MATEMÁTICO" — ✅ HECHO (S21), pendiente LFS.**
+      Opción A (confirmada con el usuario) implementada en `_apply_adaptive_cruise_control`
+      (`traffic.py`): parche eliminado, min/max del llamador respetados, suelo duro explícito,
+      `critical = max(5, min·0.5)` (se mantuvo el suelo — decisión de diseño por continuidad, ver
+      Estado S21 y P25), ratios en [0,1], denominadores con ε, constantes con nombre. 2 tests del
+      parche reescritos + 2 de robustez. Suite 609/609. **PENDIENTE: validación en LFS.**
+
+   5. **◀️ PRÓXIMO — Auditar el hot-loop `on_ISP_MCI`** (coste por tick, frecuencia real), con el
+      dispatch ya fuera del hilo de IO (Fase 3). Después: consolidar radar/geometría en unidad
+      testeable y revisar el FSM de adelantamiento (últimos ítems de Fase 5, ver PLAN). Nota
+      entorno: en ESTE equipo ruff 0.15.20 ya está en `.venv`; en otro, `pip install -e ".[dev]"`
+      lo incluye. `gh` / `.venv39` / Docker según equipo.
 2. Backlog de **tipado gradual** (ir quitando overrides de `[tool.mypy]` en
    pyproject, módulo a módulo, cuando se toque cada uno): los módulos
    `packets` (dataclasses de protocolo), `insim_loader` (fricción con

@@ -5,6 +5,58 @@
 
 ---
 
+## S21 — 2026-07-07 — Fase 5: sustitución del "PARCHE DE SEGURIDAD MATEMÁTICO" del ACC
+
+**Arranque:** protocolo de inicio; ya en `refactor/estabilizacion`, `git pull` "Already up to
+date" (tip `ffc5c7d`, cierre S20 = diagnóstico P25). Repo limpio, sin mapas freeroam sin
+commitear que proteger. Próximo paso documentado: revisar/sustituir el PARCHE del ACC.
+
+**Decisión con el usuario:** confirmada la **Opción A** del diagnóstico P25 (fix matemático
+localizado, SIN mover los `min`/`max` del llamador), frente a B (A + config) y C (modelo
+cinemático de frenado).
+
+**Qué se hizo — `_apply_adaptive_cruise_control` (`traffic.py`), CON LA RED PUESTA (red primero):**
+eliminado el "PARCHE DE SEGURIDAD MATEMÁTICO" que **reescribía en silencio** los `min`/`max` del
+modelo time-gap del llamador (`min = max(critical+2, min)`; `max = max(min+5, max)`), inflándolos
+con constantes mágicas → la IA frenaba antes/distinto de lo pedido.
+
+- **Suelo duro de parada explícito** (`if closest_dist_m <= 5: return 0.0`), separado de la
+  matemática de zonas.
+- `critical = max(5, min·0.5)` (**se mantiene el suelo**), ratios de naranja y amarilla
+  **acotados a [0,1]** y ambos denominadores **blindados con ε** → imposible el ZeroDivisionError
+  para cualquier input.
+- Números mágicos → **constantes con nombre**: `PARADA_ABSOLUTA_M`, `CRITICAL_FRACTION`,
+  `ANTICREEP_KMH`, `EPSILON`.
+
+**Decisión de diseño (matiz sobre la letra de A):** el texto de A proponía `critical = min·0.5`
+pelado (sin suelo). Se mantuvo `max(5, min·0.5)` porque: (1) **continuidad** — con el suelo la
+rampa naranja arranca de 0 justo en el umbral rojo; sin él `critical < 5` produce un **salto de
+velocidad discontinuo** en dist=5 m, justo donde entran los `min≈5` reales a baja velocidad;
+(2) **cambio mínimo** — así la conducta solo cambia en la franja que el parche distorsionaba
+(`min<7` ∪ `max<min+5`), dejando idénticos los 8 tests de setup limpio (min=10/20). De paso se
+comprobó que el **div/0 que el parche decía tapar era inalcanzable**: la zona roja guarda el
+denominador naranja (naranja solo se evalúa con `critical < dist ≤ min` ⇒ `min > critical` ⇒
+denom > 0). El parche solo distorsionaba, no protegía.
+
+**Red primero:** los 2 tests que congelaban el parche (`test_parche_empuja_*`) reescritos al
+comportamiento sin parche (rojo→verde: 15→34.44 y 46→50), renombrados a
+`test_min_pequeno_no_se_reescribe_cae_en_amarilla` / `test_max_menor_que_min_no_se_reescribe`;
++ 2 tests de robustez nuevos (`test_min_en_el_suelo_no_lanza`, `test_max_igual_a_min_no_lanza`).
+Verificado ROJO antes del fix (4 fallos por el parche) y VERDE después.
+
+**Verificación:** suite **609/609** (607 + 2). `ruff check .` + `ruff format --check .` limpios
+en todo el repo (el formatter reajustó una línea larga del ratio, cero comportamiento).
+`lfs-insim list` OK. Los otros 2 call-sites del ACC (overtake `:468`, intersección `:645`) se
+benefician igual.
+
+**PENDIENTE: validación en LFS.** Qué probar en el juego: IA siguiendo a otro coche a baja
+velocidad y en cola (sin tirones ni frenar antes de tiempo) y ceda el paso en intersección.
+
+**Commit:** `fix(ai_control): sustituir el PARCHE del ACC por matemática robusta` (código + tests)
+y el commit de docs de cierre.
+
+---
+
 ## S20 — 2026-07-06 — Fase 5: fix de reconexión de `ai_control`
 
 **Arranque:** protocolo de inicio; ya en `refactor/estabilizacion`, `git pull` "Already up

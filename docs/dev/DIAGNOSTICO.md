@@ -56,6 +56,14 @@ refactorizar.
 
 ### P25 — El "PARCHE DE SEGURIDAD MATEMÁTICO" del ACC (`traffic.py:812`) — Fase 5, CON RED
 
+> **✅ RESUELTO en S21 (pendiente validación en LFS)** con la **Opción A** (confirmada con el
+> usuario). Matiz sobre la letra de A: se implementó `critical = max(5, min·0.5)` (**con** el
+> suelo), NO el `min·0.5` pelado — con el suelo la rampa naranja arranca continua desde 0 en el
+> umbral rojo; sin él habría un salto de velocidad en dist=5 m (donde entran los `min≈5` reales).
+> De paso se comprobó que el div/0 que el parche "tapaba" era **inalcanzable** (la zona roja
+> guarda el denominador naranja). Suite 609/609; ruff limpio. Ver HISTORIAL/ESTADO_ACTUAL S21.
+> El diagnóstico read-only original (S20) se conserva abajo como registro del razonamiento.
+
 > Diagnóstico read-only preparado en S20 para arrancar la sustitución sin sorpresas. Congelado
 > por `test_traffic.py::TestApplyAdaptiveCruiseControl` (S19) → se puede tocar con la red puesta.
 
