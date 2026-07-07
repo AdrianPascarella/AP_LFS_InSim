@@ -1,11 +1,27 @@
 # 📍 Estado actual
 
-> Actualizado: **2026-07-07** — sesión S21 (fix del PARCHE del ACC implementado, pendiente LFS)
+> Actualizado: **2026-07-07** — sesión S21 (fix del ACC validado parcialmente en LFS + mejora del render del mapa)
 > **Rama de trabajo: `refactor/estabilizacion`.** Todo el refactor ocurre aquí; `main`
 > queda intacta hasta el merge final (cuando el proyecto esté estable). **Sync por GitHub:**
 > `git pull` al arrancar y `git push` al cerrar (permite continuar desde otro dispositivo).
 
 ## Estado
+
+**S21 (extra, 2026-07-07) — mejora del render del mapa (`map_renderer.py`), no planeada:** el
+usuario avisó de que el renderer le estaba limitando para editar mapas grandes. Problemas del
+render viejo (visibles en `south_city_rendered.png`): (1) la leyenda de UNA columna con ~65 roads
+aplastaba el mapa hasta dejarlo diminuto (agravado por `adjustable="datalim"`, que expandía el
+rango X de forma fantasma); (2) grosores de línea FIJOS en puntos → roads paralelos se solapaban
+en un borrón; (3) roadlinks dibujados como cruces `X` gruesas cian que tapaban la vista.
+**Solución (un solo archivo):** encuadre ajustado a los datos (`adjustable="box"` + xlim/ylim con
+margen → el mapa llena el eje); **grosores proporcionales** a la extensión (`clamp(1300/span,
+0.6, 3.0)`, links siempre más finos que los roads); **roadlinks = línea cian fina CONTINUA** (como
+los laterales pero sólida); **leyenda multi-columna** (`ncol=ceil(n/30)`) y **ordenada
+alfabéticamente**, fuente reducida; **paleta de roads que EXCLUYE** los colores semánticos
+reservados (rojo=zonas, gris=laterales, cian=roadlinks); quitados los marcadores por-nodo.
+Renders de `south_city` y `south_drift_1` regenerados y **validados visualmente con el usuario**.
+Suite 609/609; ruff limpio. Es tooling offline (no toca runtime de conducción) → no requiere LFS.
+Commit `5dd0740`.
 
 **S21 (2026-07-07) — Fase 5: sustitución del "PARCHE DE SEGURIDAD MATEMÁTICO" del ACC
 (implementado, pendiente validación en LFS):** eliminado el parche de

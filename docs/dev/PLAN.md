@@ -307,6 +307,12 @@ dispara en/tras el merge a `main`.
       imposible el ZeroDivisionError; números mágicos → constantes con nombre. 2 tests del parche
       reescritos + 2 de robustez (rojo→verde). Suite 609/609; ruff limpio. **Pendiente validación
       en LFS.**
+- [x] (extra S21, no planeado) Mejorar `map_renderer.py`: el render no escalaba y limitaba la
+      edición de mapas grandes. Encuadre ajustado a los datos (`adjustable="box"`), grosores de
+      línea proporcionales a la extensión (links más finos que los roads), roadlinks como línea
+      cian fina continua (antes cruces X gruesas), leyenda multi-columna ordenada alfabéticamente
+      y paleta de roads sin colisión con los colores semánticos (rojo/gris/cian). Renders de
+      south_city/south_drift_1 regenerados y validados visualmente. Tooling offline, sin LFS.
 - [ ] Auditar el hot-loop `on_ISP_MCI` (coste por tick, frecuencia real) — con el dispatch
       ya fuera del hilo IO (Fase 3)
 - [ ] Consolidar radar/geometría en unidad testeable; revisar FSM de adelantamiento

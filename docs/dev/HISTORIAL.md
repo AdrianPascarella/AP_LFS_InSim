@@ -53,8 +53,29 @@ benefician igual.
 bien**. El **ceda el paso en intersección queda SIN CONFIRMAR**: no tiene ninguna intersección
 creada, así que ese call-site (`traffic.py:645`) no se ha podido probar. Reconfirmar cuando exista.
 
-**Commit:** `fix(ai_control): sustituir el PARCHE del ACC por matemática robusta` (código + tests)
-y el commit de docs de cierre.
+**Mejora extra (no planeada) — render del mapa (`map_renderer.py`):** a mitad de sesión el usuario
+pidió arreglar el renderer, que le limitaba para editar mapas grandes. Problemas del render viejo
+(patentes en `south_city_rendered.png`, ~65 roads): (1) leyenda de UNA columna que aplastaba el
+mapa hasta dejarlo diminuto, agravado por `set_aspect(adjustable="datalim")` que expandía el rango
+X de forma fantasma; (2) grosores FIJOS en puntos → roads paralelos solapados en un borrón; (3)
+roadlinks como cruces `X` gruesas cian tapando la vista. Solución en un solo archivo:
+
+- **Encuadre a los datos:** `adjustable="box"` + `xlim/ylim` con margen calculado sobre los bounds
+  reales → el mapa llena el eje (se acabó el agrandado fantasma del eje X).
+- **Grosores proporcionales** a la extensión: `road_lw = clamp(1300/span, 0.6, 3.0)`,
+  `link_lw = 0.55·road_lw` (los links SIEMPRE más finos que los roads, para que se vean menos).
+- **RoadLinks = línea cian fina CONTINUA** (como los laterales pero sólida), conservando su cian.
+- **Leyenda multi-columna** (`ncol = ceil(n/30)`) y **ordenada alfabéticamente**, fuente 7 → su
+  alto ≈ el del mapa y aprovecha el espacio. Al ordenar, los carriles `X_a`/`X_b` quedan contiguos.
+- **Paleta de roads que EXCLUYE** rojo (zonas), gris (laterales) y cian (roadlinks) para no
+  confundir un road con esos elementos semánticos. Quitados los marcadores por-nodo (ensuciaban).
+
+Renders de `south_city` y `south_drift_1` regenerados y **validados visualmente con el usuario**.
+Tooling offline (no toca el runtime de conducción) → no requiere validación en LFS.
+
+**Commits:** `fix(ai_control): sustituir el PARCHE del ACC por matemática robusta` (código + tests),
+`docs(dev): S21 - ...` (docs de cierre), `docs(dev): S21 - validación parcial del fix del ACC en
+LFS`, y `5dd0740 feat(ai_control): mejorar el render del mapa (leyenda, grosores, roadlinks)`.
 
 ---
 
