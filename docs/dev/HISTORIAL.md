@@ -73,6 +73,16 @@ roadlinks como cruces `X` gruesas cian tapando la vista. Solución en un solo ar
 Renders de `south_city` y `south_drift_1` regenerados y **validados visualmente con el usuario**.
 Tooling offline (no toca el runtime de conducción) → no requiere validación en LFS.
 
+**Refinamiento de la leyenda (petición del usuario tras ver el primer resultado):** que **cada
+columna baje EXACTAMENTE lo que baja el mapa** y solo entonces se abra la siguiente (antes el
+corte era fijo, `max_rows=30`, dejando columnas más cortas que el mapa). Ahora el nº de filas por
+columna se **mide sobre un render de sondeo** (alto del recuadro del mapa ÷ alto de una entrada de
+leyenda; ratio independiente del dpi) en vez de estimarse. Como matplotlib **equilibra** las
+columnas por su cuenta, se **fuerza el llenado columna-a-columna** rellenando la última con
+entradas invisibles (`Line2D(color="none")`, label `" "`) hasta `ncol·filas_por_columna`. Resultado
+validado: `south_city` → 2 columnas (la 1ª llena hasta el fondo del mapa, la 2ª con el resto
+arriba); `south_drift_1` → 1 columna (sus ~22 entradas caben en el alto). Commit `9a9f4eb`.
+
 **Commits:** `fix(ai_control): sustituir el PARCHE del ACC por matemática robusta` (código + tests),
 `docs(dev): S21 - ...` (docs de cierre), `docs(dev): S21 - validación parcial del fix del ACC en
 LFS`, y `5dd0740 feat(ai_control): mejorar el render del mapa (leyenda, grosores, roadlinks)`.

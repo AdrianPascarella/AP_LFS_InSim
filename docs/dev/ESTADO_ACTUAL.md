@@ -21,7 +21,11 @@ alfabéticamente**, fuente reducida; **paleta de roads que EXCLUYE** los colores
 reservados (rojo=zonas, gris=laterales, cian=roadlinks); quitados los marcadores por-nodo.
 Renders de `south_city` y `south_drift_1` regenerados y **validados visualmente con el usuario**.
 Suite 609/609; ruff limpio. Es tooling offline (no toca runtime de conducción) → no requiere LFS.
-Commit `5dd0740`.
+Commit `5dd0740`. **Refinamiento posterior (a petición del usuario, commit `9a9f4eb`):** cada
+columna de la leyenda baja **exactamente lo que baja el mapa** y solo entonces se abre la siguiente;
+filas por columna **medidas** sobre un render de sondeo (no estimadas) y **llenado columna-a-columna
+forzado** con entradas invisibles (matplotlib equilibra columnas por defecto). `south_city` → 2
+columnas (la 1ª llena hasta el fondo), `south_drift_1` → 1 columna.
 
 **S21 (2026-07-07) — Fase 5: sustitución del "PARCHE DE SEGURIDAD MATEMÁTICO" del ACC
 (implementado, pendiente validación en LFS):** eliminado el parche de

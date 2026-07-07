@@ -311,8 +311,10 @@ dispara en/tras el merge a `main`.
       edición de mapas grandes. Encuadre ajustado a los datos (`adjustable="box"`), grosores de
       línea proporcionales a la extensión (links más finos que los roads), roadlinks como línea
       cian fina continua (antes cruces X gruesas), leyenda multi-columna ordenada alfabéticamente
-      y paleta de roads sin colisión con los colores semánticos (rojo/gris/cian). Renders de
-      south_city/south_drift_1 regenerados y validados visualmente. Tooling offline, sin LFS.
+      con **cada columna de la altura del mapa** (filas por columna medidas sobre un render de
+      sondeo + llenado columna-a-columna forzado) y paleta de roads sin colisión con los colores
+      semánticos (rojo/gris/cian). Renders de south_city/south_drift_1 regenerados y validados
+      visualmente. Tooling offline, sin LFS. Commits `5dd0740`, `9a9f4eb`.
 - [ ] Auditar el hot-loop `on_ISP_MCI` (coste por tick, frecuencia real) — con el dispatch
       ya fuera del hilo IO (Fase 3)
 - [ ] Consolidar radar/geometría en unidad testeable; revisar FSM de adelantamiento
