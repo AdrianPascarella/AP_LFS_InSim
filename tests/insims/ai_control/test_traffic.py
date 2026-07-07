@@ -37,15 +37,17 @@ HEADING_NORTH = 0
 HEADING_SOUTH = 32768
 
 
-# ─── _apply_adaptive_cruise_control: ACC de 3 zonas + parche de seguridad ──────
+# ─── _apply_adaptive_cruise_control: ACC de 3 zonas (S21: parche eliminado) ────
 #
 # Firma: (base_speed_kmh, closest_speed_kmh, closest_dist_m, min_dist_m, max_dist_m)
-# Zonas (tras el parche que ajusta min/max):
-#   critical = max(5.0, min_dist*0.5); min_dist ≥ critical+2; max_dist ≥ min_dist+5
+# Los min/max del llamador se respetan tal cual (el viejo "PARCHE DE SEGURIDAD
+# MATEMÁTICO" que los reescribía se eliminó en S21; ver DIAGNOSTICO § P25). Zonas:
+#   critical = max(5.0, min_dist*0.5)   (suelo duro de parada incluido)
 #   ROJA    (dist ≤ critical)          → 0.0
 #   NARANJA (critical < dist ≤ min)    → closest_speed * ratio; <2 km/h → 0.0 (anti-creep)
 #   AMARILLA(min < dist < max)         → lerp hacia match_speed = min(closest, base)
 #   fuera   (dist ≥ max)               → base_speed
+# Ratios acotados a [0,1] y denominadores blindados con ε → nunca ZeroDivisionError.
 
 
 class TestApplyAdaptiveCruiseControl:
@@ -95,17 +97,35 @@ class TestApplyAdaptiveCruiseControl:
         got = ai_control._apply_adaptive_cruise_control(50, 30, 11.0, 20, 30)
         assert got == pytest.approx(3.0)
 
-    def test_parche_empuja_min_dist_hacia_arriba(self, ai_control):
-        # min=2 se empuja a max(critical+2, 2)=7. dist=6 cae en NARANJA (no amarilla):
-        # ratio=(6-5)/(7-5)=0.5 → 30*0.5 = 15. (Sin parche sería amarilla ≈ 34.4.)
+    def test_min_pequeno_no_se_reescribe_cae_en_amarilla(self, ai_control):
+        # S21: el min del llamador (2) YA NO se empuja a 7. critical=max(5, 1)=5.
+        # dist=6 > min=2 → AMARILLA: ratio=(6-2)/(20-2)=0.222, match=30 →
+        # 30+(50-30)*0.222 = 34.44. (Con el viejo parche caía en NARANJA = 15.)
         got = ai_control._apply_adaptive_cruise_control(50, 30, 6.0, 2, 20)
-        assert got == pytest.approx(15.0)
+        assert got == pytest.approx(34.4444, abs=1e-3)
 
-    def test_parche_empuja_max_dist_hacia_arriba(self, ai_control):
-        # max=12 < min+5=15 → se empuja a 15. dist=14 cae en AMARILLA (no "fuera"):
-        # ratio=(14-10)/(15-10)=0.8, match=30 → 30+20*0.8 = 46. (Sin parche sería base=50.)
+    def test_max_menor_que_min_no_se_reescribe(self, ai_control):
+        # S21: max=12 YA NO se empuja a 15. dist=14 ≥ max=12 → fuera de rango →
+        # base=50. (Con el viejo parche caía en AMARILLA = 46.)
         got = ai_control._apply_adaptive_cruise_control(50, 30, 14.0, 10, 12)
-        assert got == pytest.approx(46.0)
+        assert got == pytest.approx(50.0)
+
+    def test_min_en_el_suelo_no_lanza(self, ai_control):
+        # S21: a baja velocidad min llega a su suelo (5) y critical=max(5, 2.5)=5,
+        # con lo que la zona naranja se colapsa. NO hay ZeroDivisionError: dist≤5 →
+        # parada; dist>5 → amarilla directamente. (Antes el parche empujaba min a 7
+        # para crear una franja naranja artificial y así tapar el denominador.)
+        assert ai_control._apply_adaptive_cruise_control(50, 30, 5.0, 5, 15) == 0.0
+        # dist=10 en amarilla: ratio=(10-5)/(15-5)=0.5, match=min(30,50)=30 → 40.
+        got = ai_control._apply_adaptive_cruise_control(50, 30, 10.0, 5, 15)
+        assert got == pytest.approx(40.0)
+
+    def test_max_igual_a_min_no_lanza(self, ai_control):
+        # Denominador amarillo (max-min) = 0 blindado con ε: no ZeroDivisionError.
+        # dist=12 > min=10 y ≥ max=10 → fuera → base. dist=10 → borde de naranja.
+        assert ai_control._apply_adaptive_cruise_control(50, 30, 12.0, 10, 10) == 50.0
+        got = ai_control._apply_adaptive_cruise_control(50, 30, 10.0, 10, 10)
+        assert got == pytest.approx(30.0)  # dist==min → naranja, ratio=1 → closest
 
 
 # ─── _estimate_overtake_distance: asfalto y tiempo para adelantar ─────────────
