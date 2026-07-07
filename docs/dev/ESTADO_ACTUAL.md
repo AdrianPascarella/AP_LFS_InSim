@@ -1,11 +1,33 @@
 # 📍 Estado actual
 
-> Actualizado: **2026-07-07** — sesión S21 (fix del ACC validado parcialmente en LFS + mejora del render del mapa)
+> Actualizado: **2026-07-07** — sesión S22 (auditoría del hot-loop `on_ISP_MCI` + red y limpieza de `get_location_context`)
 > **Rama de trabajo: `refactor/estabilizacion`.** Todo el refactor ocurre aquí; `main`
 > queda intacta hasta el merge final (cuando el proyecto esté estable). **Sync por GitHub:**
 > `git pull` al arrancar y `git push` al cerrar (permite continuar desde otro dispositivo).
 
 ## Estado
+
+**S22 (2026-07-07) — Fase 5: auditoría del hot-loop `on_ISP_MCI`:** completada (informe con
+mediciones reales en `docs/dev/AUDITORIA_HOTLOOP.md`). **Veredicto: el loop está SANO.** MCI
+llega a ~100 Hz (paquetes de ≤8 coches; trabajo por coche), pero el trabajo caro NO corre a
+100 Hz: el orquestador `_update_traffic_behavior` **auto-regula el radar** con una compuerta
+(`_radar_interval = 0.1 + random(0..0.05)` → ~7–10 Hz por IA) y el jitter **desincroniza** a
+las IAs; el contexto de humanos se cachea 0.1 s **compartido** entre todas las IAs. Medido:
+radar `_scan_lane_ahead` ≈1.5 µs/vehículo (O(N) por IA → O(N²) global), física barata, `um`
+≈1.2 µs/coche; el **peor tick** (16 IAs) ≈0.6 ms ≪ 10 ms → holgura cómoda hasta ~16–20 IAs.
+Hallazgos de robustez/escalado (NO urgencias): (1) `get_location_context` es O(mapa entero),
+~1 ms en mapa grande (≈south_city, 1300 nodos) — contenido hoy pero frágil; cura de fondo =
+índice espacial; (2) radar O(N²); (3) `Coordinates.x_m/y_m/z_m` y `Speed.speed_kmh`
+**recalculan la conversión en CADA acceso** (~28% del tiempo del radar en el profile) →
+cachear a atributo plano, candidato a Fase 6. **Red primero:** nuevo `test_map_recorder.py`
+(**8 tests**) que caracteriza `get_location_context` (road más cercano, enlace sobre
+road_links ∪ lateral_links, desempate por orden, closed roads). **Limpieza menor aplicada:**
+`get_location_context` ya no reconstruye `{**road_links, **lateral_links}` en cada llamada
+(ahora `itertools.chain` — mismo orden, claves nunca colisionan) → elimina una allocation;
+impacto de perf **despreciable** (~0.2 µs/llamada, medido) — el coste dominante son las
+distancias sobre nodos, sin tocar. Suite **617/617** (609 + 8); ruff limpio. Solo
+tests/tooling offline → **no requiere validación en LFS**. Commits: `b55a35f` (render, ver
+S21) + los de S22.
 
 **S21 (extra, 2026-07-07) — mejora del render del mapa (`map_renderer.py`), no planeada:** el
 usuario avisó de que el renderer le estaba limitando para editar mapas grandes. Problemas del
@@ -419,11 +441,20 @@ DESPUÉS del merge; ver "Fase activa" y PLAN § Merge). Empezar AQUÍ:
       Estado S21 y P25), ratios en [0,1], denominadores con ε, constantes con nombre. 2 tests del
       parche reescritos + 2 de robustez. Suite 609/609. **PENDIENTE: validación en LFS.**
 
-   5. **◀️ PRÓXIMO — Auditar el hot-loop `on_ISP_MCI`** (coste por tick, frecuencia real), con el
-      dispatch ya fuera del hilo de IO (Fase 3). Después: consolidar radar/geometría en unidad
-      testeable y revisar el FSM de adelantamiento (últimos ítems de Fase 5, ver PLAN). Nota
-      entorno: en ESTE equipo ruff 0.15.20 ya está en `.venv`; en otro, `pip install -e ".[dev]"`
-      lo incluye. `gh` / `.venv39` / Docker según equipo.
+   5. **Auditar el hot-loop `on_ISP_MCI` — ✅ HECHO (S22).** Informe en
+      `docs/dev/AUDITORIA_HOTLOOP.md`. Veredicto: loop sano; hallazgos de robustez/escalado, no
+      urgencias (ver Estado S22 arriba). Red nueva `test_map_recorder.py` (8 tests) + limpieza
+      menor del dict fusionado en `get_location_context`. Suite 617/617.
+
+   6. **◀️ PRÓXIMO — Consolidar radar/geometría en unidad testeable + revisar FSM de
+      adelantamiento** (últimos ítems de Fase 5). Ataca de raíz los hallazgos 1 y 2 de la
+      auditoría: un **índice espacial** (grid/celdas) para `get_location_context` (O(mapa) →
+      O(vecindario)) y para el radar (O(N²) → ~O(N·k)). **Con caracterización primero:** la red
+      de `test_map_recorder.py` ya cubre `get_location_context`; falta caracterizar el radar
+      como unidad antes de reescribirlo (hoy `test_traffic.py` lo ejercita solo con IAs). Es un
+      cambio de estructura + comportamiento potencial → diseñar con el usuario antes de tocar.
+      Nota entorno: en ESTE equipo ruff 0.15.20 ya está en `.venv`; en otro,
+      `pip install -e ".[dev]"` lo incluye. `gh` / `.venv39` / Docker según equipo.
 2. Backlog de **tipado gradual** (ir quitando overrides de `[tool.mypy]` en
    pyproject, módulo a módulo, cuando se toque cada uno): los módulos
    `packets` (dataclasses de protocolo), `insim_loader` (fricción con

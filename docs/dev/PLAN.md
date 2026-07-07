@@ -315,9 +315,20 @@ dispara en/tras el merge a `main`.
       sondeo + llenado columna-a-columna forzado) y paleta de roads sin colisión con los colores
       semánticos (rojo/gris/cian). Renders de south_city/south_drift_1 regenerados y validados
       visualmente. Tooling offline, sin LFS. Commits `5dd0740`, `9a9f4eb`.
-- [ ] Auditar el hot-loop `on_ISP_MCI` (coste por tick, frecuencia real) — con el dispatch
-      ya fuera del hilo IO (Fase 3)
-- [ ] Consolidar radar/geometría en unidad testeable; revisar FSM de adelantamiento
+- [x] Auditar el hot-loop `on_ISP_MCI` (coste por tick, frecuencia real) — con el dispatch
+      ya fuera del hilo IO (Fase 3) — S22: informe en `docs/dev/AUDITORIA_HOTLOOP.md` con
+      mediciones reales. **Veredicto: el loop está SANO** (radar auto-regulado a ~7–10 Hz/IA
+      con jitter + caché compartida de humanos → peor tick ≈0.6 ms ≪ 10 ms hasta ~16–20 IAs).
+      Hallazgos de robustez/escalado (no urgencias): `get_location_context` es O(mapa) ~1 ms en
+      mapa grande (índice espacial pendiente); radar O(N²); `Coordinates.x_m/y_m/z_m` recalcula
+      la conversión en cada acceso (~28% del radar, candidato a Fase 6). De paso, red nueva
+      `test_map_recorder.py` (8 tests, caracteriza `get_location_context`) + limpieza menor:
+      `get_location_context` ya no reconstruye el dict fusionado de enlaces (`itertools.chain`;
+      perf despreciable, pero elimina una allocation). Suite 617/617.
+- [ ] Consolidar radar/geometría en unidad testeable (índice espacial para
+      `get_location_context` + radar); revisar FSM de adelantamiento — ataca de raíz los
+      hallazgos 1 y 2 de la auditoría; con caracterización primero (la red de
+      `test_map_recorder.py` ya cubre `get_location_context`)
 
 **Criterio de aceptación:** lógica de P2 congelada por tests; sin parches ad-hoc; el usuario
 valida en LFS.

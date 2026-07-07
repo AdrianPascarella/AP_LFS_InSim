@@ -31,6 +31,7 @@ versión corta como *"arranca la sesión según tu protocolo de inicio"* funcion
 | `DIAGNOSTICO.md` | Escaneo del proyecto y problemas detectados | Cuando se descubre algo nuevo |
 | `MODUS_OPERANDI.md` | Protocolo de trabajo y reglas | Cuando cambian las reglas |
 | `PUBLICACION.md` | Runbook de publicación en PyPI (no es lectura de arranque) | Al preparar o hacer una release |
+| `AUDITORIA_HOTLOOP.md` | Auditoría del hot-loop `on_ISP_MCI` (coste/frecuencia, S22) | Referencia; no es lectura de arranque |
 
 El arranque automático está enganchado en **`/CLAUDE.md`** (sección "Contexto de trabajo persistente"),
 que instruye a Claude a leer estos archivos al inicio de cada sesión.

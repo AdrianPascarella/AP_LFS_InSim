@@ -5,6 +5,59 @@
 
 ---
 
+## S22 — 2026-07-07 — Fase 5: auditoría del hot-loop `on_ISP_MCI`
+
+**Arranque:** protocolo de inicio; ya en `refactor/estabilizacion`, `git pull` "Already up to
+date" (tip `0ff46fb`, cierre S21). Próximo paso documentado: auditar el hot-loop `on_ISP_MCI`.
+
+**Incidente de arranque (mapas):** el usuario avisó de cambios sin commitear del render. Había
+en el working tree `map_renderer.py` + `south_drift_1_rendered.png` + `test_rendered.png`
+(continuación de S21: la leyenda de 1 columna ahora se **reparte** con `labelspacing` hasta el
+alto del mapa cuando cabe holgada). Protegido según instrucción permanente: commit + push
+(`b55a35f`). *(El `git status` de arranque los daba como limpios; aparecieron/afloraron
+durante la sesión — commiteados igualmente para no perderlos.)*
+
+**Qué se hizo — auditoría (análisis + medición real, sin LFS):** benchmark scratchpad con las
+factorías del conftest. Resultados en `docs/dev/AUDITORIA_HOTLOOP.md`. **Veredicto: el loop
+está SANO.** Puntos:
+- **Frecuencia:** MCI ~100 Hz (paquetes ≤8 coches; trabajo por coche). Dos handlers por MCI
+  (`um` → `ai_control`). Pero el trabajo caro NO va a 100 Hz: `_update_traffic_behavior`
+  **auto-regula el radar** (`_radar_interval = 0.1 + random(0..0.05)` → ~7–10 Hz/IA) con jitter
+  que **desincroniza** a las IAs; la nav por tick solo hace tracking topológico incremental.
+- **Coste medido:** `um.on_ISP_MCI` ≈1.2 µs/coche; física barata; radar `_scan_lane_ahead`
+  ≈1.5 µs/vehículo (O(N) por IA → **O(N²)** global); `get_location_context` **56 µs (50 nodos)
+  → ~1.0 ms (1300 nodos ≈ south_city)**. Peor tick (16 IAs) ≈0.6 ms ≪ 10 ms → holgura hasta
+  ~16–20 IAs. La caché de contexto de humanos (`_radar_human_cache`) vive en la app y es
+  **compartida** entre IAs (un humano se localiza 1 vez/0.1 s en total).
+- **Hallazgos (robustez/escalado, NO urgencias):** (1) `get_location_context` O(mapa entero),
+  frágil si algo lo llama por-tick — cura de fondo = índice espacial; (2) radar O(N²); (3)
+  `Coordinates.x_m/y_m/z_m` y `Speed.speed_kmh` **recalculan la conversión en cada acceso**
+  (~28% del tiempo del radar en el profile) → cachear a atributo plano, candidato a Fase 6.
+
+**Red primero + limpieza:** nuevo `tests/insims/ai_control/test_map_recorder.py` (**8 tests**)
+que caracteriza `get_location_context` (road más cercano, `road_node_idx`, enlace sobre
+`road_links` ∪ `lateral_links`, **desempate por orden de iteración**, `ignore_closed_roads`,
+mapa vacío). Verificado VERDE contra el código actual ANTES de tocar. Luego, cambio menor
+blindado por esa red: `get_location_context` deja de reconstruir el dict fusionado
+`{**road_links, **lateral_links}` en cada llamada → `itertools.chain(road_links.items(),
+lateral_links.items())` (mismo orden —las claves `'A->B'` vs `'A<<>>B'` nunca colisionan— y
+mismo desempate con `<` estricto). **Medido aislado: ahorro ~0.2 µs/llamada → despreciable**
+(el coste dominante son las distancias sobre nodos, sin tocar); se mantiene por limpieza
+(elimina una allocation), no por perf.
+
+**Decisión de diseño:** el fix de fondo (índice espacial para geometría + radar) NO se hizo en
+esta sesión: es cambio de estructura + comportamiento potencial → va en el siguiente ítem del
+plan ("consolidar radar/geometría"), a diseñar con el usuario y con más caracterización (falta
+el radar como unidad). La auditoría concluye que no hay urgencia de rendimiento.
+
+**Verificación:** suite **617/617** (609 + 8). `ruff check` + `ruff format --check` limpios en
+los archivos tocados. Solo tests/tooling offline → **no requiere validación en LFS**.
+
+**Commits:** `b55a35f` (render, protección de mapas) + el de la auditoría (red + limpieza +
+docs de cierre).
+
+---
+
 ## S21 — 2026-07-07 — Fase 5: sustitución del "PARCHE DE SEGURIDAD MATEMÁTICO" del ACC
 
 **Arranque:** protocolo de inicio; ya en `refactor/estabilizacion`, `git pull` "Already up to
