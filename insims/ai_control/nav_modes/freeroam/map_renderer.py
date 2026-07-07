@@ -216,13 +216,19 @@ def generate_map_image(json_path: str):
     ax.set_ylabel("Y (Meters)", fontsize=12)
     ax.grid(True, linestyle=":", alpha=0.6)
 
-    # Leyenda a la derecha: cada COLUMNA baja EXACTAMENTE lo que baja el mapa —
-    # se apilan nombres hacia abajo hasta llegar al fondo del mapa y solo a partir
-    # de ahí se abre la siguiente columna. El nº de filas por columna se MIDE sobre
-    # un render real (alto del recuadro del mapa / alto de una entrada), no se
-    # estima. matplotlib reparte las columnas de forma equilibrada por su cuenta;
-    # para forzar el llenado columna-a-columna (primera columna llena hasta el
-    # fondo, luego la siguiente) se rellena la última con entradas invisibles.
+    # Leyenda a la derecha: los nombres bajan SIEMPRE hasta el fondo del mapa (su
+    # extensión vertical == la del recuadro del mapa) y solo entonces se abre la
+    # siguiente columna. Dos casos, según quepan o no en una sola columna a
+    # espaciado natural:
+    #   • Caben de sobra (pocos roads) → 1 columna, pero se REPARTEN (se agranda el
+    #     `labelspacing`) hasta que ocupan justo el alto del mapa, sin dejar hueco.
+    #   • No caben (muchos roads) → multi-columna a espaciado natural, llenando
+    #     columna-a-columna hasta el fondo antes de saltar a la siguiente (la última
+    #     se rellena con entradas invisibles para que matplotlib no equilibre
+    #     columnas más cortas).
+    # El nº de filas por columna y el reparto se MIDEN sobre un render de sondeo
+    # (alto del recuadro del mapa / alto de la leyenda), no se estiman; los ratios
+    # son independientes del dpi.
     fig.tight_layout()
     handles, labels = ax.get_legend_handles_labels()
     if handles:
@@ -233,19 +239,28 @@ def generate_map_image(json_path: str):
             borderaxespad=0.0,
             fontsize=legend_fontsize,
         )
-        # Medición: alto del recuadro del mapa y alto de UNA entrada de leyenda
-        # (probe a 1 columna). El ratio es independiente del dpi.
+        # Medición: alto del recuadro del mapa y alto de la leyenda a 1 columna
+        # (sondeo con TODAS las entradas, a espaciado natural).
         fig.canvas.draw()
         pad_px = 0.4 * legend_fontsize * fig.dpi / 72.0  # borderpad (arriba+abajo)
         axes_h = ax.get_window_extent().height
         probe = ax.legend(handles, labels, ncol=1, **legend_kwargs)
         fig.canvas.draw()
-        per_entry = max(
-            1.0, (probe.get_window_extent().height - 2 * pad_px) / len(labels)
-        )
+        probe_h = probe.get_window_extent().height
+        per_entry = max(1.0, (probe_h - 2 * pad_px) / len(labels))
 
         rows_per_col = max(1, int((axes_h - 2 * pad_px) // per_entry))
         ncol = max(1, math.ceil(len(labels) / rows_per_col))
+
+        # Reparto vertical: si todo cabe en 1 columna que queda MÁS CORTA que el
+        # mapa, agrandar `labelspacing` (en unidades de tamaño de fuente) para que
+        # los nombres bajen justo hasta el fondo. El sondeo ya midió el alto natural
+        # (probe_h) a `labelspacing` por defecto (0.5); cada unidad extra añade
+        # `fs_px` de separación en cada uno de los (n-1) huecos.
+        labelspacing = 0.5
+        if ncol == 1 and len(labels) >= 2 and probe_h < axes_h:
+            fs_px = legend_fontsize * fig.dpi / 72.0
+            labelspacing = 0.5 + (axes_h - probe_h) / ((len(labels) - 1) * fs_px)
 
         # Con ≥2 columnas, rellenar hasta ncol*rows_per_col con entradas invisibles
         # para que cada columna se llene hasta el fondo del mapa antes de saltar a
@@ -262,6 +277,7 @@ def generate_map_image(json_path: str):
             ncol=ncol,
             handlelength=1.5,
             columnspacing=1.0,
+            labelspacing=labelspacing,
             **legend_kwargs,
         )
 
