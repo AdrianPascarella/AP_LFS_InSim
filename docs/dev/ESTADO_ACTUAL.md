@@ -455,6 +455,34 @@ DESPUÉS del merge; ver "Fase activa" y PLAN § Merge). Empezar AQUÍ:
       cambio de estructura + comportamiento potencial → diseñar con el usuario antes de tocar.
       Nota entorno: en ESTE equipo ruff 0.15.20 ya está en `.venv`; en otro,
       `pip install -e ".[dev]"` lo incluye. `gh` / `.venv39` / Docker según equipo.
+
+      **▶️ Punto de arranque de diseño (dejado en S22 para carrerilla) — decidir ARRIBA del todo
+      antes de codificar:**
+      - **Estructura:** grid uniforme (hash grid) 2D en metros (x,y), lo más simple que encaja.
+        Tamaño de celda ligado al radio de consulta típico (radar `max_dist_m` ≈30–45 m → celda
+        ~ese orden, consulta = celda del punto + vecinas 3×3). Decidir el tamaño con datos de un
+        mapa real (south_city).
+      - **Fasearlo (recomendado):** (a) **primero índice de GEOMETRÍA estática** (roads/links)
+        para `get_location_context` — es el win grande, más estable y **ya tiene red**
+        (`test_map_recorder.py`); (b) **luego** partición espacial de VEHÍCULOS para el radar
+        O(N²) (menor prioridad: la auditoría lo da holgado hasta ~16–20 IAs). No mezclar ambos
+        en un solo cambio.
+      - **Inserción de segmentos:** los roads/links son polilíneas que cruzan varias celdas →
+        rasterizar cada segmento en TODAS las celdas que atraviesa (no solo las de sus nodos),
+        para que una consulta puntual mire solo celdas locales.
+      - **Invalidación (el punto delicado):** `map_recorder` MUTA sin parar al grabar mapas
+        (añade/mueve nodos). El índice estático debe marcarse *dirty* en cada mutación de
+        roads/links/zones y reconstruirse *lazy* en la siguiente consulta de conducción; OJO al
+        *thrashing* durante la grabación (mitigar: la grabación no consulta `get_location_context`
+        por nodo, así que el rebuild solo se paga cuando conduce una IA; o *debounce*).
+      - **Riesgo de comportamiento:** `get_location_context` desempata por ORDEN de iteración
+        (`<` estricto → gana el primero; hoy road_links antes que lateral_links, **locked por
+        `test_map_recorder.test_empate_gana_el_road_link_por_orden_de_iteracion`**). Un grid
+        cambia el orden de recorrido → un desempate podría resolverse distinto. Preservar un
+        desempate **determinista y estable** (p. ej. por `id`), y si se cambia a propósito,
+        actualizar ese test de forma consciente (no “porque falla”).
+      - **Primer paso real:** caracterizar el **radar como unidad** (falta) antes de tocarlo; el
+        de geometría ya está. Solo entonces implementar (a).
 2. Backlog de **tipado gradual** (ir quitando overrides de `[tool.mypy]` en
    pyproject, módulo a módulo, cuando se toque cada uno): los módulos
    `packets` (dataclasses de protocolo), `insim_loader` (fricción con
