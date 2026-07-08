@@ -325,10 +325,20 @@ dispara en/tras el merge a `main`.
       `test_map_recorder.py` (8 tests, caracteriza `get_location_context`) + limpieza menor:
       `get_location_context` ya no reconstruye el dict fusionado de enlaces (`itertools.chain`;
       perf despreciable, pero elimina una allocation). Suite 617/617.
-- [ ] Consolidar radar/geometría en unidad testeable (índice espacial para
-      `get_location_context` + radar); revisar FSM de adelantamiento — ataca de raíz los
-      hallazgos 1 y 2 de la auditoría; con caracterización primero (la red de
-      `test_map_recorder.py` ya cubre `get_location_context`)
+- [x] (6a) Índice espacial de GEOMETRÍA para `get_location_context` — S23: ataca el hallazgo 1
+      de la auditoría (barrido O(nodos) → ~9,2 ms/consulta en south_city ampliado, 128 roads /
+      11.086 nodos). Nuevo `nav_modes/freeroam/spatial_grid.py` (`SpatialHashGrid`, hash grid 2D
+      genérico) + `_get_closest_road` en `map_recorder.py`. **Fidelidad por construcción**: el
+      grid solo acota candidatos y delega en el `get_closest_geometry` existente en orden de dict
+      → distancia 3D y desempate `<` idénticos al barrido lineal. Invalidación en los 5 sitios de
+      mutación de `self.roads`; celda 20 m (~13×, medido). `test_spatial_grid.py` (12) +
+      `test_road_spatial_index.py` (fuzz de equivalencia + bordes). Suite 642/642; ruff limpio.
+      Solo tests offline → no requiere LFS.
+- [ ] (6b) Partición espacial de VEHÍCULOS para el radar O(N²) (hallazgo 2) + revisar FSM de
+      adelantamiento — con caracterización del radar como UNIDAD primero (hoy `test_traffic.py`
+      lo ejercita solo con IAs). El `SpatialHashGrid` de 6a es reutilizable, pero el de vehículos
+      es dinámico (grid aparte). Menor prioridad: la auditoría da el radar holgado hasta ~16–20
+      IAs. Cambio de estructura + comportamiento potencial → diseñar con el usuario antes de tocar.
 
 **Criterio de aceptación:** lógica de P2 congelada por tests; sin parches ad-hoc; el usuario
 valida en LFS.

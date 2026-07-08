@@ -5,6 +5,69 @@
 
 ---
 
+## S23 — 2026-07-08 — Fase 5: índice espacial de geometría (`get_location_context`)
+
+**Arranque:** protocolo de inicio; ya en `refactor/estabilizacion`, árbol limpio (sin mapas
+pendientes que proteger). `git pull` trajo **`9852f87 data(ai_control): amplia mapa freeroam de
+South City`** desde otro equipo (nuevo `south_city.json` + render; solo datos, sin código). El
+usuario pidió arrancar la **fase (a)** del ítem 6 (índice espacial para `get_location_context`).
+
+**Contexto nuevo detectado al inspeccionar el mapa ampliado:** south_city ahora **128 roads /
+11.086 nodos** (~8,5× lo que la auditoría S22 asumió, ~1.300) → el barrido O(nodos) de
+`get_location_context` está en **~9,2 ms/consulta** (medido; confirma la extrapolación de S22).
+Además, `zones: 0` → **sigue sin haber ninguna intersección**, así que la validación en LFS del
+ceda-el-paso del ACC (pendiente de S21) **sigue bloqueada** (nada nuevo que probar).
+
+**Qué se hizo (fase (a), geometría):**
+- Nuevo módulo genérico y testeable `nav_modes/freeroam/spatial_grid.py` — `SpatialHashGrid`
+  (hash grid uniforme 2D): `insert_point`/`insert_segment` (registra en las celdas del
+  bounding-box del segmento), `ring_ids(px,py,k)` (marco Chebyshev de radio k) y
+  `block_covers_all` (para terminar la expansión). Documentada la garantía de corrección (celda a
+  Chebyshev m dista ≥ (m-1)·celda → parada segura cuando `best_dist < k·celda`).
+- `map_recorder.py`: `_get_road_index` (build perezoso), `_get_closest_road` (expande anillos,
+  reúne road_ids candidatos y delega en el `get_closest_geometry` existente **en orden de dict**),
+  y wiring en el paso 1 de `get_location_context`. `road_node_idx` sin tocar.
+- **Invalidación:** `_invalidate_road_index()` (pone el índice a `None`) en los **5 sitios
+  discretos** de mutación de `self.roads`: 3×`clear` (nuevo/carga/borrado de mapa), commit de
+  grabación de road (1296/1298), `del` (2350). Descubierto al auditar: la grabación **NO** muta
+  roads en vivo (usa el buffer `current_recording`, que se vuelca solo al commit) y **no hay
+  edición de nodos in-place** → el conjunto de mutaciones es pequeño y frío. El toggle `is_closed`
+  NO invalida (geometría intacta; la consulta filtra las cerradas en caliente).
+
+**Decisiones de diseño:**
+1. **Fidelidad por construcción, no por reimplementación:** el grid solo acota el CONJUNTO de
+   candidatos; la distancia 3D y el desempate `<` estricto los sigue calculando el
+   `get_closest_geometry` de siempre, recorriendo `self.roads` en orden de dict → resultado
+   **bit-idéntico** al barrido lineal (probado con fuzz). Se evitó así el riesgo de duplicar la
+   matemática/desempate.
+2. **Celda 20 m** (no 40 m como sugería la nota de S22). El "40 m para reutilizar en el radar" se
+   debilita: la fase (b) usará un grid de vehículos **dinámico** (otra vida), no el estático. Como
+   las consultas caen SOBRE la vía, celda pequeña = menos candidatos; benchmark: 30→20→10 m ≈
+   11×→13×→18×, retorno decreciente + celdas pequeñas encarecen build/memoria y penalizan puntos
+   lejanos → **20 m = balance (~13×, 9,2 ms → 0,70 ms/consulta)**.
+3. **Solo geometría de ROADS** (no links/zonas): los roads son el 99% del coste (11.086 nodos vs
+   55 links / 0 zonas); indexar solo roads captura ~todo el win y deja intacto el test de
+   desempate de links (queda verde trivialmente). No mezclar comportamiento y estructura.
+
+**Red (caracterización + equivalencia):** `test_spatial_grid.py` (12 unitarios del grid) +
+`test_road_spatial_index.py` (**fuzz**: 8 semillas × 200 puntos × 2 modos ≈ 3200 comparaciones
+bit-a-bit contra el barrido lineal, dentro/fuera de vía y con cerradas; + bordes: road de 1 nodo,
+sin nodos, punto lejano, invalidación tras mutar). La red previa `test_map_recorder.py` (8) se
+verificó VERDE antes de tocar y sigue verde.
+
+**Verificación:** suite **642/642** (617 + 25). `ruff check` + `ruff format --check` limpios en
+lo tocado. 3.9-seguro por construcción (`from __future__ import annotations`, `typing.*`, regla
+FA102 pasa; `.venv39` no está en este equipo → lo valida el CI en el push). Solo tests/tooling
+offline → **no requiere validación en LFS**.
+
+**Pendiente (ítem 6b):** partición espacial de VEHÍCULOS para el radar O(N²) —con el radar
+caracterizado como unidad ANTES— y revisar el FSM de adelantamiento. Menor prioridad (la
+auditoría da el radar holgado hasta ~16–20 IAs); valorar con el usuario si se ataca ya.
+
+**Commits:** el de esta sesión (índice espacial + red).
+
+---
+
 ## S22 — 2026-07-07 — Fase 5: auditoría del hot-loop `on_ISP_MCI`
 
 **Arranque:** protocolo de inicio; ya en `refactor/estabilizacion`, `git pull` "Already up to

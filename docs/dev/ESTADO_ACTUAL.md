@@ -1,11 +1,41 @@
 # 📍 Estado actual
 
-> Actualizado: **2026-07-07** — sesión S22 (auditoría del hot-loop `on_ISP_MCI` + red y limpieza de `get_location_context`)
+> Actualizado: **2026-07-08** — sesión S23 (Fase 5: índice espacial de geometría para `get_location_context`)
 > **Rama de trabajo: `refactor/estabilizacion`.** Todo el refactor ocurre aquí; `main`
 > queda intacta hasta el merge final (cuando el proyecto esté estable). **Sync por GitHub:**
 > `git pull` al arrancar y `git push` al cerrar (permite continuar desde otro dispositivo).
 
 ## Estado
+
+**S23 (2026-07-08) — Fase 5: índice espacial de geometría para `get_location_context`
+(fase (a) del ítem 6; implementado y verificado, NO requiere LFS):** atacado el hallazgo nº1 de
+la auditoría S22. `get_location_context` buscaba el road más cercano con un barrido O(nodos
+totales); en el south_city AMPLIADO (llegó por sync este arranque: **128 roads / 11.086 nodos**,
+~8,5× lo que la auditoría asumió) eso son **~9,2 ms/consulta** (medido — confirma la
+extrapolación de S22). Nuevo módulo genérico y testeable `nav_modes/freeroam/spatial_grid.py`
+(`SpatialHashGrid`, hash grid uniforme 2D): cada segmento se registra en las celdas de su
+bounding-box; una consulta expande anillos Chebyshev y **para en cuanto `best_dist < k·celda`**
+(garantía: nada fuera de lo visto puede estar más cerca) o cuando el bloque cubre todas las
+celdas ocupadas (→ barrido completo, fallback de siempre). **Fidelidad por construcción:** el
+grid solo produce el CONJUNTO de road_ids candidatos; la respuesta la calcula el
+`get_closest_geometry` existente sobre esos candidatos **en orden de dict** → distancia 3D y
+desempate `<` estricto **idénticos** al barrido lineal. `road_node_idx` no se toca.
+**Invalidación:** `self._road_index = None` en los **5 sitios discretos** de mutación de
+`self.roads` (3×`clear` de nuevo/carga/borrado de mapa, commit de grabación, `del`); el toggle
+`is_closed` NO invalida (geometría intacta; se filtra en caliente). La grabación NO muta roads en
+vivo (usa el buffer `current_recording`, que se vuelca solo al commit) → el rebuild solo se paga
+al conducir. **Celda = 20 m**, elegida con benchmark (las consultas caen SOBRE la vía → celda
+pequeña = menos candidatos; retorno decreciente, 20 m = balance): **~13× (9,2 ms → 0,70
+ms/consulta)**; build del índice ~13 ms una vez por mutación del mapa. **Red:**
+`test_spatial_grid.py` (12 tests unitarios del grid) + `test_road_spatial_index.py` (**fuzz de
+equivalencia**: 8 semillas × 200 puntos × 2 modos ≈ 3200 comparaciones bit-a-bit contra el
+barrido lineal, dentro/fuera de vía y con cerradas, + casos borde: road de 1 nodo, sin nodos,
+punto lejano, invalidación). Suite **642/642** (617 + 25); `ruff check` + `format --check`
+limpios; 3.9-seguro por construcción (`from __future__ import annotations`, `typing.*`, FA102
+pasa — CI valida 3.9 en el push; `.venv39` no está en este equipo). Solo tests/tooling offline →
+**no requiere validación en LFS**. **Pendiente del ítem 6:** partición espacial de VEHÍCULOS para
+el radar O(N²) (fase b — falta caracterizar el radar como unidad ANTES) y revisar el FSM de
+adelantamiento.
 
 **S22 (2026-07-07) — Fase 5: auditoría del hot-loop `on_ISP_MCI`:** completada (informe con
 mediciones reales en `docs/dev/AUDITORIA_HOTLOOP.md`). **Veredicto: el loop está SANO.** MCI
@@ -446,43 +476,27 @@ DESPUÉS del merge; ver "Fase activa" y PLAN § Merge). Empezar AQUÍ:
       urgencias (ver Estado S22 arriba). Red nueva `test_map_recorder.py` (8 tests) + limpieza
       menor del dict fusionado en `get_location_context`. Suite 617/617.
 
-   6. **◀️ PRÓXIMO — Consolidar radar/geometría en unidad testeable + revisar FSM de
-      adelantamiento** (últimos ítems de Fase 5). Ataca de raíz los hallazgos 1 y 2 de la
-      auditoría: un **índice espacial** (grid/celdas) para `get_location_context` (O(mapa) →
-      O(vecindario)) y para el radar (O(N²) → ~O(N·k)). **Con caracterización primero:** la red
-      de `test_map_recorder.py` ya cubre `get_location_context`; falta caracterizar el radar
-      como unidad antes de reescribirlo (hoy `test_traffic.py` lo ejercita solo con IAs). Es un
-      cambio de estructura + comportamiento potencial → diseñar con el usuario antes de tocar.
-      Nota entorno: en ESTE equipo ruff 0.15.20 ya está en `.venv`; en otro,
-      `pip install -e ".[dev]"` lo incluye. `gh` / `.venv39` / Docker según equipo.
+   6. **Consolidar radar/geometría en unidad testeable + revisar FSM de adelantamiento**
+      (últimos ítems de Fase 5). Se faseó en (a) geometría y (b) vehículos:
 
-      **▶️ Punto de arranque de diseño (dejado en S22 para carrerilla) — decidir ARRIBA del todo
-      antes de codificar:**
-      - **Estructura:** grid uniforme (hash grid) 2D en metros (x,y), lo más simple que encaja.
-        Tamaño de celda ligado al radio de consulta típico (radar `max_dist_m` ≈30–45 m → celda
-        ~ese orden, consulta = celda del punto + vecinas 3×3). Decidir el tamaño con datos de un
-        mapa real (south_city).
-      - **Fasearlo (recomendado):** (a) **primero índice de GEOMETRÍA estática** (roads/links)
-        para `get_location_context` — es el win grande, más estable y **ya tiene red**
-        (`test_map_recorder.py`); (b) **luego** partición espacial de VEHÍCULOS para el radar
-        O(N²) (menor prioridad: la auditoría lo da holgado hasta ~16–20 IAs). No mezclar ambos
-        en un solo cambio.
-      - **Inserción de segmentos:** los roads/links son polilíneas que cruzan varias celdas →
-        rasterizar cada segmento en TODAS las celdas que atraviesa (no solo las de sus nodos),
-        para que una consulta puntual mire solo celdas locales.
-      - **Invalidación (el punto delicado):** `map_recorder` MUTA sin parar al grabar mapas
-        (añade/mueve nodos). El índice estático debe marcarse *dirty* en cada mutación de
-        roads/links/zones y reconstruirse *lazy* en la siguiente consulta de conducción; OJO al
-        *thrashing* durante la grabación (mitigar: la grabación no consulta `get_location_context`
-        por nodo, así que el rebuild solo se paga cuando conduce una IA; o *debounce*).
-      - **Riesgo de comportamiento:** `get_location_context` desempata por ORDEN de iteración
-        (`<` estricto → gana el primero; hoy road_links antes que lateral_links, **locked por
-        `test_map_recorder.test_empate_gana_el_road_link_por_orden_de_iteracion`**). Un grid
-        cambia el orden de recorrido → un desempate podría resolverse distinto. Preservar un
-        desempate **determinista y estable** (p. ej. por `id`), y si se cambia a propósito,
-        actualizar ese test de forma consciente (no “porque falla”).
-      - **Primer paso real:** caracterizar el **radar como unidad** (falta) antes de tocarlo; el
-        de geometría ya está. Solo entonces implementar (a).
+      **6a. Índice espacial de GEOMETRÍA (`get_location_context`) — ✅ HECHO (S23), NO requiere
+      LFS.** Ataca el hallazgo nº1 de la auditoría. `SpatialHashGrid` (grid hash 2D genérico) +
+      `_get_closest_road` en `map_recorder.py`; fidelidad por construcción (grid → candidatos →
+      `get_closest_geometry` en orden de dict), invalidación en los 5 sitios de mutación de
+      `self.roads`, celda 20 m (~13× medido en south_city). `test_spatial_grid.py` (12) +
+      `test_road_spatial_index.py` (fuzz de equivalencia + bordes). Suite 642/642. Ver Estado S23.
+
+      **6b. ◀️ PRÓXIMO — Partición espacial de VEHÍCULOS (radar O(N²)) + FSM de adelantamiento.**
+      Ataca el hallazgo nº2 (radar). **Con caracterización primero (obligatorio):** falta
+      caracterizar el radar como UNIDAD antes de tocarlo (hoy `test_traffic.py` lo ejercita solo
+      con IAs, mezclado con el orquestador). El `SpatialHashGrid` de 6a es **reutilizable** para
+      esto (mismo grid genérico), pero el de vehículos es DINÁMICO (se reconstruye por tick, otra
+      vida que el estático de geometría) → grid aparte. La auditoría lo da holgado hasta ~16–20
+      IAs, así que **menor prioridad** que 6a; valorar con el usuario si merece la pena ya o si se
+      pospone. Revisar de paso el FSM de adelantamiento (`overtake_state` en `traffic.py`).
+      Cambio de estructura + comportamiento potencial → diseñar con el usuario antes de tocar.
+      Nota entorno: en ESTE equipo ruff ya está en `.venv`; en otro, `pip install -e ".[dev]"` lo
+      incluye. `gh` / `.venv39` / Docker según equipo (en este equipo NO hay `.venv39`).
 2. Backlog de **tipado gradual** (ir quitando overrides de `[tool.mypy]` en
    pyproject, módulo a módulo, cuando se toque cada uno): los módulos
    `packets` (dataclasses de protocolo), `insim_loader` (fricción con
