@@ -26,6 +26,7 @@ from insims.ai_control.nav_modes.freeroam.graph import (
     SpecialRule,
 )
 from insims.ai_control.nav_modes.freeroam.map_renderer import generate_map_image
+from insims.ai_control.nav_modes.freeroam.spatial_grid import SpatialHashGrid
 from insims.users_management.main import Coordinates
 from lfs_insim.insim_enums import CSVAL, SND
 from lfs_insim.packet_sender_mixin import PacketSenderMixin
@@ -39,6 +40,15 @@ from lfs_insim.utils import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Tamaño de celda del índice espacial de roads (metros). Elegido con benchmark
+# sobre south_city (128 roads / 11086 nodos): como las consultas caen SOBRE la
+# vía (coche cerca de la calzada), celdas más pequeñas dejan menos candidatos por
+# consulta. El retorno es decreciente (celda 30→20→10 m ≈ 11x→13x→18x) y celdas
+# muy pequeñas encarecen build/memoria y penalizan puntos lejanos (más anillos);
+# 20 m es el balance: ~13x (9.4 ms → 0.7 ms/consulta) sin fragmentar de más. Ver
+# docs/dev/AUDITORIA_HOTLOOP.md (hallazgo 1).
+_ROAD_GRID_CELL_M = 20.0
 
 
 class MapRecorder(PacketSenderMixin):
@@ -55,6 +65,12 @@ class MapRecorder(PacketSenderMixin):
         self.road_links: Dict[str, RoadLink] = {}
         self.lateral_links: Dict[str, LateralLink] = {}
         self.special_rules: Dict[str, SpecialRule] = {}
+
+        # Índice espacial de roads (construcción perezosa). Se invalida
+        # (self._road_index = None) en CADA mutación de la geometría de
+        # self.roads —ver _invalidate_road_index()— y se reconstruye en la
+        # siguiente consulta de conducción.
+        self._road_index: Optional[SpatialHashGrid] = None
 
         # Estado de grabación actual (¿Estamos grabando una vía o un enlace?)
         self.current_recording: Optional[
@@ -188,6 +204,82 @@ class MapRecorder(PacketSenderMixin):
             if self._node_flash_callback:
                 self._node_flash_callback(len(nodes_list), is_curve)
 
+    # ==========================================
+    # ÍNDICE ESPACIAL DE ROADS (búsqueda del road más cercano en O(vecindario))
+    # ==========================================
+    def _invalidate_road_index(self) -> None:
+        """Marca el índice espacial como obsoleto. LLAMAR tras CUALQUIER mutación
+        de la geometría de `self.roads` (añadir/editar/borrar road o nodos,
+        clear, carga de mapa). El toggle de `is_closed` NO cambia geometría, así
+        que no necesita invalidar (la consulta filtra las cerradas en caliente).
+        """
+        self._road_index = None
+
+    def _get_road_index(self) -> SpatialHashGrid:
+        """Devuelve el índice espacial de roads, reconstruyéndolo si está sucio.
+
+        Cada road se registra por sus segmentos (o como punto si tiene 1 nodo);
+        los roads sin nodos se omiten (igual que `get_closest_geometry`)."""
+        if self._road_index is None:
+            grid = SpatialHashGrid(_ROAD_GRID_CELL_M)
+            for road_id, road in self.roads.items():
+                nodes = road.nodes
+                if not nodes:
+                    continue
+                if len(nodes) == 1:
+                    n = nodes[0]
+                    grid.insert_point(road_id, n.x_m, n.y_m)
+                else:
+                    for i in range(len(nodes) - 1):
+                        a, b = nodes[i], nodes[i + 1]
+                        grid.insert_segment(road_id, a.x_m, a.y_m, b.x_m, b.y_m)
+            self._road_index = grid
+        return self._road_index
+
+    def _get_closest_road(
+        self, px: float, py: float, pz: float, ignore_closed_roads: bool
+    ) -> dict:
+        """Road más cercano vía índice espacial. Devuelve el MISMO dict que
+        `get_closest_geometry` y un resultado IDÉNTICO al barrido lineal (misma
+        distancia 3D, mismo desempate por orden de dict): el grid solo acota el
+        conjunto de candidatos y la respuesta la calcula `get_closest_geometry`
+        sobre ellos en orden de dict.
+
+        Expande anillos y para cuando el mejor road dista menos que la cota del
+        siguiente anillo (`best_dist < k*cell`) o cuando el bloque ya cubre todas
+        las celdas ocupadas (equivale entonces al barrido completo de siempre).
+        """
+        grid = self._get_road_index()
+        cell = grid.cell_size_m
+        candidates: set = set()
+        best = {"id": None, "dist": float("inf"), "item": None, "ref_node": None}
+        k = 0
+        while True:
+            grew = False
+            for rid in grid.ring_ids(px, py, k):
+                if rid not in candidates:
+                    candidates.add(rid)
+                    grew = True
+            # Reevaluar solo si el conjunto creció; se recorre self.roads para
+            # conservar el ORDEN DE DICT (clave para el desempate `<` estricto).
+            if grew:
+                cand_items = (
+                    (rid, road)
+                    for rid, road in self.roads.items()
+                    if rid in candidates
+                    and (not ignore_closed_roads or not road.is_closed)
+                )
+                best = self.get_closest_geometry(
+                    px, py, pz, cand_items, lambda r: r.nodes
+                )
+            # Nada fuera de los anillos 0..k puede estar más cerca que best.
+            if best["dist"] < k * cell:
+                break
+            if grid.block_covers_all(px, py, k):
+                break  # ya se han mirado TODAS las celdas ocupadas
+            k += 1
+        return best
+
     def get_location_context(
         self,
         px: float,
@@ -201,16 +293,10 @@ class MapRecorder(PacketSenderMixin):
         """Calcula matemáticamente qué vías, enlaces y zonas hay alrededor de unas coordenadas."""
         ctx = LocationContext()
 
-        # 1. Buscar la Vía más cercana
+        # 1. Buscar la Vía más cercana (vía índice espacial; el resultado es
+        #    idéntico al barrido lineal antiguo — ver _get_closest_road).
         if find_roads and self.roads:
-            road_candidates = (
-                self.roads.items()
-                if not ignore_closed_roads
-                else ((rid, r) for rid, r in self.roads.items() if not r.is_closed)
-            )
-            closest_road = self.get_closest_geometry(
-                px, py, pz, road_candidates, lambda r: r.nodes
-            )
+            closest_road = self._get_closest_road(px, py, pz, ignore_closed_roads)
             if closest_road["id"] is not None:
                 ctx.road_id = closest_road["id"]
                 ctx.road_dist = closest_road["dist"]
@@ -532,6 +618,7 @@ class MapRecorder(PacketSenderMixin):
             self.road_links.clear()
             self.lateral_links.clear()
             self.special_rules.clear()
+            self._invalidate_road_index()
             self.send(
                 ISP_MSL(
                     Msg=f"{TextColors.YELLOW}Nuevo mapa inicializado: {TextColors.WHITE}{map_name}{TextColors.YELLOW} (Vacío)."
@@ -556,6 +643,7 @@ class MapRecorder(PacketSenderMixin):
             self.road_links.clear()
             self.lateral_links.clear()
             self.special_rules.clear()
+            self._invalidate_road_index()  # los roads se repueblan abajo
 
             # ==========================================
             # 1-5. Reconstruir Objetos Dinámicamente
@@ -740,6 +828,7 @@ class MapRecorder(PacketSenderMixin):
                     self.zones.clear()
                     self.road_links.clear()  # <-- ADAPTADO a la nueva estructura
                     self.lateral_links.clear()  # <-- ADAPTADO a la nueva estructura
+                    self._invalidate_road_index()
 
                     # Abortamos cualquier grabación que estuviera a medias
                     if self.current_recording:
@@ -1300,6 +1389,7 @@ class MapRecorder(PacketSenderMixin):
                         nodes=nodes,
                         traffic_rule=self.default_traffic_rule,
                     )
+                self._invalidate_road_index()
                 msg_tipo = "Vía"
 
             # ==========================================
@@ -2348,6 +2438,7 @@ class MapRecorder(PacketSenderMixin):
 
             # Finalmente, borrar la via principal
             del self.roads[obj_id]
+            self._invalidate_road_index()
             self.send(
                 ISP_MSL(
                     Msg=f"{TextColors.GREEN}[MAPA] Via '{obj_id}' eliminada con exito."
