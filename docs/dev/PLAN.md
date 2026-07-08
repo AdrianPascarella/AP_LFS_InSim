@@ -334,44 +334,97 @@ dispara en/tras el merge a `main`.
       mutación de `self.roads`; celda 20 m (~13×, medido). `test_spatial_grid.py` (12) +
       `test_road_spatial_index.py` (fuzz de equivalencia + bordes). Suite 642/642; ruff limpio.
       Solo tests offline → no requiere LFS.
-- [ ] (6b) Partición espacial de VEHÍCULOS para el radar O(N²) (hallazgo 2) + revisar FSM de
-      adelantamiento — con caracterización del radar como UNIDAD primero (hoy `test_traffic.py`
-      lo ejercita solo con IAs). El `SpatialHashGrid` de 6a es reutilizable, pero el de vehículos
-      es dinámico (grid aparte). Menor prioridad: la auditoría da el radar holgado hasta ~16–20
-      IAs. Cambio de estructura + comportamiento potencial → diseñar con el usuario antes de tocar.
+- [→] (6b) Partición espacial de VEHÍCULOS para el radar O(N²) + FSM de adelantamiento —
+      **REUBICADO a Fase 6 · W3 (S23):** se pliega en el refactor de `traffic.py` (la auditoría lo
+      dio no urgente y traffic.py se toca igual → evita trabajo doble). Caracterizar el radar como
+      unidad primero; reutiliza el `SpatialHashGrid` de 6a (grid dinámico aparte). Ver Fase 6.
 
 **Criterio de aceptación:** lógica de P2 congelada por tests; sin parches ad-hoc; el usuario
-valida en LFS.
+valida en LFS. **Estado:** cumplido salvo la validación en LFS del ceda-el-paso del ACC (S21) =
+**W4** (bloqueada: el mapa aún tiene `zones: 0`, ninguna intersección creada). Es el gate del merge.
 
 ---
 
-## Fase 6 — ai_control: refactor estructural y consolidación (antiguo plan F3–F4)
+## Fase 6 — Pre-publish: refactor de ai_control + endurecimiento de API + DX del init  ◀️ ACTIVA (re-secuenciada S23)
 
+> **Re-secuenciación (S23, 2026-07-08, decidida con el usuario):** el refactor estructural de
+> ai_control (antes post-merge) se ADELANTA a **antes de publicar**, junto a una limpieza de la
+> **API pública del framework** (`utils.py`) y un scaffold `init` más robusto. Motivo clave: mover
+> funciones de `lfs_insim.utils` es un **cambio de API pública**; una vez en PyPI rompería a
+> usuarios reales → la única ventana limpia es ANTES del primer publish. La antigua opción 6b
+> (índice espacial de vehículos para el radar) se **pliega** en el refactor de `traffic.py` (W3) en
+> vez de hacerse suelta (auditoría: no urgente; traffic.py se toca igual → evita trabajo doble).
+> **Separar SIEMPRE** lo que toca API pública (W1/W5, pre-publish OBLIGATORIO) de lo interno/
+> cosmético (W3, flexible) para no dejar que el scope creep retrase el release.
+>
+> **Orden propuesto:** W4 (usuario, en paralelo — gate del merge) → **W1 + W5** (API) → **W2**
+> (init) → **W3** (refactor interno + radar). **Todo en la rama** `refactor/estabilizacion`; un
+> solo merge a `main` cuando esté publish-ready + validado, y luego publish (ver § Merge).
+
+### W1 · Split de `utils.py` — sacar la geometría/navegación de ai_control del `utils` público
+**(pre-publish OBLIGATORIO: cambia la API publicada)**
+- [ ] Mover a ai_control (tiene `nav_modes/freeroam/geometry.py`) el bloque específico:
+      `calc_target_heading`, `get_heading_diff`, `calc_deviation_angle`,
+      `calc_dist_point_to_segment_3d`, `get_closest_node_index`, `determine_smart_spawn_index`,
+      `apply_antilag_window`, `evaluate_dynamic_capture`, `is_target_ahead_and_in_lane`.
+      **Se quedan** (framework genérico): `separate_message`/`separate_command_args`,
+      `strip_lfs_colors`, `TextColors`, `Command`/`CMDManager`, conversiones `lfs_*`, y —decidido
+      S23— **`calc_dist_3d`** (geometría 3D genérica) y **`PIDController`** (primitiva reutilizable).
+      Es **extracción segura**: verificar cobertura de tests de lo que migra ANTES de moverlo,
+      actualizar imports (ai_control + `test_utils.py`), `__all__` y las guías.
+
+### W5 · Repaso final de API pública + CHANGELOG  **(pre-publish; va con W1)**
+- [ ] Última pasada por exports de `lfs_insim`, claves de `DEFAULT_CONFIG` y jerarquía de
+      excepciones (última oportunidad de cambiarlos gratis, sin usuarios). Cuadrar las 4 guías de
+      `docs/guia/` tras W1/W2 y anotar los breaking changes en `CHANGELOG.md`.
+
+### W2 · `lfs-insim init` más robusto, con flag `--minimal`/`--full`  **(pre-publish recomendado, DX)**
+- [ ] `--minimal` = el template escueto de hoy (un comando "hola"). `--full` (default a decidir)
+      trae por defecto lo necesario: **comando de cierre** guardado por admin/UCID, patrón de
+      validación de permisos, `on_reconnect` (P12) y petición de estado inicial (`TINY.NCN/NPL`).
+      Diseñado para **admitir más perfiles en el futuro** (no solo min/full). Confirmar el
+      mecanismo del close al implementar (`TINY.CLOSE` a LFS vs `client.stop()`).
+
+### W3 · Refactor estructural de ai_control (interno, flexible) + radar + FSM  (antiguo Fase 6)
 - [ ] Dividir `map_ui.py` (1841), `map_recorder.py` (1604), `traffic.py` (1084) (**P3**)
 - [ ] Reducir superficie cross-mixin de `base.py` (**P4**)
 - [ ] Limpiar nombres del modelo de estado (`behavior.py`, **P7**)
+- [ ] Índice espacial de VEHÍCULOS para el radar O(N²) (ex-6b), **plegado en el refactor de
+      `traffic.py`**: caracterizar el radar como unidad **ANTES** (red primero, MODUS_OPERANDI §3);
+      reutiliza el `SpatialHashGrid` de S23 (grid dinámico, aparte del estático de geometría).
+      Revisar de paso el FSM de adelantamiento (`overtake_state`).
 - [ ] Actualizar README/CLAUDE.md con la arquitectura final; revisión final del diagnóstico
+
+**Criterio de aceptación:** API pública limpia y estable (W1/W5); `init --full/--minimal`
+funcionando (W2); archivos gordos partidos y radar con red (W3); suite verde + CI verde; el
+usuario valida en LFS. **Red primero** en todo lo que toque lógica frágil (los grandes
+orquestadores con `time.time()` siguen sin red → cubrir antes de tocarlos).
 
 ---
 
 ## 🔀 Merge a `main`
 
 Todo el refactor vive en la rama **`refactor/estabilizacion`**. `main` permanece intacta
-hasta el merge. **Criterio para mergear a `main` ("estable"):**
+hasta el merge.
 
-- Las fases del plan acordadas están completadas.
-- `pytest` en **verde** desde `.venv` (+ CI verde cuando exista, Fase 4).
-- El usuario ha **validado el comportamiento en LFS** (no hay regresiones funcionales).
+**Momento del merge — RE-DECIDIDO con el usuario (S23):** se mantiene **TODO en la rama** hasta
+que esté **publish-ready** (Fase 5 + Fase 6 completas + validado en LFS) y entonces se hace **un
+solo merge** a `main`, seguido del publish. Esto sustituye la decisión de S17 (que mergeaba tras
+Fase 5 y dejaba Fase 6 para después): ahora Fase 6 (refactor + limpieza de API + init) va **antes**
+del merge/publish, porque el split de `utils.py` es un cambio de **API pública** que post-publish
+rompería a usuarios. Mantener todo en la rama deja `main` impoluta hasta el release y evita un
+estado intermedio medio-refactorizado en `main`.
 
-**Momento del merge (decidido con el usuario, S17):** mergear cuando **Fase 5 esté
-terminada + validada en LFS**. La **Fase 6 va DESPUÉS del merge** (es refactor
-estructural de ai_control —partir archivos, limpiar nombres—, cosmético y sin
-cambio de comportamiento, así que puede hacerse ya en `main`). El framework (core,
-Fases 1-4) es publicable hoy; se pule ai_control antes para un primer release
-cohesionado, sin prisa. El publish a PyPI se dispara tras el merge (ver
-`docs/dev/PUBLICACION.md`).
+**Criterio para mergear a `main`:**
+- Fases 5 y 6 (pre-publish) completadas.
+- `pytest` verde desde `.venv` + **CI verde** (verificable con `gh run list`, ver memoria del equipo).
+- El usuario ha **validado el comportamiento en LFS**, incluida la validación pendiente del
+  ceda-el-paso del ACC (**W4**, Fase 5 — hoy bloqueada por `zones: 0`).
 
-El merge lo decide y autoriza el usuario. Tras el merge, se continúa desde `main`.
+**Publish a PyPI:** tras el merge a `main` (runbook en `docs/dev/PUBLICACION.md`). El framework en
+sí es publicable hoy; se adelanta el refactor + limpieza de API para un primer release cohesionado
+y con la **API pública ya estable**. El merge y el publish los decide y autoriza el usuario; tras
+el merge se continúa desde `main`.
 
 ## Ideas / pendientes sin fase asignada
 

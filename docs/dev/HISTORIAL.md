@@ -60,11 +60,30 @@ lo tocado. 3.9-seguro por construcción (`from __future__ import annotations`, `
 FA102 pasa; `.venv39` no está en este equipo → lo valida el CI en el push). Solo tests/tooling
 offline → **no requiere validación en LFS**.
 
-**Pendiente (ítem 6b):** partición espacial de VEHÍCULOS para el radar O(N²) —con el radar
-caracterizado como unidad ANTES— y revisar el FSM de adelantamiento. Menor prioridad (la
-auditoría da el radar holgado hasta ~16–20 IAs); valorar con el usuario si se ataca ya.
+**Planificación de rumbo pre-publish (misma sesión, con el usuario — SIN tocar código):** tras
+cerrar el índice de geometría, se **re-secuenció** el plan. El refactor estructural de ai_control
+(antes post-merge) se ADELANTA a antes de publicar, junto con: **(W1) split de `utils.py`** — sacar
+la geometría/nav específica de ai_control del `utils` público del framework, porque es un cambio de
+**API pública** y la única ventana limpia es antes del primer publish; **(W5)** repaso final de API
++ CHANGELOG; **(W2) `lfs-insim init` más robusto** con flag `--minimal`/`--full` (comando de cierre
+por defecto, validación de permisos, `on_reconnect`, `TINY.NCN/NPL`); **(W3)** refactor interno
+(P3/P4/P7) + el radar ex-6b **plegado** en el refactor de `traffic.py` (no urgente por auditoría, y
+traffic.py se toca igual) + revisar FSM de adelantamiento. **Decisiones concretas:** `calc_dist_3d`
+y `PIDController` se QUEDAN en el framework; init con flag min/full **extensible** a más perfiles;
+**todo en la rama**, un solo merge a `main` cuando esté publish-ready + validado (W4), luego
+publish. Detalle en PLAN § Fase 6 / § Merge y ESTADO § Próximo paso. De paso se **instaló y
+autenticó `gh`** en este equipo (ZIP portable en `%LOCALAPPDATA%\Programs\gh`, reutilizando la
+credencial de git no fue posible —token caduco—, login interactivo del usuario); sirvió para
+verificar que el CI de S23 salió VERDE, incluido el job de **Python 3.9** (no había `.venv39` en
+este equipo).
 
-**Commits:** el de esta sesión (índice espacial + red).
+**Protección de mapas (incidente de mitad de sesión, instrucción permanente):** el usuario avisó de
+cambios en el mapa sin commitear. Backup fuera del repo + validación de integridad del JSON + commit
+`cb4471a data(ai_control): amplía mapa freeroam de South City` + push. South City creció a **176
+roads / 12.987 nodos** (antes 128/11.086); sigue `zones: 0` → **W4 sigue bloqueada**.
+
+**Commits:** `8771bc1` (índice espacial de geometría + red), `506bb51` (docs S23), `cb4471a` (mapa
+South City ampliado) + el de este cierre (docs de planificación).
 
 ---
 

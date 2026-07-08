@@ -1,6 +1,8 @@
 # 📍 Estado actual
 
-> Actualizado: **2026-07-08** — sesión S23 (Fase 5: índice espacial de geometría para `get_location_context`)
+> Actualizado: **2026-07-08** — S23: índice espacial de geometría (`get_location_context`) +
+> **planificación de rumbo pre-publish** (re-secuenciación a Fase 6) + mapa South City ampliado
+> (176 roads / 12.987 nodos, commit `cb4471a`)
 > **Rama de trabajo: `refactor/estabilizacion`.** Todo el refactor ocurre aquí; `main`
 > queda intacta hasta el merge final (cuando el proyecto esté estable). **Sync por GitHub:**
 > `git pull` al arrancar y `git push` al cerrar (permite continuar desde otro dispositivo).
@@ -36,6 +38,18 @@ pasa — CI valida 3.9 en el push; `.venv39` no está en este equipo). Solo test
 **no requiere validación en LFS**. **Pendiente del ítem 6:** partición espacial de VEHÍCULOS para
 el radar O(N²) (fase b — falta caracterizar el radar como unidad ANTES) y revisar el FSM de
 adelantamiento.
+
+**S23 (2026-07-08) — planificación de rumbo pre-publish (con el usuario, sin tocar código):** se
+**re-secuencia** el plan. El refactor estructural de ai_control (antes post-merge) se ADELANTA a
+antes de publicar, junto con la limpieza de la **API pública** (`utils.py`: sacar la
+geometría/nav de ai_control del `utils` del framework) y un `lfs-insim init` más robusto (flag
+`--minimal`/`--full`, con comando de cierre por defecto). Motivo: el split de `utils.py` cambia la
+API PÚBLICA → hay que hacerlo ANTES del primer publish. El radar (ex-6b) se pliega en el refactor
+de `traffic.py`. Todo pasa a la **Fase 6 re-secuenciada** (ver PLAN § Fase 6 y § Merge; Próximo
+paso abajo). Todo en la rama; un solo merge cuando esté publish-ready + validado (W4), luego
+publish. **Decisiones concretas:** `calc_dist_3d` y `PIDController` se QUEDAN en el framework; init
+con flag min/full extensible; merge único al final. De paso, el usuario amplió el mapa South City
+(→ 176 roads / 12.987 nodos, `cb4471a`; sigue `zones: 0`).
 
 **S22 (2026-07-07) — Fase 5: auditoría del hot-loop `on_ISP_MCI`:** completada (informe con
 mediciones reales en `docs/dev/AUDITORIA_HOTLOOP.md`). **Veredicto: el loop está SANO.** MCI
@@ -426,77 +440,58 @@ P11–P21 en `DIAGNOSTICO.md`. Queda gordo: P12 (reconexión, Fase 3).
 
 ## Fase activa
 
-**Fase 5 — `ai_control`** (decidido con el usuario al cierre de S17). Fases 1-4
-(el core) COMPLETADAS: el framework está estabilizado, documentado y empaquetado.
+**Fase 6 — Pre-publish: refactor de ai_control + API + init** (re-secuenciada con el usuario en
+S23). Fases 1-4 (core) COMPLETADAS. **Fase 5 (ai_control: red + estabilización) COMPLETA salvo la
+validación en LFS del ceda-el-paso del ACC (W4)**, hoy bloqueada porque ningún mapa tiene
+intersección (`zones: 0`).
 
-**Decisión de rumbo (S17):** continuar con **Fase 5** ahora. `ai_control` es una
-insim de ejemplo **sobre** el framework (el escaparate que demuestra para qué
-sirve), no el framework en sí — por eso se pule antes de publicar, para un primer
-release cohesionado (no hay prisa; el nombre PyPI está libre). **Criterio de
-merge acordado:** mergear a `main` cuando **Fase 5 esté terminada + validada en
-LFS**; **NO se espera a Fase 6** (refactor estructural de ai_control — cosmético,
-no cambia comportamiento; puede hacerse ya en `main` tras el merge). El publish a
-PyPI se dispara tras el merge (el framework en sí ya es publicable hoy).
+**Decisión de rumbo (S23):** adelantar el refactor de ai_control a **ANTES de publicar**, junto
+con la limpieza de la API pública (`utils.py`) y un `init` más robusto. Motivo clave: mover
+funciones de `lfs_insim.utils` cambia la **API PÚBLICA** del paquete → la única ventana limpia es
+antes del primer publish (después rompería usuarios reales). El radar (ex-6b) se **pliega** en el
+refactor de `traffic.py` (no urgente por la auditoría, y traffic.py se toca igual). Se separa
+SIEMPRE lo que toca API pública (pre-publish obligatorio) de lo interno/cosmético (flexible), para
+no dejar que el scope creep retrase el release. **Todo en la rama**; un solo merge a `main` cuando
+esté publish-ready + validado, luego publish. Ver PLAN § Fase 6 y § Merge.
+
+**Esto sustituye la decisión de S17** (que mergeaba tras Fase 5 y dejaba Fase 6 para después del
+merge). `ai_control` es la insim de ejemplo **sobre** el framework (el escaparate); se pule antes
+de publicar para un primer release cohesionado y con la API pública ya estable.
 
 ## ▶️ Próximo paso concreto (empezar AQUÍ la próxima sesión)
 
-**Decisión tomada al cierre de S17: seguir con Fase 5 — `ai_control`.** El merge a
-`main` + publish esperan a que Fase 5 esté terminada y validada en LFS (Fase 6 va
-DESPUÉS del merge; ver "Fase activa" y PLAN § Merge). Empezar AQUÍ:
+**Rumbo re-decidido en S23 (planificación con el usuario): Fase 6 pre-publish** — refactor de
+ai_control + limpieza de la API pública (`utils.py`) + `init` más robusto. Fase 5 está COMPLETA
+salvo **W4** (validación en LFS del ceda-el-paso del ACC, hoy bloqueada por `zones: 0`). Orden
+acordado: **W4** (tú, en LFS, en paralelo — gate del merge) → **W1 + W5** (API) → **W2** (init) →
+**W3** (refactor interno + radar). Todo en la rama; un solo merge a `main` cuando esté
+publish-ready + validado, luego publish. Detalle en PLAN § Fase 6. **Empezar AQUÍ por W1**
+(lo más irreversible: toca la API pública, sin ventana limpia post-publish):
 
-1. **Fase 5 va por la RED DE SEGURIDAD** (modus operandi §3: caracterizar ANTES de
-   tocar lógica frágil). `ai_control` no tenía tests. Orden acordado con el usuario:
-   1. **Infra de fixtures sin LFS** — ✅ HECHO: telemetría sintética (otro equipo) +
-      **grafo de calles sintético** (`make_road` / `make_road_link` /
-      `make_lateral_link` / `populate_graph` en `conftest.py`, S18).
-   2. **Tests de caracterización** de la lógica frágil (congelan el comportamiento
-      ACTUAL). ✅ `physics.py` (20 tests, otro equipo), ✅ `navigation.py` (31 tests,
-      S18) y ✅ `traffic.py` (**81 tests, S19** — ACC + parche, radar, zonas, FSM de
-      adelantamiento, guardián de adelantamiento; ver Estado S19). La red de
-      seguridad de caracterización de Fase 5 está **COMPLETA**. Los grandes métodos de
-      integración con tiempo/estado (`_update_traffic_behavior`,
-      `_update_freeroam_navigation`, `_get_radar_speed_limit`, `_update_route_navigation`)
-      quedaron SIN cubrir a propósito (usan `time.time()` y mutan mucho estado).
-   3. **Fix de reconexión — ✅ HECHO Y VALIDADO EN LFS (S20).** Ver el Estado S20 arriba y
-      HISTORIAL S20. Señal de parada compartida (`threading.Event`) para los DOS bucles daemon
-      (`_run_test_freeroam` + `_test`), infra `_init_traffic_state`/`_start_traffic_loop`/
-      `_stop_traffic_loops` en `_CommandsMixin`, y overrides `AIControl.on_disconnect` (para los
-      bucles) / `on_reconnect` (para + resetea target y cachés, sin reanudar). 6 tests en
-      `test_reconexion.py`. Suite 607/607. El usuario validó en LFS: "todo funciona perfectamente".
+1. **W1 — Split de `utils.py`** (pre-publish OBLIGATORIO: cambia la API publicada). Mover a
+   ai_control (`nav_modes/freeroam/geometry.py`) el bloque de geometría/navegación específico:
+   `calc_target_heading`, `get_heading_diff`, `calc_deviation_angle`,
+   `calc_dist_point_to_segment_3d`, `get_closest_node_index`, `determine_smart_spawn_index`,
+   `apply_antilag_window`, `evaluate_dynamic_capture`, `is_target_ahead_and_in_lane`. **Se quedan**
+   en el framework: `separate_*`, `strip_lfs_colors`, `TextColors`, `Command`/`CMDManager`,
+   conversiones `lfs_*`, y —decidido S23— **`calc_dist_3d`** (geometría 3D genérica) y
+   **`PIDController`** (primitiva reutilizable). **Extracción segura + RED PRIMERO:** confirmar que
+   los tests cubren lo que migra ANTES de moverlo; luego mover + actualizar imports (ai_control y
+   `test_utils.py`), `__all__` y las 4 guías de `docs/guia/`.
+   - **W5 (con W1):** repaso final de la API pública (exports de `lfs_insim`, claves de
+     `DEFAULT_CONFIG`, jerarquía de excepciones — última oportunidad de cambiarlos gratis) +
+     `CHANGELOG.md` con los breaking changes.
 
-   4. **Revisar/sustituir el "PARCHE DE SEGURIDAD MATEMÁTICO" — ✅ HECHO (S21), pendiente LFS.**
-      Opción A (confirmada con el usuario) implementada en `_apply_adaptive_cruise_control`
-      (`traffic.py`): parche eliminado, min/max del llamador respetados, suelo duro explícito,
-      `critical = max(5, min·0.5)` (se mantuvo el suelo — decisión de diseño por continuidad, ver
-      Estado S21 y P25), ratios en [0,1], denominadores con ε, constantes con nombre. 2 tests del
-      parche reescritos + 2 de robustez. Suite 609/609. **PENDIENTE: validación en LFS.**
-
-   5. **Auditar el hot-loop `on_ISP_MCI` — ✅ HECHO (S22).** Informe en
-      `docs/dev/AUDITORIA_HOTLOOP.md`. Veredicto: loop sano; hallazgos de robustez/escalado, no
-      urgencias (ver Estado S22 arriba). Red nueva `test_map_recorder.py` (8 tests) + limpieza
-      menor del dict fusionado en `get_location_context`. Suite 617/617.
-
-   6. **Consolidar radar/geometría en unidad testeable + revisar FSM de adelantamiento**
-      (últimos ítems de Fase 5). Se faseó en (a) geometría y (b) vehículos:
-
-      **6a. Índice espacial de GEOMETRÍA (`get_location_context`) — ✅ HECHO (S23), NO requiere
-      LFS.** Ataca el hallazgo nº1 de la auditoría. `SpatialHashGrid` (grid hash 2D genérico) +
-      `_get_closest_road` en `map_recorder.py`; fidelidad por construcción (grid → candidatos →
-      `get_closest_geometry` en orden de dict), invalidación en los 5 sitios de mutación de
-      `self.roads`, celda 20 m (~13× medido en south_city). `test_spatial_grid.py` (12) +
-      `test_road_spatial_index.py` (fuzz de equivalencia + bordes). Suite 642/642. Ver Estado S23.
-
-      **6b. ◀️ PRÓXIMO — Partición espacial de VEHÍCULOS (radar O(N²)) + FSM de adelantamiento.**
-      Ataca el hallazgo nº2 (radar). **Con caracterización primero (obligatorio):** falta
-      caracterizar el radar como UNIDAD antes de tocarlo (hoy `test_traffic.py` lo ejercita solo
-      con IAs, mezclado con el orquestador). El `SpatialHashGrid` de 6a es **reutilizable** para
-      esto (mismo grid genérico), pero el de vehículos es DINÁMICO (se reconstruye por tick, otra
-      vida que el estático de geometría) → grid aparte. La auditoría lo da holgado hasta ~16–20
-      IAs, así que **menor prioridad** que 6a; valorar con el usuario si merece la pena ya o si se
-      pospone. Revisar de paso el FSM de adelantamiento (`overtake_state` en `traffic.py`).
-      Cambio de estructura + comportamiento potencial → diseñar con el usuario antes de tocar.
-      Nota entorno: en ESTE equipo ruff ya está en `.venv`; en otro, `pip install -e ".[dev]"` lo
-      incluye. `gh` / `.venv39` / Docker según equipo (en este equipo NO hay `.venv39`).
+   **Luego (mismo Fase 6):**
+   - **W2** — `lfs-insim init` con flag `--minimal`/`--full` (extensible a más perfiles en el
+     futuro). `--minimal` = el template escueto de hoy; `--full` con **comando de cierre**
+     admin-guarded, patrón de validación de permisos, `on_reconnect` (P12) y petición de estado
+     inicial (`TINY.NCN/NPL`). Confirmar el mecanismo del close al implementar (`TINY.CLOSE` vs
+     `client.stop()`).
+   - **W3** — refactor interno (P3 partir `map_ui`/`map_recorder`/`traffic`; P4 `base.py`; P7
+     nombres de `behavior.py`) + índice espacial de VEHÍCULOS para el radar **plegado en
+     `traffic.py`** (caracterizar el radar como unidad ANTES; reutiliza el `SpatialHashGrid` de
+     S23, grid dinámico aparte) + revisar el FSM de adelantamiento (`overtake_state`).
 2. Backlog de **tipado gradual** (ir quitando overrides de `[tool.mypy]` en
    pyproject, módulo a módulo, cuando se toque cada uno): los módulos
    `packets` (dataclasses de protocolo), `insim_loader` (fricción con
@@ -519,18 +514,22 @@ DESPUÉS del merge; ver "Fase activa" y PLAN § Merge). Empezar AQUÍ:
   usuario con su token); (2) tras el merge a `main`, el **publish real** creando
   un GitHub Release. Acción pública e irreversible (versión liberada no se
   reutiliza, nombre reclamado): por eso va después del merge.
-- **Rumbo: DECIDIDO (S17) y en ejecución.** La duda "merge a `main` (+ publish) ahora
-  vs. abrir Fase 5" se cerró a favor de **Fase 5**, ya en curso (física + navegación
-  caracterizadas en S18). El merge a `main` espera a **Fase 5 terminada + validada en
-  LFS** (ver Fase activa). No es un bloqueo: es trabajo en progreso.
+- **Rumbo: RE-DECIDIDO (S23).** El refactor de ai_control + limpieza de API (`utils.py`) + init
+  robusto se hacen **antes** del merge/publish (Fase 6 re-secuenciada; ver Fase activa y PLAN).
+  Todo en la rama; un solo merge a `main` cuando esté publish-ready + validado, luego publish. No
+  es un bloqueo: es el plan de trabajo.
+- **W4 (validación en LFS del ceda-el-paso del ACC, S21): BLOQUEADA.** Necesita una **intersección**
+  creada y ningún mapa tiene (`zones: 0`, incluido el South City ampliado). Es el gate del merge:
+  cuando el usuario cree una intersección y valide el ceda-el-paso (+ smoke test), se desbloquea.
 
 ## Notas para la próxima sesión
 
 - Comando de tests: `.venv\Scripts\python.exe -m pytest -q`.
-- **Tests en Python 3.9** (mínimo soportado; el CI y S16 cazaron bugs solo-3.9):
-  venv `.venv39` ya creado (Python 3.9.13, gitignorado). Correr con
-  `$env:MPLBACKEND='Agg'; .venv39\Scripts\python.exe -m pytest -q`. Reproduce el
-  job de CI de 3.9 sin esperar a GitHub. (2 skips esperados: `tomllib` es 3.11+.)
+- **Tests en Python 3.9** (mínimo soportado; el CI y S16 cazaron bugs solo-3.9): **según
+  equipo** — donde exista `.venv39` (Python 3.9.13, gitignorado): `$env:MPLBACKEND='Agg';
+  .venv39\Scripts\python.exe -m pytest -q` (2 skips esperados: `tomllib` es 3.11+). **En este
+  equipo NO hay `.venv39`** → verificar 3.9 vía CI con `gh` (instalado y autenticado aquí, S23):
+  `gh run list --branch refactor/estabilizacion` / `gh run view <id>`.
 - Tooling nuevo (S16): `python -m ruff check` y `python -m ruff format` (lint+format),
   `python -m mypy` (tipos del core; lee `[tool.mypy]` de pyproject). Config toda en
   `pyproject.toml`. El commit de formato masivo (`a3bea56`) está en
