@@ -1,13 +1,41 @@
 # 📍 Estado actual
 
-> Actualizado: **2026-07-08** — S23: índice espacial de geometría (`get_location_context`) +
-> **planificación de rumbo pre-publish** (re-secuenciación a Fase 6) + mapa South City ampliado
-> (176 roads / 12.987 nodos, commit `cb4471a`)
+> Actualizado: **2026-07-09** — S24: **W1 (Fase 6) — split de `utils.py`**: la geometría/nav
+> **específica de la IA** sale de `lfs_insim.utils` (API PÚBLICA) a `ai_control`
+> (`nav_modes/freeroam/geometry.py`). Red primero (`test_geometry.py`, 44 tests). Suite **671**;
+> ruff limpio; API pública del framework ya estable para el primer publish.
 > **Rama de trabajo: `refactor/estabilizacion`.** Todo el refactor ocurre aquí; `main`
 > queda intacta hasta el merge final (cuando el proyecto esté estable). **Sync por GitHub:**
 > `git pull` al arrancar y `git push` al cerrar (permite continuar desde otro dispositivo).
 
 ## Estado
+
+**S24 (2026-07-09) — Fase 6 · W1: split de `utils.py` (implementado y verificado, NO requiere
+LFS):** primer ítem pre-publish. Se sacó de `lfs_insim.utils` (la API PÚBLICA del framework) la
+geometría/navegación **específica de la IA** y se movió a `ai_control`
+(`nav_modes/freeroam/geometry.py`, que ya existía con los helpers 2D de zonas). **Se movieron 9
+funciones:** `calc_target_heading`, `get_heading_diff`, `calc_deviation_angle`,
+`calc_dist_point_to_segment_3d`, `get_closest_node_index`, `determine_smart_spawn_index`,
+`apply_antilag_window`, `evaluate_dynamic_capture`, `is_target_ahead_and_in_lane`. **Se quedan en
+el framework** (primitivas reutilizables): comandos (`separate_*`, `Command`/`CMDManager`),
+`strip_lfs_colors`/`TextColors`, `PIDController`, conversiones `lfs_*` y **`calc_dist_3d`**.
+**Red primero (MODUS_OPERANDI §3):** solo 3 de las 9 tenían test directo (en `test_utils.py`) →
+nuevo `tests/insims/ai_control/test_geometry.py` (**44 tests**): las 3 movidas de `test_utils.py`
++ **29 de caracterización nueva** para las 6 sin cobertura. La red se escribió y verificó VERDE
+contra la ubicación de origen (`lfs_insim.utils`) ANTES de mover, luego se giró el import al
+destino → **extracción sin cambio de lógica** demostrada. **Quirk cazado por la red:**
+`is_target_ahead_and_in_lane`, cuando el coche está delante pero **fuera de carril**, NO reporta la
+distancia lateral real: devuelve `0.0` (solo la devuelve en detección peligrosa). **Imports
+actualizados:** `physics.py`, `navigation.py`, `map_recorder.py`, `route/manager.py` (fuente; los 2
+últimos y navigation ya importaban de `geometry.py` → sin aristas nuevas) + `test_geometry.py`;
+`__all__` de `utils.py` recortado a `calc_dist_3d`. **W5 (parte ligada a W1):** `docs/guia/
+api-publica.md` actualizada (geometría de IA fuera del framework) + entrada `[Rompe la API]` en
+`CHANGELOG.md`. **Verificación:** suite **671** (642 baseline − 15 movidos de `test_utils` + 44 =
++29); `ruff check` + `format --check` limpios en lo tocado; `lfs-insim list` carga los 4 insims;
+3.9-seguro por construcción (`from __future__ import annotations` en `geometry.py`, sin uniones
+PEP604 en runtime; CI valida 3.9 en el push). **Hallazgo (para W3):** `is_target_ahead_and_in_lane`
+es **código muerto** (no se llama en ningún sitio) — se migró igual por seguridad (con red),
+candidata a eliminación al revisar el radar/FSM en W3.
 
 **S23 (2026-07-08) — Fase 5: índice espacial de geometría para `get_location_context`
 (fase (a) del ítem 6; implementado y verificado, NO requiere LFS):** atacado el hallazgo nº1 de
@@ -463,24 +491,22 @@ de publicar para un primer release cohesionado y con la API pública ya estable.
 **Rumbo re-decidido en S23 (planificación con el usuario): Fase 6 pre-publish** — refactor de
 ai_control + limpieza de la API pública (`utils.py`) + `init` más robusto. Fase 5 está COMPLETA
 salvo **W4** (validación en LFS del ceda-el-paso del ACC, hoy bloqueada por `zones: 0`). Orden
-acordado: **W4** (tú, en LFS, en paralelo — gate del merge) → **W1 + W5** (API) → **W2** (init) →
-**W3** (refactor interno + radar). Todo en la rama; un solo merge a `main` cuando esté
-publish-ready + validado, luego publish. Detalle en PLAN § Fase 6. **Empezar AQUÍ por W1**
-(lo más irreversible: toca la API pública, sin ventana limpia post-publish):
+acordado: **W4** (tú, en LFS, en paralelo — gate del merge) → ~~W1~~ ✅ → **W5 (sweep)** → **W2**
+(init) → **W3** (refactor interno + radar). Todo en la rama; un solo merge a `main` cuando esté
+publish-ready + validado, luego publish. Detalle en PLAN § Fase 6.
 
-1. **W1 — Split de `utils.py`** (pre-publish OBLIGATORIO: cambia la API publicada). Mover a
-   ai_control (`nav_modes/freeroam/geometry.py`) el bloque de geometría/navegación específico:
-   `calc_target_heading`, `get_heading_diff`, `calc_deviation_angle`,
-   `calc_dist_point_to_segment_3d`, `get_closest_node_index`, `determine_smart_spawn_index`,
-   `apply_antilag_window`, `evaluate_dynamic_capture`, `is_target_ahead_and_in_lane`. **Se quedan**
-   en el framework: `separate_*`, `strip_lfs_colors`, `TextColors`, `Command`/`CMDManager`,
-   conversiones `lfs_*`, y —decidido S23— **`calc_dist_3d`** (geometría 3D genérica) y
-   **`PIDController`** (primitiva reutilizable). **Extracción segura + RED PRIMERO:** confirmar que
-   los tests cubren lo que migra ANTES de moverlo; luego mover + actualizar imports (ai_control y
-   `test_utils.py`), `__all__` y las 4 guías de `docs/guia/`.
-   - **W5 (con W1):** repaso final de la API pública (exports de `lfs_insim`, claves de
-     `DEFAULT_CONFIG`, jerarquía de excepciones — última oportunidad de cambiarlos gratis) +
-     `CHANGELOG.md` con los breaking changes.
+**✅ W1 HECHO (S24)** — split de `utils.py`: las 9 funciones de geometría/nav de la IA movidas a
+`ai_control/nav_modes/freeroam/geometry.py`; en el framework quedan comandos, colores,
+`PIDController`, conversiones `lfs_*` y `calc_dist_3d`. Red `test_geometry.py` (44 tests, red
+primero). Suite 671. Hecha también la parte de W5 ligada a W1 (guía `api-publica.md` + entrada
+`[Rompe la API]` en `CHANGELOG.md`).
+
+**Empezar AQUÍ la próxima sesión — W5 (sweep final de API pública), luego W2:**
+
+1. **W5 — repaso final de la API pública** (pre-publish, última ventana gratis para cambiarla):
+   revisar los exports de `lfs_insim` (`__init__.py`), TODAS las claves de `DEFAULT_CONFIG` y la
+   jerarquía de excepciones — confirmar nombres y superficie ANTES del primer publish. Cuadrar las
+   4 guías de `docs/guia/` si algo cambia. (La parte de W5 sobre `utils.py`/geometría ya está hecha.)
 
    **Luego (mismo Fase 6):**
    - **W2** — `lfs-insim init` con flag `--minimal`/`--full` (extensible a más perfiles en el

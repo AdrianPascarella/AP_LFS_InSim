@@ -5,6 +5,73 @@
 
 ---
 
+## S24 — 2026-07-09 — Fase 6 · W1: split de `utils.py` (geometría de IA fuera del framework)
+
+**Arranque:** protocolo de inicio; ya en `refactor/estabilizacion`, árbol limpio (sin mapas
+pendientes que proteger). `git pull` "Already up to date" (tip `7936cca`, cierre S23). Próximo paso
+documentado: Fase 6 · W1 (lo más irreversible, toca la API pública). Baseline verificado: suite
+**642/642**, sin `utils.pyi` que regenerar.
+
+**Qué se hizo — W1 (split de `utils.py`), CON RED PRIMERO (MODUS_OPERANDI §3):** se sacó de
+`lfs_insim.utils` (API PÚBLICA del framework) la geometría/navegación **específica de la IA** y se
+movió a `insims/ai_control/nav_modes/freeroam/geometry.py` (que ya existía con los helpers 2D de
+zonas). **9 funciones movidas:** `calc_target_heading`, `get_heading_diff`, `calc_deviation_angle`,
+`calc_dist_point_to_segment_3d`, `get_closest_node_index`, `determine_smart_spawn_index`,
+`apply_antilag_window`, `evaluate_dynamic_capture`, `is_target_ahead_and_in_lane`. **Se quedan** en
+el framework (primitivas reutilizables): comandos (`separate_*`, `Command`/`CMDManager`),
+`strip_lfs_colors`/`TextColors`, `PIDController`, conversiones `lfs_*` y **`calc_dist_3d`** (decidido
+en S23).
+
+**Secuencia de extracción segura (dos fases):**
+1. **Red primero.** Auditada la cobertura: solo 3 de las 9 tenían test directo (`get_heading_diff`,
+   `calc_deviation_angle`, `calc_dist_point_to_segment_3d`, en `test_utils.py`); las otras 6 sin
+   test (los grandes orquestadores que las usan están sin cubrir a propósito desde S18/S19). Nuevo
+   `tests/insims/ai_control/test_geometry.py` (**44 tests**): las 3 movidas de `test_utils.py` + **29
+   de caracterización nueva** para las 6, importando **desde el origen** (`lfs_insim.utils`) y
+   verificado VERDE contra el código actual. Las 3 clases se retiraron de `test_utils.py` (dejando
+   ahí lo genérico: `calc_dist_3d`, conversiones, PID, colores).
+2. **El move.** Funciones copiadas **verbatim** a `geometry.py` (que ahora importa `calc_dist_3d` de
+   `lfs_insim.utils` + `Any`); truncado de `utils.py` con script determinista (corta desde
+   `def calc_target_heading` a EOF, conserva `calc_dist_3d` bajo `# CALCULOS`); `__all__` recortado.
+   Imports actualizados en `physics.py`, `navigation.py`, `map_recorder.py`, `route/manager.py`
+   (los 3 últimos ya importaban de `geometry.py` → sin aristas de import nuevas) + el import de
+   `test_geometry.py` girado al destino. Sin ciclo: `geometry.py` solo depende de `math`, `typing`
+   y `lfs_insim.utils` (no importa nada de ai_control).
+
+**Quirk cazado por la red (caracterización, NO bug corregido):** `is_target_ahead_and_in_lane`,
+cuando el coche está delante pero **fuera de carril** (lateral ≥ umbral), NO devuelve la distancia
+lateral real — devuelve `0.0`. Solo reporta el lateral en detección peligrosa. Un test lo asertaba
+mal (esperaba 5.0); corregido al comportamiento real y documentado el matiz.
+
+**Hallazgo:** `is_target_ahead_and_in_lane` es **código muerto** — no se llama en ningún sitio del
+repo. Se migró igual (con red) por seguridad de la extracción; candidata a **eliminación en W3** al
+revisar el radar/FSM de adelantamiento. Señalado al usuario.
+
+**W5 (parte ligada a W1, HECHA):** `docs/guia/api-publica.md` actualizada (la geometría de IA ya no
+es API pública; en `utils` solo queda `calc_dist_3d`) + entrada **`[Rompe la API]`** en
+`CHANGELOG.md`. Las otras 3 guías solo usan helpers que se quedan → sin cambios. **Pendiente de W5:**
+el sweep final de exports de `lfs_insim` + `DEFAULT_CONFIG` + jerarquía de excepciones (próxima
+sesión, antes de W2).
+
+**Verificación:** suite **671** (642 baseline − 15 movidos de `test_utils` + 44 en `test_geometry` =
++29); `ruff check` + `ruff format --check` limpios en los 8 archivos tocados; `lfs-insim list` carga
+los 4 insims. 3.9-seguro por construcción (`from __future__ import annotations` en `geometry.py`, sin
+uniones PEP604 en runtime; `.venv39` no está en este equipo → lo valida el CI en el push). Solo
+tests/refactor offline → **no requiere validación en LFS**.
+
+**Decisión de diseño:** destino `nav_modes/freeroam/geometry.py` (lo fijaba el plan). Aunque estas
+funciones las usan también `route/manager.py` y `physics.py` (fuera de freeroam), la ubicación es
+**interna** (no API pública) → reversible sin coste post-publish; se siguió el plan sin bloquear.
+
+**Próximo:** **W5 sweep** (exports/config/excepciones) → **W2** (`init` con `--minimal/--full`) →
+**W3** (refactor interno + radar). **W4** (validación LFS del ceda-el-paso del ACC) sigue bloqueada
+por `zones: 0`.
+
+**Commits:** (pendiente al cierre) `refactor(ai_control): W1 - mover geometría de IA de utils a
+geometry.py` (código + red + docs de API) + docs de cierre S24.
+
+---
+
 ## S23 — 2026-07-08 — Fase 5: índice espacial de geometría (`get_location_context`)
 
 **Arranque:** protocolo de inicio; ya en `refactor/estabilizacion`, árbol limpio (sin mapas

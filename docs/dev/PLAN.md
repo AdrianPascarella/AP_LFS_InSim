@@ -363,7 +363,7 @@ valida en LFS. **Estado:** cumplido salvo la validación en LFS del ceda-el-paso
 
 ### W1 · Split de `utils.py` — sacar la geometría/navegación de ai_control del `utils` público
 **(pre-publish OBLIGATORIO: cambia la API publicada)**
-- [ ] Mover a ai_control (tiene `nav_modes/freeroam/geometry.py`) el bloque específico:
+- [x] Mover a ai_control (tiene `nav_modes/freeroam/geometry.py`) el bloque específico:
       `calc_target_heading`, `get_heading_diff`, `calc_deviation_angle`,
       `calc_dist_point_to_segment_3d`, `get_closest_node_index`, `determine_smart_spawn_index`,
       `apply_antilag_window`, `evaluate_dynamic_capture`, `is_target_ahead_and_in_lane`.
@@ -371,12 +371,22 @@ valida en LFS. **Estado:** cumplido salvo la validación en LFS del ceda-el-paso
       `strip_lfs_colors`, `TextColors`, `Command`/`CMDManager`, conversiones `lfs_*`, y —decidido
       S23— **`calc_dist_3d`** (geometría 3D genérica) y **`PIDController`** (primitiva reutilizable).
       Es **extracción segura**: verificar cobertura de tests de lo que migra ANTES de moverlo,
-      actualizar imports (ai_control + `test_utils.py`), `__all__` y las guías.
+      actualizar imports (ai_control + `test_utils.py`), `__all__` y las guías. — **S24:** hecho.
+      Red primero (`tests/insims/ai_control/test_geometry.py`, 44 tests: 15 movidos de `test_utils` +
+      29 de caracterización nueva) verificada VERDE contra el origen antes de mover, luego import
+      girado al destino → extracción sin cambio de lógica. Imports actualizados en `physics.py`,
+      `navigation.py`, `map_recorder.py`, `route/manager.py` + `test_geometry.py`; `__all__` de
+      `utils.py` recortado a `calc_dist_3d`. Suite 671; ruff limpio; `lfs-insim list` OK. Quirk
+      caracterizado: `is_target_ahead_and_in_lane` fuera de carril devuelve lateral=0.0; además es
+      **código muerto** (sin uso) → candidata a eliminar en W3.
 
 ### W5 · Repaso final de API pública + CHANGELOG  **(pre-publish; va con W1)**
-- [ ] Última pasada por exports de `lfs_insim`, claves de `DEFAULT_CONFIG` y jerarquía de
+- [→] Última pasada por exports de `lfs_insim`, claves de `DEFAULT_CONFIG` y jerarquía de
       excepciones (última oportunidad de cambiarlos gratis, sin usuarios). Cuadrar las 4 guías de
       `docs/guia/` tras W1/W2 y anotar los breaking changes en `CHANGELOG.md`.
+      — **S24 (parte ligada a W1, HECHA):** `docs/guia/api-publica.md` refleja que la geometría de
+      IA salió del framework; entrada `[Rompe la API]` en `CHANGELOG.md`. **PENDIENTE (próxima
+      sesión):** el sweep de exports de `lfs_insim` + `DEFAULT_CONFIG` + jerarquía de excepciones.
 
 ### W2 · `lfs-insim init` más robusto, con flag `--minimal`/`--full`  **(pre-publish recomendado, DX)**
 - [ ] `--minimal` = el template escueto de hoy (un comando "hola"). `--full` (default a decidir)
