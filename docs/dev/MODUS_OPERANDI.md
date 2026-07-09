@@ -76,6 +76,11 @@ Antes de terminar, SIEMPRE:
   (p. ej. «(Recomendada)» en la etiqueta) y decir por qué. Nunca dejar la elección sin guía.
 - **Al terminar una tarea, recomendar si conviene seguir en esta misma sesión o abrir una
   nueva** (para evitar el context-rot cuando el contexto se alarga). Decir cuál recomiendo.
+  **Si recomiendo abrir una sesión nueva, comprobar SIEMPRE —sin que el usuario lo pida— que
+  esa próxima sesión puede arrancar limpia, y reportarlo:** árbol limpio y en sync con `origin`
+  (nada sin commitear/pushear), CI verde si aplica, y handoff coherente (`ESTADO_ACTUAL` apunta
+  el próximo paso, `PLAN`/`HISTORIAL` al día). Es decir, dejar hecha la verificación que el
+  usuario tendría que pedir de otro modo.
 - Reportar resultados con honestidad: si un test falla, decirlo con la salida real.
 
 ## 7. Flujo de Git — sincronización con GitHub y merge a `main`
