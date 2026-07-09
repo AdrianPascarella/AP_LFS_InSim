@@ -381,12 +381,16 @@ valida en LFS. **Estado:** cumplido salvo la validación en LFS del ceda-el-paso
       **código muerto** (sin uso) → candidata a eliminar en W3.
 
 ### W5 · Repaso final de API pública + CHANGELOG  **(pre-publish; va con W1)**
-- [→] Última pasada por exports de `lfs_insim`, claves de `DEFAULT_CONFIG` y jerarquía de
+- [x] Última pasada por exports de `lfs_insim`, claves de `DEFAULT_CONFIG` y jerarquía de
       excepciones (última oportunidad de cambiarlos gratis, sin usuarios). Cuadrar las 4 guías de
       `docs/guia/` tras W1/W2 y anotar los breaking changes en `CHANGELOG.md`.
-      — **S24 (parte ligada a W1, HECHA):** `docs/guia/api-publica.md` refleja que la geometría de
-      IA salió del framework; entrada `[Rompe la API]` en `CHANGELOG.md`. **PENDIENTE (próxima
-      sesión):** el sweep de exports de `lfs_insim` + `DEFAULT_CONFIG` + jerarquía de excepciones.
+      — **S24 (parte ligada a W1):** `docs/guia/api-publica.md` refleja que la geometría de IA salió
+      del framework; entrada `[Rompe la API]` en `CHANGELOG.md`. — **S25 (sweep, HECHO):** exports de
+      `lfs_insim` y `DEFAULT_CONFIG` (20 claves) confirmados sin cambios; jerarquía de excepciones
+      recortada — **quitada `InSimProtocolError`** (el framework no puede detectarla, P24; solapa con
+      `InSimPacketError`; nunca se lanzaba), **mantenida `InSimCommandError`** (tipo de error del
+      sistema de comandos, para módulos). `exceptions.py` traducido a inglés (MODUS_OPERANDI §5).
+      Suite 670; ruff limpio. Bullet en `CHANGELOG.md` (Eliminado).
 
 ### W2 · `lfs-insim init` más robusto, con flag `--minimal`/`--full`  **(pre-publish recomendado, DX)**
 - [ ] `--minimal` = el template escueto de hoy (un comando "hola"). `--full` (default a decidir)

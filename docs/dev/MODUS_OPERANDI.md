@@ -72,6 +72,8 @@ Antes de terminar, SIEMPRE:
 
 - El usuario es el autor del proyecto y es técnico. Ir al grano.
 - Recomendar una opción, no enumerar exhaustivamente. Cuando haya información suficiente, actuar.
+- **Al plantear una pregunta con opciones, marcar SIEMPRE cuál es la recomendada**
+  (p. ej. «(Recomendada)» en la etiqueta) y decir por qué. Nunca dejar la elección sin guía.
 - Reportar resultados con honestidad: si un test falla, decirlo con la salida real.
 
 ## 7. Flujo de Git — sincronización con GitHub y merge a `main`

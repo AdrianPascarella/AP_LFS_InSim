@@ -1,14 +1,36 @@
 # 📍 Estado actual
 
-> Actualizado: **2026-07-09** — S24: **W1 (Fase 6) — split de `utils.py`**: la geometría/nav
-> **específica de la IA** sale de `lfs_insim.utils` (API PÚBLICA) a `ai_control`
-> (`nav_modes/freeroam/geometry.py`). Red primero (`test_geometry.py`, 44 tests). Suite **671**;
-> ruff limpio; API pública del framework ya estable para el primer publish.
+> Actualizado: **2026-07-09** — S25: **W5 (Fase 6) — sweep de API pública**: revisados exports de
+> `lfs_insim` y `DEFAULT_CONFIG` (20 claves, sin cambios) y la jerarquía de excepciones. Hallazgo: 2
+> excepciones nunca se lanzaban → **quitada `InSimProtocolError`** (el framework no puede detectarla,
+> P24), **mantenida `InSimCommandError`** (para módulos). `exceptions.py` traducido a inglés. Suite
+> **670**; ruff limpio. **W1+W5 (API) hechos → próximo W2 (`init`).**
 > **Rama de trabajo: `refactor/estabilizacion`.** Todo el refactor ocurre aquí; `main`
 > queda intacta hasta el merge final (cuando el proyecto esté estable). **Sync por GitHub:**
 > `git pull` al arrancar y `git push` al cerrar (permite continuar desde otro dispositivo).
 
 ## Estado
+
+**S25 (2026-07-09) — Fase 6 · W5: sweep de API pública (jerarquía de excepciones; NO requiere
+LFS):** repaso final de la API pública antes del primer publish (última ventana gratis). **Exports
+de `lfs_insim`** (`__version__` + 10 nombres + excepciones) y **`DEFAULT_CONFIG`** (20 claves)
+revisados y confirmados **sin cambios** (la guía `api-publica.md` los refleja uno a uno).
+**Jerarquía de excepciones — hallazgo:** 2 de las 7 **no se lanzaban en ningún sitio** (ni core, ni
+insims, ni tests — solo se asertaban como subclases): `InSimProtocolError` e `InSimCommandError`.
+**Decisión (recomendación explícita, el usuario delegó): Opción 2 — quitar `InSimProtocolError`,
+mantener `InSimCommandError`.** Razón: pre-publish no hay usuarios → quitar no es breaking real y
+re-añadir una excepción **nunca** es breaking → recortar ahora lo injustificable. `InSimProtocolError`
+es lo injustificable: el framework **estructuralmente no puede** lanzarla (P24: LFS no da feedback al
+rechazar un ISI) y su caso de "paquete inválido" ya lo cubre `InSimPacketError`. `InSimCommandError`
+se queda: tipo de error coherente del **sistema de comandos público** (`CMDManager`/`Command`, con
+`.command_name`), punto de extensión para autores de módulos. De paso, **`exceptions.py` traducido a
+inglés** (MODUS_OPERANDI §5: módulo público del core tocado en la pasada pre-publish) y docstring de
+`InSimCommandError` aclarando que es para módulos. `CLAUDE.md:210` ya listaba exactamente las 5
+subclases restantes → **correcto sin tocar**. **Regla de trabajo nueva** (a petición del usuario, en
+`MODUS_OPERANDI §6`): al preguntar con opciones, **marcar siempre la recomendada** y por qué.
+**Verificación:** suite **670/670** (671 − 1 test de subclase); `ruff check .` + `format --check .`
+limpios (96 archivos); smoke de import OK; `lfs-insim list` carga los 4 insims. Solo API/tests/docs
+offline → **no requiere validación en LFS**.
 
 **S24 (2026-07-09) — Fase 6 · W1: split de `utils.py` (implementado y verificado, NO requiere
 LFS):** primer ítem pre-publish. Se sacó de `lfs_insim.utils` (la API PÚBLICA del framework) la
@@ -471,7 +493,8 @@ P11–P21 en `DIAGNOSTICO.md`. Queda gordo: P12 (reconexión, Fase 3).
 **Fase 6 — Pre-publish: refactor de ai_control + API + init** (re-secuenciada con el usuario en
 S23). Fases 1-4 (core) COMPLETADAS. **Fase 5 (ai_control: red + estabilización) COMPLETA salvo la
 validación en LFS del ceda-el-paso del ACC (W4)**, hoy bloqueada porque ningún mapa tiene
-intersección (`zones: 0`).
+intersección (`zones: 0`). **Fase 6: W1 (split `utils.py`) y W5 (sweep de API) HECHOS** (S24/S25);
+falta W2 (`init`) y W3 (refactor interno + radar).
 
 **Decisión de rumbo (S23):** adelantar el refactor de ai_control a **ANTES de publicar**, junto
 con la limpieza de la API pública (`utils.py`) y un `init` más robusto. Motivo clave: mover
@@ -491,7 +514,7 @@ de publicar para un primer release cohesionado y con la API pública ya estable.
 **Rumbo re-decidido en S23 (planificación con el usuario): Fase 6 pre-publish** — refactor de
 ai_control + limpieza de la API pública (`utils.py`) + `init` más robusto. Fase 5 está COMPLETA
 salvo **W4** (validación en LFS del ceda-el-paso del ACC, hoy bloqueada por `zones: 0`). Orden
-acordado: **W4** (tú, en LFS, en paralelo — gate del merge) → ~~W1~~ ✅ → **W5 (sweep)** → **W2**
+acordado: **W4** (tú, en LFS, en paralelo — gate del merge) → ~~W1~~ ✅ → ~~W5~~ ✅ → **W2**
 (init) → **W3** (refactor interno + radar). Todo en la rama; un solo merge a `main` cuando esté
 publish-ready + validado, luego publish. Detalle en PLAN § Fase 6.
 
@@ -501,14 +524,15 @@ publish-ready + validado, luego publish. Detalle en PLAN § Fase 6.
 primero). Suite 671. Hecha también la parte de W5 ligada a W1 (guía `api-publica.md` + entrada
 `[Rompe la API]` en `CHANGELOG.md`).
 
-**Empezar AQUÍ la próxima sesión — W5 (sweep final de API pública), luego W2:**
+**✅ W5 HECHO (S25)** — sweep de API pública: exports de `lfs_insim` y `DEFAULT_CONFIG` (20 claves)
+confirmados sin cambios; jerarquía de excepciones **recortada** — quitada `InSimProtocolError` (el
+framework no puede detectarla, P24; solapa con `InSimPacketError`; nunca se lanzaba), mantenida
+`InSimCommandError` (tipo de error del sistema de comandos, para módulos). `exceptions.py` traducido
+a inglés (MODUS_OPERANDI §5). Guía `api-publica.md` + `CHANGELOG.md` cuadrados. Suite 670.
 
-1. **W5 — repaso final de la API pública** (pre-publish, última ventana gratis para cambiarla):
-   revisar los exports de `lfs_insim` (`__init__.py`), TODAS las claves de `DEFAULT_CONFIG` y la
-   jerarquía de excepciones — confirmar nombres y superficie ANTES del primer publish. Cuadrar las
-   4 guías de `docs/guia/` si algo cambia. (La parte de W5 sobre `utils.py`/geometría ya está hecha.)
+**Empezar AQUÍ la próxima sesión — W2 (`init` robusto), luego W3:**
 
-   **Luego (mismo Fase 6):**
+1. **W2 y W3 (resto de Fase 6):**
    - **W2** — `lfs-insim init` con flag `--minimal`/`--full` (extensible a más perfiles en el
      futuro). `--minimal` = el template escueto de hoy; `--full` con **comando de cierre**
      admin-guarded, patrón de validación de permisos, `on_reconnect` (P12) y petición de estado

@@ -5,6 +5,61 @@
 
 ---
 
+## S25 — 2026-07-09 — Fase 6 · W5: sweep de API pública (jerarquía de excepciones)
+
+**Arranque:** protocolo de inicio; ya en `refactor/estabilizacion`, árbol limpio. `git pull` trajo
+desde otro equipo el cierre de S23 (índice espacial de geometría) y S24 (split de `utils.py`) + el
+mapa South City ampliado → tip `2722573`. Baseline verificado: **671/671**. Próximo paso
+documentado: **W5** (repaso final de la API pública antes del primer publish).
+
+**Qué se hizo — W5 (sweep de exports / config / excepciones):**
+- **Exports de `lfs_insim`** (`__version__` + 10 nombres + excepciones) y **`DEFAULT_CONFIG`** (20
+  claves): revisados uno a uno contra la guía `api-publica.md` → cuadran, **sin cambios**.
+- **Jerarquía de excepciones — hallazgo:** grep en todo el repo → **2 de las 7 no se lanzaban en
+  ningún sitio** (ni core, ni insims, ni tests; solo se asertaban como subclases):
+  `InSimProtocolError` e `InSimCommandError`. Se planteó al usuario **con recomendación explícita**;
+  el usuario delegó la elección.
+
+**Decisión de diseño — Opción 2 (quitar `InSimProtocolError`, mantener `InSimCommandError`):**
+pre-publish no hay usuarios → quitar no es breaking real (solo una línea de CHANGELOG en una versión
+sin publicar) y **re-añadir una excepción nunca es breaking** → la asimetría favorece recortar ahora
+lo injustificable y añadir luego si hace falta. `InSimProtocolError` es lo injustificable: el
+framework **estructuralmente no puede** lanzarla (P24: LFS no da feedback al rechazar un ISI/
+protocolo) y su caso de "paquete inválido" ya lo cubre `InSimPacketError`. `InSimCommandError` se
+queda: tipo de error coherente del **sistema de comandos público** (`CMDManager`/`Command`, con
+`.command_name`), punto de extensión legítimo para que los autores de módulos lo lancen desde sus
+handlers (aunque el core no lo lance).
+
+**Cambios aplicados:**
+- `exceptions.py`: quitada la clase `InSimProtocolError` + de `__all__`. **Traducido a inglés** de
+  paso (MODUS_OPERANDI §5: módulo público del core tocado en la pasada pre-publish) + docstring de
+  `InSimCommandError` aclarando que es para módulos.
+- `__init__.py`: quitado el import y el `__all__` de `InSimProtocolError`.
+- `test_exceptions.py`: quitado el import + el test de subclase de Protocol (−1 test).
+- `docs/guia/api-publica.md`: diagrama de jerarquía actualizado + nota sobre quién lanza qué.
+- `CHANGELOG.md`: bullet en **Eliminado** con el porqué.
+- `CLAUDE.md:210` ya listaba exactamente las 5 subclases restantes (omitía Protocol) → queda
+  **correcto sin tocar**. Las otras 3 guías no referenciaban Protocol.
+
+**Regla de trabajo nueva (a petición del usuario):** al plantear una pregunta con opciones, **marcar
+SIEMPRE la recomendada** y por qué. Registrada en `MODUS_OPERANDI §6`. (Motivo: en la pregunta de
+esta sesión describí "mantener las dos" como cero-riesgo pero no marqué explícitamente la recomendada.)
+
+**Verificación:** suite **670/670** (671 − 1); `ruff check .` + `ruff format --check .` limpios (96
+archivos); smoke de import OK (`InSimProtocolError` fuera; `InSimError` + 5 subclases presentes;
+`InSimCommandError` sigue siendo subclase); `lfs-insim list` carga los 4 insims. 3.9-seguro (solo
+`__all__`/docstrings; CI valida 3.9 en el push). Solo API/tests/docs offline → **no requiere
+validación en LFS**.
+
+**Próximo:** **W2** — `lfs-insim init` con flag `--minimal`/`--full`. Al implementar, confirmar con
+el usuario el mecanismo de cierre (`TINY.CLOSE` vs `client.stop()`) y si `--full` es el default.
+**W4** (validación LFS del ceda-el-paso del ACC) sigue bloqueada por `zones: 0`.
+
+**Commits:** (pendiente al cierre) `refactor(core): W5 - quita InSimProtocolError de la API pública`
++ docs de cierre S25.
+
+---
+
 ## S24 — 2026-07-09 — Fase 6 · W1: split de `utils.py` (geometría de IA fuera del framework)
 
 **Arranque:** protocolo de inicio; ya en `refactor/estabilizacion`, árbol limpio (sin mapas
