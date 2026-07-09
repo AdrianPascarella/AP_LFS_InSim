@@ -5,15 +5,14 @@ from typing import TYPE_CHECKING
 
 from insims.ai_control.base import _MixinBase
 from insims.ai_control.behavior import AdaptiveSpeedConfig, AIBehavior, GearMode
+from insims.ai_control.nav_modes.freeroam.geometry import (
+    calc_target_heading,
+    get_heading_diff,
+)
 from insims.users_management.main import Coordinates
 from lfs_insim.insim_enums import CS, CSVAL
 from lfs_insim.packets import AIInputVal as AIV
-from lfs_insim.utils import (
-    calc_dist_3d,
-    calc_target_heading,
-    get_heading_diff,
-    lfs_pos_to_meters,
-)
+from lfs_insim.utils import calc_dist_3d, lfs_pos_to_meters
 
 if TYPE_CHECKING:
     from insims.users_management.main import AI, Telemetry

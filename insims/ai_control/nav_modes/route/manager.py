@@ -7,10 +7,11 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from config.settings import BASE_DIR
+from insims.ai_control.nav_modes.freeroam.geometry import calc_deviation_angle
 from insims.users_management.main import Coordinates, Speed
 from lfs_insim.packet_sender_mixin import PacketSenderMixin
 from lfs_insim.packets import ISP_MSL
-from lfs_insim.utils import calc_deviation_angle, calc_dist_3d
+from lfs_insim.utils import calc_dist_3d
 
 if TYPE_CHECKING:
     from insims.users_management.main import Player

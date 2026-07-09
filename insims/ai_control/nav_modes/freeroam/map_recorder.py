@@ -13,7 +13,9 @@ from typing import Callable, Dict, List, Optional
 
 from insims.ai_control.nav_modes.freeroam.enums import TrafficRule
 from insims.ai_control.nav_modes.freeroam.geometry import (
+    calc_deviation_angle,
     calc_dist_point_to_segment_2d,
+    calc_dist_point_to_segment_3d,
     get_dist_to_polygon_edge_2d,
     is_point_in_polygon_2d,
 )
@@ -34,9 +36,7 @@ from lfs_insim.packets import ISP_MSL, ISP_MSO
 from lfs_insim.utils import (
     CMDManager,
     TextColors,
-    calc_deviation_angle,
     calc_dist_3d,
-    calc_dist_point_to_segment_3d,
 )
 
 logger = logging.getLogger(__name__)

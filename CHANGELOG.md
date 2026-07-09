@@ -71,6 +71,14 @@ el proyecto sigue el [Versionado Semántico](https://semver.org/lang/es/).
 - **Metadata del paquete saneada:** `readme = "README.md"`, licencia SPDX
   (`MIT`), URLs corregidas, keywords y classifiers (Python 3.9–3.14), versión de
   fuente única.
+- **[Rompe la API]** `lfs_insim.utils` **adelgazado a helpers genéricos**: la
+  geometría/navegación **específica de la IA** (`calc_target_heading`,
+  `get_heading_diff`, `calc_deviation_angle`, `calc_dist_point_to_segment_3d`,
+  `get_closest_node_index`, `determine_smart_spawn_index`, `apply_antilag_window`,
+  `evaluate_dynamic_capture`, `is_target_ahead_and_in_lane`) se movió a `ai_control`
+  (`nav_modes/freeroam/geometry.py`). En el framework quedan solo primitivas
+  reutilizables: comandos, colores, `PIDController`, conversiones `lfs_*` y
+  `calc_dist_3d`.
 
 ### Obsoleto
 

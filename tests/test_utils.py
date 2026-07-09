@@ -6,10 +6,7 @@ import pytest
 
 from lfs_insim.utils import (
     PIDController,
-    calc_deviation_angle,
     calc_dist_3d,
-    calc_dist_point_to_segment_3d,
-    get_heading_diff,
     lfs_angle_to_degrees,
     lfs_angvel_to_degrees_per_second,
     lfs_pos_to_meters,
@@ -156,75 +153,9 @@ class TestCalcDist3d:
         assert calc_dist_3d(0, 0, 0, 1, 1, 1) == pytest.approx(math.sqrt(3))
 
 
-class TestGetHeadingDiff:
-    def test_positive_diff(self):
-        assert get_heading_diff(1000, 500) == 500
-
-    def test_negative_diff(self):
-        assert get_heading_diff(500, 1000) == -500
-
-    def test_no_diff(self):
-        assert get_heading_diff(1000, 1000) == 0
-
-    def test_wraparound_short_path(self):
-        # From 65000 to 100: shortest is +636, not -64900
-        assert get_heading_diff(100, 65000) == 636
-
-    def test_max_positive(self):
-        # Exactly half circle forward
-        assert get_heading_diff(32768, 0) == -32768
-
-    def test_result_in_range(self):
-        diff = get_heading_diff(10000, 60000)
-        assert -32768 <= diff <= 32768
-
-
-class TestCalcDeviationAngle:
-    def test_straight_line(self):
-        # Three collinear points: deviation = 0
-        angle = calc_deviation_angle(0, 0, 100, 0, 200, 0)
-        assert angle == 0
-
-    def test_90_degree_left(self):
-        # Turn left: (0,0) → (1,0) → (1,1)
-        angle = calc_deviation_angle(0, 0, 1, 0, 1, 1)
-        assert angle > 0
-
-    def test_90_degree_right(self):
-        # Turn right: (0,0) → (1,0) → (1,-1)
-        angle = calc_deviation_angle(0, 0, 1, 0, 1, -1)
-        assert angle < 0
-
-    def test_180_u_turn(self):
-        angle = calc_deviation_angle(0, 0, 1, 0, 0, 0)
-        assert abs(angle) == 32768
-
-
-class TestCalcDistPointToSegment3d:
-    def test_point_on_segment(self):
-        # Midpoint of segment from (0,0,0) to (10,0,0) is at (5,0,0)
-        dist = calc_dist_point_to_segment_3d(5, 0, 0, 0, 0, 0, 10, 0, 0)
-        assert dist == pytest.approx(0.0)
-
-    def test_point_perpendicular(self):
-        # Point at (5,3,0), segment from (0,0,0) to (10,0,0)
-        dist = calc_dist_point_to_segment_3d(5, 3, 0, 0, 0, 0, 10, 0, 0)
-        assert dist == pytest.approx(3.0)
-
-    def test_point_before_segment(self):
-        # Point at (-3,4,0), segment from (0,0,0) to (10,0,0) → closest is A=(0,0,0)
-        dist = calc_dist_point_to_segment_3d(-3, 4, 0, 0, 0, 0, 10, 0, 0)
-        assert dist == pytest.approx(5.0)
-
-    def test_point_after_segment(self):
-        # Point at (13,4,0), segment from (0,0,0) to (10,0,0) → closest is B=(10,0,0)
-        dist = calc_dist_point_to_segment_3d(13, 4, 0, 0, 0, 0, 10, 0, 0)
-        assert dist == pytest.approx(5.0)
-
-    def test_degenerate_segment(self):
-        # A == B (point segment): distance = distance from P to that point
-        dist = calc_dist_point_to_segment_3d(3, 4, 0, 0, 0, 0, 0, 0, 0)
-        assert dist == pytest.approx(5.0)
+# NOTA: get_heading_diff, calc_deviation_angle y calc_dist_point_to_segment_3d se
+# movieron a insims/ai_control/nav_modes/freeroam/geometry.py (W1, Fase 6). Su
+# caracterización vive ahora en tests/insims/ai_control/test_geometry.py.
 
 
 class TestPIDController:

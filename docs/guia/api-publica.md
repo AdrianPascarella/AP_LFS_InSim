@@ -12,7 +12,7 @@ lo que no aparece aquí es interno y puede cambiar sin aviso.
 | `lfs_insim` | Clases del core, config y excepciones (ver abajo). |
 | `lfs_insim.packets` | Dataclasses de paquetes (`ISP_*`), sub-estructuras y OutSim. **No re-exporta enums.** |
 | `lfs_insim.insim_enums` | Enums y constantes del protocolo (`ISF`, `TINY`, `SMALL`, `PTYPE`, `OSO`, ...). |
-| `lfs_insim.utils` | Helpers: comandos, colores, PID, conversiones y geometría. |
+| `lfs_insim.utils` | Helpers: comandos, colores, PID, conversiones y distancia 3D. |
 
 > `lfs_insim.insim_packet_class` es una **facade deprecada** (emite
 > `DeprecationWarning`) que re-exporta paquetes + enums como el monolito original.
@@ -183,12 +183,18 @@ from lfs_insim.utils import strip_lfs_colors, CMDManager, PIDController, TextCol
 `lfs_pos_to_meters`, `lfs_speed_to_kmh`, `lfs_angle_to_degrees`,
 `lfs_angvel_to_degrees_per_second`.
 
-**Geometría / navegación:**
+**Geometría 3D genérica:**
 
-`calc_dist_3d`, `calc_target_heading`, `get_heading_diff`, `calc_deviation_angle`,
-`calc_dist_point_to_segment_3d`, `get_closest_node_index`,
-`determine_smart_spawn_index`, `apply_antilag_window`, `evaluate_dynamic_capture`,
-`is_target_ahead_and_in_lane`.
+`calc_dist_3d(x1, y1, z1, x2, y2, z2)` — distancia euclídea 3D entre dos puntos.
+
+> **Nota (v0.2.0):** la geometría/navegación **específica de la IA** (rumbos LFS,
+> captura dinámica de waypoints, radar longitudinal/lateral: `calc_target_heading`,
+> `get_heading_diff`, `calc_deviation_angle`, `calc_dist_point_to_segment_3d`,
+> `get_closest_node_index`, `determine_smart_spawn_index`, `apply_antilag_window`,
+> `evaluate_dynamic_capture`, `is_target_ahead_and_in_lane`) **ya no forma parte de
+> la API pública del framework**: se movió a `ai_control`
+> (`nav_modes/freeroam/geometry.py`). En `lfs_insim.utils` solo queda la primitiva
+> genérica `calc_dist_3d`.
 
 ---
 

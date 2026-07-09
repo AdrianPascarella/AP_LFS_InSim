@@ -7,19 +7,19 @@ from typing import TYPE_CHECKING, List, Literal, Optional, Tuple
 
 from insims.ai_control.base import _MixinBase
 from insims.ai_control.behavior import AIBehavior
-from insims.ai_control.nav_modes.freeroam.geometry import calc_dist_point_to_segment_2d
+from insims.ai_control.nav_modes.freeroam.geometry import (
+    apply_antilag_window,
+    calc_dist_point_to_segment_2d,
+    determine_smart_spawn_index,
+    evaluate_dynamic_capture,
+    get_closest_node_index,
+)
 from insims.ai_control.nav_modes.freeroam.graph import LocationContext, RoadLink
 from insims.ai_control.nav_modes.freeroam.mode import FreeroamMode
 from insims.ai_control.nav_modes.route.mode import RouteMode
 from lfs_insim.insim_enums import CS, CSVAL
 from lfs_insim.packets import AIInputVal as AIV
-from lfs_insim.utils import (
-    apply_antilag_window,
-    calc_dist_3d,
-    determine_smart_spawn_index,
-    evaluate_dynamic_capture,
-    get_closest_node_index,
-)
+from lfs_insim.utils import calc_dist_3d
 
 if TYPE_CHECKING:
     from insims.users_management.main import AI, Coordinates
