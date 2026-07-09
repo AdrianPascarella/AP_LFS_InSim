@@ -74,6 +74,8 @@ Antes de terminar, SIEMPRE:
 - Recomendar una opción, no enumerar exhaustivamente. Cuando haya información suficiente, actuar.
 - **Al plantear una pregunta con opciones, marcar SIEMPRE cuál es la recomendada**
   (p. ej. «(Recomendada)» en la etiqueta) y decir por qué. Nunca dejar la elección sin guía.
+- **Al terminar una tarea, recomendar si conviene seguir en esta misma sesión o abrir una
+  nueva** (para evitar el context-rot cuando el contexto se alarga). Decir cuál recomiendo.
 - Reportar resultados con honestidad: si un test falla, decirlo con la salida real.
 
 ## 7. Flujo de Git — sincronización con GitHub y merge a `main`
@@ -88,6 +90,11 @@ Antes de terminar, SIEMPRE:
     es flujo normal y está **autorizado de forma permanente**.
   - La rama tiene upstream `origin/refactor/estabilizacion` (`git push -u` la primera vez).
 - Commits pequeños y temáticos dentro de la rama (`tipo(scope): ...`).
+- **Si el `git push` falla o se cuelga, no reportarlo como fallo sin más:** reintentar con el
+  método que ya haya funcionado en el equipo y avisar al usuario de esa vía. (En este equipo el
+  `git push` pelado se atasca en Git Credential Manager, que abre un diálogo GUI irrespondible;
+  el método que funciona —token de `gh` como credential helper de un solo uso— está guardado en
+  la memoria del equipo, `git-push-gcm-workaround`.)
 - **Requiere permiso explícito del usuario:** mergear a `main` (y cualquier push a `main`).
   El merge se hace solo cuando el proyecto esté estable: `pytest` verde **+** el usuario ha
   validado el comportamiento en LFS.
