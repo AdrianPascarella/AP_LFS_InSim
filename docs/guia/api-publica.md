@@ -147,11 +147,14 @@ InSimError
 ├── InSimConfigurationError   config inválida o parámetros críticos ausentes
 ├── InSimPacketError          paquete malformado (.packet_type, .packet_size, .data)
 ├── InSimModuleError          fallo de carga o dependencia de un módulo (.module_name)
-├── InSimProtocolError        LFS responde con error de protocolo / se viola la lógica InSim
 └── InSimCommandError         comando de chat mal formado (.command_name)
 ```
 
 Captura `InSimError` para atrapar cualquiera del framework, o la subclase concreta.
+
+> Las cuatro primeras las lanza el propio core. `InSimCommandError` la ofrece el
+> framework como tipo de error del sistema de comandos para que **la lances tú**
+> desde tus handlers (el core no la lanza por sí mismo).
 
 ---
 

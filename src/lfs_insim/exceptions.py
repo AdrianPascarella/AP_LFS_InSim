@@ -1,8 +1,8 @@
 """
-exceptions.py - Catálogo de excepciones personalizadas para el framework InSim.
+exceptions.py - Custom exception hierarchy for the InSim framework.
 
-Estas excepciones permiten identificar rápidamente el origen de un fallo
-proporcionando mensajes detallados y estructuras de datos relevantes.
+These exceptions make it easy to pinpoint the origin of a failure, carrying
+detailed messages and any relevant structured data.
 """
 
 __all__ = [
@@ -11,22 +11,18 @@ __all__ = [
     "InSimConfigurationError",
     "InSimPacketError",
     "InSimModuleError",
-    "InSimProtocolError",
     "InSimCommandError",
 ]
 
 
 class InSimError(Exception):
-    """Clase base para todos los errores del framework InSim."""
+    """Base class for every InSim framework error."""
 
     pass
 
 
 class InSimConnectionError(InSimError):
-    """
-    Excepción lanzada cuando hay problemas con la conexión de red (TCP/UDP)
-    o con la autenticación en LFS.
-    """
+    """Raised on network (TCP/UDP) or LFS authentication problems."""
 
     def __init__(self, message, host=None, port=None):
         super().__init__(message)
@@ -35,19 +31,13 @@ class InSimConnectionError(InSimError):
 
 
 class InSimConfigurationError(InSimError):
-    """
-    Lanzada cuando la configuración (settings.py o diccionarios)
-    es inválida o faltan parámetros críticos.
-    """
+    """Raised when the configuration is invalid or a critical key is missing."""
 
     pass
 
 
 class InSimPacketError(InSimError):
-    """
-    Lanzada cuando un paquete no puede ser decodificado,
-    es demasiado pequeño o tiene un formato inválido.
-    """
+    """Raised when a packet cannot be decoded, is too small or malformed."""
 
     def __init__(self, message, packet_type=None, packet_size=None, data=None):
         super().__init__(message)
@@ -57,28 +47,19 @@ class InSimPacketError(InSimError):
 
 
 class InSimModuleError(InSimError):
-    """
-    Lanzada cuando un módulo (InSimApp) falla al cargarse,
-    tiene dependencias no resueltas o un manifiesto corrupto.
-    """
+    """Raised when a module (InSimApp) fails to load, has unresolved
+    dependencies or a corrupt manifest."""
 
     def __init__(self, message, module_name=None):
         super().__init__(message)
         self.module_name = module_name
 
 
-class InSimProtocolError(InSimError):
-    """
-    Lanzada cuando LFS responde con un error de protocolo (ej: versión incorrecta)
-    o se viola la lógica del protocolo InSim.
-    """
-
-    pass
-
-
 class InSimCommandError(InSimError):
-    """
-    Lanzada cuando un comando está mal formado
+    """Command-system error type: a malformed command.
+
+    The core does not raise it itself; it is provided so module authors can
+    raise it from their own command handlers (carries ``command_name``).
     """
 
     def __init__(self, message, command_name=None):

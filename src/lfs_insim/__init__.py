@@ -19,7 +19,6 @@ from .exceptions import (
     InSimError,
     InSimModuleError,
     InSimPacketError,
-    InSimProtocolError,
 )
 from .insim_app import InSimApp
 from .insim_client import InSimClient
@@ -42,7 +41,6 @@ __all__ = [
     "InSimConfigurationError",
     "InSimPacketError",
     "InSimModuleError",
-    "InSimProtocolError",
     "InSimCommandError",
     "mute_send_logs",
     "unmute_send_logs",

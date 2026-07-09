@@ -98,6 +98,11 @@ el proyecto sigue el [Versionado Semántico](https://semver.org/lang/es/).
 - Scripts globales **`generate-stubs` / `update-all`** (plegados en subcomandos de
   `lfs-insim`); `lfs-insim` es el único console-script.
 - **`requirements.txt`** (redundante) y un enum **`INST`** duplicado.
+- **`InSimProtocolError`** de la jerarquía pública de excepciones: el framework no
+  puede detectar errores de protocolo (LFS no da feedback al rechazar un ISI, P24)
+  y su caso de "paquete inválido" ya lo cubre `InSimPacketError`; nunca se lanzaba.
+  La jerarquía queda en `InSimError` + 5 subclases. Volver a añadirla en el futuro
+  no rompería la API.
 
 ### Corregido
 

@@ -9,7 +9,6 @@ from lfs_insim.exceptions import (
     InSimError,
     InSimModuleError,
     InSimPacketError,
-    InSimProtocolError,
 )
 
 
@@ -25,9 +24,6 @@ class TestInheritance:
 
     def test_module_error_is_insim_error(self):
         assert issubclass(InSimModuleError, InSimError)
-
-    def test_protocol_error_is_insim_error(self):
-        assert issubclass(InSimProtocolError, InSimError)
 
     def test_command_error_is_insim_error(self):
         assert issubclass(InSimCommandError, InSimError)
