@@ -5,6 +5,65 @@
 
 ---
 
+## S26 — 2026-07-10 — Fase 6 · W2: `lfs-insim init` con perfiles `--minimal`/`--full`
+
+**Arranque:** protocolo de inicio; ya en `refactor/estabilizacion`, árbol limpio, `git pull`
+"Already up to date" (tip `9633ed3`). Baseline verificado: suite **670/670**. Próximo paso
+documentado: **W2** — `lfs-insim init` más robusto, con dos decisiones marcadas para confirmar con
+el usuario (mecanismo de cierre y perfil por defecto).
+
+**Decisiones (pregunta con recomendación explícita, MODUS_OPERANDI §6 — el usuario eligió las dos
+recomendadas):**
+- **Mecanismo de cierre = `self.client.stop()`** (no `TINY.CLOSE`). Razón: `client.stop()` es la
+  parada limpia nativa del framework (cierra hilos/sockets, dispara `on_disconnect`, sin
+  reconexión) y es reentrante-segura desde un handler (S09/S12). `TINY.CLOSE` le pediría a LFS
+  cerrar el socket, pero con la **auto-reconexión P12 activa por defecto** el cliente lo detectaría
+  como caída y **reconectaría** en vez de apagarse → semántica equivocada para un comando de cierre.
+- **`--full` por defecto.** El objetivo de W2 es que el scaffold por defecto muestre los patrones
+  correctos; quien quiera lo escueto usa `--minimal`.
+
+**Qué se hizo — W2 (`cli.py`), CON RED PRIMERO:**
+- **Red primero (`tests/test_cli.py`, +10 tests):** escritos y verificados en ROJO (helpers y flags
+  aún inexistentes → error de colección) antes de implementar. Cubren: default = `--full`,
+  `--minimal`, `--full` explícito, **mutua exclusión** (`--minimal --full` → `SystemExit`), clase
+  CamelCase + manifiesto, guard de "ya existe", y —lo más valioso para un generador— **ambos
+  templates `compile()` y `exec()` → subclase de `InSimApp`** (un scaffold con un fallo de sintaxis
+  o import roto es un fallo de DX serio; este test lo caza).
+- **Implementación:** flags mutuamente excluyentes `--full`/`--minimal` en el subparser de `init`
+  (`set_defaults(profile="full")`); **registro extensible `_INIT_PROFILES`** (dict perfil→función
+  de render) para admitir más perfiles en el futuro sin tocar `cmd_init`. Templates como **strings
+  con centinelas** `__CLASSNAME__`/`__MODNAME__` rellenados por `str.replace` (no f-strings: evita
+  escapar `{{}}` en ~90 líneas de código generado, y deja el template legible como Python normal).
+- **`--minimal`** = el template anterior, **byte-idéntico** (extracción segura del comportamiento
+  de hoy). **`--full`** = esqueleto de bot real: `set_isi_packet` con `ISF.LOCAL`; `TINY.NCN/NPL`
+  en `on_connect`; tracking de admin por NCN (`self.admins[UCID] = packet.Admin == AD_NOAD.ADMIN`,
+  limpiado en `CNL`) con `_is_admin(ucid)` (**UCID 0 = host local → siempre admin**); comando
+  **`cerrar` admin-guarded** (`is_mso_required=True` → valida `packet.UCID`, luego
+  `self.client.stop()`); **`on_reconnect`** que resetea `self.admins` (los NCN entrantes lo
+  repueblan tras reconectar).
+- **Guías cuadradas (parte de W5):** `quickstart.md` ahora usa `--minimal` explícito (así el código
+  incrustado sigue siendo exacto) + nota que explica el `--full` por defecto; `README.md`,
+  `CLAUDE.md` (comando) y `CHANGELOG.md` (bullet en *Añadido*) actualizados.
+
+**Verificación:** suite **680/680** (670 + 10); `ruff check .` + `ruff format --check .` limpios
+(ruff pasó el `_MINIMAL_TEMPLATE` a `"""` y dejó el `_FULL_TEMPLATE` en `'''` porque contiene un
+docstring `"""` — correcto); `lfs-insim list` carga los 4 insims; render de `--full` eyeballeado
+(los `�` en consola son el codepage de PowerShell, no el archivo: se escribe UTF-8 y los tests de
+`exec` pasan). **3.9-safe:** `dict[int, bool]` es PEP 585 (ya usado en `test_insim`), sin uniones
+PEP 604; FA102 pasa (CI valida 3.9 en el push). Solo CLI/tests/docs offline → **no requiere
+validación en LFS**.
+
+**Próximo:** **W3** (último ítem de Fase 6) — refactor interno de ai_control (P3 partir
+`map_ui`/`map_recorder`/`traffic`; P4 `base.py`; P7 nombres de `behavior.py`) + índice espacial de
+VEHÍCULOS para el radar plegado en `traffic.py` (caracterizar el radar como unidad ANTES, red
+primero) + revisar el FSM de adelantamiento. **W4** (validación LFS del ceda-el-paso del ACC) sigue
+bloqueada por `zones: 0`.
+
+**Commits:** (pendiente al cierre) `feat(cli): W2 - lfs-insim init con perfiles --minimal/--full` +
+docs de cierre S26.
+
+---
+
 ## S25 — 2026-07-09 — Fase 6 · W5: sweep de API pública (jerarquía de excepciones)
 
 **Arranque:** protocolo de inicio; ya en `refactor/estabilizacion`, árbol limpio. `git pull` trajo

@@ -1,15 +1,45 @@
 # 📍 Estado actual
 
-> Actualizado: **2026-07-09** — S25: **W5 (Fase 6) — sweep de API pública**: revisados exports de
-> `lfs_insim` y `DEFAULT_CONFIG` (20 claves, sin cambios) y la jerarquía de excepciones. Hallazgo: 2
-> excepciones nunca se lanzaban → **quitada `InSimProtocolError`** (el framework no puede detectarla,
-> P24), **mantenida `InSimCommandError`** (para módulos). `exceptions.py` traducido a inglés. Suite
-> **670**; ruff limpio. **W1+W5 (API) hechos → próximo W2 (`init`).**
+> Actualizado: **2026-07-10** — S26: **W2 (Fase 6) — `lfs-insim init` con perfiles**. Confirmado
+> con el usuario: **cierre = `self.client.stop()`** (parada limpia nativa; `TINY.CLOSE` con la
+> reconexión P12 activa solo reconectaría en vez de apagar) y **`--full` por defecto**. `init` gana
+> flags mutuamente excluyentes `--full`/`--minimal` (registro extensible `_INIT_PROFILES`); `--full`
+> = scaffold de bot real (cierre admin-guarded con `client.stop()`, permisos por UCID, `on_reconnect`,
+> `TINY.NCN/NPL`), `--minimal` = template escueto de antes (byte-idéntico). Red primero (+10 tests:
+> perfiles, mutua exclusión, y ambos templates compilan y `exec`→`InSimApp`). Suite **680**; ruff
+> limpio; guías cuadradas. **W1+W5+W2 hechos → próximo W3 (refactor interno + radar).**
 > **Rama de trabajo: `refactor/estabilizacion`.** Todo el refactor ocurre aquí; `main`
 > queda intacta hasta el merge final (cuando el proyecto esté estable). **Sync por GitHub:**
 > `git pull` al arrancar y `git push` al cerrar (permite continuar desde otro dispositivo).
 
 ## Estado
+
+**S26 (2026-07-10) — Fase 6 · W2: `lfs-insim init` con perfiles `--minimal`/`--full`
+(implementado y verificado, NO requiere LFS):** segundo ítem de DX pre-publish. `init` ahora
+acepta flags **mutuamente excluyentes** `--full`/`--minimal` (default **`--full`**, decidido con el
+usuario). **Dos decisiones confirmadas (pregunta con recomendación, MODUS_OPERANDI §6):**
+(1) **mecanismo de cierre = `self.client.stop()`** — parada limpia nativa del framework (cierra
+hilos/sockets, sin reconexión) y reentrante-segura desde un handler (S09/S12); `TINY.CLOSE` se
+descartó porque, con la auto-reconexión P12 activa por defecto, LFS cerraría el socket y el cliente
+**reconectaría** en vez de apagarse. (2) **`--full` por defecto** — la experiencia por defecto debe
+mostrar los patrones correctos; quien quiera lo escueto usa `--minimal`. **Implementación (`cli.py`):**
+templates como **strings con centinelas** (`__CLASSNAME__`/`__MODNAME__`) rellenados por
+`str.replace` (no f-strings → evita escapar `{{}}` en 90 líneas de código generado); **registro
+extensible** `_INIT_PROFILES` (dict perfil→función de render) para admitir más perfiles en el futuro
+sin tocar `cmd_init`. **`--minimal`** = el template de antes, **byte-idéntico**. **`--full`** trae el
+esqueleto de un bot real: `set_isi_packet` con `ISF.LOCAL`; `TINY.NCN/NPL` en `on_connect`; tracking
+de admin por NCN (`self.admins[UCID] = packet.Admin == AD_NOAD.ADMIN`) con `_is_admin(ucid)`
+(**UCID 0 = host local, siempre admin**); comando **`cerrar` admin-guarded** que valida permisos y
+llama `self.client.stop()`; y **`on_reconnect`** que resetea `self.admins` (los NCN entrantes lo
+repueblan). **Red primero (`tests/test_cli.py`, +10 tests):** perfiles (default=full, minimal, full
+explícito), **mutua exclusión** (`--minimal --full` → SystemExit), CamelCase + manifiesto, guard de
+"ya existe", y —lo más valioso— **ambos templates `compile()` y `exec()`→ subclase de `InSimApp`**
+(un scaffold roto es un fallo de DX serio). **Verificación:** suite **680/680** (670 + 10); `ruff
+check .` + `format --check .` limpios; `lfs-insim list` OK; render de `--full` eyeballeado.
+**3.9-safe** (`dict[int, bool]` es PEP 585, ya usado en `test_insim`; sin uniones PEP 604).
+**Guías cuadradas (W5):** quickstart usa `--minimal` explícito + nota del `--full`; README, CLAUDE.md
+y CHANGELOG (bullet en Añadido) actualizados. Solo CLI/tests/docs offline → **no requiere validación
+en LFS**.
 
 **S25 (2026-07-09) — Fase 6 · W5: sweep de API pública (jerarquía de excepciones; NO requiere
 LFS):** repaso final de la API pública antes del primer publish (última ventana gratis). **Exports
@@ -493,8 +523,8 @@ P11–P21 en `DIAGNOSTICO.md`. Queda gordo: P12 (reconexión, Fase 3).
 **Fase 6 — Pre-publish: refactor de ai_control + API + init** (re-secuenciada con el usuario en
 S23). Fases 1-4 (core) COMPLETADAS. **Fase 5 (ai_control: red + estabilización) COMPLETA salvo la
 validación en LFS del ceda-el-paso del ACC (W4)**, hoy bloqueada porque ningún mapa tiene
-intersección (`zones: 0`). **Fase 6: W1 (split `utils.py`) y W5 (sweep de API) HECHOS** (S24/S25);
-falta W2 (`init`) y W3 (refactor interno + radar).
+intersección (`zones: 0`). **Fase 6: W1 (split `utils.py`), W5 (sweep de API) y W2 (`init` con
+perfiles) HECHOS** (S24/S25/S26); **falta W3** (refactor interno + radar).
 
 **Decisión de rumbo (S23):** adelantar el refactor de ai_control a **ANTES de publicar**, junto
 con la limpieza de la API pública (`utils.py`) y un `init` más robusto. Motivo clave: mover
@@ -514,7 +544,7 @@ de publicar para un primer release cohesionado y con la API pública ya estable.
 **Rumbo re-decidido en S23 (planificación con el usuario): Fase 6 pre-publish** — refactor de
 ai_control + limpieza de la API pública (`utils.py`) + `init` más robusto. Fase 5 está COMPLETA
 salvo **W4** (validación en LFS del ceda-el-paso del ACC, hoy bloqueada por `zones: 0`). Orden
-acordado: **W4** (tú, en LFS, en paralelo — gate del merge) → ~~W1~~ ✅ → ~~W5~~ ✅ → **W2**
+acordado: **W4** (tú, en LFS, en paralelo — gate del merge) → ~~W1~~ ✅ → ~~W5~~ ✅ → ~~W2~~ ✅
 (init) → **W3** (refactor interno + radar). Todo en la rama; un solo merge a `main` cuando esté
 publish-ready + validado, luego publish. Detalle en PLAN § Fase 6.
 
@@ -530,14 +560,18 @@ framework no puede detectarla, P24; solapa con `InSimPacketError`; nunca se lanz
 `InSimCommandError` (tipo de error del sistema de comandos, para módulos). `exceptions.py` traducido
 a inglés (MODUS_OPERANDI §5). Guía `api-publica.md` + `CHANGELOG.md` cuadrados. Suite 670.
 
-**Empezar AQUÍ la próxima sesión — W2 (`init` robusto), luego W3:**
+**✅ W2 HECHO (S26)** — `lfs-insim init` con perfiles. Confirmado con el usuario: **cierre =
+`self.client.stop()`** (`TINY.CLOSE` con reconexión P12 activa solo reconectaría) y **`--full` por
+defecto**. `cli.py`: flags mutuamente excluyentes `--full`/`--minimal` + registro extensible
+`_INIT_PROFILES` (perfil→render); templates como strings con centinelas + `str.replace`. `--minimal`
+= template de antes (byte-idéntico); `--full` = bot real (cierre admin-guarded con `client.stop()`,
+`_is_admin` + tracking de admin por NCN, `on_reconnect`, `TINY.NCN/NPL`). Red `test_cli.py` (+10
+tests, incl. ambos templates `compile`+`exec`→`InSimApp`). Suite 680; ruff limpio; guías/README/
+CLAUDE/CHANGELOG cuadrados.
 
-1. **W2 y W3 (resto de Fase 6):**
-   - **W2** — `lfs-insim init` con flag `--minimal`/`--full` (extensible a más perfiles en el
-     futuro). `--minimal` = el template escueto de hoy; `--full` con **comando de cierre**
-     admin-guarded, patrón de validación de permisos, `on_reconnect` (P12) y petición de estado
-     inicial (`TINY.NCN/NPL`). Confirmar el mecanismo del close al implementar (`TINY.CLOSE` vs
-     `client.stop()`).
+**Empezar AQUÍ la próxima sesión — W3 (refactor interno + radar), último ítem de Fase 6:**
+
+1. **W3 (resto de Fase 6):**
    - **W3** — refactor interno (P3 partir `map_ui`/`map_recorder`/`traffic`; P4 `base.py`; P7
      nombres de `behavior.py`) + índice espacial de VEHÍCULOS para el radar **plegado en
      `traffic.py`** (caracterizar el radar como unidad ANTES; reutiliza el `SpatialHashGrid` de

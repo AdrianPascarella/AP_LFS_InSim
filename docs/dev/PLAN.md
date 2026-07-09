@@ -393,11 +393,25 @@ valida en LFS. **Estado:** cumplido salvo la validación en LFS del ceda-el-paso
       Suite 670; ruff limpio. Bullet en `CHANGELOG.md` (Eliminado).
 
 ### W2 · `lfs-insim init` más robusto, con flag `--minimal`/`--full`  **(pre-publish recomendado, DX)**
-- [ ] `--minimal` = el template escueto de hoy (un comando "hola"). `--full` (default a decidir)
+- [x] `--minimal` = el template escueto de hoy (un comando "hola"). `--full` (default a decidir)
       trae por defecto lo necesario: **comando de cierre** guardado por admin/UCID, patrón de
       validación de permisos, `on_reconnect` (P12) y petición de estado inicial (`TINY.NCN/NPL`).
       Diseñado para **admitir más perfiles en el futuro** (no solo min/full). Confirmar el
       mecanismo del close al implementar (`TINY.CLOSE` a LFS vs `client.stop()`).
+      — **S26 (hecho):** dos decisiones confirmadas con el usuario → **cierre = `self.client.stop()`**
+      (parada limpia nativa; `TINY.CLOSE` con la reconexión P12 activa solo reconectaría) y
+      **`--full` por defecto**. Implementado en `cli.py`: flags mutuamente excluyentes
+      `--full`/`--minimal` + registro extensible `_INIT_PROFILES` (dict perfil→render) para
+      admitir más perfiles sin tocar `cmd_init`. Templates como strings con centinelas
+      (`__CLASSNAME__`/`__MODNAME__`) + `str.replace` (no f-strings, evita el infierno de `{{}}`).
+      `--minimal` = byte-idéntico al template anterior. `--full` trae: `set_isi_packet` con
+      `ISF.LOCAL`, `TINY.NCN/NPL` en `on_connect`, tracking de admin por NCN
+      (`packet.Admin == AD_NOAD.ADMIN`) + `_is_admin(ucid)` (UCID 0 = host local siempre admin),
+      comando `cerrar` admin-guarded que llama `self.client.stop()`, y `on_reconnect` que resetea
+      `self.admins`. Red primero (`test_cli.py`, +10 tests: perfiles, mutua exclusión, CamelCase/
+      manifiesto, y **ambos templates compilan y `exec` → subclase de `InSimApp`**). Suite **680**;
+      ruff limpio. Guías cuadradas (quickstart usa `--minimal` explícito + nota del `--full`;
+      README/CLAUDE.md/CHANGELOG). 3.9-safe (`dict[int, bool]` es PEP 585; sin uniones PEP 604).
 
 ### W3 · Refactor estructural de ai_control (interno, flexible) + radar + FSM  (antiguo Fase 6)
 - [ ] Dividir `map_ui.py` (1841), `map_recorder.py` (1604), `traffic.py` (1084) (**P3**)
