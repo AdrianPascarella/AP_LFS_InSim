@@ -193,14 +193,188 @@ def cmd_info(args: argparse.Namespace) -> int:
     return 0
 
 
+# --- Templates de `init` -------------------------------------------------
+#
+# Se rellenan con str.replace (no f-strings ni .format): el cuerpo es Python
+# literal con {self.name}, {c.GREEN}, etc. Los únicos huecos son los
+# centinelas __CLASSNAME__ (clase CamelCase) y __MODNAME__ (nombre del módulo).
+
+_MINIMAL_TEMPLATE = """from lfs_insim import InSimApp
+from lfs_insim.packets import *
+from lfs_insim.insim_enums import ISF
+from lfs_insim.utils import CMDManager, separate_command_args, TextColors as c
+
+
+class __CLASSNAME__(InSimApp):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.cmd_prefix: str = self.config.get("prefix", "!")
+        self.cmd_base: str = "__MODNAME__"
+        self.cmds: CMDManager
+        self.logger.info(f"Modulo {self.name} inicializado.")
+
+    def set_isi_packet(self):
+        super().set_isi_packet()
+        # Añade aqui los flags ISF que necesites, por ejemplo:
+        # self.isi.Flags |= ISF.LOCAL | ISF.MCI
+
+    def on_connect(self):
+        self.cmds = (
+            CMDManager(self.cmd_prefix, self.cmd_base)
+            .add_cmd(
+                name="hola",
+                description="Saluda al servidor",
+                args=None,
+                funct=self._cmd_hola,
+                is_mso_required=False,
+            )
+            .submit()
+        )
+        self.send_ISP_MSL(Msg=f"{c.GREEN}{self.name} {c.WHITE}conectado")
+
+    def on_ISP_MSO(self, packet: ISP_MSO):
+        cmd, args = separate_command_args(self.cmd_prefix, packet)
+        if cmd == self.cmd_base:
+            self.cmds.handle_commands(packet, args)
+
+    def _cmd_hola(self):
+        self.send_ISP_MSL(Msg=f"{c.GREEN}Hola desde __MODNAME__!")
+
+    def on_disconnect(self):
+        self.logger.info(f"Modulo {self.name} desconectado.")
+"""
+
+
+_FULL_TEMPLATE = '''from lfs_insim import InSimApp
+from lfs_insim.packets import *
+from lfs_insim.insim_enums import AD_NOAD, ISF, TINY
+from lfs_insim.utils import CMDManager, separate_command_args, TextColors as c
+
+
+class __CLASSNAME__(InSimApp):
+    """InSim con el esqueleto recomendado: comandos, permisos de admin,
+    cierre limpio, reconexion (P12) y peticion de estado inicial."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.cmd_prefix: str = self.config.get("prefix", "!")
+        self.cmd_base: str = "__MODNAME__"
+        self.cmds: CMDManager
+        # UCID -> es_admin. Se repuebla en cada (re)conexion con los NCN.
+        self.admins: dict[int, bool] = {}
+        self.logger.info(f"Modulo {self.name} inicializado.")
+
+    def set_isi_packet(self):
+        super().set_isi_packet()
+        # ISF.LOCAL habilita eventos en invitado / single-player. Añade mas
+        # flags si los necesitas (p. ej. ISF.MCI para telemetria).
+        self.isi.Flags |= ISF.LOCAL
+
+    def on_connect(self):
+        # Pide el estado inicial: LFS responde con un NCN por conexion y un
+        # NPL por jugador ya presentes, repoblando los trackers.
+        self.send_ISP_TINY(ReqI=1, SubT=TINY.NCN)
+        self.send_ISP_TINY(ReqI=1, SubT=TINY.NPL)
+
+        self.cmds = (
+            CMDManager(self.cmd_prefix, self.cmd_base)
+            .add_cmd(
+                name="hola",
+                description="Saluda al servidor",
+                args=None,
+                funct=self._cmd_hola,
+                is_mso_required=False,
+            )
+            .add_cmd(
+                name="cerrar",
+                description="Detiene el InSim (solo admin)",
+                args=None,
+                funct=self._cmd_cerrar,
+                is_mso_required=True,
+            )
+            .submit()
+        )
+        self.send_ISP_MSL(Msg=f"{c.GREEN}{self.name} {c.WHITE}conectado")
+
+    def on_reconnect(self):
+        # Tras reconectar, el estado por sesion se reconstruye desde cero: el
+        # cliente ya reenvio el ISI y volvio a pedir NCN/NPL.
+        self.admins.clear()
+        self.logger.info(f"Modulo {self.name} reconectado.")
+
+    def on_disconnect(self):
+        self.logger.info(f"Modulo {self.name} desconectado.")
+
+    # --- Conexiones y permisos ---
+
+    def on_ISP_NCN(self, packet: ISP_NCN):
+        self.admins[packet.UCID] = packet.Admin == AD_NOAD.ADMIN
+
+    def on_ISP_CNL(self, packet: ISP_CNL):
+        self.admins.pop(packet.UCID, None)
+
+    def _is_admin(self, ucid: int) -> bool:
+        # UCID 0 es el host local (siempre admin); el resto necesita haber
+        # entrado con la contrasena de admin (campo Admin del NCN).
+        return ucid == 0 or self.admins.get(ucid, False)
+
+    # --- Comandos ---
+
+    def on_ISP_MSO(self, packet: ISP_MSO):
+        cmd, args = separate_command_args(self.cmd_prefix, packet)
+        if cmd == self.cmd_base:
+            self.cmds.handle_commands(packet, args)
+
+    def _cmd_hola(self):
+        self.send_ISP_MSL(Msg=f"{c.GREEN}Hola desde __MODNAME__!")
+
+    def _cmd_cerrar(self, packet: ISP_MSO):
+        # is_mso_required=True -> el primer argumento es el ISP_MSO crudo, con
+        # el UCID de quien escribio el comando (para validar permisos).
+        if not self._is_admin(packet.UCID):
+            self.send_ISP_MSL(Msg=f"{c.RED}Solo un admin puede cerrar el InSim.")
+            return
+        self.send_ISP_MSL(Msg=f"{c.YELLOW}Cerrando {self.name}...")
+        # Parada limpia nativa del framework (cierra hilos y sockets, sin
+        # reconexion). self.client lo asigna el cliente al registrar la app.
+        if self.client:
+            self.client.stop()
+'''
+
+
+def _render_minimal_main(name: str, class_name: str) -> str:
+    """Render del template escueto (perfil --minimal)."""
+    return _MINIMAL_TEMPLATE.replace("__CLASSNAME__", class_name).replace(
+        "__MODNAME__", name
+    )
+
+
+def _render_full_main(name: str, class_name: str) -> str:
+    """Render del scaffold completo (perfil --full)."""
+    return _FULL_TEMPLATE.replace("__CLASSNAME__", class_name).replace(
+        "__MODNAME__", name
+    )
+
+
+# Registro extensible de perfiles: añadir uno nuevo = una entrada aqui + su
+# render (y, si se quiere exponerlo, un flag en el subparser de `init`).
+_INIT_PROFILES = {
+    "minimal": _render_minimal_main,
+    "full": _render_full_main,
+}
+
+
 def cmd_init(args: argparse.Namespace) -> int:
-    """Crea un nuevo InSim."""
+    """Crea un nuevo InSim (perfil --minimal / --full)."""
     loader = get_loader()
     insim_dir = loader.insims_path / args.name
 
     if insim_dir.exists():
         logger.error(f"Ya existe un InSim llamado '{args.name}'")
         return 1
+
+    profile = getattr(args, "profile", "full")
 
     # Crear directorio
     insim_dir.mkdir(parents=True)
@@ -227,57 +401,12 @@ def cmd_init(args: argparse.Namespace) -> int:
     with open(insim_dir / "__init__.py", "w", encoding="utf-8") as f:
         f.write(init_content)
 
-    # Crear main.py con template
-    main_content = f'''from lfs_insim import InSimApp
-from lfs_insim.packets import *
-from lfs_insim.insim_enums import ISF
-from lfs_insim.utils import CMDManager, separate_command_args, TextColors as c
-
-
-class {class_name}(InSimApp):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.cmd_prefix: str = self.config.get("prefix", "!")
-        self.cmd_base: str = "{args.name}"
-        self.cmds: CMDManager
-        self.logger.info(f"Modulo {{self.name}} inicializado.")
-
-    def set_isi_packet(self):
-        super().set_isi_packet()
-        # Añade aqui los flags ISF que necesites, por ejemplo:
-        # self.isi.Flags |= ISF.LOCAL | ISF.MCI
-
-    def on_connect(self):
-        self.cmds = (
-            CMDManager(self.cmd_prefix, self.cmd_base)
-            .add_cmd(
-                name="hola",
-                description="Saluda al servidor",
-                args=None,
-                funct=self._cmd_hola,
-                is_mso_required=False,
-            )
-            .submit()
-        )
-        self.send_ISP_MSL(Msg=f"{{c.GREEN}}{{self.name}} {{c.WHITE}}conectado")
-
-    def on_ISP_MSO(self, packet: ISP_MSO):
-        cmd, args = separate_command_args(self.cmd_prefix, packet)
-        if cmd == self.cmd_base:
-            self.cmds.handle_commands(packet, args)
-
-    def _cmd_hola(self):
-        self.send_ISP_MSL(Msg=f"{{c.GREEN}}Hola desde {args.name}!")
-
-    def on_disconnect(self):
-        self.logger.info(f"Modulo {{self.name}} desconectado.")
-'''
-
+    # Crear main.py con el template del perfil elegido
+    main_content = _INIT_PROFILES[profile](args.name, class_name)
     with open(insim_dir / "main.py", "w", encoding="utf-8") as f:
         f.write(main_content)
 
-    print(f"\nInSim '{args.name}' creado en: {insim_dir}")
+    print(f"\nInSim '{args.name}' creado (perfil: {profile}) en: {insim_dir}")
     print("\nSiguientes pasos:")
     print(f"  1. Edita {insim_dir / 'main.py'}")
     print(f"  2. Ejecuta: lfs-insim run {args.name}")
@@ -312,7 +441,8 @@ def main(argv: Optional[list] = None) -> int:
 Ejemplos:
   lfs-insim list                  Lista todos los InSims disponibles
   lfs-insim run mi_bot            Ejecuta el InSim 'mi_bot'
-  lfs-insim init nuevo_insim      Crea un nuevo InSim llamado 'nuevo_insim'
+  lfs-insim init nuevo_insim      Crea un nuevo InSim (scaffold --full por defecto)
+  lfs-insim init mi_bot --minimal Crea un InSim con el scaffold mínimo
   lfs-insim info ai_control       Muestra información del InSim 'ai_control'
   lfs-insim stubs                 Regenera los stubs de tipos (.pyi)
   lfs-insim update-all            Regenera stubs y la lista de InSims del README
@@ -342,7 +472,23 @@ Ejemplos:
     # Comando: init
     init_parser = subparsers.add_parser("init", help="Crear un nuevo InSim")
     init_parser.add_argument("name", help="Nombre del nuevo InSim")
-    init_parser.set_defaults(func=cmd_init)
+    init_profile = init_parser.add_mutually_exclusive_group()
+    init_profile.add_argument(
+        "--full",
+        dest="profile",
+        action="store_const",
+        const="full",
+        help="Scaffold completo: cierre admin, permisos, on_reconnect y "
+        "estado inicial (por defecto)",
+    )
+    init_profile.add_argument(
+        "--minimal",
+        dest="profile",
+        action="store_const",
+        const="minimal",
+        help="Scaffold minimo: un comando de ejemplo",
+    )
+    init_parser.set_defaults(func=cmd_init, profile="full")
 
     # Comando: stubs (antes el script global 'generate-stubs')
     stubs_parser = subparsers.add_parser(

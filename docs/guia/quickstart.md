@@ -60,8 +60,14 @@ Esto abre el puerto InSim en el 29999 (el que espera el framework por defecto).
 ## 4. Crear tu módulo
 
 ```bash
-lfs-insim init mi_primer_insim
+lfs-insim init mi_primer_insim --minimal
 ```
+
+> **Perfiles.** Sin flag, `init` usa el scaffold **`--full`**: un módulo listo
+> para un bot real, con comando de cierre protegido por admin, validación de
+> permisos por UCID, `on_reconnect` (reconexión, P12) y petición de estado
+> inicial (`TINY.NCN/NPL`). Aquí usamos **`--minimal`** para empezar con lo
+> esencial y ver cada pieza; para un bot de verdad, omite el flag.
 
 Esto genera un scaffold en `insims/mi_primer_insim/`:
 
@@ -73,7 +79,7 @@ insims/
     └── main.py           tu código
 ```
 
-El `main.py` generado ya es un módulo completo y funcional:
+El `main.py` generado (perfil mínimo) es un módulo pequeño y funcional:
 
 ```python
 from lfs_insim import InSimApp

@@ -54,7 +54,7 @@ lfs-insim list
 # Ver metadatos de un InSim
 lfs-insim info users_management
 
-# Crear un nuevo InSim vacío (scaffold)
+# Crear un nuevo InSim (scaffold --full por defecto; --minimal para el mínimo)
 lfs-insim init mi_modulo
 
 # Regenerar los stubs de tipo (.pyi)

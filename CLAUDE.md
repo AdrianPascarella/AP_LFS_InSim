@@ -47,7 +47,8 @@ lfs-insim list
 # Show metadata for an InSim
 lfs-insim info <name>
 
-# Create a new InSim scaffold
+# Create a new InSim scaffold (--full by default: close cmd + admin perms +
+# on_reconnect + initial-state request; --minimal for the bare template)
 lfs-insim init <name>
 
 # Regenerate the .pyi type stubs

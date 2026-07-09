@@ -43,6 +43,11 @@ el proyecto sigue el [Versionado Semántico](https://semver.org/lang/es/).
   `lfs_insim.utils`.
 - **Subcomandos del CLI** `lfs-insim stubs` y `lfs-insim update-all` (antes eran
   scripts globales sueltos en el PATH).
+- **Perfiles de `lfs-insim init`** (`--minimal` / `--full`, por defecto
+  `--full`): `--full` genera un scaffold listo para un bot real (comando de
+  cierre protegido por admin con `client.stop()`, validación de permisos por
+  UCID, `on_reconnect` y petición de estado inicial `TINY.NCN`/`NPL`);
+  `--minimal` mantiene el template escueto anterior.
 - **Documentación de usuario** en `docs/guia/` (quickstart, módulos y
   dependencias, referencia de la API, arquitectura).
 - **Tooling y CI:** adopción de `ruff` (lint + format) y `mypy` (gradual sobre el
