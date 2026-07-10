@@ -32,7 +32,7 @@ def _inputs_by_type(inputs: list) -> dict:
 
 class TestCalculateSteering:
     def test_sin_target_devuelve_centro(self, ai_control, make_behavior):
-        behavior = make_behavior(target_point_use=None)
+        behavior = make_behavior(point_resolved=None)
         steer = ai_control._calculate_steering(
             behavior=behavior,
             telemetry=_telem_ahead(),
@@ -43,7 +43,7 @@ class TestCalculateSteering:
         self, ai_control, make_behavior, make_coords, make_telemetry
     ):
         # AI en (0,0) mirando al Norte (heading 0); objetivo 10 m al Norte (+Y).
-        behavior = make_behavior(target_point_use=make_coords(0.0, 10.0))
+        behavior = make_behavior(point_resolved=make_coords(0.0, 10.0))
         telemetry = make_telemetry(x_m=0.0, y_m=0.0, heading_deg=0.0)
         steer = ai_control._calculate_steering(behavior=behavior, telemetry=telemetry)
         assert steer == CENTRE
@@ -52,7 +52,7 @@ class TestCalculateSteering:
         self, ai_control, make_behavior, make_coords, make_telemetry
     ):
         # Objetivo al Este (-X): el PID satura hacia HARD_LEFT.
-        behavior = make_behavior(target_point_use=make_coords(-10.0, 0.0))
+        behavior = make_behavior(point_resolved=make_coords(-10.0, 0.0))
         telemetry = make_telemetry(x_m=0.0, y_m=0.0, heading_deg=0.0)
         steer = ai_control._calculate_steering(behavior=behavior, telemetry=telemetry)
         assert steer == HARD_LEFT
@@ -61,7 +61,7 @@ class TestCalculateSteering:
         self, ai_control, make_behavior, make_coords, make_telemetry
     ):
         # Objetivo al Oeste (+X): el PID satura hacia HARD_RIGHT.
-        behavior = make_behavior(target_point_use=make_coords(10.0, 0.0))
+        behavior = make_behavior(point_resolved=make_coords(10.0, 0.0))
         telemetry = make_telemetry(x_m=0.0, y_m=0.0, heading_deg=0.0)
         steer = ai_control._calculate_steering(behavior=behavior, telemetry=telemetry)
         assert steer == HARD_RIGHT
@@ -73,7 +73,7 @@ class TestCalculateSteering:
 
         # Mismo objetivo a la derecha, pero en REVERSE → el signo se invierte.
         behavior = make_behavior(
-            target_point_use=make_coords(10.0, 0.0),
+            point_resolved=make_coords(10.0, 0.0),
             gear_mode=GearMode.REVERSE,
         )
         telemetry = make_telemetry(x_m=0.0, y_m=0.0, heading_deg=0.0)
@@ -86,20 +86,20 @@ class TestCalculateSteering:
 
 class TestCalculatePedals:
     def test_objetivo_parar_frena_a_fondo(self, ai_control, make_behavior):
-        behavior = make_behavior(target_speed_kmh_use=0.0)
+        behavior = make_behavior(speed_resolved_kmh=0.0)
         throttle, brake = ai_control._calculate_pedals(behavior, current_speed_kmh=0.0)
         assert (throttle, brake) == (PEDAL_MIN, PEDAL_MAX)
 
     def test_acelerar_desde_parado(self, ai_control, make_behavior):
         # target 50 > current 0 → acelera (throttle saturado, freno suelto).
-        behavior = make_behavior(target_speed_kmh_use=50.0)
+        behavior = make_behavior(speed_resolved_kmh=50.0)
         throttle, brake = ai_control._calculate_pedals(behavior, current_speed_kmh=0.0)
         assert throttle == PEDAL_MAX
         assert brake == PEDAL_MIN
 
     def test_frenar_por_exceso_de_velocidad(self, ai_control, make_behavior):
         # target 20 < current 100 → frena (freno saturado, acelerador suelto).
-        behavior = make_behavior(target_speed_kmh_use=20.0)
+        behavior = make_behavior(speed_resolved_kmh=20.0)
         throttle, brake = ai_control._calculate_pedals(
             behavior, current_speed_kmh=100.0
         )
@@ -108,7 +108,7 @@ class TestCalculatePedals:
 
     def test_reparto_es_excluyente(self, ai_control, make_behavior):
         # Nunca acelera y frena a la vez.
-        behavior = make_behavior(target_speed_kmh_use=30.0)
+        behavior = make_behavior(speed_resolved_kmh=30.0)
         throttle, brake = ai_control._calculate_pedals(behavior, current_speed_kmh=15.0)
         assert not (throttle > 0 and brake > 0)
 
@@ -123,7 +123,7 @@ class TestHandlePedalsAndGears:
 
         ai = make_ai(speed_kmh=0.0)
         behavior = ai.extra["aic"]
-        behavior.target_speed_kmh = None
+        behavior.speed_request = None
         behavior.active_ready = True
 
         actions = ai_control._handle_pedals_and_gears(ai)
@@ -138,7 +138,7 @@ class TestHandlePedalsAndGears:
     def test_parado_y_ya_apagado_no_hace_nada(self, ai_control, make_ai):
         ai = make_ai(speed_kmh=0.0)
         behavior = ai.extra["aic"]
-        behavior.target_speed_kmh = None
+        behavior.speed_request = None
         behavior.active_ready = False
 
         actions = ai_control._handle_pedals_and_gears(ai)
@@ -149,7 +149,7 @@ class TestHandlePedalsAndGears:
 
         ai = make_ai(speed_kmh=0.0)
         behavior = ai.extra["aic"]
-        behavior.target_speed_kmh = 30.0  # float directo
+        behavior.speed_request = 30.0  # float directo
         behavior.active_ready = False
 
         actions = ai_control._handle_pedals_and_gears(ai)
@@ -167,7 +167,7 @@ class TestHandlePedalsAndGears:
 
         ai = make_ai(speed_kmh=0.0)
         behavior = ai.extra["aic"]
-        behavior.target_speed_kmh = 40.0
+        behavior.speed_request = 40.0
         behavior.active_ready = True
         behavior.gear_mode = GearMode.NORMAL
         behavior.stuck_start_time = 0.0
@@ -180,7 +180,7 @@ class TestHandlePedalsAndGears:
 
         ai = make_ai(speed_kmh=25.0)
         behavior = ai.extra["aic"]
-        behavior.target_speed_kmh = 40.0
+        behavior.speed_request = 40.0
         behavior.active_ready = True
         behavior.gear_mode = GearMode.NORMAL
         behavior.stuck_start_time = 123.0  # venía atascado
@@ -193,7 +193,7 @@ class TestHandlePedalsAndGears:
 
         ai = make_ai(speed_kmh=20.0)
         behavior = ai.extra["aic"]
-        behavior.target_speed_kmh = 100.0
+        behavior.speed_request = 100.0
         behavior.active_ready = True
         behavior.gear_mode = GearMode.NORMAL  # evita el corte por cambio de marcha
         behavior.ignore_human = False
@@ -202,7 +202,7 @@ class TestHandlePedalsAndGears:
         ai_control._handle_pedals_and_gears(ai)
 
         # 100 * 0.5 = 50, y el flag ignore_human se rearma a False cada tick.
-        assert behavior.target_speed_kmh_use == 50.0
+        assert behavior.speed_resolved_kmh == 50.0
         assert behavior.ignore_human is False
 
     def test_ignore_human_no_escala(self, ai_control, make_ai):
@@ -210,14 +210,14 @@ class TestHandlePedalsAndGears:
 
         ai = make_ai(speed_kmh=20.0)
         behavior = ai.extra["aic"]
-        behavior.target_speed_kmh = 100.0
+        behavior.speed_request = 100.0
         behavior.active_ready = True
         behavior.gear_mode = GearMode.NORMAL
         behavior.ignore_human = True
         behavior.human_speed_factor = 0.5
 
         ai_control._handle_pedals_and_gears(ai)
-        assert behavior.target_speed_kmh_use == 100.0
+        assert behavior.speed_resolved_kmh == 100.0
 
 
 # ─── _handle_steering: resolución de objetivo (coords / PLID / tupla) ─────────
@@ -226,7 +226,7 @@ class TestHandlePedalsAndGears:
 class TestHandleSteering:
     def test_sin_target_manda_centro(self, ai_control, make_ai):
         ai = make_ai()
-        ai.extra["aic"].target_point_m = None
+        ai.extra["aic"].point_request = None
 
         actions = ai_control._handle_steering(ai)
         assert len(actions) == 1
@@ -234,14 +234,14 @@ class TestHandleSteering:
         assert actions[0].Value == CENTRE
 
     def test_target_tupla_estatica_se_convierte_en_coords(self, ai_control, make_ai):
-        # Tupla (x_m, y_m) en metros → fija target_point_use con la Z de la IA.
+        # Tupla (x_m, y_m) en metros → fija point_resolved con la Z de la IA.
         ai = make_ai(x_m=0.0, y_m=0.0, heading_deg=0.0)
         behavior = ai.extra["aic"]
-        behavior.target_point_m = (10.0, 0.0)  # 10 m al Oeste
+        behavior.point_request = (10.0, 0.0)  # 10 m al Oeste
 
         actions = ai_control._handle_steering(ai)
 
-        assert behavior.target_point_use is not None
+        assert behavior.point_resolved is not None
         assert actions[0].Input == CS.STEER
         assert actions[0].Value == HARD_RIGHT
 
@@ -253,22 +253,22 @@ class TestHandleSteering:
         ai_control.user_manager.ais[2] = target
 
         behavior = chaser.extra["aic"]
-        behavior.target_point_m = 2  # PLID objetivo
+        behavior.point_request = 2  # PLID objetivo
 
         actions = ai_control._handle_steering(chaser)
 
-        assert behavior.target_point_use is target.player.telemetry.coordinates
+        assert behavior.point_resolved is target.player.telemetry.coordinates
         assert actions[0].Value == HARD_RIGHT
 
     def test_target_plid_desaparecido_resetea_y_centra(self, ai_control, make_ai):
         ai = make_ai(plid=1)
         behavior = ai.extra["aic"]
-        behavior.target_point_m = 999  # PLID que no existe
+        behavior.point_request = 999  # PLID que no existe
 
         actions = ai_control._handle_steering(ai)
 
         assert actions[0].Value == CENTRE
-        assert behavior.target_point_m is None  # reset_direction() lo limpió
+        assert behavior.point_request is None  # reset_direction() lo limpió
 
 
 # ─── Helper local ────────────────────────────────────────────────────────────

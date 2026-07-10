@@ -2608,8 +2608,8 @@ class _MapUIMixin(_MixinBase):
         mode = behavior.active_mode
 
         t_speed = (
-            behavior.target_speed_kmh
-            if isinstance(behavior.target_speed_kmh, (int, float))
+            behavior.speed_request
+            if isinstance(behavior.speed_request, (int, float))
             else 0.0
         )
         gear = getattr(behavior.gear_mode, "name", str(behavior.gear_mode))

@@ -135,7 +135,7 @@ class TestApplyAdaptiveCruiseControl:
 
 # ─── _estimate_overtake_distance: asfalto y tiempo para adelantar ─────────────
 #
-# Firma: (overtake_lane_speed_kmh, target_speed_kmh, relative_dist_to_cover_m)
+# Firma: (overtake_lane_speed_kmh, target_vehicle_speed_kmh, relative_dist_to_cover_m)
 # → (metros_de_asfalto, segundos). Si el delta de velocidad ≤ 0.1 m/s → (inf, inf).
 
 

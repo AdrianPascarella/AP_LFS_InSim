@@ -488,5 +488,5 @@ class _OrchestratorMixin(_MixinBase):
             lookahead_m,
             reverse=_reverse_lookahead,
         )
-        behavior.target_point_m = (la_x, la_y)
-        behavior.target_speed_kmh = velocidad_final
+        behavior.point_request = (la_x, la_y)
+        behavior.speed_request = velocidad_final

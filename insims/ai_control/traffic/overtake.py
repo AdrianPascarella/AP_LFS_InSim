@@ -95,14 +95,17 @@ class _OvertakeMixin(_MixinBase):
     def _estimate_overtake_distance(
         self,
         overtake_lane_speed_kmh: float,
-        target_speed_kmh: float,
+        target_vehicle_speed_kmh: float,
         relative_dist_to_cover_m: float,
     ) -> float:
         """
         Calcula los metros de asfalto requeridos para completar un adelantamiento.
+
+        `target_vehicle_speed_kmh` es la velocidad del vehículo AL QUE se adelanta
+        (aquí "target" es el coche objetivo, no la velocidad pedida a la IA).
         """
         my_overtake_speed_ms = overtake_lane_speed_kmh / 3.6
-        target_speed_ms = max(target_speed_kmh / 3.6, 0.1)
+        target_speed_ms = max(target_vehicle_speed_kmh / 3.6, 0.1)
 
         speed_delta_ms = my_overtake_speed_ms - target_speed_ms
 
