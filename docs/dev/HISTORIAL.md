@@ -5,6 +5,79 @@
 
 ---
 
+## S27 — 2026-07-10 — Fase 6 · W3 (1/2): split de `traffic.py` + P7 (nombres de estado)
+
+**Arranque:** protocolo de inicio; ya en `refactor/estabilizacion`, árbol limpio (sin mapas que
+proteger). `git pull` trajo S26 desde el otro equipo (tip `8c6c4b0`). Baseline verificado:
+**680/680**. Próximo paso documentado: **W3**, último ítem de Fase 6.
+
+**Hallazgo de arranque — el PLAN estaba desfasado:** los ficheros gordos habían crecido ~70% desde
+que S23 escribió W3: `map_ui.py` 1841→**3161**, `map_recorder.py` 1604→**2520**, `traffic.py`
+1084→**1348**. W3 tal cual eran varias sesiones.
+
+**Decisión de alcance (pregunta con recomendación, MODUS_OPERANDI §6 — el usuario eligió la
+recomendada): RECORTAR W3 pre-publish.** Entran `traffic.py` + radar + FSM + P4 + P7; **se aplazan
+a post-merge** los splits de `map_ui.py` y `map_recorder.py`. Razón: son **tooling offline** de
+edición de mapas — no son el framework publicado, no tocan el runtime de conducción ni la API
+pública, y no tienen red de caracterización. Partir 5.700 líneas ahí no aporta nada al primer
+release y retrasa el merge (que ya espera a W4). `traffic.py` sí entra: hospeda el radar (donde
+aterriza el índice espacial) y tiene la red de los 81 tests de S19.
+
+**Qué se hizo — 1) P3 (parte pre-publish): `traffic.py` → paquete `traffic/`.** Un módulo por
+responsabilidad: `radar.py` (393), `orchestrator.py` (468), `overtake.py` (239), `zones.py` (80),
+`cruise_control.py` (80), `paths.py` (51). `_TrafficMixin` pasa a ser una **fachada** que compone
+los submixins, así que `app.py` y los tests no se enteran del reparto (los tests ya ejercitaban
+`AIControl`, no el mixin). **Extracción segura de verdad** (MODUS_OPERANDI §3): los cuerpos se
+movieron **por rango de líneas con un script**, nunca a mano; un script de análisis derivó primero
+los spans y qué import usa cada método (de ahí que ruff pasara a la primera, sin F401/F821). La
+prueba: snapshot antes/después con `inspect.getsource` → los **18 métodos conservan cuerpo y firma
+BYTE-IDÉNTICOS**, `AIControl` los resuelve a la **misma función** y su superficie sigue teniendo
+los **mismos 182 atributos**; el MRO linealiza (6 submixins nuevos). Cero líneas de código
+perdidas (verificado: ninguna línea no-vacía fuera de los rangos asignados).
+
+**2) P7 — nombres del modelo de estado (`behavior.py`).** El par "intención vs valor en uso"
+(`target_speed_kmh_use`/`target_speed_kmh`, `target_point_use`/`target_point_m`) pasa al patrón
+**petición → resuelto**: `speed_request`/`speed_resolved_kmh` y `point_request`/`point_resolved`.
+Los `*_request` (heterogéneos: float o `AdaptiveSpeedConfig`; punto, tupla o PLID) los escriben
+comandos y navegación; los `*_resolved` los calcula `physics.py` en cada MCI. 93 sustituciones en
+9 ficheros, por **palabra completa** (`\btarget_speed_kmh\b` no casa dentro de
+`target_speed_kmh_use`, porque `_` es carácter de palabra) → cero restos.
+
+**Colisión cazada (lo interesante):** el rename tocó de más. `_estimate_overtake_distance` tenía un
+**parámetro** llamado `target_speed_kmh` que **no es el campo**: es la velocidad del coche AL QUE se
+adelanta. Renombrarlo a `speed_request` habría sido activamente engañoso. Se revirtió y se le puso
+`target_vehicle_speed_kmh` (todas las llamadas son posicionales) — justo la ambigüedad que P7
+denuncia. Auditados uno a uno los 93 sitios; el resto eran accesos `behavior.<campo>` o kwargs del
+dataclass. De paso: `point_request` declara ya el `tuple[float, float]` que `physics.py` aceptaba
+y la anotación se callaba; fuera el comentario residual `# En tu dataclass o clase AIBehavior:` y
+el marcador `[!] NUEVO`. Los otros 20 marcadores `[!]` se limpian **zona a zona** (los de
+`traffic/radar.py`, con el radar). Campos reordenados (petición antes que resuelto): `AIBehavior`
+solo se construye con kwargs (`app.py`, `conftest.py`), así que el `__init__` posicional da igual.
+
+**De propina:** `base.py` dice ahora en qué submódulo vive cada método cross-mixin de tráfico, y su
+docstring de arquitectura estaba desfasado (le faltaba `_MapUIMixin`). Y el docstring de
+`test_traffic.py` seguía diciendo que los tests **congelan** el "PARCHE DE SEGURIDAD MATEMÁTICO"
+del ACC, cuando **S21 lo eliminó** y reescribió esos 2 tests — corregido (contradecía al propio
+comentario de la línea 45 del fichero).
+
+**Verificación:** suite **680/680** tras cada paso (el split no añade tests: es estructura pura;
+la red existente es la prueba). `ruff check .` + `ruff format --check .` limpios (102 ficheros;
+`physics.py` necesitó reformato tras el rename, por longitudes de línea). `lfs-insim list` carga
+los 4 insims. **3.9-safe:** `tuple[float, float]` va dentro de anotación con
+`from __future__ import annotations` (nunca se evalúa) y FA102 pasa. Solo estructura y nombres,
+**cero cambios de comportamiento → no requiere validación en LFS**.
+
+**Próximo:** cerrar W3 — **índice espacial de VEHÍCULOS para el radar** (ahora en
+`traffic/radar.py`; caracterizar el radar como unidad ANTES, red primero; reutilizar el
+`SpatialHashGrid` de S23 como grid dinámico) + revisar el **FSM de adelantamiento**
+(`traffic/overtake.py`, y eliminar `is_target_ahead_and_in_lane`, código muerto desde S24) +
+**P4** (adelgazar `base.py`). **W4** (validación LFS del ceda-el-paso del ACC) sigue bloqueada por
+`zones: 0`.
+
+**Commits:** `453d61b` (split de `traffic.py`), `69fb092` (P7) + docs de cierre S27.
+
+---
+
 ## S26 — 2026-07-10 — Fase 6 · W2: `lfs-insim init` con perfiles `--minimal`/`--full`
 
 **Arranque:** protocolo de inicio; ya en `refactor/estabilizacion`, árbol limpio, `git pull`

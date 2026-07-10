@@ -414,18 +414,44 @@ valida en LFS. **Estado:** cumplido salvo la validación en LFS del ceda-el-paso
       README/CLAUDE.md/CHANGELOG). 3.9-safe (`dict[int, bool]` es PEP 585; sin uniones PEP 604).
 
 ### W3 · Refactor estructural de ai_control (interno, flexible) + radar + FSM  (antiguo Fase 6)
-- [ ] Dividir `map_ui.py` (1841), `map_recorder.py` (1604), `traffic.py` (1084) (**P3**)
+
+> **Recorte de alcance (S27, decidido con el usuario):** al medir en S27, los ficheros gordos
+> habían crecido ~70% sobre lo que asumió S23 (`map_ui` 1841→**3161**, `map_recorder`
+> 1604→**2520**, `traffic` 1084→**1348**). Se **aplazan a post-merge** los splits de `map_ui.py`
+> y `map_recorder.py`: son **tooling offline** de edición de mapas (no son el framework
+> publicado, no tocan el runtime de conducción ni la API pública, y no tienen red de
+> caracterización), así que partirlos no aporta nada al primer release y retrasa el merge —que
+> además ya está esperando a W4. Pre-publish se queda `traffic.py` (hospeda el radar y tiene la
+> red de los 81 tests de S19), P4 y P7.
+
+- [x] **P3 (parte pre-publish): partir `traffic.py`** (1348) — **S27**: paquete `traffic/` con un
+      módulo por responsabilidad: `radar.py` (393), `orchestrator.py` (468), `overtake.py` (239),
+      `zones.py` (80), `cruise_control.py` (80), `paths.py` (51). `_TrafficMixin` pasa a ser una
+      **fachada** que compone los submixins → `app.py` y los tests no cambian. **Extracción
+      segura**: los cuerpos se movieron por rango de líneas y se verificó con un snapshot
+      antes/después que los 18 métodos conservan **cuerpo y firma byte-idénticos**, que
+      `AIControl` los resuelve a la misma función y que su superficie sigue teniendo los mismos
+      182 atributos. Suite 680; ruff limpio.
+- [ ] ~~Dividir `map_ui.py` / `map_recorder.py`~~ → **aplazado a post-merge** (ver recorte arriba)
 - [ ] Reducir superficie cross-mixin de `base.py` (**P4**)
-- [ ] Limpiar nombres del modelo de estado (`behavior.py`, **P7**)
-- [ ] Índice espacial de VEHÍCULOS para el radar O(N²) (ex-6b), **plegado en el refactor de
-      `traffic.py`**: caracterizar el radar como unidad **ANTES** (red primero, MODUS_OPERANDI §3);
+- [x] Limpiar nombres del modelo de estado (`behavior.py`, **P7**) — **S27**: el par "intención vs
+      valor en uso" pasa al patrón **petición → resuelto**: `speed_request`/`speed_resolved_kmh` y
+      `point_request`/`point_resolved` (93 sustituciones en 9 ficheros, por palabra completa).
+      Cazada una **colisión**: `_estimate_overtake_distance` tenía un *parámetro* homónimo
+      `target_speed_kmh` que no es el campo (es la velocidad del coche adelantado) →
+      `target_vehicle_speed_kmh`. Limpiados los comentarios residuales de `behavior.py`; el resto
+      de marcadores `[!]`, zona a zona. Suite 680.
+- [ ] Índice espacial de VEHÍCULOS para el radar O(N²) (ex-6b), **ahora en `traffic/radar.py`**:
+      caracterizar el radar como unidad **ANTES** (red primero, MODUS_OPERANDI §3);
       reutiliza el `SpatialHashGrid` de S23 (grid dinámico, aparte del estático de geometría).
-      Revisar de paso el FSM de adelantamiento (`overtake_state`).
+      Revisar de paso el FSM de adelantamiento (`overtake_state`, hoy en `traffic/overtake.py`).
+      Candidata a eliminar al revisarlo: `is_target_ahead_and_in_lane` (código muerto, S24).
 - [ ] Actualizar README/CLAUDE.md con la arquitectura final; revisión final del diagnóstico
 
 **Criterio de aceptación:** API pública limpia y estable (W1/W5); `init --full/--minimal`
-funcionando (W2); archivos gordos partidos y radar con red (W3); suite verde + CI verde; el
-usuario valida en LFS. **Red primero** en todo lo que toque lógica frágil (los grandes
+funcionando (W2); `traffic/` partido, `base.py` adelgazado, nombres de estado claros y radar con
+red (W3 — `map_ui`/`map_recorder` quedan para post-merge, ver recorte S27); suite verde + CI
+verde; el usuario valida en LFS. **Red primero** en todo lo que toque lógica frágil (los grandes
 orquestadores con `time.time()` siguen sin red → cubrir antes de tocarlos).
 
 ---
@@ -456,6 +482,10 @@ el merge se continúa desde `main`.
 
 ## Ideas / pendientes sin fase asignada
 
+- **Post-merge (aplazado en S27): partir `map_ui.py` (3161) y `map_recorder.py` (2520)** —
+  resto de P3. Es tooling offline de edición de mapas: no toca el runtime de conducción ni la
+  API pública, y **no tiene red de caracterización** → escribirla antes de partir
+  (MODUS_OPERANDI §3). Se sacó de pre-publish para no retrasar el merge.
 - **P9**: decidir qué hacer con `tools/setup_lfs.py` (roto: importa `DESIRED_LFS_CONFIG`,
   que no existe en `settings.py`) — recuperarlo o eliminarlo. **En bloque con
   `src/lfs_insim/configuration.py`** (`LFSConfigManager`), que quedó **huérfano** (S16):
