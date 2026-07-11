@@ -23,7 +23,6 @@ from insims.ai_control.nav_modes.freeroam.geometry import (
     evaluate_dynamic_capture,
     get_closest_node_index,
     get_heading_diff,
-    is_target_ahead_and_in_lane,
 )
 
 
@@ -251,58 +250,3 @@ class TestEvaluateDynamicCapture:
         assert (
             evaluate_dynamic_capture(_node(0, 20), 2, wps, 0.0, is_waypoint=True) == 0
         )
-
-
-# ─── is_target_ahead_and_in_lane (nueva cobertura) ───────────────────────────
-# OJO: función actualmente SIN uso en el código (candidata a revisión).
-
-
-class TestIsTargetAheadAndInLane:
-    def test_car_directly_ahead_is_dangerous(self):
-        me = _node(0, 0)
-        target = _node(0, 10)  # apunto al Norte
-        other = _node(0, 5)  # coche justo delante, en carril
-        dangerous, longitudinal, lateral = is_target_ahead_and_in_lane(
-            me, target, other
-        )
-        assert dangerous is True
-        assert longitudinal == pytest.approx(5.0)
-        assert lateral == pytest.approx(0.0)
-
-    def test_car_behind_is_not_dangerous(self):
-        me = _node(0, 0)
-        target = _node(0, 10)
-        other = _node(0, -5)  # detrás
-        dangerous, longitudinal, _ = is_target_ahead_and_in_lane(me, target, other)
-        assert dangerous is False
-        assert longitudinal == pytest.approx(5.0)
-
-    def test_car_ahead_but_off_lane(self):
-        # QUIRK caracterizado: si está delante pero fuera de carril (lateral ≥ 2.5),
-        # la función NO reporta la distancia lateral real: devuelve lateral=0.0.
-        # Solo se devuelve el lateral real cuando la detección es peligrosa (True).
-        me = _node(0, 0)
-        target = _node(0, 10)
-        other = _node(5, 5)  # delante pero desviado lateralmente 5 m
-        dangerous, _, lateral = is_target_ahead_and_in_lane(me, target, other)
-        assert dangerous is False
-        assert lateral == pytest.approx(0.0)
-
-    def test_car_beyond_max_range(self):
-        me = _node(0, 0)
-        target = _node(0, 10)
-        other = _node(0, 200)  # > max_ahead_dist (120)
-        dangerous, longitudinal, lateral = is_target_ahead_and_in_lane(
-            me, target, other
-        )
-        assert dangerous is False
-        assert longitudinal == pytest.approx(200.0)
-        assert lateral == pytest.approx(0.0)
-
-    def test_degenerate_forward_vector(self):
-        # target == posición propia → vector de avance nulo → no peligroso
-        me = _node(0, 0)
-        target = _node(0, 0)
-        other = _node(0, 5)
-        dangerous, _, _ = is_target_ahead_and_in_lane(me, target, other)
-        assert dangerous is False

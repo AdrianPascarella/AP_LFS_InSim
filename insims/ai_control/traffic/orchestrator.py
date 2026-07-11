@@ -86,8 +86,6 @@ class _OrchestratorMixin(_MixinBase):
             # =========================================================
             # MÁQUINA DE ESTADOS FINITOS (FSM) DEL ADELANTAMIENTO
             # =========================================================
-            _n = ai.ai_name  # alias corto para logs
-
             lookahead_dist_m = max(15.0, my_speed_ms * 10.0)
             vehicles_ahead = self._scan_lane_ahead(ai, mode, lookahead_dist_m)
 
@@ -284,9 +282,9 @@ class _OrchestratorMixin(_MixinBase):
                 velocidad_segura = velocidad_base
 
                 if mode.current_road_id == mode.overtake_return_lane_id:
-                    self._finish_overtake(mode, current_time, _n)
+                    self._finish_overtake(mode, current_time)
                 elif current_time - mode._returning_start_time > 5.0:
-                    self._finish_overtake(mode, current_time, _n)
+                    self._finish_overtake(mode, current_time)
 
             # Guardamos el resultado en caché
             mode._cached_target_speed = velocidad_segura

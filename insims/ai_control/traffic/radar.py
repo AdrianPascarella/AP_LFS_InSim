@@ -104,8 +104,7 @@ class _RadarMixin(_MixinBase):
         is_opposing = getattr(mode, "is_driving_opposing", False)
 
         # =========================================================
-        # [!] OPTIMIZACIÓN 1: Obtener la geometría FUERA del bucle.
-        # Si no hay geometría actual válida, ni siquiera iteramos.
+        # Geometría actual FUERA del bucle: si no hay una válida, ni iteramos.
         # =========================================================
         if mode.current_type == "Road":
             geom = self.map_recorder.roads.get(mode.current_id)
@@ -118,9 +117,8 @@ class _RadarMixin(_MixinBase):
             return vehicles_ahead
 
         # =========================================================
-        # [!] OPTIMIZACIÓN 2: Pre-calcular constantes direccionales
-        # Calculamos nuestro vector direccional y nuestra distancia
-        # al siguiente nodo UNA sola vez antes de mirar a otros coches.
+        # Constantes direccionales precalculadas: el vector de dirección y la
+        # distancia al siguiente nodo se calculan UNA vez antes del bucle.
         # =========================================================
         curr_idx = max(0, min(mode.node_index, len(geom.nodes) - 1))
 
@@ -162,7 +160,7 @@ class _RadarMixin(_MixinBase):
 
             other_coords = other_player.telemetry.coordinates
 
-            # [!] OPTIMIZACIÓN 3: Bounding Box Check rápido antes del hypot
+            # Bounding box rápido antes del hypot (culling 2D barato)
             dx = my_coords.x_m - other_coords.x_m
             dy = my_coords.y_m - other_coords.y_m
 
@@ -205,7 +203,7 @@ class _RadarMixin(_MixinBase):
                     )
                     calc_node_index = -1
 
-                    # [!] OPTIMIZACIÓN 4: Solo calculamos el índice exacto del jugador si comparte nuestra calle
+                    # Índice exacto del jugador solo si comparte nuestra calle
                     if calc_road_id == mode.current_id:
                         calc_node_index, _ = self._get_closest_node_index(
                             other_coords.x_m, other_coords.y_m, geom.nodes

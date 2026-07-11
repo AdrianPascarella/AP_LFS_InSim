@@ -9,8 +9,7 @@ if TYPE_CHECKING:
     from insims.ai_control.nav_modes.freeroam.map_recorder import MapRecorder
     from insims.ai_control.nav_modes.freeroam.mode import FreeroamMode
     from insims.ai_control.nav_modes.route.manager import RouteManager
-    from insims.users_management.main import AI, Coordinates, UsersManagement
-    from lfs_insim.utils import PIDController
+    from insims.users_management.main import AI, UsersManagement
 
 
 class _MixinBase:
@@ -85,69 +84,47 @@ class _MixinBase:
         def get_insim(self, name: str) -> Any: ...
 
         # ─── Métodos cross-mixin ───────────────────────────────────────────────
-        # Cada método está implementado en su mixin correspondiente,
-        # pero todos los mixins los pueden llamar a través de self.
+        # Solo se declaran aquí los métodos que un mixin llama sobre `self` pero
+        # que están implementados en OTRO mixin (el acoplamiento real entre
+        # módulos). Los métodos que solo se usan dentro de su propio mixin NO van
+        # aquí: su clase ya los ve directamente. Entre paréntesis, quién los llama.
 
-        # app.py
+        # app.py  (← commands.py)
         def _get_behavior(
             self, user_ucid: int, plid: int
         ) -> Optional["AIBehavior"]: ...
-        def _generate_random_pid(self, pid_type: str) -> "PIDController": ...
-        def _get_coords_for_map(self, ucid: int) -> Optional["Coordinates"]: ...
 
-        # commands.py
-        def _cmd_add(self) -> None: ...
+        # commands.py  (← navigation.py, map_ui.py, app.py)
         def _cmd_spec(self, plid: int) -> None: ...
-        def _cmd_map_freeroam(self, packet: Any, plid_ai: int) -> None: ...
-        def _cmd_route_follow(
-            self, packet: Any, route_name: str, plid: int
-        ) -> None: ...
         def _stop_traffic_loops(self) -> None: ...
 
-        # navigation.py
+        # navigation.py  (← app.py, overtake.py, radar.py)
         def _update_route_navigation(self, ai: "AI") -> None: ...
         def _update_freeroam_navigation(self, ai: "AI") -> None: ...
-        def _get_radar_speed_limit(
-            self, ai: "AI", base_speed: float, gap_filling_mode: bool = True
-        ) -> float: ...
         def _get_closest_node_index(
             self, px: float, py: float, nodes: list
         ) -> tuple[int, float]: ...
         def _get_indicator_to_use(
             self, my_road_nodes: list, other_road_nodes: list, node_index: int
         ) -> Any: ...
-        def _is_link_reachable_ahead(
-            self,
-            current_road_nodes: list,
-            current_index: int,
-            link_nodes: list,
-            max_dist: float,
-        ) -> bool: ...
-        def _get_raw_candidates(self, current_road_id: str) -> list: ...
-        def _calculate_next_link(
-            self,
-            current_road_id: str,
-            previous_road_id: Optional[str],
-            current_index: int,
-        ) -> tuple: ...
-        def _plan_next_link(
-            self, mode: "FreeroamMode", on_link: Optional[tuple] = None
-        ) -> None: ...
 
-        # physics.py
+        # physics.py  (← app.py)
         def _handle_steering(self, ai: "AI") -> list: ...
         def _handle_pedals_and_gears(self, ai: "AI") -> list: ...
 
-        # traffic/orchestrator.py
+        # traffic/orchestrator.py  (← navigation.py)
         def _update_traffic_behavior(self, ai: "AI") -> None: ...
 
-        # traffic/radar.py
+        # traffic/radar.py  (← orchestrator.py, overtake.py, app.py)
         def _build_vehicle_grid(self) -> None: ...
         def _scan_lane_ahead(
             self, ai: "AI", mode: "FreeroamMode", max_dist_m: float
         ) -> list: ...
+        def _scan_target_lane(
+            self, ai: "AI", mode: "FreeroamMode", target_road_id: str, max_dist_m: float
+        ) -> list: ...
 
-        # traffic/cruise_control.py
+        # traffic/cruise_control.py  (← orchestrator.py)
         def _apply_adaptive_cruise_control(
             self,
             base_speed_kmh: float,
@@ -156,7 +133,8 @@ class _MixinBase:
             min_dist_m: float,
             max_dist_m: float,
         ) -> float: ...
-        # traffic/overtake.py
+
+        # traffic/overtake.py  (← orchestrator.py)
         def _find_valid_overtake_lane(
             self,
             current_road_id: str,
@@ -164,36 +142,6 @@ class _MixinBase:
             current_road_nodes: list,
             node_index: int,
         ) -> Optional[tuple]: ...
-
-        # traffic/zones.py
-        def _get_zone_centroid(self, zone: Any) -> tuple[float, float]: ...
-        def _is_point_in_zone(self, px: float, py: float, zone: Any) -> bool: ...
-        def _get_dist_to_zone_edge(self, px: float, py: float, zone: Any) -> float: ...
-        def _is_priority_vehicle_active_at_zone(
-            self,
-            vehicle_coords: Any,
-            vehicle_speed_kmh: float,
-            vehicle_heading_lfs: int,
-            zone: Any,
-            approach_time_s: float,
-        ) -> bool: ...
-        # traffic/overtake.py
-        def _get_available_overtake_distance(
-            self,
-            mode: "FreeroamMode",
-            my_coords: "Coordinates",
-            overtake_lat_link: "LateralLink",
-        ) -> float: ...
-
-        # traffic/paths.py
-        def _calc_path_length(self, nodes: list, start_idx: int = 0) -> float: ...
-
-        # traffic/radar.py
-        def _scan_target_lane(
-            self, ai: "AI", mode: "FreeroamMode", target_road_id: str, max_dist_m: float
-        ) -> list: ...
-
-        # traffic/overtake.py
         def _is_lane_safe_to_overtake(
             self,
             ai: "AI",
@@ -204,3 +152,18 @@ class _MixinBase:
             req_dist_m: float,
             time_to_overtake_s: float,
         ) -> bool: ...
+
+        # traffic/zones.py  (← orchestrator.py)
+        def _get_zone_centroid(self, zone: Any) -> tuple[float, float]: ...
+        def _get_dist_to_zone_edge(self, px: float, py: float, zone: Any) -> float: ...
+        def _is_priority_vehicle_active_at_zone(
+            self,
+            vehicle_coords: Any,
+            vehicle_speed_kmh: float,
+            vehicle_heading_lfs: int,
+            zone: Any,
+            approach_time_s: float,
+        ) -> bool: ...
+
+        # traffic/paths.py  (← overtake.py)
+        def _calc_path_length(self, nodes: list, start_idx: int = 0) -> float: ...

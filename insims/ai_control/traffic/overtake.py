@@ -248,9 +248,7 @@ class _OvertakeMixin(_MixinBase):
         mode.maneuver_state = AIManeuverState.RETURNING
         mode._returning_start_time = current_time
 
-    def _finish_overtake(
-        self, mode: FreeroamMode, current_time: float, name: str = ""
-    ) -> None:
+    def _finish_overtake(self, mode: FreeroamMode, current_time: float) -> None:
         """Cierra el adelantamiento. next_link_id nunca fue tocado — no hay nada que restaurar."""
         mode.overtake_state = "IDLE"
         mode.maneuver_state = AIManeuverState.NORMAL
