@@ -1,21 +1,47 @@
 # 📍 Estado actual
 
-> Actualizado: **2026-07-11** — S28: **W3 (Fase 6), radar**. Índice espacial de VEHÍCULOS para el
-> radar: los 3 barridos de `traffic/radar.py` iteraban TODOS los vehículos por IA (O(N²) global);
-> ahora consultan una **rejilla dinámica** (`SpatialHashGrid`) construida 1 vez por MCI. **Extracción
-> segura**: solo cambia la línea del `for` (candidatos del vecindario vía `_iter_radar_candidates`);
-> culls/filtros por-vehículo intactos → la rejilla es un SUPERCONJUNTO del culling → **salida
-> bit-idéntica**. **Red de equivalencia** (grid vs. barrido lineal): fuzz 40 semillas × 3 barridos,
-> IAs+humanos, bit-idéntico (+ `ids_within` con 7 unitarios + candidato diagonal). **Benchmark: 2,5×
-> @N=24, 5× @N=64**, creciendo con la densidad (celda 50 m, meseta 40-80 m). Suite **691** (680+11);
-> ruff limpio. **Próximo: cerrar W3 = FSM de adelantamiento + borrar `is_target_ahead_and_in_lane` +
-> P4 (adelgazar `base.py`) + docs.** Al arrancar había **South City sin commitear** (189 roads/13.480
-> nodos) → protegido (respaldo + commit + push) antes del pull, que trajo S27 del otro equipo.
+> Actualizado: **2026-07-11** — S29: **Fase 7 (NUEVA) — bugs de conducción freeroam.** El usuario,
+> conduciendo en LFS, reportó 4 bugs del modo Freeroam. **Resuelto en el acto el fix 2** (fin de vía
+> sin salida → espectadores): watchdog en `navigation.py` con predicado puro `_is_dead_end_stop`
+> (parada real <2 km/h, sin `next_link`, no circular, sin adelantar — distingue el callejón de la
+> parada de tráfico legítima, que SÍ conserva su `next_link`) + temporizador `mode._dead_end_since`
+> (4 s → `_cmd_spec`); centralizado el spec (quitado el inline duplicado). Red primero:
+> `TestIsDeadEndStop` (6 tests). Suite **697** (691+6); ruff limpio. **Pendiente validación en LFS.**
+> Los otros 3 fixes (flip de enlace en salidas juntas, radar que olvida coches en road→roadlink, road
+> cerrado = inexistente en todo caso) quedan aparcados en la **nueva Fase 7** con su diagnóstico
+> preciso. **Próximo: cerrar W3** (FSM de adelantamiento + borrar `is_target_ahead_and_in_lane` + P4 +
+> docs) **y/o abordar Fase 7** (necesita validación en LFS, mismo gate que W4). Al arrancar: South City
+> con 2 roads abiertos (`is_closed:true→false`) sin commitear → protegido (respaldo + commit `dcca07a`
+> + push) ANTES de tocar nada.
 > **Rama de trabajo: `refactor/estabilizacion`.** Todo el refactor ocurre aquí; `main`
 > queda intacta hasta el merge final (cuando el proyecto esté estable). **Sync por GitHub:**
 > `git pull` al arrancar y `git push` al cerrar (permite continuar desde otro dispositivo).
 
 ## Estado
+
+**S29 (2026-07-11) — Fase 7 (NUEVA): bugs de conducción freeroam + fix 2 (fin de vía → espectadores;
+implementado y verificado, PENDIENTE validación en LFS).** El usuario, conduciendo en LFS, reportó 4
+bugs del modo Freeroam de `ai_control` y pidió resolver **uno ahora** y aparcar el resto en el plan
+(delegando el cuándo). **Fix 2 (hecho):** una IA que llegaba a un fin de vía sin `next_link` se
+quedaba clavada a 0 km/h para siempre — el anti-stuck de `_update_freeroam_navigation` trata
+`speed_request<5` como parada *intencionada* y nunca la castiga, y el único spec de fin de vía saltaba
+solo en el tick exacto de captura del último nodo (frágil). **Watchdog nuevo** en `navigation.py`:
+predicado puro **`_is_dead_end_stop(mode, speed_kmh)`** (True solo si parada real <`DEAD_END_SPEED_KMH`
+2 km/h, `next_link_id` None, road no circular y sin adelantamiento en curso → distingue el callejón
+del semáforo/tráfico, que SÍ conserva `next_link`) + temporizador `mode._dead_end_since`; si persiste
+`DEAD_END_TIMEOUT_S` (4 s) → `_cmd_spec`. Se **centralizó el spec** en el watchdog (quitado el inline
+de `fin_de_geometria` que, con el watchdog, doble-spec-eaba y mandaba un MSL de error). **Red primero
+(MODUS §3):** `TestIsDeadEndStop` (6 tests: fin de vía, parada de tráfico con `next_link`, en
+movimiento, adelantando, circular, sin localizar). Constantes ajustables (2 km/h / 4 s). Suite **697**
+(691+6); `ruff check`+`format` limpios. Solo lógica del insim de ejemplo → **no toca la API pública**;
+como es conducta, **requiere validación en LFS**. **Otros 3 fixes → nueva Fase 7 (con diagnóstico
+preciso):** (1) flip de enlace en salidas muy juntas (el intermitente se sobreescribe; asimétrico) —
+`_calculate_next_link` re-planifica y cambia la elección comprometida; (3) el radar
+(`traffic/radar.py`) olvida a los coches de delante al pasar road→roadlink (los choca) y no ve a los
+de dentro al entrar por un roadlink; (4) `is_closed` a medias — **hueco cazado**: `overtake.py::
+_find_valid_overtake_lane` NO comprueba `is_closed` (adelanta por carril cerrado) → auditar todos los
+consumidores. **Arranque (protección de mapas §1.2):** South City con 2 roads `is_closed:true→false`
+sin commitear → respaldo + commit `dcca07a` + push antes de nada.
 
 **S28 (2026-07-11) — Fase 6 · W3: índice espacial de VEHÍCULOS para el radar (implementado y
 verificado, NO requiere LFS).** Ataca el hallazgo O(N²) de la auditoría S22 (ex-6b, plegado en W3).
@@ -653,7 +679,13 @@ construida 1×/MCI; los 3 barridos consultan el vecindario (`_iter_radar_candida
 vehículos → O(N²)→~O(N) (benchmark 2,5×@24, 5×@64). Extracción segura (solo cambia el `for`; salida
 bit-idéntica) + red de equivalencia (fuzz grid vs. lineal) + `ids_within` en el grid. Suite 691.
 
-**Empezar AQUÍ la próxima sesión — cerrar W3 (último ítem de Fase 6). Sesión nueva recomendada:**
+**✅ FIX 2 HECHO (S29)** — fin de vía sin salida → espectadores. Watchdog en `navigation.py`
+(`_is_dead_end_stop` puro + `mode._dead_end_since`, 4 s → `_cmd_spec`); red `TestIsDeadEndStop` (6).
+Suite 697. **Pendiente validación en LFS.** Los otros 3 bugs de conducción → **Fase 7** (ver PLAN).
+
+**Empezar AQUÍ la próxima sesión — dos frentes abiertos (elegir/combinar):**
+
+**A) Cerrar W3 (último ítem de Fase 6, offline, sin LFS):**
 
 1. **Revisar el FSM de adelantamiento** (`overtake_state`, en `traffic/overtake.py`) y **eliminar
    `is_target_ahead_and_in_lane`** de `nav_modes/freeroam/geometry.py` — código muerto detectado en
@@ -675,6 +707,12 @@ bit-idéntica) + red de equivalencia (fuzz grid vs. lineal) + `ids_within` en el
    traceback feo (`exc_info=True` + re-raise) — valorar mensaje limpio y/o
    `connect_retry` para arrancar el insim antes que LFS. (La pista de ISI
    rechazado ya está hecha; el fallback de cfg.txt está en PLAN § Ideas.)
+
+**B) Fase 7 — bugs de conducción freeroam (necesitan validación en LFS, mismo gate que W4):** los
+3 fixes pendientes con su diagnóstico en `PLAN.md § Fase 7`. Encajan con las sesiones de LFS de W4.
+**Red primero** (extraer un predicado puro por fix, como en el fix 2). Orden sugerido por impacto:
+(4) `is_closed` = inexistente (hueco claro en `overtake.py`, acotado), (1) flip de enlace en salidas
+juntas, (3) radar en transición road→roadlink. Ninguno toca la API pública.
 
 ## Bloqueos / esperando
 

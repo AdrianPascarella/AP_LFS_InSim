@@ -403,3 +403,64 @@ class TestPlanNextLink:
         mode = FreeroamMode(current_road_id="R2", previous_road_id="R1", node_index=0)
         ai_control._plan_next_link(mode, on_link=(link_r1_r2, make_coords(0, 100)))
         assert (mode.next_link_id, mode.next_link_type) == ("R2->R3", "RoadLink")
+
+
+# ─── _is_dead_end_stop: watchdog de fin de vía sin salida (Fix S29) ───────────
+
+
+class TestIsDeadEndStop:
+    """Predicado del watchdog que decide si una IA está clavada en un fin de vía
+    sin salida (mapa incompleto) y debe irse a espectadores."""
+
+    def _mode_on_road(self, ai_control, make_road, populate_graph, **overrides):
+        populate_graph(
+            ai_control.map_recorder, roads=[make_road("R1", [(0, 0), (0, 50)])]
+        )
+        return FreeroamMode(current_road_id="R1", **overrides)
+
+    def test_parada_sin_next_link_en_via_normal_es_fin_de_via(
+        self, ai_control, make_road, populate_graph
+    ):
+        mode = self._mode_on_road(ai_control, make_road, populate_graph)
+        mode.next_link_id = None
+        assert ai_control._is_dead_end_stop(mode, speed_kmh=0.0) is True
+
+    def test_con_next_link_es_parada_legitima_de_trafico(
+        self, ai_control, make_road, populate_graph
+    ):
+        # Parada a 0 km/h PERO con salida planificada → espera de tráfico, no fin de vía.
+        mode = self._mode_on_road(ai_control, make_road, populate_graph)
+        mode.next_link_id = "R1->R2"
+        assert ai_control._is_dead_end_stop(mode, speed_kmh=0.0) is False
+
+    def test_en_movimiento_no_es_fin_de_via(
+        self, ai_control, make_road, populate_graph
+    ):
+        mode = self._mode_on_road(ai_control, make_road, populate_graph)
+        mode.next_link_id = None
+        # Por encima del umbral (2 km/h) todavía se mueve.
+        assert ai_control._is_dead_end_stop(mode, speed_kmh=5.0) is False
+
+    def test_adelantando_nunca_es_fin_de_via(
+        self, ai_control, make_road, populate_graph
+    ):
+        mode = self._mode_on_road(ai_control, make_road, populate_graph)
+        mode.next_link_id = None
+        for estado in ("OVERTAKING", "RETURNING"):
+            mode.overtake_state = estado
+            assert ai_control._is_dead_end_stop(mode, speed_kmh=0.0) is False
+
+    def test_via_circular_sin_next_link_no_es_fin_de_via(
+        self, ai_control, make_road, populate_graph
+    ):
+        # Una vía circular sin next_link da vueltas: no es un callejón sin salida.
+        mode = self._mode_on_road(ai_control, make_road, populate_graph)
+        ai_control.map_recorder.roads["R1"].is_circular = True
+        mode.next_link_id = None
+        assert ai_control._is_dead_end_stop(mode, speed_kmh=0.0) is False
+
+    def test_sin_via_localizada_puede_sacarse(self, ai_control):
+        # current_road_id None (nunca localizó, p. ej. spawn fuera del mapa): a 0
+        # km/h y sin salida se considera sacable.
+        mode = FreeroamMode()
+        assert ai_control._is_dead_end_stop(mode, speed_kmh=0.0) is True

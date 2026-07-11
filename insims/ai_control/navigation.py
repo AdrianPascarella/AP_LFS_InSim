@@ -24,6 +24,13 @@ from lfs_insim.utils import calc_dist_3d
 if TYPE_CHECKING:
     from insims.users_management.main import AI, Coordinates
 
+# Watchdog de fin de vía sin salida: una IA que llega a un fin de vía sin
+# next_link se queda a 0 km/h indefinidamente (típico con el mapa aún
+# incompleto). Si sigue parada sin salida más de DEAD_END_TIMEOUT_S, la
+# mandamos a espectadores en vez de dejarla clavada ocupando la pista.
+DEAD_END_SPEED_KMH = 2.0
+DEAD_END_TIMEOUT_S = 4.0
+
 
 class _NavigationMixin(_MixinBase):
     def _update_route_navigation(self, ai: AI):
@@ -315,6 +322,24 @@ class _NavigationMixin(_MixinBase):
 
         my_coords = ai.player.telemetry.coordinates
         current_speed = ai.player.telemetry.speed.speed_kmh
+
+        # =========================================================
+        # [!] WATCHDOG DE FIN DE VÍA SIN SALIDA (mapa incompleto)
+        # =========================================================
+        # El anti-stuck de arriba trata la parada sin salida como "intencionada"
+        # (speed_request<5) y nunca la castiga, así que una IA que llega a un fin
+        # de vía sin next_link se quedaría clavada a 0 km/h para siempre. Si lleva
+        # DEAD_END_TIMEOUT_S parada y sin salida, la sacamos a espectadores.
+        if self._is_dead_end_stop(mode, current_speed):
+            now = time.time()
+            if mode._dead_end_since == 0.0:
+                mode._dead_end_since = now
+            elif now - mode._dead_end_since >= DEAD_END_TIMEOUT_S:
+                self._cmd_spec(ai.player.plid)
+                mode._dead_end_since = 0.0
+                return
+        else:
+            mode._dead_end_since = 0.0
 
         # =========================================================
         # 1. LOCALIZACIÓN INICIAL (El Despertar)
@@ -637,9 +662,9 @@ class _NavigationMixin(_MixinBase):
                         mode.node_index = 0
                         return
                     elif not mode.next_link_id:
+                        # Fin de vía sin salida: paramos. El watchdog de fin de
+                        # vía (arriba) la manda a espectadores si sigue parada.
                         behavior.speed_request = 0.0
-                        if ai.player.telemetry.speed.speed_kmh < 1:
-                            self._cmd_spec(ai.player.plid)
                         return
                     else:
                         # Llegamos al final con un next_link_id que nunca se activó — recalcular
@@ -662,6 +687,25 @@ class _NavigationMixin(_MixinBase):
                 AIV(Input=CS.INDICATORS, Value=mode.blinkers_active)
             )
             mode.blinkers_active_now = mode.blinkers_active
+
+    def _is_dead_end_stop(self, mode: FreeroamMode, speed_kmh: float) -> bool:
+        """True si la IA está efectivamente parada en un fin de vía sin salida.
+
+        Distingue el callejón sin salida (mapa incompleto: sin `next_link` y en
+        una vía no circular) de una parada legítima de tráfico —que SÍ conserva
+        su `next_link` y solo espera para avanzar— y de un adelantamiento en
+        curso. Solo devuelve True cuando de verdad no hay a dónde ir.
+        """
+        if speed_kmh >= DEAD_END_SPEED_KMH:
+            return False
+        if mode.next_link_id:
+            return False
+        if mode.overtake_state in ("OVERTAKING", "RETURNING"):
+            return False
+        road = self.map_recorder.roads.get(mode.current_road_id)
+        if road is not None and road.is_circular:
+            return False
+        return True
 
     def _get_indicator_to_use(
         self,

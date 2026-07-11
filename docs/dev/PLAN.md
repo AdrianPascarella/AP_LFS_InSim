@@ -463,6 +463,61 @@ orquestadores con `time.time()` siguen sin red → cubrir antes de tocarlos).
 
 ---
 
+## Fase 7 — Robustez de conducción freeroam (ai_control)  ◀️ NUEVA (S29)
+
+> **Origen (S29, 2026-07-11):** el usuario, conduciendo en LFS, reportó 4 bugs de comportamiento
+> del modo Freeroam. Uno (fin de vía → espectadores) se pidió y **se resolvió en el acto**; los
+> otros tres se aparcan aquí para abordarlos cuando sea más oportuno (delegado a Claude). Son bugs
+> de **conducción** del insim de ejemplo (el escaparate), NO tocan la API pública del framework →
+> no bloquean la estabilidad de la API (Fase 6). Como todos necesitan **validación en LFS**, encajan
+> con las sesiones de LFS de **W4** (mismo gate). **Red primero** (MODUS §3): son los grandes
+> orquestadores con `time.time()`, que siguen sin red — extraer un predicado puro testeable por fix
+> y probarlo antes de tocar el orquestador (patrón usado en el fix de fin de vía).
+
+- [x] **(2) Fin de vía sin salida → espectadores** — **S29 (HECHO).** Una IA que llegaba a un fin
+      de vía sin `next_link` se quedaba clavada a 0 km/h: el anti-stuck de `_update_freeroam_navigation`
+      trata `speed_request<5` como parada *intencionada* y nunca la castiga, y el spec inline del
+      `fin_de_geometria` solo saltaba en el tick exacto de captura del último nodo (frágil).
+      **Watchdog nuevo** en `navigation.py`: predicado puro `_is_dead_end_stop(mode, speed_kmh)`
+      (parada real < `DEAD_END_SPEED_KMH` 2 km/h, sin `next_link`, no circular, sin adelantamiento en
+      curso — distingue el callejón del semáforo/tráfico legítimo, que SÍ conserva su `next_link`) +
+      temporizador `mode._dead_end_since`; si sigue así `DEAD_END_TIMEOUT_S` (4 s) → `_cmd_spec`. Se
+      centralizó el spec en el watchdog (quitado el inline duplicado que enviaba un MSL de error al
+      re-spec). Red primero: `TestIsDeadEndStop` (6 tests) en `test_navigation.py`. Suite 697; ruff
+      limpio. **Pendiente validación en LFS.**
+- [ ] **(1) Flip de enlace en salidas muy juntas (intermitente se sobreescribe).** Reportado: yendo
+      por `SOUTH_CITY_STATION_s2` con intención de tomar `HAVEN_LINE_S22_b` (lo marca el intermitente),
+      en el último momento cambia a `HAVEN_LINE_S22_a` (se ve el intermitente cambiar). **Asimétrico:**
+      solo pasa hacia un lado; el sentido contrario casi nunca falla. Sospecha: `_calculate_next_link`
+      (`navigation.py`) elige con `random.choice` y el `next_link_id` **se re-planifica** en varios
+      triggers (localización, transición RoadLink/LatLink, recálculo de `fin_de_geometria`); al avanzar,
+      el filtro `_is_link_reachable_ahead` deja de ver un enlace y ve el otro → el re-plan **cambia la
+      elección ya comprometida** (y el intermitente con ella). Arreglo probable: hacer la elección
+      **pegajosa** (no re-planificar el `next_link` mientras siga siendo alcanzable / una vez encendido
+      el intermitente comprometerse a ese enlace). Investigar la asimetría RHT/LHT en `_get_indicator_to_use`
+      y la geometría del culling. **Red primero.**
+- [ ] **(3) El radar olvida a los coches al pasar de road a roadlink.** Al transicionar road→roadlink,
+      `traffic/radar.py::_scan_lane_ahead` acota los candidatos a la geometría de `mode.current_id` (solo
+      el link) → olvida a los coches que aún tenía delante en el road que deja (si se podía seguir de
+      frente y el de delante iba más lento, lo choca). Además, al **entrar** a un road por un roadlink no
+      ve a los que ya circulan dentro (les corta el paso). Arreglo probable: durante la ventana de
+      aproximación/transición, ampliar el match topológico de "delante en mi carril" a la **cadena
+      current→next**: road actual + su roadlink saliente (`next_link`) + el `to_road` del link, para que
+      detecte a los de las salidas y a los de dentro del road destino. **Red primero** (extender la red
+      de equivalencia del radar de S28).
+- [ ] **(4) Road cerrado = inexistente en TODOS los casos.** Hoy `is_closed` se respeta a medias:
+      `_calculate_next_link` salta el road destino cerrado (Filtro A, `navigation.py`) y el spawn localiza
+      con `ignore_closed_roads=True`. **Hueco encontrado:** `traffic/overtake.py::_find_valid_overtake_lane`
+      NO comprueba `road_geom.is_closed` → la IA puede adelantar metiéndose en un carril cerrado. **Auditar
+      TODOS los consumidores** (spawn / `get_location_context` en todos sus call-sites, selección de carril
+      de adelantamiento, barridos del radar, navegación por LatLink) y centralizar con un helper
+      `_is_road_usable(road_id)` (existe y no cerrado) aplicado de forma consistente. **Red primero.**
+
+**Criterio de aceptación:** las 4 conductas corregidas y **validadas por el usuario en LFS**; red de
+caracterización en cada fix antes de tocar el orquestador; suite + CI verdes. No tocan la API pública.
+
+---
+
 ## 🔀 Merge a `main`
 
 Todo el refactor vive en la rama **`refactor/estabilizacion`**. `main` permanece intacta

@@ -5,6 +5,65 @@
 
 ---
 
+## S29 — 2026-07-11 — Fase 7 (NUEVA): bugs de conducción freeroam + fix 2 (fin de vía → espectadores)
+
+**Arranque:** protocolo de inicio. Ya en `refactor/estabilizacion` y en sync con `origin` (tip S28,
+no hizo falta pull). El árbol traía **South City con 2 roads `is_closed:true→false`** sin commitear →
+protegido según §1.2 (respaldo en scratchpad + commit `dcca07a` `data(ai_control): abre 2 roads en
+South City` + push con el workaround de `gh` credential helper) ANTES de tocar nada.
+
+**Petición del usuario:** conduciendo en LFS reportó **4 bugs del modo Freeroam** de `ai_control` y
+pidió (a) resolver **uno ahora** (fin de vía → espectadores) y (b) **aparcar los otros 3 en el plan**,
+delegándome el cuándo. Pidió opinión y cómo proceder.
+
+**Decisión de rumbo:** los 4 son bugs de **conducción del insim de ejemplo** (el escaparate), **no
+tocan la API pública** del framework → no bloquean la estabilidad de API de Fase 6. Como todos
+necesitan **validación en LFS**, encajan con las sesiones de LFS de **W4** (mismo gate). Creada una
+**Fase 7** dedicada en `PLAN.md` con el diagnóstico preciso de cada uno; el usuario decide el orden y
+si van antes o después del merge (no urge para el release del framework).
+
+**Fix 2 — fin de vía sin salida → espectadores (HECHO, red primero):**
+
+1. **Diagnóstico:** una IA que llega a un fin de vía sin `next_link` se quedaba clavada a 0 km/h para
+   siempre. Dos huecos: (a) el anti-stuck de `_update_freeroam_navigation` trata `speed_request<5`
+   como parada **intencionada** y resetea su temporizador → nunca castiga la parada de fin de vía;
+   (b) el único spec de fin de vía (en `fin_de_geometria`) solo saltaba en el tick exacto en que la
+   IA **captura** el último nodo yendo a >1 km/h — si frenaba antes, no saltaba nunca.
+
+2. **Solución:** watchdog dedicado en `navigation.py`. Predicado **puro** `_is_dead_end_stop(mode,
+   speed_kmh)` → True solo si: velocidad <`DEAD_END_SPEED_KMH` (2 km/h), `mode.next_link_id` None,
+   `overtake_state` no en OVERTAKING/RETURNING, y road actual no circular. Esto **distingue el
+   callejón sin salida de la parada de tráfico legítima** (que conserva su `next_link` esperando para
+   avanzar). Temporizador `mode._dead_end_since` (campo nuevo en `FreeroamMode.__post_init__`); si el
+   estado persiste `DEAD_END_TIMEOUT_S` (4 s) → `_cmd_spec(plid)`. Se **centralizó el spec** en el
+   watchdog y se quitó el inline de `fin_de_geometria` (con el watchdog, doble-spec-eaba → el 2º
+   `_cmd_spec` mandaba un MSL de error porque el PLID ya no está en `ais`).
+
+3. **Red primero (MODUS §3):** `TestIsDeadEndStop` en `test_navigation.py` (6 tests: fin de vía real,
+   parada de tráfico con `next_link`, en movimiento, adelantando, vía circular, sin localizar). El
+   orquestador `_update_freeroam_navigation` sigue sin red (usa `time.time()` y muta mucho estado, como
+   los demás grandes orquestadores) → se testea el **predicado extraído**, y el cableado en el
+   orquestador es mínimo y obvio. Constantes ajustables si en LFS conviene otro umbral/timeout.
+
+**Otros 3 fixes → Fase 7 (diagnóstico en PLAN):** (1) **flip de enlace en salidas muy juntas** — el
+intermitente marca un enlace y en el último momento se sobreescribe por el otro (asimétrico, solo un
+lado); sospecha: `_calculate_next_link` (`random.choice`) se **re-planifica** en varios triggers y el
+filtro `_is_link_reachable_ahead` cambia al avanzar → cambia la elección ya comprometida; arreglo:
+hacerla **pegajosa**. (3) **radar en transición road→roadlink** — `traffic/radar.py::_scan_lane_ahead`
+acota candidatos a `mode.current_id` (solo el link) → olvida a los de delante en el road que deja (los
+choca) y no ve a los de dentro al entrar por un roadlink; arreglo: ampliar el match topológico a la
+cadena current→next durante la transición. (4) **`is_closed` a medias** — **hueco cazado leyendo el
+código**: `traffic/overtake.py::_find_valid_overtake_lane` NO comprueba `road_geom.is_closed` →
+adelanta por carril cerrado; arreglo: auditar todos los consumidores y centralizar con
+`_is_road_usable(road_id)`.
+
+**Verificación:** suite **697/697** (691 + 6); `ruff check` + `format --check` limpios en lo tocado.
+Solo lógica del insim de ejemplo → **no requiere validación en LFS para la corrección**, pero SÍ para
+confirmar la conducta (pendiente). **Commits:** `dcca07a` (protección del mapa) + el de S29 (fix 2 +
+Fase 7 + docs).
+
+---
+
 ## S28 — 2026-07-11 — Fase 6 · W3: índice espacial de VEHÍCULOS para el radar
 
 **Arranque:** protocolo de inicio. Ya en `refactor/estabilizacion`, pero el árbol traía **South City
