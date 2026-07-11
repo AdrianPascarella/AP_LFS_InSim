@@ -5,6 +5,61 @@
 
 ---
 
+## S31 — 2026-07-11 — Cierre de W3 (Fase 6): FSM revisado, código muerto fuera, `base.py` adelgazado (P4), docs de arquitectura
+
+**Arranque:** protocolo de inicio. Ya en `refactor/estabilizacion` y en sync con `origin` (tip S30,
+`e0de8e2`), no hizo falta pull. **Árbol limpio, sin mapas que proteger** (§1.2). El usuario pidió
+**cerrar W3 tirando por el Frente A** (offline, sin LFS): revisar el FSM de adelantamiento, borrar el
+código muerto, adelgazar `base.py` (P4) y actualizar los docs de arquitectura.
+
+**Qué se hizo (todo con red / extracción segura, MODUS §3):**
+
+1. **FSM de adelantamiento revisado** (`traffic/orchestrator.py` + `overtake.py`): estados
+   IDLE→EVALUATING→OVERTAKING→RETURNING con cooldowns; estructura sólida, **sin cambios de conducta**.
+   *Cleanup seguro:* `_finish_overtake` recibía un parámetro `name` que **no usaba** (resto de una
+   eliminación de logs); el orquestador le pasaba `_n = ai.ai_name`, alias que **solo** alimentaba esas
+   2 llamadas. Quitados el parámetro y el alias (el test `test_finish_overtake_...` ya llamaba sin `name`
+   → red intacta). Pura estructura.
+
+2. **Código muerto eliminado:** `is_target_ahead_and_in_lane` de `nav_modes/freeroam/geometry.py`
+   (confirmado sin uso en producción por grep: solo la definición + sus 5 tests de caracterización +
+   menciones en docs). Borrada la función y la clase `TestIsTargetAheadAndInLane` de `test_geometry.py`
+   (el import `Any` se queda: lo usan otras 6 firmas). Suite **704→699**.
+
+3. **Marcadores `[!] OPTIMIZACIÓN` de `radar.py`** (4: líneas 107/121/165/208) → comentarios normales
+   (quitados el prefijo de atención `[!]` y la numeración secuencial, ya sin sentido; conservada la
+   explicación útil). Solo comentarios.
+
+4. **P4 — `base.py` adelgazado (honestidad del contrato):** `_MixinBase` declaraba 32 métodos como
+   "cross-mixin", pero un **script de auditoría del grafo de llamadas** (`self.<m>` vs `def <m>` por
+   fichero en todo `ai_control`) reveló que **12 son self-local** (solo se llaman dentro de su propio
+   mixin): `_calculate_next_link`, `_cmd_add`, `_cmd_map_freeroam`, `_cmd_route_follow`,
+   `_generate_random_pid`, `_get_available_overtake_distance`, `_get_coords_for_map`,
+   `_get_radar_speed_limit`, `_get_raw_candidates`, `_is_link_reachable_ahead`, `_is_point_in_zone`,
+   `_plan_next_link`. Su clase ya los ve → no pertenecen a un contrato *cross-mixin*. Fuera del contrato
+   (quedan **20** genuinamente cruzados, cada uno anotado con quién lo llama); de rebote, los imports
+   `Coordinates` y `PIDController` quedaban huérfanos (los usaban 2 métodos removidos) → fuera. Todo bajo
+   `if TYPE_CHECKING:` → **cero runtime, cero test**; ruff limpio (habría cazado F401). **Matiz clave:**
+   es honestidad del contrato, NO un desacople real — las 20 llamadas cruzadas siguen ahí. El **desacople
+   profundo** (romper el "God object") es refactor arquitectónico de riesgo (el orquestador
+   `_update_traffic_behavior` no tiene red) → queda **pendiente**, anotado en DIAGNOSTICO § P4.
+
+5. **Docs de arquitectura:** CLAUDE.md — corregida la composición de `AIControl` (faltaba `_MapUIMixin`)
+   + nota de la fachada `_TrafficMixin` sobre el paquete `traffic/` y del contrato `_MixinBase`; sección
+   "ai_control nav system" ampliada (paquete `traffic/`, FSM de adelantamiento, rejilla del radar).
+   DIAGNOSTICO § P4 revisado. El README ya delega la arquitectura a `docs/guia/` → sin cambios.
+
+**Con esto W3 queda CERRADO** (los splits de `map_ui.py`/`map_recorder.py` estaban ya aplazados a
+post-merge en S27). **Fase 6 (pre-publish) completa salvo W4** (validación en LFS del ceda-el-paso del
+ACC, bloqueada por `zones: 0`).
+
+**Verificación:** suite **699/699** (704 − 5 del código muerto); `ruff check` + `format --check` limpios
+(103 ficheros); `lfs-insim list` OK; diff = 54 inserciones / 203 borrados (mayoría: código muerto +
+contrato). Solo estructura/comentarios/docs del insim de ejemplo → **no toca la API pública ni requiere
+validación en LFS**. **Commit:** el de cierre de S31.
+
+---
+
 ## S30 — 2026-07-11 — Retoque de UI de `ai_control` (whereami → overlay fijo) + validación en LFS del fix 2 de S29
 
 **Arranque:** protocolo de inicio. Ya en `refactor/estabilizacion` y en sync con `origin` (tip S29,

@@ -141,11 +141,18 @@ ya espera a W4). Pasan a post-merge.
 protocolo. No cuentan como deuda.)
 
 ### P4 — Acoplamiento cruzado entre mixins
-- `base.py` declara **~40 métodos cross-mixin**: cualquier mixin llama a métodos de
-  cualquier otro vía `self`. Es un "God object" repartido en archivos; la modularidad es de
-  fichero, no de responsabilidad. **Pendiente: Fase 6 · W3.**
+- `base.py` declara los métodos cross-mixin: cualquier mixin llama a métodos de cualquier
+  otro vía `self`. Es un "God object" repartido en archivos; la modularidad es de fichero,
+  no de responsabilidad.
 - **S27:** cada método de tráfico declarado ahí dice ya en qué submódulo de `traffic/` vive
-  (sigue siendo la misma superficie: solo está documentada, no reducida).
+  (entonces seguía siendo la misma superficie: solo documentada, no reducida).
+- **S31 (contrato adelgazado):** auditado el grafo de llamadas real, el contrato de
+  `_MixinBase` se recorta a lo que ES cross-mixin de verdad: de 32 firmas se quitan las **12
+  self-local** (solo se llaman dentro de su propio mixin) → quedan **20** genuinamente
+  cruzadas, cada una anotada con quién la llama. Es **honestidad del contrato** (hints
+  `TYPE_CHECKING`, cero runtime), no un desacople real. **Pendiente (arquitectónico, aparte de
+  W3):** el desacople profundo — reducir esas 20 llamadas cruzadas / romper el "God object" —
+  que es refactor de riesgo y cuyo orquestador (`_update_traffic_behavior`) sigue sin red.
 
 ---
 

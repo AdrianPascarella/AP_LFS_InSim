@@ -1,21 +1,44 @@
 # 📍 Estado actual
 
-> Actualizado: **2026-07-11** — S30: **retoque de UI de `ai_control` (fuera del plan) + validación en
-> LFS del fix 2 de S29.** El usuario confirmó que el **watchdog de fin de vía → espectadores** (S29)
-> **funciona en LFS** → **fix 2 VALIDADO** (queda por validar solo la conducta de los 3 bugs de la
-> Fase 7, aún sin abordar). Petición de la sesión: el **whereami** de la pestaña Info (WA
-> Road/RLink/LLink/Zone/Regla) pasa de panel dentro del menú a **overlay fijo anclado a la
-> mitad-derecha** que persiste al cambiar de pestaña y con el menú cerrado, y solo se quita
-> deseleccionándolo. Hecho, con red (7 tests) y **validado en LFS por el usuario** ("funciona a la
-> perfección"). Suite **704** (697+7); ruff limpio; `lfs-insim list` OK. **Próximo: cerrar W3** (FSM de
-> adelantamiento + borrar `is_target_ahead_and_in_lane` + P4 + docs) **y/o abordar Fase 7** (3 bugs de
-> conducción freeroam, requieren LFS — mismo gate que W4). Arranque limpio y en sync con `origin` (tip
-> S29, sin mapas que proteger); árbol limpio tras el commit de cierre de S30.
+> Actualizado: **2026-07-11** — S31: **cierre de W3 (Fase 6), offline (Frente A).** Hecho: (1) FSM de
+> adelantamiento revisado (IDLE→EVALUATING→OVERTAKING→RETURNING, estructura sólida) + cleanup del
+> parámetro `name` muerto de `_finish_overtake` (y su alias `_n`); (2) borrado el código muerto
+> `is_target_ahead_and_in_lane` (+ sus 5 tests); (3) los 4 marcadores `[!] OPTIMIZACIÓN` de `radar.py` →
+> comentarios normales; (4) **P4** — `base.py` adelgazado por auditoría del grafo de llamadas real: el
+> contrato `_MixinBase` pasa de 32 a **20** métodos (fuera las **12 self-local**), honestidad del contrato
+> bajo `TYPE_CHECKING` (cero runtime; el **desacople profundo** del "God object" queda pendiente, es
+> arquitectónico); (5) docs de arquitectura (CLAUDE.md: `_MapUIMixin`, fachada `traffic/`, FSM, rejilla del
+> radar; DIAGNOSTICO § P4). **Con esto W3 queda CERRADO** y **Fase 6 (pre-publish) completa salvo W4**
+> (validación en LFS del ceda-el-paso del ACC, bloqueada por `zones: 0`). Suite **699** (704−5 del código
+> muerto); ruff limpio; `lfs-insim list` OK. Solo estructura/comentarios/docs del insim de ejemplo → **no
+> toca la API pública ni requiere LFS**. **Próximo: Fase 7** (3 bugs de conducción freeroam, requieren LFS —
+> mismo gate que W4) o **W4** (ambos LFS). Arranque limpio y en sync con `origin` (tip S30, sin mapas que
+> proteger); árbol limpio tras el commit de cierre de S31.
 > **Rama de trabajo: `refactor/estabilizacion`.** Todo el refactor ocurre aquí; `main`
 > queda intacta hasta el merge final (cuando el proyecto esté estable). **Sync por GitHub:**
 > `git pull` al arrancar y `git push` al cerrar (permite continuar desde otro dispositivo).
 
 ## Estado
+
+**S31 (2026-07-11) — Fase 6 · cierre de W3 (Frente A, offline; NO requiere LFS).** Último bloque de W3.
+(1) **FSM de adelantamiento revisado** (`traffic/orchestrator.py` + `overtake.py`):
+IDLE→EVALUATING→OVERTAKING→RETURNING con cooldowns, estructura sólida, sin tocar la conducta. Cleanup
+seguro: `_finish_overtake` tenía un parámetro `name` sin usar (resto de logs eliminados) y el orquestador
+le pasaba `_n = ai.ai_name`, alias que solo alimentaba esas 2 llamadas → fuera ambos (el test ya llamaba
+sin `name`). (2) **Código muerto borrado:** `is_target_ahead_and_in_lane` (`geometry.py`) — confirmado sin
+uso en producción por grep — y su clase `TestIsTargetAheadAndInLane` (`test_geometry.py`, 5 tests). (3) Los
+**4 marcadores `[!] OPTIMIZACIÓN`** de `radar.py` → comentarios normales (fuera el prefijo `[!]` y la
+numeración). (4) **P4 — `base.py` adelgazado:** un script de auditoría del grafo de llamadas
+(`self.<m>` vs `def <m>` por fichero) probó que **12 de los 32** métodos del contrato `_MixinBase` son
+**self-local** (solo se llaman dentro de su propio mixin) → fuera del contrato *cross-mixin* (quedan **20**
+genuinos, anotados con quién los llama); imports `Coordinates`/`PIDController` huérfanos, fuera. Todo bajo
+`TYPE_CHECKING` → cero runtime/test. **Honestidad del contrato, NO desacople real:** las 20 llamadas
+cruzadas siguen; el desacople profundo del "God object" es arquitectónico (orquestador sin red) → PENDIENTE
+(DIAGNOSTICO § P4). (5) **Docs:** CLAUDE.md (composición real con `_MapUIMixin`, fachada `_TrafficMixin`
+sobre `traffic/`, contrato `_MixinBase`, FSM, rejilla del radar) + DIAGNOSTICO § P4. **W3 CERRADO** (los
+splits de `map_ui`/`map_recorder` ya estaban aplazados a post-merge, S27) → **Fase 6 completa salvo W4**
+(LFS, bloqueada por `zones: 0`). Suite **699/699** (704−5); ruff limpio; `lfs-insim list` OK. **No toca la
+API pública.** Commit: el de cierre de S31.
 
 **S30 (2026-07-11) — retoque de UI de `ai_control` (whereami → overlay fijo; fuera del plan) +
 validación en LFS del fix 2 de S29.** Sesión corta a petición del usuario, **sin continuar el trabajo
@@ -642,8 +665,9 @@ P11–P21 en `DIAGNOSTICO.md`. Queda gordo: P12 (reconexión, Fase 3).
 S23). Fases 1-4 (core) COMPLETADAS. **Fase 5 (ai_control: red + estabilización) COMPLETA salvo la
 validación en LFS del ceda-el-paso del ACC (W4)**, hoy bloqueada porque ningún mapa tiene
 intersección (`zones: 0`). **Fase 6: W1 (split `utils.py`), W5 (sweep de API) y W2 (`init` con
-perfiles) HECHOS** (S24/S25/S26); **W3 casi cerrado** (S27: split de `traffic/` + P7; S28: índice
-espacial del radar; faltan el FSM de adelantamiento, borrar código muerto, P4 y docs).
+perfiles) y W3 (refactor interno + radar) HECHOS** (S24/S25/S26/S27/S28/**S31**). **W3 CERRADO en S31**
+(FSM revisado, código muerto fuera, `base.py` adelgazado por P4, docs de arquitectura). **Fase 6 completa
+salvo W4** (LFS, bloqueada). Solo queda trabajo LFS-gated: W4 + la Fase 7 (bugs de conducción freeroam).
 
 **Recorte de W3 (S27, con el usuario):** los splits de `map_ui.py` (3161) y `map_recorder.py`
 (2520) **salen del pre-publish** y pasan a post-merge (ver PLAN § Ideas). Son tooling offline,
@@ -669,7 +693,7 @@ de publicar para un primer release cohesionado y con la API pública ya estable.
 ai_control + limpieza de la API pública (`utils.py`) + `init` más robusto. Fase 5 está COMPLETA
 salvo **W4** (validación en LFS del ceda-el-paso del ACC, hoy bloqueada por `zones: 0`). Orden
 acordado: **W4** (tú, en LFS, en paralelo — gate del merge) → ~~W1~~ ✅ → ~~W5~~ ✅ → ~~W2~~ ✅
-(init) → **W3** (refactor interno + radar; **a medias tras S27**). Todo en la rama; un solo merge a
+(init) → ~~W3~~ ✅ (refactor interno + radar; **CERRADO en S31**). Todo en la rama; un solo merge a
 `main` cuando esté publish-ready + validado, luego publish. Detalle en PLAN § Fase 6.
 
 **✅ W1 HECHO (S24)** — split de `utils.py`: las 9 funciones de geometría/nav de la IA movidas a
@@ -693,10 +717,13 @@ defecto**. `cli.py`: flags mutuamente excluyentes `--full`/`--minimal` + registr
 tests, incl. ambos templates `compile`+`exec`→`InSimApp`). Suite 680; ruff limpio; guías/README/
 CLAUDE/CHANGELOG cuadrados.
 
-**✅ W3 a MEDIAS (S27)** — hechos el **split de `traffic.py`** en el paquete `traffic/` (fachada
-`_TrafficMixin` + 6 submixins; extracción segura probada con snapshot byte-idéntico) y **P7**
-(`speed_request`/`speed_resolved_kmh`, `point_request`/`point_resolved`). **Recortado el alcance**:
-`map_ui.py` y `map_recorder.py` salen a post-merge.
+**✅ W3 CERRADO (S27 + S28 + S31)** — S27: **split de `traffic.py`** en el paquete `traffic/` (fachada
+`_TrafficMixin` + 6 submixins; extracción segura byte-idéntica) + **P7** (`speed_request`/
+`speed_resolved_kmh`, `point_request`/`point_resolved`). S28: rejilla del radar (abajo). **S31: FSM de
+adelantamiento revisado, código muerto `is_target_ahead_and_in_lane` borrado, 4 marcadores
+`[!] OPTIMIZACIÓN` de `radar.py` limpiados, `base.py` adelgazado por P4 (contrato `_MixinBase` 32→20,
+honestidad del contrato — desacople profundo pendiente) y docs de arquitectura (CLAUDE.md/DIAGNOSTICO).**
+**Recortado el alcance** (S27): `map_ui.py` y `map_recorder.py` salen a post-merge.
 
 **✅ RADAR HECHO (S28)** — índice espacial de VEHÍCULOS: rejilla dinámica (`SpatialHashGrid`)
 construida 1×/MCI; los 3 barridos consultan el vecindario (`_iter_radar_candidates`) en vez de los N
@@ -707,36 +734,31 @@ bit-idéntica) + red de equivalencia (fuzz grid vs. lineal) + `ids_within` en el
 (`_is_dead_end_stop` puro + `mode._dead_end_since`, 4 s → `_cmd_spec`); red `TestIsDeadEndStop` (6).
 Suite 697. **Pendiente validación en LFS.** Los otros 3 bugs de conducción → **Fase 7** (ver PLAN).
 
-**Empezar AQUÍ la próxima sesión — dos frentes abiertos (elegir/combinar):**
+**Empezar AQUÍ la próxima sesión — con W3 cerrado, solo queda trabajo LFS-gated:**
 
-**A) Cerrar W3 (último ítem de Fase 6, offline, sin LFS):**
+**Frente principal (necesita LFS): Fase 7 + W4.** Con W3 cerrado, **Fase 6 (pre-publish) está completa
+salvo W4** y lo que queda de valor para el merge son conductas que hay que ver en el juego. En la próxima
+sesión de LFS:
+- **W4** — crear una **intersección** (hoy `zones: 0` en todos los mapas) y validar el **ceda-el-paso del
+  ACC** (S21) → desbloquea el gate del merge.
+- **Fase 7** — los 3 bugs de conducción freeroam con su diagnóstico en `PLAN.md § Fase 7`. **Red primero**
+  (extraer un predicado puro por fix, como el fix 2 de S29). Orden sugerido por impacto: (4) `is_closed` =
+  inexistente (hueco claro en `overtake.py`, acotado), (1) flip de enlace en salidas juntas, (3) radar en
+  transición road→roadlink. Ninguno toca la API pública.
 
-1. **Revisar el FSM de adelantamiento** (`overtake_state`, en `traffic/overtake.py`) y **eliminar
-   `is_target_ahead_and_in_lane`** de `nav_modes/freeroam/geometry.py` — código muerto detectado en
-   S24 (migrado con red por seguridad; ya se puede borrar; ojo a su test de caracterización en
-   `test_geometry.py`, que también saldría). Limpiar de paso los marcadores `[!] OPTIMIZACIÓN` que
-   quedan en `traffic/radar.py` (P7, zona a zona).
-2. **P4** — reducir la superficie cross-mixin de `base.py` (~40 métodos). Ya está anotado qué
-   submódulo de `traffic/` implementa cada uno (S27), que es el mapa previo para adelgazarlo.
-3. Cerrar W3: actualizar README/CLAUDE.md con la arquitectura final (paquete `traffic/`, rejilla del
-   radar) + revisión del diagnóstico. Con eso **Fase 6 queda lista salvo W4** (LFS, bloqueada).
-4. Backlog de **tipado gradual** (ir quitando overrides de `[tool.mypy]` en
-   pyproject, módulo a módulo, cuando se toque cada uno): los módulos
-   `packets` (dataclasses de protocolo), `insim_loader` (fricción con
-   `importlib`: `ModuleSpec | None` sin None-check + kwargs inyectados en
-   InSimApp — merece None-checks reales, no `type: ignore`), y
-   `insim_packet_decoders`/`utils` (2 errores puntuales cada uno). No urge;
-   mypy no bloquea.
-5. Idea DX de Fase 4 ya apuntada: el connect inicial fallido imprime un
-   traceback feo (`exc_info=True` + re-raise) — valorar mensaje limpio y/o
-   `connect_retry` para arrancar el insim antes que LFS. (La pista de ISI
-   rechazado ya está hecha; el fallback de cfg.txt está en PLAN § Ideas.)
-
-**B) Fase 7 — bugs de conducción freeroam (necesitan validación en LFS, mismo gate que W4):** los
-3 fixes pendientes con su diagnóstico en `PLAN.md § Fase 7`. Encajan con las sesiones de LFS de W4.
-**Red primero** (extraer un predicado puro por fix, como en el fix 2). Orden sugerido por impacto:
-(4) `is_closed` = inexistente (hueco claro en `overtake.py`, acotado), (1) flip de enlace en salidas
-juntas, (3) radar en transición road→roadlink. Ninguno toca la API pública.
+**Backlog offline (opcional, si no hay LFS a mano; no bloquea el merge):**
+1. **Desacople profundo de `base.py` (resto de P4):** reducir las 20 llamadas cross-mixin reales / romper
+   el "God object". Es refactor arquitectónico de riesgo y el orquestador `_update_traffic_behavior` **no
+   tiene red** → caracterizar antes de tocarlo. Ver DIAGNOSTICO § P4.
+2. **Tipado gradual** (quitar overrides de `[tool.mypy]` módulo a módulo al tocar cada uno): `packets`
+   (dataclasses de protocolo), `insim_loader` (fricción con `importlib`: `ModuleSpec | None` sin
+   None-check + kwargs inyectados en InSimApp — merece None-checks reales, no `type: ignore`),
+   `insim_packet_decoders`/`utils` (2 errores puntuales cada uno). No urge; mypy no bloquea.
+3. **Idea DX de Fase 4:** el connect inicial fallido imprime un traceback feo (`exc_info=True` +
+   re-raise) — valorar mensaje limpio y/o `connect_retry` para arrancar el insim antes que LFS. (La pista
+   de ISI rechazado ya está hecha; el fallback de cfg.txt está en PLAN § Ideas.)
+4. **Post-merge:** partir `map_ui.py` (3161) y `map_recorder.py` (2520) — resto de P3, con red primero
+   (PLAN § Ideas).
 
 ## Bloqueos / esperando
 

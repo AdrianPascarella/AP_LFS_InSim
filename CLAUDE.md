@@ -155,9 +155,11 @@ class MyInSim(InSimApp):
 For complex modules, use mixin composition (as done in `ai_control`): split concerns into `_CommandsMixin`, `_PhysicsMixin`, etc., each in its own file, and combine them in the main class via MRO — `InSimApp` appears last so mixins get `self.send_*` via inheritance:
 
 ```python
-class AIControl(_CommandsMixin, _PhysicsMixin, _NavigationMixin, _TrafficMixin, InSimApp):
+class AIControl(_MapUIMixin, _CommandsMixin, _PhysicsMixin, _NavigationMixin, _TrafficMixin, InSimApp):
     pass
 ```
+
+`_TrafficMixin` is itself a facade composing the submixins of the `traffic/` package (radar, orchestrator, overtake, cruise_control, zones, paths), so the traffic logic is split by responsibility without changing the public composition. All mixins share `base.py::_MixinBase`, a `TYPE_CHECKING`-only contract declaring the shared attributes and the genuinely cross-mixin methods (those a mixin calls on `self` but that are implemented in another mixin).
 
 ### Commands (in-game)
 
@@ -228,3 +230,5 @@ To suppress noisy send-logs for a specific packet type: `mute_send_logs('ISP_AIC
 - **`FreeroamMode`** (`nav_modes/freeroam/`) — topology-based FSM; state machine drives AI through a road graph of `RoadLink` / `LateralLink` / `Road` nodes; overtake FSM tracked in `overtake_state`
 
 The road graph lives in `nav_modes/freeroam/graph.py`. `RoadLink` connects two roads; `LateralLink` connects two parallel lanes (used for lane changes and overtakes).
+
+Traffic behavior (car-following, adaptive cruise control, overtaking, intersection yielding) lives in the `traffic/` package, run per-AI per-MCI by `orchestrator.py::_update_traffic_behavior`, which drives the overtake FSM (`overtake_state`: IDLE → EVALUATING → OVERTAKING → RETURNING). The radar (`traffic/radar.py`) finds nearby vehicles through a dynamic spatial grid (`SpatialHashGrid`, rebuilt once per MCI) so each scan is O(neighborhood) rather than O(N) across all cars — see `docs/dev/AUDITORIA_HOTLOOP.md`.

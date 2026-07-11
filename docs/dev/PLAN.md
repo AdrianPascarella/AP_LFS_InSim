@@ -440,7 +440,13 @@ valida en LFS. **Estado:** cumplido salvo la validación en LFS del ceda-el-paso
       `AIControl` los resuelve a la misma función y que su superficie sigue teniendo los mismos
       182 atributos. Suite 680; ruff limpio.
 - [ ] ~~Dividir `map_ui.py` / `map_recorder.py`~~ → **aplazado a post-merge** (ver recorte arriba)
-- [ ] Reducir superficie cross-mixin de `base.py` (**P4**)
+- [x] Reducir superficie cross-mixin de `base.py` (**P4**) — **S31**: auditado el grafo de
+      llamadas real, el contrato `_MixinBase` se recorta de 32 firmas a las **20** genuinamente
+      cross-mixin (fuera las **12 self-local**, que solo se llaman dentro de su propio mixin),
+      cada una anotada con quién la llama; imports `Coordinates`/`PIDController` huérfanos fuera.
+      Es **honestidad del contrato** (hints `TYPE_CHECKING`, cero runtime). El **desacople
+      profundo** (reducir esas 20 llamadas / romper el "God object") queda **pendiente**: es
+      arquitectónico y el orquestador `_update_traffic_behavior` no tiene red (ver DIAGNOSTICO § P4).
 - [x] Limpiar nombres del modelo de estado (`behavior.py`, **P7**) — **S27**: el par "intención vs
       valor en uso" pasa al patrón **petición → resuelto**: `speed_request`/`speed_resolved_kmh` y
       `point_request`/`point_resolved` (93 sustituciones en 9 ficheros, por palabra completa).
@@ -456,11 +462,19 @@ valida en LFS. **Estado:** cumplido salvo la validación en LFS del ceda-el-paso
       ids_within` (consulta de región). **Red de equivalencia** (fuzz grid vs. barrido lineal, 40
       semillas × 3 barridos, IAs+humanos, bit-idéntico) + 7 unitarios del grid. Benchmark
       **O(N²)→~O(N)** (2,5×@24, 5,2×@64; celda 50 m). Suite 691; ruff limpio.
-- [ ] Revisar el FSM de adelantamiento (`overtake_state`, en `traffic/overtake.py`) y **eliminar
+- [x] Revisar el FSM de adelantamiento (`overtake_state`, en `traffic/overtake.py`) y **eliminar
       `is_target_ahead_and_in_lane`** de `nav_modes/freeroam/geometry.py` (código muerto, S24; con su
       test de `test_geometry.py`). Limpiar los marcadores `[!] OPTIMIZACIÓN` que queden en `radar.py`.
-- [ ] Actualizar README/CLAUDE.md con la arquitectura final (paquete `traffic/`, rejilla del radar);
-      revisión final del diagnóstico
+      — **S31:** FSM revisado (IDLE→EVALUATING→OVERTAKING→RETURNING con cooldowns; estructura sólida).
+      Borrada la función muerta + sus 5 tests (704→699). Los 4 marcadores `[!] OPTIMIZACIÓN` de
+      `radar.py` → comentarios normales. De paso, quitado el parámetro `name` muerto de `_finish_overtake`
+      (y el alias `_n = ai.ai_name` que solo lo alimentaba, resto de una eliminación de logs previa).
+      Solo estructura/comentarios; suite verde, ruff limpio.
+- [x] Actualizar README/CLAUDE.md con la arquitectura final (paquete `traffic/`, rejilla del radar);
+      revisión final del diagnóstico — **S31:** CLAUDE.md actualizado (composición real con `_MapUIMixin`,
+      fachada `_TrafficMixin` sobre el paquete `traffic/`, contrato `_MixinBase`, FSM de adelantamiento y
+      rejilla del radar); diagnóstico P4 revisado. El README ya delega la arquitectura a `docs/guia/`
+      (su fila de `ai_control` es correcta a alto nivel) → sin cambios.
 
 **Criterio de aceptación:** API pública limpia y estable (W1/W5); `init --full/--minimal`
 funcionando (W2); `traffic/` partido, `base.py` adelgazado, nombres de estado claros y radar con
