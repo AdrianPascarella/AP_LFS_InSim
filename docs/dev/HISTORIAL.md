@@ -5,6 +5,63 @@
 
 ---
 
+## S30 — 2026-07-11 — Retoque de UI de `ai_control` (whereami → overlay fijo) + validación en LFS del fix 2 de S29
+
+**Arranque:** protocolo de inicio. Ya en `refactor/estabilizacion` y en sync con `origin` (tip S29,
+`bfea66e`), no hizo falta pull. **Árbol limpio, sin mapas que proteger** (§1.2). El usuario abrió la
+sesión confirmando que **el fix de la última sesión funciona correctamente** → el **watchdog de fin de
+vía → espectadores (fix 2 de S29) queda VALIDADO en LFS**. Pidió **no continuar el trabajo de
+refactor** y hacer en su lugar un **retoque de UI** de `ai_control`.
+
+**Petición del usuario:** en la pestaña **Info** hay toggles para mostrar el whereami (WA Road, WA
+RLink, WA LLink, WA Zone, WA Regla). Los quería convertir en algo **fijo anclado a la mitad-derecha de
+la pantalla**, que **siga apareciendo al cambiar de pestaña y aunque se cierre el menú**, y que la
+**única forma de quitarlo sea deseleccionándolo** en el menú.
+
+**Qué se hizo — overlay whereami "pineado" (CON RED PRIMERO):**
+
+1. **Antes:** el whereami se dibujaba como panel dentro del contenido de la pestaña Info (`_WA_CID_BASE
+   = 153`, CIDs 153-157), **dentro del rango de contenido** (108-165) que `_map_ui_clear_content` borra
+   en cada redibujado → desaparecía al cambiar de pestaña y al cerrar el menú; y solo se refrescaba con
+   `_ui_tab == "info"`.
+
+2. **Ahora:** overlay fijo con **CIDs propios 166-171** (título "Ubicación" + 1 fila por tipo activo),
+   **fuera del rango de contenido** → sobrevive a los redibujados de pestaña. Anclado a la
+   mitad-derecha (`_WA_PIN_L=150`, `_WA_PIN_W=48`; centrado vertical en `_map_ui_pinned_whereami_top`,
+   T≈100). Métodos nuevos: `_map_ui_redraw_pinned_whereami` (geometría completa, en cada toggle / cierre
+   / reconexión), `_map_ui_refresh_pinned_whereami` (solo texto, en `on_tick`), `_map_ui_clear_pinned_
+   whereami`, `_map_ui_active_whereami`. Se borró el viejo `_map_ui_draw_whereami_panels` y la constante
+   `_WA_CID_BASE`.
+
+3. **Persistencia:** estado nuevo **`_ui_whereami_ucid`** (dueño del overlay, independiente del
+   `_ui_ucid` del menú). `_init_ui_state` **ya no resetea** el whereami (guard `hasattr` → se inicializa
+   una sola vez) → persiste al reabrir el menú. `_map_ui_close` **redibuja** el overlay tras el
+   `BFN.CLEAR`. `_map_ui_compute_whereami` usa `_ui_whereami_ucid` (no `_ui_ucid`, que es `None` con el
+   menú cerrado). `on_tick` refresca el overlay **al margen del menú** (se reestructuró: el bloque del
+   overlay corre siempre; el resto sigue exigiendo menú abierto). `on_reconnect` (app.py) lo redibuja
+   (P12: LFS pierde los botones al caer la conexión). El toggle en `_map_ui_click_info` (CIDs 113-117)
+   fija/suelta `_ui_whereami_ucid` y dibuja/borra el overlay; al quitar el último tipo se limpia.
+
+4. **Red primero (MODUS §3):** `tests/insims/ai_control/test_map_ui_whereami.py` (**7 tests**) sobre la
+   `AIControl` real del harness (client que captura los envíos): dibujo a la derecha con CIDs >165,
+   persistencia entre pestañas (el DEL_BTN de contenido no abarca 166+), supervivencia al cierre
+   (redibujado tras `BFN.CLEAR`), borrado al deseleccionar el último, refresco con el menú cerrado
+   (solo texto, W=0/H=0), y que `compute` usa el UCID del overlay (nunca `None`) y persiste al reabrir.
+
+**Decisiones de diseño:** (a) rango de CIDs 166-171, el primero libre por encima del techo de contenido
+(165) y muy por debajo del límite de LFS; (b) el overlay es **single-user** como todo el resto de la UI
+(`_ui_ucid` es un único campo) — no se aborda multi-usuario; (c) **UX conocida**: con el menú abierto en
+Info y paneles desplegados, el overlay puede solaparse con la esquina inferior-derecha del menú (ambos
+~L150+); con el menú cerrado —el caso de uso principal— queda limpio. Posición/tamaño en constantes por
+si el usuario quiere afinar.
+
+**Verificación:** suite **704/704** (697 + 7); `ruff check` + `format --check` limpios en lo tocado;
+`lfs-insim list` OK. Solo lógica de UI del insim de ejemplo → **no toca la API pública**. **✅ VALIDADO
+en LFS por el usuario: "funciona a la perfección".** **Commit:** el de cierre de S30 (código + tests +
+docs).
+
+---
+
 ## S29 — 2026-07-11 — Fase 7 (NUEVA): bugs de conducción freeroam + fix 2 (fin de vía → espectadores)
 
 **Arranque:** protocolo de inicio. Ya en `refactor/estabilizacion` y en sync con `origin` (tip S28,

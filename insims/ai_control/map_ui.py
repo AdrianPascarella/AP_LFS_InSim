@@ -106,6 +106,16 @@ class _MapUIMixin(_MixinBase):
     _UI_CID_TI3 = 132  # TypeIn terciario
     _UI_CID_LBL_CONF = 133  # Label de confirmación
 
+    # Overlay whereami "pineado" — CIDs FUERA del rango de contenido (108-165)
+    # para sobrevivir a cambios de pestaña y al cierre del menú. Anclado a la
+    # mitad-derecha de la pantalla; solo se quita deseleccionándolo en Info.
+    _WA_PIN_CID_TITLE = 166
+    _WA_PIN_CID_BASE = 167  # una fila por tipo activo (167..171, orden de _WA_TYPES)
+    _WA_PIN_L = 150
+    _WA_PIN_W = 48
+    _WA_PIN_H = 7
+    _WA_PIN_ROW_STEP = 8
+
     # ──────────────────────────────────────────────────────────────────────────
     # Estado
     # ──────────────────────────────────────────────────────────────────────────
@@ -129,9 +139,15 @@ class _MapUIMixin(_MixinBase):
         self._ui_roads_filter: str = "all"  # "all" | "open" | "closed"
         self._ui_roads_page: int = 0
         self._ui_roads_search: str = ""
-        self._ui_whereami: set = set()
-        self._ui_whereami_interval: float = 0.5
-        self._ui_whereami_last_update: float = 0.0
+        # Overlay whereami "pineado": vive FUERA de la sesión de menú. Persiste al
+        # cambiar de pestaña y al cerrar/reabrir el menú; solo se quita
+        # deseleccionándolo en Info. Por eso NO se resetea en cada apertura del
+        # menú: se inicializa una única vez (al construir el módulo).
+        if not hasattr(self, "_ui_whereami"):
+            self._ui_whereami: set = set()
+            self._ui_whereami_ucid: Optional[int] = None
+            self._ui_whereami_interval: float = 0.5
+            self._ui_whereami_last_update: float = 0.0
         self._ui_road_picker_page: int = 0
         self._ui_road_picker_slot: str = "a"  # "a" | "b"
         self._ui_grabar_player_page: int = 0
@@ -1073,7 +1089,6 @@ class _MapUIMixin(_MixinBase):
 
     _CHECK_ITEMS_PER_PAGE = 4
     _WA_TYPES = ["road", "roadlink", "latlink", "zone", "rule"]
-    _WA_CID_BASE = 153
 
     def _map_ui_draw_tab_info(self):
         u = self._ui_ucid
@@ -1193,7 +1208,8 @@ class _MapUIMixin(_MixinBase):
             self._map_ui_draw_roads_panel(T)
             T += 9 + 9 + self._ROADS_ITEMS_PER_PAGE * 8 + 6
 
-        self._map_ui_draw_whereami_panels(T)
+        # El whereami ya NO se dibuja aquí: es un overlay "pineado" independiente
+        # del menú (mitad-derecha), gestionado por _map_ui_redraw_pinned_whereami.
 
     def _map_ui_draw_check_panel(self, T: int):
         u = self._ui_ucid
@@ -1536,31 +1552,94 @@ class _MapUIMixin(_MixinBase):
             Text=">",
         )
 
-    def _map_ui_draw_whereami_panels(self, T: int) -> int:
-        u = self._ui_ucid
-        for i, wa_type in enumerate(self._WA_TYPES):
-            if wa_type not in self._ui_whereami:
-                continue
-            result = self._map_ui_compute_whereami(wa_type)
+    # ──────────────────────────────────────────────────────────────────────────
+    # Overlay whereami "pineado" (mitad-derecha, independiente del menú)
+    # ──────────────────────────────────────────────────────────────────────────
+
+    def _map_ui_active_whereami(self) -> list[tuple[int, str]]:
+        """(índice en _WA_TYPES, tipo) de los whereami activos, en orden fijo."""
+        return [(i, t) for i, t in enumerate(self._WA_TYPES) if t in self._ui_whereami]
+
+    def _map_ui_pinned_whereami_top(self, n_rows: int) -> int:
+        """T de la primera fila para centrar verticalmente el overlay (título + filas)."""
+        total = (n_rows + 1) * self._WA_PIN_ROW_STEP
+        return max(20, 100 - total // 2)
+
+    def _map_ui_clear_pinned_whereami(self):
+        """Borra los botones del overlay (título + todas las filas posibles)."""
+        u = self._ui_whereami_ucid
+        if u is None:
+            return
+        self.send_ISP_BFN(
+            SubT=BFN.DEL_BTN,
+            UCID=u,
+            ClickID=self._WA_PIN_CID_TITLE,
+            ClickMax=self._WA_PIN_CID_BASE + len(self._WA_TYPES) - 1,
+        )
+
+    def _map_ui_redraw_pinned_whereami(self):
+        """Redibuja (geometría completa) el overlay whereami anclado a la mitad-derecha.
+
+        Se llama al conmutar una selección, al cerrar el menú (BFN.CLEAR lo borra) y
+        al reconectar (LFS pierde los botones). Es no-op si no hay nada seleccionado.
+        """
+        u = self._ui_whereami_ucid
+        if u is None:
+            return
+        self._map_ui_clear_pinned_whereami()
+        active = self._map_ui_active_whereami()
+        if not active:
+            return
+        top = self._map_ui_pinned_whereami_top(len(active))
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=self._WA_PIN_CID_TITLE,
+            BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED,
+            L=self._WA_PIN_L,
+            T=top,
+            W=self._WA_PIN_W,
+            H=self._WA_PIN_H,
+            Text=f"{c.YELLOW}Ubicación",
+        )
+        t = top + self._WA_PIN_ROW_STEP
+        for idx, wa_type in active:
             self.send_ISP_BTN(
                 ReqI=1,
                 UCID=u,
-                ClickID=self._WA_CID_BASE + i,
+                ClickID=self._WA_PIN_CID_BASE + idx,
                 BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
-                L=2,
-                T=T,
-                W=180,
-                H=7,
-                Text=result,
+                L=self._WA_PIN_L,
+                T=t,
+                W=self._WA_PIN_W,
+                H=self._WA_PIN_H,
+                Text=self._map_ui_compute_whereami(wa_type),
             )
-            T += 8
-        return T
+            t += self._WA_PIN_ROW_STEP
+
+    def _map_ui_refresh_pinned_whereami(self):
+        """Actualiza solo el TEXTO de las filas activas (sin recolocar botones)."""
+        u = self._ui_whereami_ucid
+        if u is None:
+            return
+        for idx, wa_type in self._map_ui_active_whereami():
+            self.send_ISP_BTN(
+                ReqI=1,
+                UCID=u,
+                ClickID=self._WA_PIN_CID_BASE + idx,
+                BStyle=0,
+                L=0,
+                T=0,
+                W=0,
+                H=0,
+                Text=self._map_ui_compute_whereami(wa_type),
+            )
 
     def _map_ui_compute_whereami(self, target: str) -> str:
         mr = self.map_recorder
         if not mr.active_map_name:
             return "Sin mapa activo"
-        coords = mr.get_coords_fn(self._ui_ucid)
+        coords = mr.get_coords_fn(self._ui_whereami_ucid)
         if not coords:
             return "Sin telemetria"
         px, py, pz = coords.x_m, coords.y_m, coords.z_m
@@ -2055,27 +2134,19 @@ class _MapUIMixin(_MixinBase):
 
     def on_tick(self):
         super().on_tick()
-        if getattr(self, "_ui_ucid", None) is None:
-            return
         now = time.time()
-        if self._ui_tab == "info" and self._ui_whereami:
+        # Overlay whereami: se refresca aunque el menú esté cerrado (persiste hasta
+        # que se deselecciona en Info). Es lo único de la UI que vive fuera de la
+        # sesión de menú.
+        if getattr(self, "_ui_whereami_ucid", None) is not None and self._ui_whereami:
             if now - self._ui_whereami_last_update >= self._ui_whereami_interval:
                 self._ui_whereami_last_update = now
-                for i, wa_type in enumerate(self._WA_TYPES):
-                    if wa_type in self._ui_whereami:
-                        result = self._map_ui_compute_whereami(wa_type)
-                        self.send_ISP_BTN(
-                            ReqI=1,
-                            UCID=self._ui_ucid,
-                            ClickID=self._WA_CID_BASE + i,
-                            BStyle=0,
-                            L=0,
-                            T=0,
-                            W=0,
-                            H=0,
-                            Text=result,
-                        )
-        elif self._ui_tab == "debug" and self._ui_debug_plid is not None:
+                self._map_ui_refresh_pinned_whereami()
+
+        # El resto del refresco requiere el menú abierto.
+        if getattr(self, "_ui_ucid", None) is None:
+            return
+        if self._ui_tab == "debug" and self._ui_debug_plid is not None:
             if now - self._ui_debug_last_update >= self._ui_debug_interval:
                 self._ui_debug_last_update = now
                 self._map_ui_refresh_debug_detail()
@@ -2574,7 +2645,15 @@ class _MapUIMixin(_MixinBase):
                 self._ui_whereami.discard(wa_type)
             else:
                 self._ui_whereami.add(wa_type)
-            self._map_ui_redraw_content()
+                self._ui_whereami_ucid = self._ui_ucid
+            if self._ui_whereami:
+                self._map_ui_redraw_pinned_whereami()
+                self._ui_whereami_last_update = 0.0  # fuerza refresco inmediato
+            else:
+                # Última selección quitada → borra el overlay y suelta el UCID.
+                self._map_ui_clear_pinned_whereami()
+                self._ui_whereami_ucid = None
+            self._map_ui_redraw_content()  # refresca el resaltado de los botones WA
 
     # ──────────────────────────────────────────────────────────────────────────
     # Tab: Debug
@@ -3159,3 +3238,7 @@ class _MapUIMixin(_MixinBase):
         self._ui_ucid = None
         self._ui_pending_action = None
         self._ui_input_buffer = {}
+        # El overlay whereami sobrevive al cierre del menú (solo se quita
+        # deseleccionándolo). BFN.CLEAR acaba de borrarlo → lo redibujamos.
+        if self._ui_whereami:
+            self._map_ui_redraw_pinned_whereami()

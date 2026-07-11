@@ -1,26 +1,50 @@
 # 📍 Estado actual
 
-> Actualizado: **2026-07-11** — S29: **Fase 7 (NUEVA) — bugs de conducción freeroam.** El usuario,
-> conduciendo en LFS, reportó 4 bugs del modo Freeroam. **Resuelto en el acto el fix 2** (fin de vía
-> sin salida → espectadores): watchdog en `navigation.py` con predicado puro `_is_dead_end_stop`
-> (parada real <2 km/h, sin `next_link`, no circular, sin adelantar — distingue el callejón de la
-> parada de tráfico legítima, que SÍ conserva su `next_link`) + temporizador `mode._dead_end_since`
-> (4 s → `_cmd_spec`); centralizado el spec (quitado el inline duplicado). Red primero:
-> `TestIsDeadEndStop` (6 tests). Suite **697** (691+6); ruff limpio. **Pendiente validación en LFS.**
-> Los otros 3 fixes (flip de enlace en salidas juntas, radar que olvida coches en road→roadlink, road
-> cerrado = inexistente en todo caso) quedan aparcados en la **nueva Fase 7** con su diagnóstico
-> preciso. **Próximo: cerrar W3** (FSM de adelantamiento + borrar `is_target_ahead_and_in_lane` + P4 +
-> docs) **y/o abordar Fase 7** (necesita validación en LFS, mismo gate que W4). Al arrancar: South City
-> con 2 roads abiertos (`is_closed:true→false`) sin commitear → protegido (respaldo + commit `dcca07a`
-> + push) ANTES de tocar nada.
+> Actualizado: **2026-07-11** — S30: **retoque de UI de `ai_control` (fuera del plan) + validación en
+> LFS del fix 2 de S29.** El usuario confirmó que el **watchdog de fin de vía → espectadores** (S29)
+> **funciona en LFS** → **fix 2 VALIDADO** (queda por validar solo la conducta de los 3 bugs de la
+> Fase 7, aún sin abordar). Petición de la sesión: el **whereami** de la pestaña Info (WA
+> Road/RLink/LLink/Zone/Regla) pasa de panel dentro del menú a **overlay fijo anclado a la
+> mitad-derecha** que persiste al cambiar de pestaña y con el menú cerrado, y solo se quita
+> deseleccionándolo. Hecho, con red (7 tests) y **validado en LFS por el usuario** ("funciona a la
+> perfección"). Suite **704** (697+7); ruff limpio; `lfs-insim list` OK. **Próximo: cerrar W3** (FSM de
+> adelantamiento + borrar `is_target_ahead_and_in_lane` + P4 + docs) **y/o abordar Fase 7** (3 bugs de
+> conducción freeroam, requieren LFS — mismo gate que W4). Arranque limpio y en sync con `origin` (tip
+> S29, sin mapas que proteger); árbol limpio tras el commit de cierre de S30.
 > **Rama de trabajo: `refactor/estabilizacion`.** Todo el refactor ocurre aquí; `main`
 > queda intacta hasta el merge final (cuando el proyecto esté estable). **Sync por GitHub:**
 > `git pull` al arrancar y `git push` al cerrar (permite continuar desde otro dispositivo).
 
 ## Estado
 
+**S30 (2026-07-11) — retoque de UI de `ai_control` (whereami → overlay fijo; fuera del plan) +
+validación en LFS del fix 2 de S29.** Sesión corta a petición del usuario, **sin continuar el trabajo
+de refactor**. (1) **Fix 2 de S29 VALIDADO en LFS:** el usuario confirmó de entrada que el watchdog de
+fin de vía → espectadores "funciona correctamente" → ya no está pendiente de validación (la Fase 7
+sigue sin abordar y sus 3 bugs sí requieren LFS). (2) **Overlay whereami pineado:** el whereami de la
+pestaña **Info** (WA Road/RLink/LLink/Zone/Regla) era un panel dentro del menú (CIDs 153-157, en el
+rango de contenido que se limpia en cada redibujado) → ahora es un **overlay fijo anclado a la
+mitad-derecha** de la pantalla que **persiste al cambiar de pestaña y con el menú cerrado**, y **solo
+se quita deseleccionándolo** en Info (al quitar el último se borra). **Cómo:** CIDs propios
+**166-171** (título "Ubicación" + 1 fila por tipo activo) **fuera del rango de contenido** (108-165);
+estado nuevo **`_ui_whereami_ucid`** (dueño del overlay, independiente del `_ui_ucid` del menú, que
+pasa a `None` al cerrar); el whereami **ya no se resetea al reabrir** el menú (`_init_ui_state` lo
+inicializa una sola vez, con guard `hasattr`); `_map_ui_close` **redibuja** el overlay tras el
+`BFN.CLEAR`; `_map_ui_compute_whereami` usa **el UCID del overlay** (no el del menú); `on_tick`
+refresca (solo texto) **aunque el menú esté cerrado**; y `on_reconnect` (app.py) lo **redibuja** (P12:
+LFS pierde los botones al caer la conexión). Posición/tamaño en constantes ajustables (`_WA_PIN_L=150`,
+`_WA_PIN_W=48`, `_WA_PIN_ROW_STEP=8`; centrado vertical en `_map_ui_pinned_whereami_top`, T≈100).
+**Red primero (MODUS §3):** `test_map_ui_whereami.py` (**7 tests** sobre la `AIControl` del harness que
+captura envíos: dibujo a la derecha con CIDs >165, persistencia entre pestañas/cierre/reapertura,
+borrado al deseleccionar, refresco con menú cerrado, UCID correcto). Suite **704/704** (697+7); `ruff
+check`+`format` limpios; `lfs-insim list` OK. **Validado en LFS por el usuario** ("funciona a la
+perfección"). Solo lógica de UI del insim de ejemplo → **no toca la API pública** del framework.
+**Nota de UX conocida:** con el menú abierto en Info y paneles desplegados, el overlay puede solaparse
+con la esquina inferior-derecha del menú (ambos ~L150+); con el menú cerrado —el caso principal— queda
+limpio. **Commit:** el de cierre de S30.
+
 **S29 (2026-07-11) — Fase 7 (NUEVA): bugs de conducción freeroam + fix 2 (fin de vía → espectadores;
-implementado y verificado, PENDIENTE validación en LFS).** El usuario, conduciendo en LFS, reportó 4
+implementado y verificado, ✅ VALIDADO en LFS en S30).** El usuario, conduciendo en LFS, reportó 4
 bugs del modo Freeroam de `ai_control` y pidió resolver **uno ahora** y aparcar el resto en el plan
 (delegando el cuándo). **Fix 2 (hecho):** una IA que llegaba a un fin de vía sin `next_link` se
 quedaba clavada a 0 km/h para siempre — el anti-stuck de `_update_freeroam_navigation` trata

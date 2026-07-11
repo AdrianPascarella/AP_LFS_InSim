@@ -315,6 +315,13 @@ dispara en/tras el merge a `main`.
       sondeo + llenado columna-a-columna forzado) y paleta de roads sin colisión con los colores
       semánticos (rojo/gris/cian). Renders de south_city/south_drift_1 regenerados y validados
       visualmente. Tooling offline, sin LFS. Commits `5dd0740`, `9a9f4eb`.
+- [x] (extra S30, no planeado) UI de `ai_control` (`map_ui.py`): el **whereami** de la pestaña Info
+      (WA Road/RLink/LLink/Zone/Regla) pasa de panel dentro del menú a **overlay fijo anclado a la
+      mitad-derecha** que persiste al cambiar de pestaña y con el menú cerrado; solo se quita
+      deseleccionándolo. CIDs propios 166-171 (fuera del rango de contenido 108-165); estado
+      `_ui_whereami_ucid` independiente del menú; `_map_ui_close`/`on_reconnect` lo redibujan;
+      `on_tick` lo refresca al margen del menú. Red: `test_map_ui_whereami.py` (7 tests). Suite
+      704/704; ruff limpio. ✅ validado en LFS por el usuario. Commit de cierre de S30.
 - [x] Auditar el hot-loop `on_ISP_MCI` (coste por tick, frecuencia real) — con el dispatch
       ya fuera del hilo IO (Fase 3) — S22: informe en `docs/dev/AUDITORIA_HOTLOOP.md` con
       mediciones reales. **Veredicto: el loop está SANO** (radar auto-regulado a ~7–10 Hz/IA
@@ -484,7 +491,7 @@ orquestadores con `time.time()` siguen sin red → cubrir antes de tocarlos).
       temporizador `mode._dead_end_since`; si sigue así `DEAD_END_TIMEOUT_S` (4 s) → `_cmd_spec`. Se
       centralizó el spec en el watchdog (quitado el inline duplicado que enviaba un MSL de error al
       re-spec). Red primero: `TestIsDeadEndStop` (6 tests) en `test_navigation.py`. Suite 697; ruff
-      limpio. **Pendiente validación en LFS.**
+      limpio. **✅ VALIDADO en LFS por el usuario (S30): "funciona correctamente".**
 - [ ] **(1) Flip de enlace en salidas muy juntas (intermitente se sobreescribe).** Reportado: yendo
       por `SOUTH_CITY_STATION_s2` con intención de tomar `HAVEN_LINE_S22_b` (lo marca el intermitente),
       en el último momento cambia a `HAVEN_LINE_S22_a` (se ve el intermitente cambiar). **Asimétrico:**

@@ -103,6 +103,10 @@ class AIControl(
         self._target_lane_human_cache.clear()
         self._vehicle_grid = None
         self._vehicle_index = {}
+        # El overlay whereami "pineado" sobrevive a la reconexión: LFS borró sus
+        # botones al caer la conexión, así que los redibujamos si seguía activo
+        # (no-op si no había nada seleccionado).
+        self._map_ui_redraw_pinned_whereami()
 
     def on_ISP_MSO(self, packet: ISP_MSO):
         """Filtra y redirige comandos de chat a los managers correspondientes."""
