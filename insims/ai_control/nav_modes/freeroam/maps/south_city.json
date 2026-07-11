@@ -5846,7 +5846,7 @@
                 }
             ],
             "is_circular": false,
-            "is_closed": true,
+            "is_closed": false,
             "speed_limit_kmh": 30.0,
             "traffic_rule": 1
         },
@@ -43969,7 +43969,7 @@
                 }
             ],
             "is_circular": false,
-            "is_closed": true,
+            "is_closed": false,
             "speed_limit_kmh": 30.0,
             "traffic_rule": 1
         },
