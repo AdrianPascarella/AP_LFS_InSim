@@ -56,7 +56,47 @@ ACC, bloqueada por `zones: 0`).
 **Verificación:** suite **699/699** (704 − 5 del código muerto); `ruff check` + `format --check` limpios
 (103 ficheros); `lfs-insim list` OK; diff = 54 inserciones / 203 borrados (mayoría: código muerto +
 contrato). Solo estructura/comentarios/docs del insim de ejemplo → **no toca la API pública ni requiere
-validación en LFS**. **Commit:** el de cierre de S31.
+validación en LFS**. **Commits:** `5bf394f` (código) + `788a791` (docs), pusheados; CI verde (incl. 3.9).
+
+### Parte 2 — Herramienta "Apunta" en la UI de mapeo (2ª petición del usuario, no planeada)
+
+**Petición:** una herramienta nueva en la pestaña **Info**, fija como los WA, que indique la **vía más
+cercana a la que apunta la punta del coche** (distinta de la actual) y **a qué distancia** — muy útil para
+mapear. Además, dejar marcado en el plan que lo próximo son los 3 fixes de la Fase 7 (que el usuario deberá
+confirmar OBLIGATORIAMENTE en LFS).
+
+**Diseño:** se integra como **6º tipo del overlay whereami** (`ahead`) en lugar de un overlay nuevo → reusa
+toda la infra pineada de S30 (persiste entre pestañas, refresca en `on_tick`, se redibuja en reconexión, se
+quita deseleccionando). Más DRY y consistente con lo pedido ("igual que los WA").
+
+**Qué se hizo (red primero, MODUS §3):**
+
+1. **Geometría pura `find_road_pointed_at`** (`nav_modes/freeroam/geometry.py`): **ray-cast 2D** desde la
+   posición del coche en la dirección del morro; devuelve `(road_id, distancia)` del road cuyo segmento
+   cruza el rayo MÁS CERCA, dentro de `max_dist`, excluyendo el road actual; `(None, inf)` si no toca nada.
+   Test rayo-segmento estándar (u∈[0,1], t≥0, mínimo). **9 tests** (acierto directo, detrás, más-cercano de
+   dos, exclusión de la actual, más allá de max_dist, road paralelo, vector nulo, rumbo diagonal, fuera de
+   segmento), verdes ANTES de integrar.
+2. **Rumbo del morro:** helper `_map_ui_forward_vector(ucid)` que saca el heading del coche
+   (`player.telemetry.heading.angle_lfs`) y lo pasa a vector `(-sin, cos)` con la **misma fórmula que el
+   orquestador de IA** → coherente con cómo el módulo entiende "hacia delante". Funciona parado (usa rumbo,
+   no velocidad).
+3. **Integración en `map_ui.py`:** nuevo tipo `"ahead"` en `_WA_TYPES`; toggle **"Apunta"** en Info (la fila
+   pasa de 5 a 6 botones, ancho 30→26 para caber junto al TypeIn de intervalo); rama `"ahead"` en
+   `_map_ui_compute_whereami` que excluye la vía actual (la más cercana a la posición, vía
+   `get_closest_geometry`) y formatea `Apunta: <road> | <dist>m`; click handler extendido a CID 118;
+   constante ajustable `_AHEAD_MAX_DIST_M = 300.0`.
+4. **Red de integración:** +2 tests en `test_map_ui_whereami.py` (el toggle CID 118 activa el tipo `ahead` y
+   dibuja su fila; el compute end-to-end, con telemetría+roads sintéticos del harness, reporta la vía
+   apuntada y su distancia excluyendo la actual).
+
+**Plan:** marcada la **Fase 7 como PRÓXIMO** en `PLAN.md` (implementar los 3 fixes offline con red primero;
+el usuario los **confirma OBLIGATORIAMENTE en LFS** después) + la herramienta Apunta registrada como extra
+S31 en Fase 5.
+
+**Verificación:** suite **710/710** (699 + 9 + 2); `ruff check` + `format --check` limpios (103 ficheros);
+`lfs-insim list` OK. Solo lógica de UI del insim de ejemplo → **no toca la API pública**; como es
+UI/conducta, **requiere validación en LFS** (se acumula con W4). **Commit:** el de la herramienta Apunta (S31).
 
 ---
 

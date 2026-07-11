@@ -11,9 +11,13 @@
 > radar; DIAGNOSTICO § P4). **Con esto W3 queda CERRADO** y **Fase 6 (pre-publish) completa salvo W4**
 > (validación en LFS del ceda-el-paso del ACC, bloqueada por `zones: 0`). Suite **699** (704−5 del código
 > muerto); ruff limpio; `lfs-insim list` OK. Solo estructura/comentarios/docs del insim de ejemplo → **no
-> toca la API pública ni requiere LFS**. **Próximo: Fase 7** (3 bugs de conducción freeroam, requieren LFS —
-> mismo gate que W4) o **W4** (ambos LFS). Arranque limpio y en sync con `origin` (tip S30, sin mapas que
-> proteger); árbol limpio tras el commit de cierre de S31.
+> toca la API pública ni requiere LFS**. **2ª petición de S31:** nueva herramienta **"Apunta"** en la
+> pestaña Info (overlay fijo, 6º tipo del whereami) que indica la **vía a la que apunta el morro del coche**
+> (distinta de la actual) y a qué distancia — para mapear; ray-cast puro `find_road_pointed_at` con red
+> (9 tests de geometría + 2 de integración), suite **710**; **pendiente de validar en LFS**. **Próximo:
+> implementar los 3 fixes de la Fase 7** (bugs de conducción freeroam; offline, red primero) → **el usuario
+> los confirma OBLIGATORIAMENTE en LFS** después (mismo gate que W4; junto con validar "Apunta"). Arranque
+> limpio y en sync con `origin` (tip S30); árbol limpio tras los commits de cierre de S31.
 > **Rama de trabajo: `refactor/estabilizacion`.** Todo el refactor ocurre aquí; `main`
 > queda intacta hasta el merge final (cuando el proyecto esté estable). **Sync por GitHub:**
 > `git pull` al arrancar y `git push` al cerrar (permite continuar desde otro dispositivo).
@@ -38,7 +42,24 @@ cruzadas siguen; el desacople profundo del "God object" es arquitectónico (orqu
 sobre `traffic/`, contrato `_MixinBase`, FSM, rejilla del radar) + DIAGNOSTICO § P4. **W3 CERRADO** (los
 splits de `map_ui`/`map_recorder` ya estaban aplazados a post-merge, S27) → **Fase 6 completa salvo W4**
 (LFS, bloqueada por `zones: 0`). Suite **699/699** (704−5); ruff limpio; `lfs-insim list` OK. **No toca la
-API pública.** Commit: el de cierre de S31.
+API pública.** Commits de W3: `5bf394f` (código) + `788a791` (docs), pusheados, CI verde.
+
+**S31 (2026-07-11) — Herramienta "Apunta" en la UI de mapeo (2ª petición, no planeada; requiere LFS
+para validar).** A petición del usuario, nueva utilidad en la pestaña **Info** de `ai_control` como **6º
+tipo del overlay whereami** (`ahead`, toggle "Apunta"): indica la **vía más cercana a la que apunta el
+morro del coche** —distinta de la que estás pisando— y **a qué distancia**, para ayudar a mapear.
+**Cómo:** geometría pura **`find_road_pointed_at`** (ray-cast 2D en `nav_modes/freeroam/geometry.py`) que
+lanza un rayo desde la posición en la dirección del morro y devuelve el road cuyo segmento cruza más cerca
+(excluyendo el actual = el más cercano a la posición) + su distancia; el rumbo del morro se saca del
+heading LFS con la MISMA fórmula que el orquestador de IA (`(-sin, cos)`). Reutiliza TODO el overlay
+pineado de S30 (persiste entre pestañas, refresca en `on_tick`, se redibuja en reconexión); toggle CID
+118, fila del overlay 172; la fila de toggles de Info pasa de 5 a 6 (ancho 30→26 para caber). **Red
+primero (MODUS §3):** `find_road_pointed_at` con 9 tests (acierto/detrás/más-cercano/exclusión/max-dist/
+paralelo/vector-nulo/diagonal/fuera-de-segmento) + 2 de integración en `test_map_ui_whereami.py` (toggle
+CID 118 → tipo `ahead`; compute end-to-end reporta la vía apuntada y su distancia, excluyendo la actual).
+Suite **710/710** (699 + 9 + 2); ruff limpio; `lfs-insim list` OK. Solo lógica de UI del insim de ejemplo
+→ **no toca la API pública**; como es conducta/UI, **requiere validación en LFS**. Commit: el de la
+herramienta Apunta (S31).
 
 **S30 (2026-07-11) — retoque de UI de `ai_control` (whereami → overlay fijo; fuera del plan) +
 validación en LFS del fix 2 de S29.** Sesión corta a petición del usuario, **sin continuar el trabajo
@@ -734,17 +755,22 @@ bit-idéntica) + red de equivalencia (fuzz grid vs. lineal) + `ids_within` en el
 (`_is_dead_end_stop` puro + `mode._dead_end_since`, 4 s → `_cmd_spec`); red `TestIsDeadEndStop` (6).
 Suite 697. **Pendiente validación en LFS.** Los otros 3 bugs de conducción → **Fase 7** (ver PLAN).
 
-**Empezar AQUÍ la próxima sesión — con W3 cerrado, solo queda trabajo LFS-gated:**
+**Empezar AQUÍ la próxima sesión — IMPLEMENTAR los 3 fixes de la Fase 7 (decidido con el usuario en S31):**
 
-**Frente principal (necesita LFS): Fase 7 + W4.** Con W3 cerrado, **Fase 6 (pre-publish) está completa
-salvo W4** y lo que queda de valor para el merge son conductas que hay que ver en el juego. En la próxima
-sesión de LFS:
+**Frente principal: implementar la Fase 7 (offline, red primero).** Con W3 cerrado, **Fase 6 (pre-publish)
+está completa salvo W4**; el usuario decidió que el siguiente trabajo son los **3 bugs de conducción
+freeroam** de `PLAN.md § Fase 7`. Se implementan **offline con red primero** (extraer un predicado puro por
+fix y probarlo antes de tocar el orquestador, como el fix 2 de S29). **Una vez hechos, el usuario los
+confirma OBLIGATORIAMENTE en LFS** (son conducta): sin esa validación no se dan por buenos. Orden sugerido
+por impacto: (4) `is_closed` = inexistente (hueco claro y acotado en `overtake.py`), (1) flip de enlace en
+salidas juntas, (3) radar en transición road→roadlink. Ninguno toca la API pública.
+
+**Pendiente de validar en LFS (se acumula para la próxima sesión de juego, mismo gate que W4):**
 - **W4** — crear una **intersección** (hoy `zones: 0` en todos los mapas) y validar el **ceda-el-paso del
   ACC** (S21) → desbloquea el gate del merge.
-- **Fase 7** — los 3 bugs de conducción freeroam con su diagnóstico en `PLAN.md § Fase 7`. **Red primero**
-  (extraer un predicado puro por fix, como el fix 2 de S29). Orden sugerido por impacto: (4) `is_closed` =
-  inexistente (hueco claro en `overtake.py`, acotado), (1) flip de enlace en salidas juntas, (3) radar en
-  transición road→roadlink. Ninguno toca la API pública.
+- **Herramienta "Apunta"** (S31) — comprobar al conducir que indica bien la vía a la que apunta el morro y
+  la distancia (mapeando). Si hay que afinar el alcance del rayo: `_AHEAD_MAX_DIST_M` (map_ui, 300 m).
+- **Los 3 fixes de la Fase 7** una vez implementados (ver arriba).
 
 **Backlog offline (opcional, si no hay LFS a mano; no bloquea el merge):**
 1. **Desacople profundo de `base.py` (resto de P4):** reducir las 20 llamadas cross-mixin reales / romper

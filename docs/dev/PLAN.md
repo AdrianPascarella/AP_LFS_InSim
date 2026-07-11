@@ -322,6 +322,13 @@ dispara en/tras el merge a `main`.
       `_ui_whereami_ucid` independiente del menú; `_map_ui_close`/`on_reconnect` lo redibujan;
       `on_tick` lo refresca al margen del menú. Red: `test_map_ui_whereami.py` (7 tests). Suite
       704/704; ruff limpio. ✅ validado en LFS por el usuario. Commit de cierre de S30.
+- [x] (extra S31, no planeado) Herramienta **"Apunta"** en la pestaña Info (`map_ui.py`): overlay fijo
+      (6º tipo del whereami, `ahead`) que indica la **vía más cercana a la que apunta el morro del coche**
+      (distinta de la actual) y a qué distancia — útil para mapear. Geometría pura `find_road_pointed_at`
+      (ray-cast 2D en `nav_modes/freeroam/geometry.py`; red de 9 tests) + rumbo del morro desde el heading
+      LFS (misma fórmula que el orquestador); excluye la vía actual (la más cercana a la posición). Toggle
+      CID 118, fila del overlay 172. Red: +2 tests de integración en `test_map_ui_whereami.py`. Suite 710;
+      ruff limpio. **Pendiente validación en LFS.** Commit de cierre de S31.
 - [x] Auditar el hot-loop `on_ISP_MCI` (coste por tick, frecuencia real) — con el dispatch
       ya fuera del hilo IO (Fase 3) — S22: informe en `docs/dev/AUDITORIA_HOTLOOP.md` con
       mediciones reales. **Veredicto: el loop está SANO** (radar auto-regulado a ~7–10 Hz/IA
@@ -484,8 +491,15 @@ orquestadores con `time.time()` siguen sin red → cubrir antes de tocarlos).
 
 ---
 
-## Fase 7 — Robustez de conducción freeroam (ai_control)  ◀️ NUEVA (S29)
+## Fase 7 — Robustez de conducción freeroam (ai_control)  ◀️ PRÓXIMO (S31)
 
+> **▶️ PRÓXIMO TRABAJO (S31, decidido con el usuario):** los **3 fixes pendientes de abajo son el
+> siguiente trabajo a abordar**. Se implementan **con red primero** (offline, extrayendo un predicado
+> puro testeable por fix, como en el fix 2). Una vez implementados, **el usuario los debe confirmar
+> OBLIGATORIAMENTE en LFS** (son conducta): sin esa validación no se dan por buenos. Encajan con la
+> sesión de LFS de **W4** (mismo gate del merge). Orden sugerido por impacto: (4) `is_closed`, (1) flip
+> de enlace, (3) radar en transición.
+>
 > **Origen (S29, 2026-07-11):** el usuario, conduciendo en LFS, reportó 4 bugs de comportamiento
 > del modo Freeroam. Uno (fin de vía → espectadores) se pidió y **se resolvió en el acto**; los
 > otros tres se aparcan aquí para abordarlos cuando sea más oportuno (delegado a Claude). Son bugs
