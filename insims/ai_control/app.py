@@ -60,6 +60,11 @@ class AIControl(
         self._radar_human_cache: dict = {}
         self._target_lane_human_cache: dict = {}
 
+        # Rejilla espacial DINÁMICA de vehículos para el radar (una foto por MCI;
+        # ver traffic/radar.py). None hasta el primer MCI → el radar itera todos.
+        self._vehicle_grid = None
+        self._vehicle_index: dict = {}
+
         # Estado compartido de los bucles de tráfico daemon (freeroam y rutas).
         self._init_traffic_state()
 
@@ -96,6 +101,8 @@ class AIControl(
         self._target_freeroam_count = 0
         self._radar_human_cache.clear()
         self._target_lane_human_cache.clear()
+        self._vehicle_grid = None
+        self._vehicle_index = {}
 
     def on_ISP_MSO(self, packet: ISP_MSO):
         """Filtra y redirige comandos de chat a los managers correspondientes."""
@@ -216,6 +223,10 @@ class AIControl(
         """Bucle principal de telemetría."""
         if not self.route_manager or not self.user_manager:
             return
+
+        # Foto espacial de vehículos para el radar de esta ronda: se construye una
+        # vez por paquete, antes del bucle de IAs, así todas comparten la misma.
+        self._build_vehicle_grid()
 
         for car_info in packet.Info:
             plid = car_info.PLID

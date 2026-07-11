@@ -26,6 +26,8 @@ Convenciones LFS relevantes (mismas que test_physics / test_navigation):
   - Velocidades en km/h; el ACC trabaja internamente pasando a m/s (÷3.6).
 """
 
+import random
+
 import pytest
 
 from insims.ai_control.nav_modes.freeroam.enums import AIManeuverState, TrafficRule
@@ -909,6 +911,215 @@ class TestScanReturnLaneGap:
             float("inf"),
             float("inf"),
         )
+
+
+# ─── Equivalencia: rejilla espacial de vehículos vs. barrido lineal (W3) ──────
+#
+# La rejilla dinámica (`_build_vehicle_grid`) devuelve un SUPERCONJUNTO de los
+# vehículos dentro del radio de culling → cada barrido debe dar EXACTAMENTE la misma
+# salida que iterando todos los vehículos. Se comprueba corriendo cada escáner dos
+# veces —sin rejilla (referencia) y con rejilla— sobre muchas configuraciones
+# aleatorias, y comparando bit a bit. Es la caracterización del radar "como unidad"
+# que el plan (W3) exige ANTES de meter la rejilla en producción, y el análogo del
+# fuzz de equivalencia del índice espacial de geometría (S23).
+
+
+class TestRadarSpatialGridEquivalence:
+    @staticmethod
+    def _run_both(app, scan_call):
+        """Devuelve (salida_sin_rejilla, salida_con_rejilla).
+
+        Limpia las cachés de humanos antes de CADA corrida: así la rama de humano
+        (que usa `time.time()` + caché por PLID) recomputa de forma determinista y
+        ambas corridas parten del mismo estado. La única diferencia entre las dos es
+        de dónde salen los candidatos (todos vs. vecindario de la rejilla).
+        """
+        app._radar_human_cache.clear()
+        app._target_lane_human_cache.clear()
+        app._vehicle_grid = None
+        app._vehicle_index = {}
+        reference = scan_call()
+
+        app._radar_human_cache.clear()
+        app._target_lane_human_cache.clear()
+        app._build_vehicle_grid()
+        with_grid = scan_call()
+        return reference, with_grid
+
+    @staticmethod
+    def _spread(rng, app, scanner, make_ai, make_behavior, make_player, make_telemetry):
+        """Puebla user_manager con una mezcla aleatoria de IAs (con topología) y
+        humanos. Mezcla vehículos CERCA del escáner (para producir detecciones) y
+        LEJOS (para ejercitar el culling y celdas de rejilla distantes). El
+        `node_index` de los que van en R1 se deriva de su `y` (como en producción:
+        R1 tiene nodos en y=0,10,…,400). Devuelve el nº de vehículos colocados."""
+        ais = {scanner.player.plid: scanner}
+        humans: dict = {}
+        for k in range(2, 2 + rng.randint(5, 14)):
+            if rng.random() < 0.6:  # cerca del escáner (0,100)
+                x = rng.uniform(-18.0, 18.0)
+                y = rng.uniform(60.0, 220.0)
+            else:  # lejos: cubre culling y celdas distantes
+                x = rng.uniform(-70.0, 70.0)
+                y = rng.uniform(-30.0, 340.0)
+            spd = rng.uniform(0.0, 40.0)
+            road = "R1" if rng.random() < 0.55 else rng.choice(["R2", "R3"])
+            if rng.random() < 0.7:
+                ni = int(round(y / 10.0)) if road == "R1" else rng.randint(0, 39)
+                ais[k] = _place_ai(
+                    make_ai,
+                    make_behavior,
+                    k,
+                    x,
+                    y,
+                    speed_kmh=spd,
+                    mode_fields={
+                        "current_type": "Road",
+                        "current_id": road,
+                        "current_road_id": road,
+                        "node_index": max(0, min(ni, 40)),
+                    },
+                )
+            else:
+                humans[k] = make_player(
+                    plid=k,
+                    ucid=k,
+                    telemetry=make_telemetry(x_m=x, y_m=y, speed_kmh=spd),
+                )
+        app.user_manager.ais = ais
+        app.user_manager.players = humans
+        return len(ais) + len(humans)
+
+    def test_scan_lane_ahead_equivale_al_barrido_lineal(
+        self,
+        ai_control,
+        populate_graph,
+        make_road,
+        make_ai,
+        make_behavior,
+        make_player,
+        make_telemetry,
+    ):
+        populate_graph(
+            ai_control.map_recorder, roads=[make_road("R1", _pts_y(y1=400.0))]
+        )
+        non_empty = 0
+        for seed in range(40):
+            rng = random.Random(seed)
+            scanner = make_ai(plid=1, x_m=0.0, y_m=100.0, speed_kmh=rng.uniform(10, 40))
+            self._spread(
+                rng,
+                ai_control,
+                scanner,
+                make_ai,
+                make_behavior,
+                make_player,
+                make_telemetry,
+            )
+            mode = FreeroamMode(current_type="Road", current_id="R1", node_index=10)
+            max_dist = rng.choice([15.0, 25.0, 40.0])
+            ref, got = self._run_both(
+                ai_control, lambda: ai_control._scan_lane_ahead(scanner, mode, max_dist)
+            )
+            assert got == ref, f"seed={seed} max_dist={max_dist}"
+            non_empty += bool(ref)
+        assert non_empty >= 5  # el fuzz ejercita de verdad casos con detecciones
+
+    def test_scan_target_lane_equivale_al_barrido_lineal(
+        self,
+        ai_control,
+        populate_graph,
+        make_road,
+        make_ai,
+        make_behavior,
+        make_player,
+        make_telemetry,
+    ):
+        populate_graph(
+            ai_control.map_recorder, roads=[make_road("R1", _pts_y(y1=400.0))]
+        )
+        for seed in range(40):
+            rng = random.Random(seed)
+            scanner = make_ai(plid=1, x_m=0.0, y_m=100.0, speed_kmh=rng.uniform(10, 40))
+            self._spread(
+                rng,
+                ai_control,
+                scanner,
+                make_ai,
+                make_behavior,
+                make_player,
+                make_telemetry,
+            )
+            mode = FreeroamMode(current_type="Road", current_id="R1", node_index=10)
+            target = rng.choice(["R1", "R2", "R3"])
+            max_dist = rng.choice([15.0, 25.0, 40.0])
+            ref, got = self._run_both(
+                ai_control,
+                lambda: ai_control._scan_target_lane(scanner, mode, target, max_dist),
+            )
+            assert got == ref, f"seed={seed} target={target} max_dist={max_dist}"
+
+    def test_scan_return_lane_gap_equivale_al_barrido_lineal(
+        self,
+        ai_control,
+        populate_graph,
+        make_road,
+        make_ai,
+        make_behavior,
+        make_player,
+        make_telemetry,
+    ):
+        populate_graph(
+            ai_control.map_recorder, roads=[make_road("R1", _pts_y(y1=400.0))]
+        )
+        for seed in range(40):
+            rng = random.Random(seed)
+            scanner = make_ai(plid=1, x_m=0.0, y_m=100.0, speed_kmh=rng.uniform(10, 40))
+            self._spread(
+                rng,
+                ai_control,
+                scanner,
+                make_ai,
+                make_behavior,
+                make_player,
+                make_telemetry,
+            )
+            mode = FreeroamMode(current_type="Road", current_id="R1", node_index=10)
+            mode.overtake_return_lane_id = "R1"
+            max_dist = rng.choice([15.0, 25.0, 40.0])
+            ref, got = self._run_both(
+                ai_control,
+                lambda: ai_control._scan_return_lane_gap(scanner, mode, max_dist),
+            )
+            assert got == ref, f"seed={seed} max_dist={max_dist}"
+
+    def test_grid_no_pierde_candidato_diagonal_dentro_del_radio(
+        self, ai_control, populate_graph, make_road, make_ai, make_behavior
+    ):
+        # Coche DETECTADO (dentro de max_dist) pero en una celda de rejilla distinta
+        # a la del escáner (diagonal). La consulta por CAJA lo incluye; una consulta
+        # de solo-celda-central lo perdería → aquí got != ref. Discrimina el bug.
+        populate_graph(
+            ai_control.map_recorder, roads=[make_road("R1", _pts_y(y1=400.0))]
+        )
+        scanner = make_ai(plid=1, x_m=0.0, y_m=100.0, speed_kmh=0)  # celda (0, 2)
+        mode = FreeroamMode(current_type="Road", current_id="R1", node_index=10)
+        # (20,120): dist 2D = hypot(20,20) = 28.28 < max_dist(30); celda (0, 3).
+        other = _place_ai(
+            make_ai,
+            make_behavior,
+            2,
+            20.0,
+            120.0,
+            mode_fields={"current_id": "R1", "node_index": 12},
+        )
+        ai_control.user_manager.ais = {1: scanner, 2: other}
+        ai_control.user_manager.players = {}
+        ref, got = self._run_both(
+            ai_control, lambda: ai_control._scan_lane_ahead(scanner, mode, 30.0)
+        )
+        assert got == ref
+        assert [p for _, _, p in got] == [2]  # detectado por ambos caminos
 
 
 # ─── _get_available_overtake_distance: asfalto disponible para maniobrar ──────

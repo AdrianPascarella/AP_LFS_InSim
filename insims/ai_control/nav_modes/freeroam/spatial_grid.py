@@ -123,6 +123,30 @@ class SpatialHashGrid:
                 if bucket:
                     yield from bucket
 
+    def ids_within(self, px: float, py: float, radius: float) -> Iterator[Hashable]:
+        """Itera los ids de las celdas que solapan la caja
+        [px-radius, px+radius] x [py-radius, py+radius] alrededor del punto.
+
+        Es un SUPERCONJUNTO de los ids cuyo punto dista <= `radius` del centro
+        (la caja contiene el círculo) → nunca produce falsos negativos. Puede
+        repetir ids (un segmento ocupa varias celdas): dedúplquelos el llamador,
+        que además aplica la distancia real. `radius < 0` no devuelve nada.
+
+        Complementa a `ring_ids` (vecino más cercano): esta es la consulta de
+        REGIÓN que usa el radar de vehículos (grid dinámico), donde interesan
+        TODOS los vehículos dentro de un radio, no solo el más cercano.
+        """
+        if radius < 0:
+            return
+        ix0, iy0 = self._cell_of(px - radius, py - radius)
+        ix1, iy1 = self._cell_of(px + radius, py + radius)
+        cells = self._cells
+        for ix in range(ix0, ix1 + 1):
+            for iy in range(iy0, iy1 + 1):
+                bucket = cells.get((ix, iy))
+                if bucket:
+                    yield from bucket
+
     def block_covers_all(self, px: float, py: float, k: int) -> bool:
         """True si el bloque (2k+1)² centrado en el punto ya contiene todas las
         celdas ocupadas → expandir más no añade candidatos (parada segura)."""

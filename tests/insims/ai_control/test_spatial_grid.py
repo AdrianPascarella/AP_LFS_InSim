@@ -104,6 +104,54 @@ class TestRingIds:
         assert ring1.count("dup") == 2
 
 
+class TestIdsWithin:
+    """Consulta de REGIÓN (todos los ids dentro de un radio), usada por el radar."""
+
+    def test_incluye_los_puntos_dentro_del_radio_y_excluye_los_lejanos(self):
+        g = SpatialHashGrid(10.0)
+        g.insert_point("center", 0.0, 0.0)
+        g.insert_point("near", 8.0, 0.0)  # dist 8 < 15
+        g.insert_point("far", 100.0, 0.0)  # dist 100 > 15 (y bien fuera del bbox)
+        got = set(g.ids_within(0.0, 0.0, 15.0))
+        assert "center" in got
+        assert "near" in got
+        assert "far" not in got
+
+    def test_radio_cero_solo_la_celda_central(self):
+        g = SpatialHashGrid(10.0)
+        g.insert_point("c", 5.0, 5.0)  # (0,0)
+        g.insert_point("vecino", 15.0, 5.0)  # (1,0)
+        assert set(g.ids_within(5.0, 5.0, 0.0)) == {"c"}
+
+    def test_es_superconjunto_devuelve_puntos_del_bbox_fuera_del_circulo(self):
+        # (19,19) → celda (1,1). Consulta desde (0,0) radio 12: el bbox toca (1,1),
+        # así que el punto se devuelve aunque diste ~26.8 (> 12). Superconjunto:
+        # el llamador aplica la distancia real. Lo que importa: NO hay falsos negativos.
+        g = SpatialHashGrid(10.0)
+        g.insert_point("esquina", 19.0, 19.0)
+        assert "esquina" in set(g.ids_within(0.0, 0.0, 12.0))
+
+    def test_no_pierde_ninguno_en_el_borde(self):
+        g = SpatialHashGrid(5.0)
+        g.insert_point("borde", 14.9, 0.0)  # justo dentro del radio 15
+        assert "borde" in set(g.ids_within(0.0, 0.0, 15.0))
+
+    def test_id_repetido_se_puede_repetir(self):
+        g = SpatialHashGrid(10.0)
+        g.insert_segment("largo", 5.0, 5.0, 25.0, 5.0)  # celdas (0,0),(1,0),(2,0)
+        out = list(g.ids_within(15.0, 5.0, 12.0))
+        assert out.count("largo") >= 2  # aparece en varias celdas del bbox
+
+    def test_grid_vacio_no_devuelve_nada(self):
+        g = SpatialHashGrid(10.0)
+        assert list(g.ids_within(0.0, 0.0, 100.0)) == []
+
+    def test_radio_negativo_no_devuelve_nada(self):
+        g = SpatialHashGrid(10.0)
+        g.insert_point("a", 0.0, 0.0)
+        assert list(g.ids_within(0.0, 0.0, -1.0)) == []
+
+
 class TestBlockCoversAll:
     def test_cubre_cuando_el_bloque_abarca_las_celdas_ocupadas(self):
         g = SpatialHashGrid(10.0)

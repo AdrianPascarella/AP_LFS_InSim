@@ -8,17 +8,90 @@ from __future__ import annotations
 
 import math
 import time
+from collections.abc import Iterator
 from typing import TYPE_CHECKING
 
 from insims.ai_control.base import _MixinBase
 from insims.ai_control.nav_modes.freeroam.mode import FreeroamMode
+from insims.ai_control.nav_modes.freeroam.spatial_grid import SpatialHashGrid
 from lfs_insim.utils import calc_dist_3d
 
 if TYPE_CHECKING:
     from insims.users_management.main import AI
 
+# Tamaño de celda de la rejilla DINÁMICA de vehículos (m), independiente de la
+# estática de geometría (S23). Las consultas del radar tienen radio ~max_dist+15
+# (decenas de m); con una celda de este orden la caja de consulta abarca pocas
+# celdas. El benchmark de W3 da una meseta plana de 40-80 m (por debajo penaliza
+# el sondeo de celdas vacías; por encima, más candidatos por celda al agruparse
+# las IAs); 50 m es el centro de la meseta. Ajustable.
+_VEHICLE_GRID_CELL_M = 50.0
+
 
 class _RadarMixin(_MixinBase):
+    def _build_vehicle_grid(self) -> None:
+        """Construye la rejilla espacial de vehículos del radar (una vez por MCI).
+
+        Indexa por PLID la posición 2D de cada vehículo CON telemetría (IAs y
+        jugadores; `players`/`ais` son disjuntos por PLID). El radar la consulta
+        para acotar el barrido a un vecindario (O(vecindario)/consulta) en vez de
+        recorrer los N vehículos (O(N)/consulta → O(N²) global). `_vehicle_index`
+        mapea PLID → (player, is_ai, other_ai), el contexto que el barrido necesita.
+
+        La construye `on_ISP_MCI` antes del bucle de IAs, así todas las IAs del
+        paquete comparten la misma foto. Si nunca se llamó (tests que invocan un
+        barrido directo), `_vehicle_grid` es None y el radar itera todos los
+        vehículos (misma salida) — ver `_iter_radar_candidates`.
+        """
+        grid = SpatialHashGrid(_VEHICLE_GRID_CELL_M)
+        index: dict[int, tuple] = {}
+        um = self.user_manager
+        if um is not None:
+            for p in um.players.values():
+                if p.telemetry:
+                    c = p.telemetry.coordinates
+                    grid.insert_point(p.plid, c.x_m, c.y_m)
+                    index[p.plid] = (p, False, None)
+            for a in um.ais.values():
+                pl = a.player
+                if pl.telemetry:
+                    c = pl.telemetry.coordinates
+                    grid.insert_point(pl.plid, c.x_m, c.y_m)
+                    index[pl.plid] = (pl, True, a)
+        self._vehicle_grid = grid
+        self._vehicle_index = index
+
+    def _iter_radar_candidates(
+        self, cx: float, cy: float, radius_m: float
+    ) -> Iterator[tuple]:
+        """Emite (player, is_ai, other_ai) de los vehículos candidatos alrededor de
+        (cx, cy) dentro de `radius_m` (2D).
+
+        Con la rejilla dinámica presente devuelve el SUPERCONJUNTO de vehículos del
+        vecindario (la caja contiene el círculo del radio); el barrido llamador
+        aplica luego su culling y filtros por-vehículo EXACTOS → salida idéntica a
+        recorrer todos. Sin rejilla (None) cae a iterar todos los vehículos en el
+        MISMO orden que antes (players, luego ais) — el camino de referencia que la
+        red de equivalencia compara contra la rejilla.
+        """
+        grid = getattr(self, "_vehicle_grid", None)
+        if grid is None:
+            for p in self.user_manager.players.values():
+                yield p, False, None
+            for a in self.user_manager.ais.values():
+                yield a.player, True, a
+            return
+
+        index = self._vehicle_index
+        seen: set[int] = set()
+        for plid in grid.ids_within(cx, cy, radius_m):
+            if plid in seen:
+                continue
+            seen.add(plid)
+            entry = index.get(plid)
+            if entry is not None:
+                yield entry
+
     def _scan_lane_ahead(
         self, ai: AI, mode: FreeroamMode, max_dist_m: float
     ) -> list[tuple[float, float, int]]:
@@ -76,18 +149,14 @@ class _RadarMixin(_MixinBase):
         )
 
         # =========================================================
-        # 1. GENERADOR UNIFICADO
-        # =========================================================
-        def iter_all_vehicles():
-            for p in self.user_manager.players.values():
-                yield p, False, None
-            for a in self.user_manager.ais.values():
-                yield a.player, True, a
-
-        # =========================================================
         # 2. ESCANEO Y DETECCIÓN (Bucle Caliente)
+        # Los candidatos vienen del vecindario (rejilla espacial) en vez de los N
+        # vehículos. El radio de la consulta = el mismo culling de abajo
+        # (max_dist + 15), así el conjunto filtrado —y la salida— es idéntico.
         # =========================================================
-        for other_player, is_ai, other_ai in iter_all_vehicles():
+        for other_player, is_ai, other_ai in self._iter_radar_candidates(
+            my_coords.x_m, my_coords.y_m, max_dist_m + 15.0
+        ):
             if other_player.plid == ai.player.plid or not other_player.telemetry:
                 continue
 
@@ -246,12 +315,6 @@ class _RadarMixin(_MixinBase):
 
         my_coords = ai.player.telemetry.coordinates
 
-        def iter_all_vehicles():
-            for p in self.user_manager.players.values():
-                yield p, False, None
-            for a in self.user_manager.ais.values():
-                yield a.player, True, a
-
         # =========================================================
         # VECTOR DIRECCIONAL BASE (Para saber qué es "hacia adelante")
         # =========================================================
@@ -273,8 +336,11 @@ class _RadarMixin(_MixinBase):
 
         # =========================================================
         # ESCANEO Y DETECCIÓN (Con caché aislada)
+        # Candidatos del vecindario (rejilla); radio = culling 2D (max_dist + 15).
         # =========================================================
-        for other_player, is_ai, other_ai in iter_all_vehicles():
+        for other_player, is_ai, other_ai in self._iter_radar_candidates(
+            my_coords.x_m, my_coords.y_m, max_dist_m + 15.0
+        ):
             if other_player.plid == ai.player.plid or not other_player.telemetry:
                 continue
 
@@ -378,9 +444,11 @@ class _RadarMixin(_MixinBase):
         min_ahead = float("inf")
         min_behind = float("inf")
 
-        for other_player, is_ai, other_ai in [
-            (p, False, None) for p in self.user_manager.players.values()
-        ] + [(a.player, True, a) for a in self.user_manager.ais.values()]:
+        # Candidatos del vecindario (rejilla); radio = culling 3D (max_dist * 2),
+        # holgado en 2D (dist 2D <= 3D → la caja contiene el conjunto culleado).
+        for other_player, is_ai, other_ai in self._iter_radar_candidates(
+            my_coords.x_m, my_coords.y_m, max_dist_m * 2.0
+        ):
             if other_player.plid == ai.player.plid or not other_player.telemetry:
                 continue
 
