@@ -7,6 +7,7 @@ import time
 from typing import Optional
 
 from insims.ai_control.base import _MixinBase
+from insims.ai_control.nav_modes.freeroam.geometry import find_road_pointed_at
 from insims.ai_control.nav_modes.freeroam.mode import FreeroamMode
 from lfs_insim.insim_enums import BFN, ISB_STYLE, TYPEIN_FLAGS
 from lfs_insim.packets import ISP_BTC, ISP_BTT, ISP_MSO
@@ -1088,7 +1089,9 @@ class _MapUIMixin(_MixinBase):
     # ──────────────────────────────────────────────────────────────────────────
 
     _CHECK_ITEMS_PER_PAGE = 4
-    _WA_TYPES = ["road", "roadlink", "latlink", "zone", "rule"]
+    _WA_TYPES = ["road", "roadlink", "latlink", "zone", "rule", "ahead"]
+    # "Apunta": alcance máx. del rayo que busca la vía a la que apunta el morro (m).
+    _AHEAD_MAX_DIST_M = 300.0
 
     def _map_ui_draw_tab_info(self):
         u = self._ui_ucid
@@ -1142,9 +1145,9 @@ class _MapUIMixin(_MixinBase):
             Text="Roads cerradas",
         )
 
-        # Fila 2: Whereami toggles (5 tipos) + TypeIn intervalo
+        # Fila 2: Whereami toggles (5) + "Apunta" (vía a la que apunta el morro) + intervalo
         for i, label in enumerate(
-            ["WA Road", "WA RLink", "WA LLink", "WA Zone", "WA Regla"]
+            ["WA Road", "WA RLink", "WA LLink", "WA Zone", "WA Regla", "Apunta"]
         ):
             active = self._WA_TYPES[i] in self._ui_whereami
             style = (
@@ -1157,9 +1160,9 @@ class _MapUIMixin(_MixinBase):
                 UCID=u,
                 ClickID=113 + i,
                 BStyle=style,
-                L=2 + i * 34,
+                L=2 + i * 28,
                 T=31,
-                W=30,
+                W=26,
                 H=8,
                 Text=label,
             )
@@ -1715,7 +1718,51 @@ class _MapUIMixin(_MixinBase):
             status = "TOCANDO" if best_dist <= best_radius else f"{best_dist:.1f}m"
             return f"WA Regla: {best_id} [{node_label}] | {status}"
 
+        elif target == "ahead":
+            if not mr.roads:
+                return "Apunta: Sin roads"
+            fwd = self._map_ui_forward_vector(self._ui_whereami_ucid)
+            if fwd is None:
+                return "Apunta: Sin rumbo"
+            # La vía sobre la que estás = la más cercana a tu posición → se excluye.
+            cur = mr.get_closest_geometry(
+                px, py, pz, mr.roads.items(), lambda r: r.nodes
+            )
+            rid, dist = find_road_pointed_at(
+                px,
+                py,
+                fwd[0],
+                fwd[1],
+                mr.roads.items(),
+                cur["id"],
+                self._AHEAD_MAX_DIST_M,
+            )
+            if rid is None:
+                return "Apunta: --"
+            return f"Apunta: {rid} | {dist:.1f}m"
+
         return "WA: tipo desconocido"
+
+    def _map_ui_forward_vector(
+        self, ucid: Optional[int]
+    ) -> Optional[tuple[float, float]]:
+        """Vector unitario (x, y) al que apunta el morro del coche del UCID, o None.
+
+        Usa el mismo criterio que la navegación de las IAs (heading LFS →
+        (-sin, cos)), coherente con cómo el resto del módulo entiende "hacia
+        delante".
+        """
+        um = self.user_manager
+        if um is None or ucid is None:
+            return None
+        user = um.users.get(ucid)
+        if not user or not user.plid:
+            return None
+        player = um.players.get(user.plid)
+        if not player or not player.telemetry:
+            return None
+        rad = player.telemetry.heading.angle_lfs * 2.0 * math.pi / 65536.0
+        return (-math.sin(rad), math.cos(rad))
 
     def _map_ui_navigate_to_element(self, obj_id: str):
         """Navega al detalle del objeto recién grabado en el tab Elementos."""
@@ -2639,7 +2686,7 @@ class _MapUIMixin(_MixinBase):
             if self._ui_roads_page < total_pages - 1:
                 self._ui_roads_page += 1
                 self._map_ui_redraw_content()
-        elif 113 <= cid <= 117:
+        elif 113 <= cid <= 118:
             wa_type = self._WA_TYPES[cid - 113]
             if wa_type in self._ui_whereami:
                 self._ui_whereami.discard(wa_type)

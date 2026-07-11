@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import math
-from typing import TYPE_CHECKING, Any, List
+from typing import TYPE_CHECKING, Any, Iterable, List, Optional, Tuple
 
 from lfs_insim.utils import calc_dist_3d
 
@@ -381,3 +381,59 @@ def evaluate_dynamic_capture(
         return next_idx
 
     return current_target_idx
+
+
+def find_road_pointed_at(
+    px: float,
+    py: float,
+    fwd_x: float,
+    fwd_y: float,
+    roads: Iterable[Tuple[str, Any]],
+    exclude_id: Optional[str],
+    max_dist_m: float,
+) -> Tuple[Optional[str], float]:
+    """Ray-cast 2D: ¿a qué road apunta el morro del coche y a qué distancia?
+
+    Lanza un rayo desde (px, py) en la dirección (fwd_x, fwd_y) y devuelve el
+    ``(road_id, distancia)`` del road cuyo segmento cruza el rayo MÁS CERCA del
+    origen, dentro de ``max_dist_m``. Ignora ``exclude_id`` (el road sobre el que
+    ya estás) y los roads que el rayo no toca. Si no toca ninguno: ``(None, inf)``.
+
+    Pensado para mapear: apuntas el morro a una vía y te dice cuál es y cuánto
+    falta. ``roads`` es un iterable de ``(road_id, road)`` con ``road.nodes`` (nodos
+    con ``.x_m``/``.y_m``). ``(fwd_x, fwd_y)`` no necesita estar normalizado; la
+    distancia es euclídea 2D a lo largo del rayo hasta el punto de impacto.
+    """
+    mag = math.hypot(fwd_x, fwd_y)
+    if mag == 0.0:
+        return None, float("inf")
+    dx, dy = fwd_x / mag, fwd_y / mag
+    # Perpendicular a la dirección del rayo, para el test rayo-segmento 2D.
+    perp_x, perp_y = -dy, dx
+
+    best_id: Optional[str] = None
+    best_t = max_dist_m
+    for road_id, road in roads:
+        if road_id == exclude_id:
+            continue
+        nodes = road.nodes
+        for i in range(len(nodes) - 1):
+            ax, ay = nodes[i].x_m, nodes[i].y_m
+            ex = nodes[i + 1].x_m - ax
+            ey = nodes[i + 1].y_m - ay
+            denom = ex * perp_x + ey * perp_y
+            if -1e-9 < denom < 1e-9:
+                continue  # segmento paralelo al rayo
+            v1x, v1y = px - ax, py - ay
+            # u = posición del cruce sobre el segmento (debe caer en [0, 1])
+            u = (v1x * perp_x + v1y * perp_y) / denom
+            if u < 0.0 or u > 1.0:
+                continue
+            # t = distancia del cruce a lo largo del rayo (>= 0 y la más corta)
+            t = (ex * v1y - ey * v1x) / denom
+            if 0.0 <= t < best_t:
+                best_t = t
+                best_id = road_id
+    if best_id is None:
+        return None, float("inf")
+    return best_id, best_t

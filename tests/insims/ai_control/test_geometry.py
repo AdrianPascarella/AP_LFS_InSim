@@ -10,6 +10,7 @@ ubicación de origen (`lfs_insim.utils`); tras el move (Fase 2) el import apunta
 destino y estos mismos asserts deben seguir verdes (extracción sin cambio de lógica).
 """
 
+import math
 from types import SimpleNamespace
 
 import pytest
@@ -21,6 +22,7 @@ from insims.ai_control.nav_modes.freeroam.geometry import (
     calc_target_heading,
     determine_smart_spawn_index,
     evaluate_dynamic_capture,
+    find_road_pointed_at,
     get_closest_node_index,
     get_heading_diff,
 )
@@ -250,3 +252,75 @@ class TestEvaluateDynamicCapture:
         assert (
             evaluate_dynamic_capture(_node(0, 20), 2, wps, 0.0, is_waypoint=True) == 0
         )
+
+
+# ─── find_road_pointed_at (herramienta "Apunta" de la UI de mapeo) ───────────
+
+
+def _road(*pts: tuple[float, float]) -> SimpleNamespace:
+    """Road mínimo: objeto con `.nodes` = lista de nodos (.x_m/.y_m/.z_m)."""
+    return SimpleNamespace(nodes=[_node(x, y) for x, y in pts])
+
+
+class TestFindRoadPointedAt:
+    def test_hits_road_straight_ahead(self):
+        # Morro al Norte (+Y); road horizontal que cruza en y=5.
+        roads = [("R1", _road((-5, 5), (5, 5)))]
+        rid, dist = find_road_pointed_at(0, 0, 0, 1, roads, None, 100.0)
+        assert rid == "R1"
+        assert dist == pytest.approx(5.0)
+
+    def test_ignores_road_behind(self):
+        roads = [("R1", _road((-5, -5), (5, -5)))]
+        rid, dist = find_road_pointed_at(0, 0, 0, 1, roads, None, 100.0)
+        assert rid is None
+        assert dist == float("inf")
+
+    def test_returns_nearest_of_two(self):
+        roads = [
+            ("FAR", _road((-5, 20), (5, 20))),
+            ("NEAR", _road((-5, 8), (5, 8))),
+        ]
+        rid, dist = find_road_pointed_at(0, 0, 0, 1, roads, None, 100.0)
+        assert rid == "NEAR"
+        assert dist == pytest.approx(8.0)
+
+    def test_excludes_current_road(self):
+        # La vía a la que apunto es la actual → se ignora; detrás, otra.
+        roads = [
+            ("CURRENT", _road((-5, 5), (5, 5))),
+            ("NEXT", _road((-5, 12), (5, 12))),
+        ]
+        rid, dist = find_road_pointed_at(0, 0, 0, 1, roads, "CURRENT", 100.0)
+        assert rid == "NEXT"
+        assert dist == pytest.approx(12.0)
+
+    def test_beyond_max_dist_not_returned(self):
+        roads = [("R1", _road((-5, 50), (5, 50)))]
+        rid, _ = find_road_pointed_at(0, 0, 0, 1, roads, None, 30.0)
+        assert rid is None
+
+    def test_parallel_road_no_hit(self):
+        # Road paralelo al rayo (también vertical) → no lo cruza nunca.
+        roads = [("R1", _road((3, 0), (3, 50)))]
+        rid, _ = find_road_pointed_at(0, 0, 0, 1, roads, None, 100.0)
+        assert rid is None
+
+    def test_zero_forward_vector(self):
+        roads = [("R1", _road((-5, 5), (5, 5)))]
+        rid, dist = find_road_pointed_at(0, 0, 0, 0, roads, None, 100.0)
+        assert rid is None
+        assert dist == float("inf")
+
+    def test_diagonal_heading(self):
+        # Morro a 45° (dir (1,1)); segmento vertical en x=10 → cruce en (10,10).
+        roads = [("L", _road((10, 0), (10, 20)))]
+        rid, dist = find_road_pointed_at(0, 0, 1, 1, roads, None, 100.0)
+        assert rid == "L"
+        assert dist == pytest.approx(math.hypot(10, 10))
+
+    def test_off_segment_not_counted(self):
+        # El rayo (Norte, x=0) no alcanza un segmento en x=[5,10]: u fuera de [0,1].
+        roads = [("R1", _road((5, 5), (10, 5)))]
+        rid, _ = find_road_pointed_at(0, 0, 0, 1, roads, None, 100.0)
+        assert rid is None

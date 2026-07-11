@@ -156,3 +156,51 @@ def test_overlay_persiste_al_reabrir_el_menu(ai_control):
     # _init_ui_state NO resetea el overlay: la selección sigue viva.
     assert app._ui_whereami == {"road"}
     assert app._ui_whereami_ucid == 3
+
+
+# ─── Herramienta "Apunta" (vía a la que apunta el morro) ─────────────────────
+
+
+def test_toggle_apunta_activa_el_tipo_ahead(ai_control):
+    # La 6ª herramienta de Info ("Apunta") es el tipo "ahead": toggle CID 118, con
+    # su fila del overlay en _WA_PIN_CID_BASE + índice de "ahead" (FUERA de contenido).
+    app = ai_control
+    _open_info(app, ucid=3)
+    app.client.sent.clear()
+
+    app._map_ui_handle_click(118)  # "Apunta" ON
+
+    assert "ahead" in app._ui_whereami
+    ahead_cid = app._WA_PIN_CID_BASE + app._WA_TYPES.index("ahead")
+    assert ahead_cid > 165  # sobrevive a los redibujados de pestaña
+    assert [p for p in _btns(app) if p.ClickID == ahead_cid], (
+        "activar Apunta debe dibujar su fila en el overlay pineado"
+    )
+
+
+def test_compute_ahead_reporta_la_via_apuntada_y_su_distancia(
+    ai_control, make_telemetry, make_player, make_road, populate_graph
+):
+    from types import SimpleNamespace
+
+    app = ai_control
+    app.map_recorder.active_map_name = "test"
+    app._init_ui_state()
+    # Coche en (0,0) apuntando al Norte (+Y). Vía bajo el coche (la actual, que se
+    # excluye) y otra 20 m al Norte: el morro apunta a la segunda.
+    tele = make_telemetry(x_m=0.0, y_m=0.0, heading_deg=0.0)
+    app.user_manager.players[5] = make_player(plid=5, ucid=3, telemetry=tele)
+    app.user_manager.users[3] = SimpleNamespace(plid=5)
+    populate_graph(
+        app.map_recorder,
+        roads=[
+            make_road("ACTUAL", [(-5, 0), (5, 0)]),
+            make_road("NORTE", [(-5, 20), (5, 20)]),
+        ],
+    )
+    app._ui_whereami_ucid = 3
+
+    txt = app._map_ui_compute_whereami("ahead")
+
+    assert "NORTE" in txt and "ACTUAL" not in txt  # excluye la vía actual
+    assert "20.0m" in txt
