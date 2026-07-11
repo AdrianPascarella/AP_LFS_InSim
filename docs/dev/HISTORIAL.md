@@ -5,6 +5,77 @@
 
 ---
 
+## S28 — 2026-07-11 — Fase 6 · W3: índice espacial de VEHÍCULOS para el radar
+
+**Arranque:** protocolo de inicio. Ya en `refactor/estabilizacion`, pero el árbol traía **South City
+sin commitear** (+5122/−1298 en `south_city.json` + render regenerado, **189 roads / 13.480 nodos**,
+`zones: 0`). Protegido según §1.2 (instrucción permanente, autorizada sin preguntar) ANTES del pull:
+respaldo fuera del repo (`~/backups/AP_LFS_InSim_maps/2026-07-11_S27/`) + JSON validado + commit
+`data(ai_control)` + push. El `git pull` posterior trajo **S27 del otro equipo** (split de `traffic/`
++ P7); mi commit del mapa mergeó **limpio** (ortogonal). Baseline verificado tras el merge: **680/680**.
+
+**Qué se hizo — índice espacial de vehículos para el radar (ex-6b de la auditoría S22, plegado en
+W3), CON RED PRIMERO:** los 3 barridos de `traffic/radar.py` (`_scan_lane_ahead`, `_scan_target_lane`,
+`_scan_return_lane_gap`) recorrían **todos** los vehículos por IA → O(N) por IA → **O(N²) global**.
+
+1. **`SpatialHashGrid.ids_within(px,py,radius)` (nuevo, red primero):** consulta de **REGIÓN** —
+   todos los ids de las celdas que solapan la caja `[px±r, py±r]`, superconjunto de los que distan
+   ≤ r del centro (nunca falsos negativos). Complementa a `ring_ids` (vecino más cercano); el
+   docstring de S23 ya la anticipaba ("reutilizable en el radar de vehículos"). +7 tests unitarios
+   (dentro/fuera, radio 0, superconjunto por esquina de celda, borde, id repetido, vacío, radio<0),
+   verificados en ROJO (AttributeError) antes de implementar.
+
+2. **`_build_vehicle_grid` + `_iter_radar_candidates` (radar.py):** `_build_vehicle_grid` construye
+   la rejilla **una vez por MCI** (la llama `on_ISP_MCI` antes del bucle de IAs → todas comparten la
+   misma foto), indexando por PLID la posición 2D de cada vehículo con telemetría. **`players`/`ais`
+   son disjuntos por PLID** (verificado en `users_management`: NPL mete en uno u otro con `return`) →
+   índice PLID→(player,is_ai,other_ai) **1:1**. `_iter_radar_candidates(cx,cy,radio)` emite los
+   candidatos: con rejilla, el vecindario (`ids_within`); **sin rejilla (None), itera TODOS** en el
+   mismo orden que antes (el camino de referencia).
+
+3. **Los 3 barridos:** cambia **SOLO la línea del `for`** → `_iter_radar_candidates(...)` con el radio
+   = el culling propio de cada método (`max_dist+15` en los dos primeros, `max_dist*2` —3D— en el de
+   retorno, holgado en 2D). **Todos los culls y filtros por-vehículo quedan intactos.** Como la
+   rejilla es un SUPERCONJUNTO del culling y el barrido aplica su culling exacto → **salida
+   bit-idéntica** (equivalencia por CONSTRUCCIÓN, no por reimplementar la matemática; mismo patrón
+   que el índice de geometría de S23).
+
+**Red de equivalencia (la caracterización del radar "como unidad" que exigía el plan):** clase
+`TestRadarSpatialGridEquivalence` — fuzz de **40 semillas × 3 barridos** con mezcla aleatoria de IAs
+(topología) y humanos alrededor del escáner, corriendo cada barrido DOS veces (sin rejilla =
+referencia, con rejilla) y comparando **bit a bit**. Helper `_run_both` limpia las cachés de humanos
+antes de cada corrida para que la rama de humano (`time.time()` + caché) sea determinista. + un test
+de **candidato diagonal** (coche detectado en una celda distinta a la del escáner, que una consulta
+de solo-celda-central perdería → discrimina el bug) + guardián anti-vacuo (`non_empty ≥ 5`). +4 tests.
+**Ajuste del fuzz:** el primer intento casi no producía detecciones (posiciones y `node_index`
+independientes) → correlacioné `node_index` con la `y` (como en producción) y mezclé vehículos cerca
+(detecciones) y lejos (culling + celdas distantes).
+
+**Benchmark (tick = todas las IAs barriendo, mapa 1000×1000 m):** `sin_grid` crece **cuadrático**,
+`con_grid` **lineal** → **2,5× @N=24, 4,2× @N=48, 5,2× @N=64**, y creciendo con la densidad. **Celda
+50 m**, elegida con sweep (meseta plana 40-80 m: por debajo penaliza el sondeo de celdas vacías; por
+encima, más candidatos por celda al agruparse las IAs). Reset del grid en `on_reconnect` (P12).
+
+**Decisión de diseño (fallback a None):** que el radar itere todos cuando `_vehicle_grid is None`
+mata dos pájaros: (a) los 81 tests de S19 (que llaman los barridos directos, sin MCI) siguen verdes
+sin tocar; (b) da el **camino de referencia** que el fuzz compara contra la rejilla, sin duplicar
+código. En producción `on_ISP_MCI` siempre la construye antes de barrer.
+
+**Verificación:** suite **691/691** (680 + 11: 7 grid + 4 equivalencia). `ruff check .` +
+`ruff format --check .` limpios (repo entero, 102 ficheros). `lfs-insim list` carga los 4 insims.
+3.9-safe (`dict[int, tuple]`/`set[int]` son PEP 585, `from __future__ import annotations`; sin
+uniones PEP 604). Solo estructura + rejilla, **salida idéntica → no requiere validación en LFS**.
+
+**Próximo:** cerrar W3 (último ítem de Fase 6) — **FSM de adelantamiento** (`traffic/overtake.py`) +
+borrar `is_target_ahead_and_in_lane` (código muerto S24, con su test de `test_geometry.py`) + **P4**
+(adelgazar `base.py`) + docs (README/CLAUDE con `traffic/` + rejilla). **W4** (validación LFS del
+ceda-el-paso del ACC) sigue bloqueada por `zones: 0`. Sesión nueva recomendada (context-rot).
+
+**Commits:** `8d757df` (mapa South City, protección de arranque), merge del pull, `acdba01`
+(`perf(ai_control): índice espacial de vehículos para el radar`) + docs de cierre S28.
+
+---
+
 ## S27 — 2026-07-10 — Fase 6 · W3 (1/2): split de `traffic.py` + P7 (nombres de estado)
 
 **Arranque:** protocolo de inicio; ya en `refactor/estabilizacion`, árbol limpio (sin mapas que

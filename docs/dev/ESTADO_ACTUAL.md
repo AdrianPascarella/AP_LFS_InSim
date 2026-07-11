@@ -1,19 +1,55 @@
 # 📍 Estado actual
 
-> Actualizado: **2026-07-10** — S27: **W3 (Fase 6), primera mitad**. `traffic.py` (1348) partido en
-> el paquete **`traffic/`** (radar / orchestrator / overtake / zones / cruise_control / paths), con
-> `_TrafficMixin` como fachada → `app.py` y los tests no cambian. **Extracción segura demostrada**:
-> los 18 métodos conservan cuerpo y firma **byte-idénticos** (snapshot antes/después). Y **P7**: el
-> par "intención vs valor en uso" pasa a **petición → resuelto** (`speed_request`/
-> `speed_resolved_kmh`, `point_request`/`point_resolved`, 93 sustituciones). **Decisión con el
-> usuario: se RECORTA W3 pre-publish** — los splits de `map_ui.py` (3161) y `map_recorder.py` (2520)
-> se **aplazan a post-merge** (tooling offline, sin red, no tocan API ni runtime). Suite **680**;
-> ruff limpio. **Próximo: cerrar W3 = índice espacial del radar + FSM de adelantamiento + P4.**
+> Actualizado: **2026-07-11** — S28: **W3 (Fase 6), radar**. Índice espacial de VEHÍCULOS para el
+> radar: los 3 barridos de `traffic/radar.py` iteraban TODOS los vehículos por IA (O(N²) global);
+> ahora consultan una **rejilla dinámica** (`SpatialHashGrid`) construida 1 vez por MCI. **Extracción
+> segura**: solo cambia la línea del `for` (candidatos del vecindario vía `_iter_radar_candidates`);
+> culls/filtros por-vehículo intactos → la rejilla es un SUPERCONJUNTO del culling → **salida
+> bit-idéntica**. **Red de equivalencia** (grid vs. barrido lineal): fuzz 40 semillas × 3 barridos,
+> IAs+humanos, bit-idéntico (+ `ids_within` con 7 unitarios + candidato diagonal). **Benchmark: 2,5×
+> @N=24, 5× @N=64**, creciendo con la densidad (celda 50 m, meseta 40-80 m). Suite **691** (680+11);
+> ruff limpio. **Próximo: cerrar W3 = FSM de adelantamiento + borrar `is_target_ahead_and_in_lane` +
+> P4 (adelgazar `base.py`) + docs.** Al arrancar había **South City sin commitear** (189 roads/13.480
+> nodos) → protegido (respaldo + commit + push) antes del pull, que trajo S27 del otro equipo.
 > **Rama de trabajo: `refactor/estabilizacion`.** Todo el refactor ocurre aquí; `main`
 > queda intacta hasta el merge final (cuando el proyecto esté estable). **Sync por GitHub:**
 > `git pull` al arrancar y `git push` al cerrar (permite continuar desde otro dispositivo).
 
 ## Estado
+
+**S28 (2026-07-11) — Fase 6 · W3: índice espacial de VEHÍCULOS para el radar (implementado y
+verificado, NO requiere LFS).** Ataca el hallazgo O(N²) de la auditoría S22 (ex-6b, plegado en W3).
+Los 3 barridos del radar (`traffic/radar.py`: `_scan_lane_ahead`, `_scan_target_lane`,
+`_scan_return_lane_gap`) recorrían **todos** los vehículos por IA (O(N) por IA → **O(N²) global**).
+Ahora consultan una **rejilla dinámica** (`SpatialHashGrid`, reutilizado de S23 como grid separado
+del estático de geometría) que se construye **una vez por MCI** en `on_ISP_MCI` (`_build_vehicle_grid`),
+indexando por PLID la posición 2D de cada vehículo con telemetría (`players`/`ais` son disjuntos por
+PLID → índice 1:1). **Extracción segura (MODUS_OPERANDI §3):** en cada barrido cambia SOLO la línea
+del `for` → `_iter_radar_candidates(cx, cy, radio)`; el radio = el mismo culling de cada método
+(`max_dist+15` en los dos primeros, `max_dist*2` en el de retorno) y **todos los culls/filtros
+por-vehículo quedan intactos**. La rejilla devuelve un **SUPERCONJUNTO** de los vehículos dentro del
+círculo (la caja `ids_within` lo contiene) y el barrido aplica su culling exacto → **salida
+bit-idéntica**. **Sin rejilla** (`_vehicle_grid=None`, p. ej. un barrido llamado directo en un test)
+**cae a iterar todos** en el mismo orden que antes → camino de referencia. **Nuevo en el grid:**
+`SpatialHashGrid.ids_within(px,py,radius)` — consulta de **REGIÓN** (todos los ids de las celdas que
+solapan la caja del radio), complementaria a `ring_ids` (vecino más cercano); +7 tests unitarios.
+**Red de equivalencia (la caracterización del radar "como unidad" que pedía el plan):** fuzz de 40
+semillas × 3 barridos con mezcla aleatoria de IAs+humanos, comparando bit a bit el barrido CON
+rejilla vs. SIN (referencia); + un test de "candidato diagonal" (coche detectado en una celda
+distinta a la del escáner, que una consulta de solo-celda-central perdería). +4 tests. **Diseño
+clave:** la equivalencia por CONSTRUCCIÓN (superconjunto + filtros intactos), no por reimplementar
+la matemática — mismo patrón que el índice de geometría de S23. **Benchmark (tick = todas las IAs
+barriendo, mapa 1000×1000):** `sin_grid` crece cuadrático, `con_grid` lineal → **2,5× @N=24, 4,2×
+@N=48, 5,2× @N=64**, creciendo con la densidad. **Celda 50 m** (sweep: meseta plana 40-80 m; por
+debajo penaliza el sondeo de celdas vacías, por encima infla candidatos al agruparse las IAs).
+Reset del grid en `on_reconnect` (P12). **Verificación:** suite **691/691** (680 + 11); `ruff check`
++ `format --check` limpios (repo entero); `lfs-insim list` OK; 3.9-safe (`dict[int, tuple]` PEP 585,
+`from __future__ import annotations`). Solo estructura + rejilla, salida idéntica → **no requiere
+validación en LFS**. **Pendiente de W3:** FSM de adelantamiento (`traffic/overtake.py`) + borrar
+`is_target_ahead_and_in_lane` (código muerto S24) + **P4** (adelgazar `base.py`) + docs. **Arranque
+(protección de mapas §1.2):** South City sin commitear (189 roads/13.480 nodos, `zones: 0`) →
+respaldo + commit `data(ai_control)` + push ANTES del pull, que trajo S27 del otro equipo (mergeó
+limpio, ortogonal).
 
 **S27 (2026-07-10) — Fase 6 · W3 (1/2): split de `traffic.py` + P7 (implementado y verificado, NO
 requiere LFS).** Al medir los ficheros al arrancar, el PLAN estaba **desfasado**: habían crecido
@@ -556,8 +592,8 @@ P11–P21 en `DIAGNOSTICO.md`. Queda gordo: P12 (reconexión, Fase 3).
 S23). Fases 1-4 (core) COMPLETADAS. **Fase 5 (ai_control: red + estabilización) COMPLETA salvo la
 validación en LFS del ceda-el-paso del ACC (W4)**, hoy bloqueada porque ningún mapa tiene
 intersección (`zones: 0`). **Fase 6: W1 (split `utils.py`), W5 (sweep de API) y W2 (`init` con
-perfiles) HECHOS** (S24/S25/S26); **W3 a medias** (S27: split de `traffic/` + P7 hechos; faltan el
-índice espacial del radar, el FSM de adelantamiento y P4).
+perfiles) HECHOS** (S24/S25/S26); **W3 casi cerrado** (S27: split de `traffic/` + P7; S28: índice
+espacial del radar; faltan el FSM de adelantamiento, borrar código muerto, P4 y docs).
 
 **Recorte de W3 (S27, con el usuario):** los splits de `map_ui.py` (3161) y `map_recorder.py`
 (2520) **salen del pre-publish** y pasan a post-merge (ver PLAN § Ideas). Son tooling offline,
@@ -612,32 +648,30 @@ CLAUDE/CHANGELOG cuadrados.
 (`speed_request`/`speed_resolved_kmh`, `point_request`/`point_resolved`). **Recortado el alcance**:
 `map_ui.py` y `map_recorder.py` salen a post-merge.
 
+**✅ RADAR HECHO (S28)** — índice espacial de VEHÍCULOS: rejilla dinámica (`SpatialHashGrid`)
+construida 1×/MCI; los 3 barridos consultan el vecindario (`_iter_radar_candidates`) en vez de los N
+vehículos → O(N²)→~O(N) (benchmark 2,5×@24, 5×@64). Extracción segura (solo cambia el `for`; salida
+bit-idéntica) + red de equivalencia (fuzz grid vs. lineal) + `ids_within` en el grid. Suite 691.
+
 **Empezar AQUÍ la próxima sesión — cerrar W3 (último ítem de Fase 6). Sesión nueva recomendada:**
 
-1. **Índice espacial de VEHÍCULOS para el radar** (el plato fuerte; ahora vive en
-   `insims/ai_control/traffic/radar.py` — `_scan_lane_ahead` / `_scan_target_lane` /
-   `_scan_return_lane_gap`, 393 líneas):
-   - **Red primero (MODUS_OPERANDI §3):** caracterizar el radar **como unidad** ANTES de tocarlo.
-     Ojo: los 81 tests de S19 cubren los `_scan_*` **solo con vehículos IA** (la rama de humanos
-     usa `time.time()` + `get_location_context` y se evitó a propósito) → esa rama sigue sin red.
-   - Reutilizar el `SpatialHashGrid` de S23 (`nav_modes/freeroam/spatial_grid.py`) como grid
-     **dinámico** (se reconstruye por tick), aparte del estático de geometría. El radar es O(N) por
-     IA → O(N²) global; la auditoría S22 lo dio **no urgente** (peor tick ≈0,6 ms con 16 IAs).
-   - Limpiar de paso los 4 marcadores `[!] OPTIMIZACIÓN` de `radar.py` (P7, zona a zona).
-2. **Revisar el FSM de adelantamiento** (`overtake_state`, en `traffic/overtake.py`) y **eliminar
+1. **Revisar el FSM de adelantamiento** (`overtake_state`, en `traffic/overtake.py`) y **eliminar
    `is_target_ahead_and_in_lane`** de `nav_modes/freeroam/geometry.py` — código muerto detectado en
-   S24 (migrado con red por seguridad; ya se puede borrar).
-3. **P4** — reducir la superficie cross-mixin de `base.py` (~40 métodos). Ya está anotado qué
+   S24 (migrado con red por seguridad; ya se puede borrar; ojo a su test de caracterización en
+   `test_geometry.py`, que también saldría). Limpiar de paso los marcadores `[!] OPTIMIZACIÓN` que
+   quedan en `traffic/radar.py` (P7, zona a zona).
+2. **P4** — reducir la superficie cross-mixin de `base.py` (~40 métodos). Ya está anotado qué
    submódulo de `traffic/` implementa cada uno (S27), que es el mapa previo para adelgazarlo.
-4. Cerrar W3: actualizar README/CLAUDE.md con la arquitectura final + revisión del diagnóstico.
-2. Backlog de **tipado gradual** (ir quitando overrides de `[tool.mypy]` en
+3. Cerrar W3: actualizar README/CLAUDE.md con la arquitectura final (paquete `traffic/`, rejilla del
+   radar) + revisión del diagnóstico. Con eso **Fase 6 queda lista salvo W4** (LFS, bloqueada).
+4. Backlog de **tipado gradual** (ir quitando overrides de `[tool.mypy]` en
    pyproject, módulo a módulo, cuando se toque cada uno): los módulos
    `packets` (dataclasses de protocolo), `insim_loader` (fricción con
    `importlib`: `ModuleSpec | None` sin None-check + kwargs inyectados en
    InSimApp — merece None-checks reales, no `type: ignore`), y
    `insim_packet_decoders`/`utils` (2 errores puntuales cada uno). No urge;
    mypy no bloquea.
-3. Idea DX de Fase 4 ya apuntada: el connect inicial fallido imprime un
+5. Idea DX de Fase 4 ya apuntada: el connect inicial fallido imprime un
    traceback feo (`exc_info=True` + re-raise) — valorar mensaje limpio y/o
    `connect_retry` para arrancar el insim antes que LFS. (La pista de ISI
    rechazado ya está hecha; el fallback de cfg.txt está en PLAN § Ideas.)

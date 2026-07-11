@@ -441,12 +441,19 @@ valida en LFS. **Estado:** cumplido salvo la validación en LFS del ceda-el-paso
       `target_speed_kmh` que no es el campo (es la velocidad del coche adelantado) →
       `target_vehicle_speed_kmh`. Limpiados los comentarios residuales de `behavior.py`; el resto
       de marcadores `[!]`, zona a zona. Suite 680.
-- [ ] Índice espacial de VEHÍCULOS para el radar O(N²) (ex-6b), **ahora en `traffic/radar.py`**:
-      caracterizar el radar como unidad **ANTES** (red primero, MODUS_OPERANDI §3);
-      reutiliza el `SpatialHashGrid` de S23 (grid dinámico, aparte del estático de geometría).
-      Revisar de paso el FSM de adelantamiento (`overtake_state`, hoy en `traffic/overtake.py`).
-      Candidata a eliminar al revisarlo: `is_target_ahead_and_in_lane` (código muerto, S24).
-- [ ] Actualizar README/CLAUDE.md con la arquitectura final; revisión final del diagnóstico
+- [x] Índice espacial de VEHÍCULOS para el radar O(N²) (ex-6b), en `traffic/radar.py` — **S28**:
+      rejilla dinámica (`SpatialHashGrid`, aparte de la estática de geometría) construida 1×/MCI en
+      `on_ISP_MCI`; los 3 barridos consultan el vecindario (`_iter_radar_candidates`) en vez de los N
+      vehículos. **Extracción segura**: cambia solo la línea del `for`, culls/filtros intactos → la
+      rejilla es un SUPERCONJUNTO del culling → salida **bit-idéntica**. Nuevo `SpatialHashGrid.
+      ids_within` (consulta de región). **Red de equivalencia** (fuzz grid vs. barrido lineal, 40
+      semillas × 3 barridos, IAs+humanos, bit-idéntico) + 7 unitarios del grid. Benchmark
+      **O(N²)→~O(N)** (2,5×@24, 5,2×@64; celda 50 m). Suite 691; ruff limpio.
+- [ ] Revisar el FSM de adelantamiento (`overtake_state`, en `traffic/overtake.py`) y **eliminar
+      `is_target_ahead_and_in_lane`** de `nav_modes/freeroam/geometry.py` (código muerto, S24; con su
+      test de `test_geometry.py`). Limpiar los marcadores `[!] OPTIMIZACIÓN` que queden en `radar.py`.
+- [ ] Actualizar README/CLAUDE.md con la arquitectura final (paquete `traffic/`, rejilla del radar);
+      revisión final del diagnóstico
 
 **Criterio de aceptación:** API pública limpia y estable (W1/W5); `init --full/--minimal`
 funcionando (W2); `traffic/` partido, `base.py` adelgazado, nombres de estado claros y radar con
