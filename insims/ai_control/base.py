@@ -26,8 +26,12 @@ class _MixinBase:
 
     ARQUITECTURA (ver app.py para la composición final)
     ---------------------------------------------------
-        AIControl(_CommandsMixin, _PhysicsMixin, _NavigationMixin, _TrafficMixin, InSimApp)
+        AIControl(_MapUIMixin, _CommandsMixin, _PhysicsMixin, _NavigationMixin,
+                  _TrafficMixin, InSimApp)
         Cada mixin hereda de _MixinBase.
+
+        `_TrafficMixin` es a su vez una fachada: compone los submixins del paquete
+        `traffic/` (radar, cruise_control, zones, overtake, paths, orchestrator).
 
     CÓMO AÑADIR UN NUEVO MIXIN
     --------------------------
@@ -134,11 +138,15 @@ class _MixinBase:
         def _handle_steering(self, ai: "AI") -> list: ...
         def _handle_pedals_and_gears(self, ai: "AI") -> list: ...
 
-        # traffic.py
+        # traffic/orchestrator.py
         def _update_traffic_behavior(self, ai: "AI") -> None: ...
+
+        # traffic/radar.py
         def _scan_lane_ahead(
             self, ai: "AI", mode: "FreeroamMode", max_dist_m: float
         ) -> list: ...
+
+        # traffic/cruise_control.py
         def _apply_adaptive_cruise_control(
             self,
             base_speed_kmh: float,
@@ -147,6 +155,7 @@ class _MixinBase:
             min_dist_m: float,
             max_dist_m: float,
         ) -> float: ...
+        # traffic/overtake.py
         def _find_valid_overtake_lane(
             self,
             current_road_id: str,
@@ -154,6 +163,8 @@ class _MixinBase:
             current_road_nodes: list,
             node_index: int,
         ) -> Optional[tuple]: ...
+
+        # traffic/zones.py
         def _get_zone_centroid(self, zone: Any) -> tuple[float, float]: ...
         def _is_point_in_zone(self, px: float, py: float, zone: Any) -> bool: ...
         def _get_dist_to_zone_edge(self, px: float, py: float, zone: Any) -> float: ...
@@ -165,16 +176,23 @@ class _MixinBase:
             zone: Any,
             approach_time_s: float,
         ) -> bool: ...
+        # traffic/overtake.py
         def _get_available_overtake_distance(
             self,
             mode: "FreeroamMode",
             my_coords: "Coordinates",
             overtake_lat_link: "LateralLink",
         ) -> float: ...
+
+        # traffic/paths.py
         def _calc_path_length(self, nodes: list, start_idx: int = 0) -> float: ...
+
+        # traffic/radar.py
         def _scan_target_lane(
             self, ai: "AI", mode: "FreeroamMode", target_road_id: str, max_dist_m: float
         ) -> list: ...
+
+        # traffic/overtake.py
         def _is_lane_safe_to_overtake(
             self,
             ai: "AI",

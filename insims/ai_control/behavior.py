@@ -30,18 +30,32 @@ class GearMode(IntEnum):
 
 @dataclass
 class AIBehavior:
-    """Almacena el estado lógico y controladores de una IA específica."""
+    """Almacena el estado lógico y controladores de una IA específica.
+
+    OBJETIVOS: PETICIÓN vs VALOR RESUELTO
+    -------------------------------------
+    Cada objetivo (velocidad y dirección) vive en DOS campos:
+
+    - `*_request`  — lo que se PIDE. Puede ser heterogéneo: una velocidad fija o
+      una `AdaptiveSpeedConfig`; un punto, una tupla en metros o un PLID a seguir.
+      Lo escriben los comandos y la navegación (route / freeroam / tráfico).
+    - `*_resolved` — el valor CONCRETO que se está usando en este tick, ya listo
+      para el PID. Lo calcula `physics.py` a partir de la petición, y se
+      recalcula en cada MCI (no se conserva entre ticks).
+    """
 
     # Controladores
     pid_speed: PIDController | None = None
     pid_direction: PIDController | None = None
 
-    # Intenciones Finales de Acción (Velocidad y Dirección)
-    target_speed_kmh_use: float | None = None
-    target_speed_kmh: AdaptiveSpeedConfig | float | None = None
+    # Objetivo de velocidad (pedales). Un float en km/h; negativo = marcha atrás.
+    speed_request: AdaptiveSpeedConfig | float | None = None
+    speed_resolved_kmh: float | None = None
 
-    target_point_use: Coordinates | None = None
-    target_point_m: Coordinates | int | None = None
+    # Objetivo de dirección (volante). La petición admite Coordinates, una tupla
+    # (x_m, y_m) en metros o un PLID (int) al que seguir.
+    point_request: Coordinates | tuple[float, float] | int | None = None
+    point_resolved: Coordinates | None = None
 
     # Flags de Sincronización
     logic_reversed: bool = False
@@ -50,15 +64,12 @@ class AIBehavior:
     # Tracking de Estados de Marcha
     active_ready: bool = False
     gear_mode: GearMode = GearMode.NEUTRAL
-    # En tu dataclass o clase AIBehavior:
     stuck_start_time: float = (
         0.0  # Guarda el momento exacto (time.time()) en el que se atascó
     )
 
-    # =========================================================
-    # [!] NUEVO: Estado de Navegación Activa (State Pattern)
+    # Estado de Navegación Activa (State Pattern).
     # Puede ser None (parado), RouteMode, o FreeroamMode.
-    # =========================================================
     active_mode: Optional[AINavModeState] = None
 
     # =========================================================
@@ -75,14 +86,14 @@ class AIBehavior:
 
     def reset_direction(self):
         """Limpia los objetivos de dirección (volante) actuales."""
-        self.target_point_m = None
-        self.target_point_use = None
+        self.point_request = None
+        self.point_resolved = None
         self.logic_reversed = False
         # Eliminamos self.reset_mode() para que la IA no pierda su modo si pierde el target
 
     def reset_speed(self):
         """Limpia los objetivos de velocidad (pedales) actuales."""
-        self.target_speed_kmh = None
-        self.target_speed_kmh_use = None
+        self.speed_request = None
+        self.speed_resolved_kmh = None
         self.speed_reverse = False
         # Eliminamos self.reset_mode() para que la IA no se apague al detenerse a 0 km/h

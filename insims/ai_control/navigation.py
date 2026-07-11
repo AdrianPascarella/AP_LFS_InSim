@@ -78,16 +78,16 @@ class _NavigationMixin(_MixinBase):
         wp = route.waypoints[mode.route_wp_index]
 
         # 1. Dirección (A dónde mirar) -> Lo usará _handle_steering
-        behavior.target_point_m = (wp.coordinates.x_m, wp.coordinates.y_m)
+        behavior.point_request = (wp.coordinates.x_m, wp.coordinates.y_m)
 
         # 2. Intención Original (Velocidad del Waypoint)
-        behavior.target_speed_kmh = wp.speed.speed_kmh
+        behavior.speed_request = wp.speed.speed_kmh
 
         # =========================================================
         # FASE 4: TÁCTICAS Y RADAR DE TRÁFICO (El Cerebro)
         # =========================================================
         # A. Aplicamos el factor de "personalidad" del conductor a la velocidad del waypoint
-        base_speed = behavior.target_speed_kmh * getattr(
+        base_speed = behavior.speed_request * getattr(
             behavior, "human_speed_factor", 1.0
         )
 
@@ -95,7 +95,7 @@ class _NavigationMixin(_MixinBase):
         final_speed = self._get_radar_speed_limit(ai, base_speed)
 
         # C. Asignamos la velocidad final real para que los pedales la ejecuten a ciegas
-        behavior.target_speed_kmh = final_speed
+        behavior.speed_request = final_speed
         behavior.speed_reverse = final_speed < 0
 
         # =========================================================
@@ -294,7 +294,7 @@ class _NavigationMixin(_MixinBase):
             # =========================================================
             # 1. Comprobamos si la parada es intencionada (tráfico, cruces, fin de vía)
         es_parada_intencionada = (
-            behavior.target_speed_kmh < 5.0 if behavior.target_speed_kmh else True
+            behavior.speed_request < 5.0 if behavior.speed_request else True
         )
 
         if es_parada_intencionada:
@@ -329,7 +329,7 @@ class _NavigationMixin(_MixinBase):
             )
 
             if not ctx.road_id:
-                behavior.target_speed_kmh = 0.0
+                behavior.speed_request = 0.0
                 return
 
             link_from_open = False
@@ -359,7 +359,7 @@ class _NavigationMixin(_MixinBase):
                 # Smart Spawn al despertar
                 geom = self.map_recorder.roads.get(ctx.road_id)
                 if not geom or not geom.nodes:
-                    behavior.target_speed_kmh = 0.0
+                    behavior.speed_request = 0.0
                     return
                 closest_idx = get_closest_node_index(
                     my_coords, geom.nodes, is_waypoint=False
@@ -637,7 +637,7 @@ class _NavigationMixin(_MixinBase):
                         mode.node_index = 0
                         return
                     elif not mode.next_link_id:
-                        behavior.target_speed_kmh = 0.0
+                        behavior.speed_request = 0.0
                         if ai.player.telemetry.speed.speed_kmh < 1:
                             self._cmd_spec(ai.player.plid)
                         return

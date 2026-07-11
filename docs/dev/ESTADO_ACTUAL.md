@@ -1,18 +1,50 @@
 # 📍 Estado actual
 
-> Actualizado: **2026-07-10** — S26: **W2 (Fase 6) — `lfs-insim init` con perfiles**. Confirmado
-> con el usuario: **cierre = `self.client.stop()`** (parada limpia nativa; `TINY.CLOSE` con la
-> reconexión P12 activa solo reconectaría en vez de apagar) y **`--full` por defecto**. `init` gana
-> flags mutuamente excluyentes `--full`/`--minimal` (registro extensible `_INIT_PROFILES`); `--full`
-> = scaffold de bot real (cierre admin-guarded con `client.stop()`, permisos por UCID, `on_reconnect`,
-> `TINY.NCN/NPL`), `--minimal` = template escueto de antes (byte-idéntico). Red primero (+10 tests:
-> perfiles, mutua exclusión, y ambos templates compilan y `exec`→`InSimApp`). Suite **680**; ruff
-> limpio; guías cuadradas. **W1+W5+W2 hechos → próximo W3 (refactor interno + radar).**
+> Actualizado: **2026-07-10** — S27: **W3 (Fase 6), primera mitad**. `traffic.py` (1348) partido en
+> el paquete **`traffic/`** (radar / orchestrator / overtake / zones / cruise_control / paths), con
+> `_TrafficMixin` como fachada → `app.py` y los tests no cambian. **Extracción segura demostrada**:
+> los 18 métodos conservan cuerpo y firma **byte-idénticos** (snapshot antes/después). Y **P7**: el
+> par "intención vs valor en uso" pasa a **petición → resuelto** (`speed_request`/
+> `speed_resolved_kmh`, `point_request`/`point_resolved`, 93 sustituciones). **Decisión con el
+> usuario: se RECORTA W3 pre-publish** — los splits de `map_ui.py` (3161) y `map_recorder.py` (2520)
+> se **aplazan a post-merge** (tooling offline, sin red, no tocan API ni runtime). Suite **680**;
+> ruff limpio. **Próximo: cerrar W3 = índice espacial del radar + FSM de adelantamiento + P4.**
 > **Rama de trabajo: `refactor/estabilizacion`.** Todo el refactor ocurre aquí; `main`
 > queda intacta hasta el merge final (cuando el proyecto esté estable). **Sync por GitHub:**
 > `git pull` al arrancar y `git push` al cerrar (permite continuar desde otro dispositivo).
 
 ## Estado
+
+**S27 (2026-07-10) — Fase 6 · W3 (1/2): split de `traffic.py` + P7 (implementado y verificado, NO
+requiere LFS).** Al medir los ficheros al arrancar, el PLAN estaba **desfasado**: habían crecido
+~70% desde S23 (`map_ui` 1841→**3161**, `map_recorder` 1604→**2520**, `traffic` 1084→**1348**).
+**Decisión de alcance (recomendación explícita, el usuario la eligió): recortar W3 pre-publish** →
+entran `traffic.py` + radar + FSM + P4 + P7; **`map_ui.py` y `map_recorder.py` se aplazan a
+post-merge** (son tooling **offline** de edición de mapas: no son el framework publicado, no tocan
+el runtime de conducción ni la API pública, y no tienen red de caracterización → partirlos no
+aporta nada al release y retrasa el merge, que ya espera a W4). **(1) P3 parcial — paquete
+`traffic/`:** un módulo por responsabilidad — `radar.py` (393), `orchestrator.py` (468),
+`overtake.py` (239), `zones.py` (80), `cruise_control.py` (80), `paths.py` (51); `_TrafficMixin`
+queda como **fachada** que compone los submixins (los tests ya ejercitaban `AIControl`, así que el
+reparto les es transparente). **Extracción segura de verdad:** los cuerpos se movieron **por rango
+de líneas con un script** (nunca a mano) y se demostró con snapshot `inspect.getsource`
+antes/después: **cuerpo y firma byte-idénticos** en los 18 métodos, `AIControl` resuelve a la
+**misma función**, superficie intacta (**182 atributos**), cero líneas perdidas. Prepara el terreno:
+el índice espacial aterriza en `radar.py` y el FSM a revisar vive en `overtake.py`. **(2) P7 —
+nombres de `behavior.py`:** `target_speed_kmh_use`/`target_speed_kmh` y `target_point_use`/
+`target_point_m` → **`speed_request`/`speed_resolved_kmh`** y **`point_request`/`point_resolved`**
+(los `*_request` los escriben comandos y navegación; los `*_resolved` los calcula `physics.py` en
+cada MCI). 93 sustituciones en 9 ficheros por **palabra completa**, cero restos. **Colisión cazada:**
+`_estimate_overtake_distance` tenía un *parámetro* homónimo `target_speed_kmh` que **no es el campo**
+(es la velocidad del coche adelantado) → revertido y renombrado a `target_vehicle_speed_kmh`; era
+justo la ambigüedad que P7 denuncia. De paso: `point_request` ya declara el `tuple[float, float]`
+que `physics.py` aceptaba; fuera los comentarios residuales de `behavior.py` (el resto de marcadores
+`[!]`, zona a zona); `base.py` dice en qué submódulo vive cada método de tráfico y su docstring de
+arquitectura ya incluye `_MapUIMixin`; y el docstring de `test_traffic.py` decía que los tests
+**congelan** el "PARCHE DE SEGURIDAD MATEMÁTICO" del ACC, cuando **S21 lo eliminó** — corregido.
+**Verificación:** suite **680/680** tras cada paso (el split es estructura pura: la red existente
+ES la prueba); `ruff check .` + `format --check .` limpios (102 ficheros); `lfs-insim list` OK;
+3.9-safe. Solo estructura y nombres → **no requiere validación en LFS**.
 
 **S26 (2026-07-10) — Fase 6 · W2: `lfs-insim init` con perfiles `--minimal`/`--full`
 (implementado y verificado, NO requiere LFS):** segundo ítem de DX pre-publish. `init` ahora
@@ -524,7 +556,13 @@ P11–P21 en `DIAGNOSTICO.md`. Queda gordo: P12 (reconexión, Fase 3).
 S23). Fases 1-4 (core) COMPLETADAS. **Fase 5 (ai_control: red + estabilización) COMPLETA salvo la
 validación en LFS del ceda-el-paso del ACC (W4)**, hoy bloqueada porque ningún mapa tiene
 intersección (`zones: 0`). **Fase 6: W1 (split `utils.py`), W5 (sweep de API) y W2 (`init` con
-perfiles) HECHOS** (S24/S25/S26); **falta W3** (refactor interno + radar).
+perfiles) HECHOS** (S24/S25/S26); **W3 a medias** (S27: split de `traffic/` + P7 hechos; faltan el
+índice espacial del radar, el FSM de adelantamiento y P4).
+
+**Recorte de W3 (S27, con el usuario):** los splits de `map_ui.py` (3161) y `map_recorder.py`
+(2520) **salen del pre-publish** y pasan a post-merge (ver PLAN § Ideas). Son tooling offline,
+sin red de tests, y no tocan ni la API pública ni el runtime de conducción → no deben retrasar
+el merge/publish.
 
 **Decisión de rumbo (S23):** adelantar el refactor de ai_control a **ANTES de publicar**, junto
 con la limpieza de la API pública (`utils.py`) y un `init` más robusto. Motivo clave: mover
@@ -545,8 +583,8 @@ de publicar para un primer release cohesionado y con la API pública ya estable.
 ai_control + limpieza de la API pública (`utils.py`) + `init` más robusto. Fase 5 está COMPLETA
 salvo **W4** (validación en LFS del ceda-el-paso del ACC, hoy bloqueada por `zones: 0`). Orden
 acordado: **W4** (tú, en LFS, en paralelo — gate del merge) → ~~W1~~ ✅ → ~~W5~~ ✅ → ~~W2~~ ✅
-(init) → **W3** (refactor interno + radar). Todo en la rama; un solo merge a `main` cuando esté
-publish-ready + validado, luego publish. Detalle en PLAN § Fase 6.
+(init) → **W3** (refactor interno + radar; **a medias tras S27**). Todo en la rama; un solo merge a
+`main` cuando esté publish-ready + validado, luego publish. Detalle en PLAN § Fase 6.
 
 **✅ W1 HECHO (S24)** — split de `utils.py`: las 9 funciones de geometría/nav de la IA movidas a
 `ai_control/nav_modes/freeroam/geometry.py`; en el framework quedan comandos, colores,
@@ -569,13 +607,29 @@ defecto**. `cli.py`: flags mutuamente excluyentes `--full`/`--minimal` + registr
 tests, incl. ambos templates `compile`+`exec`→`InSimApp`). Suite 680; ruff limpio; guías/README/
 CLAUDE/CHANGELOG cuadrados.
 
-**Empezar AQUÍ la próxima sesión — W3 (refactor interno + radar), último ítem de Fase 6:**
+**✅ W3 a MEDIAS (S27)** — hechos el **split de `traffic.py`** en el paquete `traffic/` (fachada
+`_TrafficMixin` + 6 submixins; extracción segura probada con snapshot byte-idéntico) y **P7**
+(`speed_request`/`speed_resolved_kmh`, `point_request`/`point_resolved`). **Recortado el alcance**:
+`map_ui.py` y `map_recorder.py` salen a post-merge.
 
-1. **W3 (resto de Fase 6):**
-   - **W3** — refactor interno (P3 partir `map_ui`/`map_recorder`/`traffic`; P4 `base.py`; P7
-     nombres de `behavior.py`) + índice espacial de VEHÍCULOS para el radar **plegado en
-     `traffic.py`** (caracterizar el radar como unidad ANTES; reutiliza el `SpatialHashGrid` de
-     S23, grid dinámico aparte) + revisar el FSM de adelantamiento (`overtake_state`).
+**Empezar AQUÍ la próxima sesión — cerrar W3 (último ítem de Fase 6). Sesión nueva recomendada:**
+
+1. **Índice espacial de VEHÍCULOS para el radar** (el plato fuerte; ahora vive en
+   `insims/ai_control/traffic/radar.py` — `_scan_lane_ahead` / `_scan_target_lane` /
+   `_scan_return_lane_gap`, 393 líneas):
+   - **Red primero (MODUS_OPERANDI §3):** caracterizar el radar **como unidad** ANTES de tocarlo.
+     Ojo: los 81 tests de S19 cubren los `_scan_*` **solo con vehículos IA** (la rama de humanos
+     usa `time.time()` + `get_location_context` y se evitó a propósito) → esa rama sigue sin red.
+   - Reutilizar el `SpatialHashGrid` de S23 (`nav_modes/freeroam/spatial_grid.py`) como grid
+     **dinámico** (se reconstruye por tick), aparte del estático de geometría. El radar es O(N) por
+     IA → O(N²) global; la auditoría S22 lo dio **no urgente** (peor tick ≈0,6 ms con 16 IAs).
+   - Limpiar de paso los 4 marcadores `[!] OPTIMIZACIÓN` de `radar.py` (P7, zona a zona).
+2. **Revisar el FSM de adelantamiento** (`overtake_state`, en `traffic/overtake.py`) y **eliminar
+   `is_target_ahead_and_in_lane`** de `nav_modes/freeroam/geometry.py` — código muerto detectado en
+   S24 (migrado con red por seguridad; ya se puede borrar).
+3. **P4** — reducir la superficie cross-mixin de `base.py` (~40 métodos). Ya está anotado qué
+   submódulo de `traffic/` implementa cada uno (S27), que es el mapa previo para adelgazarlo.
+4. Cerrar W3: actualizar README/CLAUDE.md con la arquitectura final + revisión del diagnóstico.
 2. Backlog de **tipado gradual** (ir quitando overrides de `[tool.mypy]` en
    pyproject, módulo a módulo, cuando se toque cada uno): los módulos
    `packets` (dataclasses de protocolo), `insim_loader` (fricción con

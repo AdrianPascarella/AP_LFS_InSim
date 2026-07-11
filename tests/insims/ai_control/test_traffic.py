@@ -1,20 +1,25 @@
 """
-Tests de CARACTERIZACIÓN de _TrafficMixin (insims/ai_control/traffic.py).
+Tests de CARACTERIZACIÓN de _TrafficMixin (insims/ai_control/traffic/).
 
 Congelan el comportamiento ACTUAL de la lógica DETERMINISTA de tráfico antes de
 tocar nada (red de seguridad, MODUS_OPERANDI §3). Cubre, de menor a mayor setup:
 
   - Matemática pura (sin grafo ni estado): `_apply_adaptive_cruise_control` (el
-    ACC de 3 zonas + su "PARCHE DE SEGURIDAD MATEMÁTICO"), `_estimate_overtake_distance`,
-    `_get_relative_dist_to_cover`, `_calc_path_length`, `_get_lookahead_point`.
+    ACC de 3 zonas), `_estimate_overtake_distance`, `_get_relative_dist_to_cover`,
+    `_calc_path_length`, `_get_lookahead_point`.
 
 El gran orquestador `_update_traffic_behavior` NO se cubre a propósito: usa
 `time.time()` y muta muchísimo estado del `mode` (mismo criterio que los métodos
 gordos de navigation.py `_update_freeroam_navigation` / `_get_radar_speed_limit`).
 
-Sobre el "PARCHE DE SEGURIDAD MATEMÁTICO" (traffic.py, dentro del ACC): PLAN §Fase 5
-lo tiene marcado para revisar/sustituir. AQUÍ solo lo CONGELAMOS — los tests fijan
-lo que hace hoy (empuja `min_dist`/`max_dist` hacia arriba), no lo que debería hacer.
+Sobre el "PARCHE DE SEGURIDAD MATEMÁTICO" del ACC: los 2 tests que lo congelaban se
+reescribieron en S21, cuando el parche se ELIMINÓ (ver DIAGNOSTICO § P25). Hoy estos
+tests fijan el ACC sin parche: los `min_dist`/`max_dist` del llamador se respetan.
+
+Los métodos viven repartidos por responsabilidad en el paquete `traffic/` (radar,
+cruise_control, zones, overtake, paths, orchestrator); `_TrafficMixin` los compone.
+Los tests los ejercitan a través de `AIControl` (fixture `ai_control`), así que el
+reparto interno les es transparente.
 
 Convenciones LFS relevantes (mismas que test_physics / test_navigation):
   - Coordenadas en metros; `make_coords` guarda en unidades LFS (1 m = 65536 units).
@@ -130,7 +135,7 @@ class TestApplyAdaptiveCruiseControl:
 
 # ─── _estimate_overtake_distance: asfalto y tiempo para adelantar ─────────────
 #
-# Firma: (overtake_lane_speed_kmh, target_speed_kmh, relative_dist_to_cover_m)
+# Firma: (overtake_lane_speed_kmh, target_vehicle_speed_kmh, relative_dist_to_cover_m)
 # → (metros_de_asfalto, segundos). Si el delta de velocidad ≤ 0.1 m/s → (inf, inf).
 
 

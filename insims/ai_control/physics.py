@@ -22,18 +22,18 @@ class _PhysicsMixin(_MixinBase):
     def _handle_steering(self, ai: AI) -> list[AIV]:
         behavior: AIBehavior = ai.extra["aic"]
 
-        if not behavior.target_point_m:
+        if not behavior.point_request:
             return [AIV(Input=CS.STEER, Value=CSVAL.STEER.CENTRE)]
 
-        if isinstance(behavior.target_point_m, int):
+        if isinstance(behavior.point_request, int):
             # Es un PLID: buscamos sus coordenadas actuales en players o ais
-            target_plid = behavior.target_point_m
+            target_plid = behavior.point_request
             if target_plid in self.user_manager.players:
-                behavior.target_point_use = self.user_manager.players[
+                behavior.point_resolved = self.user_manager.players[
                     target_plid
                 ].telemetry.coordinates
             elif target_plid in self.user_manager.ais:
-                behavior.target_point_use = self.user_manager.ais[
+                behavior.point_resolved = self.user_manager.ais[
                     target_plid
                 ].player.telemetry.coordinates
             else:
@@ -44,12 +44,12 @@ class _PhysicsMixin(_MixinBase):
                 behavior.reset_direction()
                 return [AIV(Input=CS.STEER, Value=CSVAL.STEER.CENTRE)]
 
-        elif isinstance(behavior.target_point_m, tuple):
+        elif isinstance(behavior.point_request, tuple):
             # Es una tupla (X, Y) estática dada por comando.
             # Usamos la Z actual de la IA para mantener el cálculo 3D intacto sin alterar la altura.
-            behavior.target_point_use = Coordinates(
-                lfs_pos_to_meters(behavior.target_point_m[0], rev=True),
-                lfs_pos_to_meters(behavior.target_point_m[1], rev=True),
+            behavior.point_resolved = Coordinates(
+                lfs_pos_to_meters(behavior.point_request[0], rev=True),
+                lfs_pos_to_meters(behavior.point_request[1], rev=True),
                 ai.player.telemetry.coordinates.z,
             )
 
@@ -65,7 +65,7 @@ class _PhysicsMixin(_MixinBase):
         Calcula el giro del volante necesario.
         Retorna un int en escala InSim (0 a 65535).
         """
-        if behavior.target_point_use is None:
+        if behavior.point_resolved is None:
             return CSVAL.STEER.CENTRE
 
         logic_rev = behavior.logic_reversed
@@ -76,8 +76,8 @@ class _PhysicsMixin(_MixinBase):
         target_h = calc_target_heading(
             telemetry.coordinates.x,
             telemetry.coordinates.y,
-            behavior.target_point_use.x,
-            behavior.target_point_use.y,
+            behavior.point_resolved.x,
+            behavior.point_resolved.y,
             rev=logic_rev,
         )
 
@@ -104,7 +104,7 @@ class _PhysicsMixin(_MixinBase):
 
         # --- APAGADO COMPLETO ---
         # (Se mantiene exactamente igual...)
-        if not behavior.target_speed_kmh:
+        if not behavior.speed_request:
             if ai.player.telemetry.speed.speed_kmh < 1:
                 if behavior.active_ready:
                     behavior.gear_mode = GearMode.NEUTRAL
@@ -120,7 +120,7 @@ class _PhysicsMixin(_MixinBase):
                 else:
                     return
             else:
-                behavior.target_speed_kmh_use = 0.0
+                behavior.speed_resolved_kmh = 0.0
 
         # --- ENCENDIDO ---
         if not behavior.active_ready:
@@ -134,18 +134,18 @@ class _PhysicsMixin(_MixinBase):
 
         # --- 1. RESOLVER VELOCIDAD CRUDA (Modos NO complejos) ---
         # Si la IA tiene RouteMode, este bloque no altera nada porque
-        # la ruta ya calculó y asignó behavior.target_speed_kmh_use.
-        if isinstance(behavior.target_speed_kmh, float):
-            behavior.target_speed_kmh_use = behavior.target_speed_kmh
-            behavior.speed_reverse = behavior.target_speed_kmh < 0
+        # la ruta ya calculó y asignó behavior.speed_resolved_kmh.
+        if isinstance(behavior.speed_request, float):
+            behavior.speed_resolved_kmh = behavior.speed_request
+            behavior.speed_reverse = behavior.speed_request < 0
 
-        elif isinstance(behavior.target_speed_kmh, AdaptiveSpeedConfig):
+        elif isinstance(behavior.speed_request, AdaptiveSpeedConfig):
             behavior.speed_reverse = False
-            config = behavior.target_speed_kmh
+            config = behavior.speed_request
 
-            if behavior.target_point_use is not None:
+            if behavior.point_resolved is not None:
                 my_coords = ai.player.telemetry.coordinates
-                target_coords = behavior.target_point_use
+                target_coords = behavior.point_resolved
                 dist_m = calc_dist_3d(
                     my_coords.x_m,
                     my_coords.y_m,
@@ -163,25 +163,23 @@ class _PhysicsMixin(_MixinBase):
                 )
 
                 if dist_m <= config.min_dist:
-                    behavior.target_speed_kmh_use = speed_at_min
+                    behavior.speed_resolved_kmh = speed_at_min
                 elif dist_m >= config.max_dist:
-                    behavior.target_speed_kmh_use = speed_at_max
+                    behavior.speed_resolved_kmh = speed_at_max
                 else:
                     ratio = (dist_m - config.min_dist) / (
                         config.max_dist - config.min_dist
                     )
-                    behavior.target_speed_kmh_use = speed_at_min + ratio * (
+                    behavior.speed_resolved_kmh = speed_at_min + ratio * (
                         speed_at_max - speed_at_min
                     )
             else:
-                behavior.target_speed_kmh_use = 0.0
+                behavior.speed_resolved_kmh = 0.0
 
         # --- 2. [!] LEY UNIVERSAL DE CAOS (El filtro final) ---
         # Afecta SIEMPRE, a menos que un sistema superior pida ignorarlo.
-        if behavior.target_speed_kmh_use is not None and not behavior.ignore_human:
-            behavior.target_speed_kmh_use *= getattr(
-                behavior, "human_speed_factor", 1.0
-            )
+        if behavior.speed_resolved_kmh is not None and not behavior.ignore_human:
+            behavior.speed_resolved_kmh *= getattr(behavior, "human_speed_factor", 1.0)
 
         # Reseteamos el flag de ignore para el siguiente tick, por si el modo quiere volver al caos
         behavior.ignore_human = False
@@ -189,28 +187,23 @@ class _PhysicsMixin(_MixinBase):
         # =========================================================
         # [!] REGISTRO DEL ESTADO ATASCADO (Watchdog Pasivo)
         # =========================================================
-        if (
-            behavior.target_speed_kmh_use != 0
-            and ai.player.telemetry.speed.speed_kmh < 1
-        ):
+        if behavior.speed_resolved_kmh != 0 and ai.player.telemetry.speed.speed_kmh < 1:
             if behavior.stuck_start_time == 0.0:
                 behavior.stuck_start_time = time.time()
         else:
             behavior.stuck_start_time = 0.0
 
         # --- GESTOR DE MARCHAS AUTOMÁTICAS ---
-        if behavior.target_speed_kmh_use < 0 and behavior.gear_mode != GearMode.REVERSE:
+        if behavior.speed_resolved_kmh < 0 and behavior.gear_mode != GearMode.REVERSE:
             if ai.player.telemetry.speed.speed_kmh > 1:
-                behavior.target_speed_kmh_use = 0.0  # Frenar antes de cambiar
+                behavior.speed_resolved_kmh = 0.0  # Frenar antes de cambiar
             else:
                 actions.append(AIV(Input=CS.GEAR, Value=CSVAL.GEAR.REVERSE))
                 behavior.gear_mode = GearMode.REVERSE
 
-        elif (
-            behavior.target_speed_kmh_use > 0 and behavior.gear_mode != GearMode.NORMAL
-        ):
+        elif behavior.speed_resolved_kmh > 0 and behavior.gear_mode != GearMode.NORMAL:
             if ai.player.telemetry.speed.speed_kmh > 1:
-                behavior.target_speed_kmh_use = 0.0  # Frenar antes de cambiar
+                behavior.speed_resolved_kmh = 0.0  # Frenar antes de cambiar
             else:
                 actions.extend(
                     [
@@ -241,14 +234,14 @@ class _PhysicsMixin(_MixinBase):
         Calcula la presión de los pedales.
         Retorna una tupla (throttle, brake), ambos en escala InSim (0 a 65535).
         """
-        if behavior.target_speed_kmh_use == 0.0:
+        if behavior.speed_resolved_kmh == 0.0:
             return (
                 CSVAL.MIN_MID_MAX.MIN,
                 CSVAL.MIN_MID_MAX.MAX,
             )  # Freno a fondo si el objetivo es parar
 
         # 1. PID de Velocidad (El nuevo PID ya sabe que no debe exceder -1.0 a 1.0)
-        target_mag = abs(behavior.target_speed_kmh_use)
+        target_mag = abs(behavior.speed_resolved_kmh)
         pid_out = behavior.pid_speed.update(
             target=target_mag, current=current_speed_kmh, dt=self.interval_mci_s
         )

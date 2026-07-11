@@ -192,7 +192,7 @@ class _CommandsMixin(_MixinBase):
             return
 
         behavior.reset_speed()
-        behavior.target_speed_kmh = speed_kmh
+        behavior.speed_request = speed_kmh
         self.send_ISP_MSL(
             Msg=f"{TextColors.GREEN}Velocidad fijada para PLID {plid} a {speed_kmh} km/h"
         )
@@ -216,7 +216,7 @@ class _CommandsMixin(_MixinBase):
             return
 
         behavior.reset_direction()
-        behavior.target_point_m = (x, y)
+        behavior.point_request = (x, y)
         behavior.logic_reversed = False
         self.send_ISP_MSL(
             Msg=f"{TextColors.GREEN}Punto fijado para PLID {plid} en ({x}, {y})"
@@ -244,7 +244,7 @@ class _CommandsMixin(_MixinBase):
             return
 
         behavior.reset_direction()
-        behavior.target_point_m = plid_target
+        behavior.point_request = plid_target
         behavior.logic_reversed = False
         self.send_ISP_MSL(
             Msg=f"{TextColors.GREEN}Siguiendo a PLID {plid_target} (IA {plid_ai})"
@@ -272,7 +272,7 @@ class _CommandsMixin(_MixinBase):
             return
 
         behavior.reset_direction()
-        behavior.target_point_m = plid_target
+        behavior.point_request = plid_target
         behavior.logic_reversed = True
         self.send_ISP_MSL(
             Msg=f"{TextColors.GREEN}Huyendo de PLID {plid_target} (IA {plid_ai})"
@@ -292,7 +292,7 @@ class _CommandsMixin(_MixinBase):
         if not behavior:
             return
 
-        behavior.target_speed_kmh = AdaptiveSpeedConfig(
+        behavior.speed_request = AdaptiveSpeedConfig(
             min_speed, max_speed, min_dist, max_dist
         )
         self.send_ISP_MSL(
@@ -399,8 +399,8 @@ class _CommandsMixin(_MixinBase):
 
         # Formateo seguro de Target Speed (por si es AdaptiveSpeedConfig o None)
         t_speed = 0.0
-        if isinstance(behavior.target_speed_kmh, (int, float)):
-            t_speed = behavior.target_speed_kmh
+        if isinstance(behavior.speed_request, (int, float)):
+            t_speed = behavior.speed_request
 
         # 3. Mostrar Información General (AIBehavior)
         self.send_ISP_MSL(Msg=f"^3=== ESTADO IA: {ai.ai_name} (PLID: {ai_plid}) ===")

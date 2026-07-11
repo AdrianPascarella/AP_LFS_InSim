@@ -117,20 +117,35 @@ con sentido). Requiere validación en LFS al terminar. Los otros 2 call-sites de
 ## 🟠 Problemas de severidad MEDIA
 
 ### P3 — Ficheros gigantes (violan responsabilidad única)
-| Archivo | Líneas |
-|---|---|
-| `insims/ai_control/map_ui.py` | 1841 |
-| `insims/ai_control/nav_modes/freeroam/map_recorder.py` | 1604 |
-| `insims/ai_control/traffic.py` | 1084 |
-| `insims/ai_control/navigation.py` | 683 |
+Tamaños medidos en S27 (habían crecido bastante desde la primera medición):
+
+| Archivo | Líneas (S27) | Estado |
+|---|---|---|
+| `insims/ai_control/map_ui.py` | 3161 | pendiente — **aplazado a post-merge** (S27) |
+| `insims/ai_control/nav_modes/freeroam/map_recorder.py` | 2520 | pendiente — **aplazado a post-merge** (S27) |
+| ~~`insims/ai_control/traffic.py`~~ | ~~1348~~ | ✅ **resuelto (S27)**: paquete `traffic/` |
+| `insims/ai_control/navigation.py` | 864 | pendiente (sin fase) |
+
+**S27:** `traffic.py` (1348) partido en el paquete `traffic/` con un módulo por
+responsabilidad — `radar.py` (393), `orchestrator.py` (468), `overtake.py` (239),
+`zones.py` (80), `cruise_control.py` (80), `paths.py` (51). `_TrafficMixin` queda como
+fachada que compone los submixins, así que `app.py` y los tests no se enteran.
+
+**Decisión de alcance (S27, con el usuario):** `map_ui.py` y `map_recorder.py` NO se parten
+antes del publish. Son **tooling offline** de edición de mapas: no son el framework
+publicado, no tocan el runtime de conducción ni la API pública, y no tienen red de
+caracterización. Partir 5.700 líneas ahí no aporta nada al release y retrasa el merge (que
+ya espera a W4). Pasan a post-merge.
 
 (`insim_enums.py` 1314 y `packets/insim.py` 829 son grandes pero legítimos: son el
 protocolo. No cuentan como deuda.)
 
 ### P4 — Acoplamiento cruzado entre mixins
-- `base.py` declara **~40 métodos cross-mixin** (líneas 87-125): cualquier mixin llama a
-  métodos de cualquier otro vía `self`. Es un "God object" repartido en archivos; la
-  modularidad es de fichero, no de responsabilidad. Refactor estructural = Fase 3.
+- `base.py` declara **~40 métodos cross-mixin**: cualquier mixin llama a métodos de
+  cualquier otro vía `self`. Es un "God object" repartido en archivos; la modularidad es de
+  fichero, no de responsabilidad. **Pendiente: Fase 6 · W3.**
+- **S27:** cada método de tráfico declarado ahí dice ya en qué submódulo de `traffic/` vive
+  (sigue siendo la misma superficie: solo está documentada, no reducida).
 
 ---
 
@@ -164,12 +179,20 @@ protocolo. No cuentan como deuda.)
   entre dispositivos; `ast.literal_eval` es seguro). Migrarlo a JSON queda como idea para
   cuando se toque `RouteManager` (no urgente).
 
-### P7 — Nombres confusos y comentarios residuales
-- `behavior.py`: `target_speed_kmh_use` vs `target_speed_kmh` y `target_point_use` vs
-  `target_point_m` (líneas 37-40) — patrón "intención vs valor en uso" mal nombrado.
-- Comentarios residuales dirigidos a uno mismo: `# En tu dataclass o clase AIBehavior:`
-  (`behavior.py:49`), marcadores `[!] NUEVO` / `[!] OPTIMIZACIÓN`. Ruido a limpiar durante
-  el refactor de cada zona (no en bloque).
+### P7 — Nombres confusos y comentarios residuales — ✅ RESUELTO en `behavior.py` (S27)
+- ~~`behavior.py`: `target_speed_kmh_use` vs `target_speed_kmh` y `target_point_use` vs
+  `target_point_m` — patrón "intención vs valor en uso" mal nombrado.~~
+  **S27:** renombrados al patrón **petición → resuelto**: `speed_request` /
+  `speed_resolved_kmh` y `point_request` / `point_resolved` (93 sustituciones, 9 ficheros).
+  Los `*_request` los escriben comandos y navegación; los `*_resolved` los calcula
+  `physics.py` en cada MCI. El sufijo `_m` (metros) además mentía: el campo admite un PLID.
+  **Colisión cazada:** `_estimate_overtake_distance` tenía un *parámetro* `target_speed_kmh`
+  que NO era el campo (es la velocidad del coche al que se adelanta) → `target_vehicle_speed_kmh`.
+- ~~`# En tu dataclass o clase AIBehavior:` (`behavior.py:49`)~~ — eliminado (S27).
+- Marcadores `[!] NUEVO` / `[!] OPTIMIZACIÓN`: **quedan 20** repartidos (`navigation.py`,
+  `physics.py`, `traffic/radar.py`, `map_recorder.py`, `map_renderer.py`, `route/manager.py`,
+  `commands.py`). Ruido a limpiar durante el refactor de cada zona (**no en bloque**):
+  el de `behavior.py` cayó con esta pasada; los de `traffic/radar.py` caerán con el radar.
 
 ### P8 — Caso borde: string variable vacío no recibe padding (`packets/base.py`)
 - `validate_string_lengths` (`base.py:127`) hace el padding bajo `if new_val:`, así que un
@@ -422,7 +445,10 @@ protocolo. No cuentan como deuda.)
 - `commands.py` — registro de comandos de chat (`_CommandsMixin`).
 - `navigation.py` — planificación de ruta y de enlaces del grafo (`_NavigationMixin`).
 - `physics.py` — volante, pedales, marchas (`_PhysicsMixin`).
-- `traffic.py` — radar, ACC (adaptive cruise), adelantamientos, zonas de intersección (`_TrafficMixin`).
+- `traffic/` — comportamiento de tráfico (`_TrafficMixin` = fachada que compone los submixins):
+  `radar.py` (barrido de vehículos), `cruise_control.py` (ACC), `zones.py` (intersecciones),
+  `overtake.py` (adelantamiento: matemática + FSM), `paths.py` (helpers de path),
+  `orchestrator.py` (`_update_traffic_behavior`, coordina todo lo anterior).
 - `map_ui.py` — UI de botones en LFS (tabs Info/Debug/Run, grabación) (`_MapUIMixin`).
 - `nav_modes/route/` — `RouteMode` + `RouteManager` (waypoints grabados).
 - `nav_modes/freeroam/` — `FreeroamMode`, `graph.py` (RoadLink/LateralLink/Road),
