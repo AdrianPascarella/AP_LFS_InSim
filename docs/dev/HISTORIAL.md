@@ -96,7 +96,7 @@ S31 en Fase 5.
 
 **Verificación:** suite **710/710** (699 + 9 + 2); `ruff check` + `format --check` limpios (103 ficheros);
 `lfs-insim list` OK. Solo lógica de UI del insim de ejemplo → **no toca la API pública**; como es
-UI/conducta, **requiere validación en LFS** (se acumula con W4). **Commit:** el de la herramienta Apunta (S31).
+UI/conducta, ✅ **validado en LFS por el usuario** ("funciona perfectamente"). **Commit:** el de la herramienta Apunta (S31).
 
 ---
 

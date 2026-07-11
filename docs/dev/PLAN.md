@@ -328,7 +328,7 @@ dispara en/tras el merge a `main`.
       (ray-cast 2D en `nav_modes/freeroam/geometry.py`; red de 9 tests) + rumbo del morro desde el heading
       LFS (misma fórmula que el orquestador); excluye la vía actual (la más cercana a la posición). Toggle
       CID 118, fila del overlay 172. Red: +2 tests de integración en `test_map_ui_whereami.py`. Suite 710;
-      ruff limpio. **Pendiente validación en LFS.** Commit de cierre de S31.
+      ruff limpio. ✅ **validado en LFS por el usuario** ("funciona perfectamente"). Commit de cierre de S31.
 - [x] Auditar el hot-loop `on_ISP_MCI` (coste por tick, frecuencia real) — con el dispatch
       ya fuera del hilo IO (Fase 3) — S22: informe en `docs/dev/AUDITORIA_HOTLOOP.md` con
       mediciones reales. **Veredicto: el loop está SANO** (radar auto-regulado a ~7–10 Hz/IA

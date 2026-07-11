@@ -14,7 +14,7 @@
 > toca la API pública ni requiere LFS**. **2ª petición de S31:** nueva herramienta **"Apunta"** en la
 > pestaña Info (overlay fijo, 6º tipo del whereami) que indica la **vía a la que apunta el morro del coche**
 > (distinta de la actual) y a qué distancia — para mapear; ray-cast puro `find_road_pointed_at` con red
-> (9 tests de geometría + 2 de integración), suite **710**; **pendiente de validar en LFS**. **Próximo:
+> (9 tests de geometría + 2 de integración), suite **710**; **✅ validado en LFS por el usuario**. **Próximo:
 > implementar los 3 fixes de la Fase 7** (bugs de conducción freeroam; offline, red primero) → **el usuario
 > los confirma OBLIGATORIAMENTE en LFS** después (mismo gate que W4; junto con validar "Apunta"). Arranque
 > limpio y en sync con `origin` (tip S30); árbol limpio tras los commits de cierre de S31.
@@ -58,8 +58,8 @@ primero (MODUS §3):** `find_road_pointed_at` con 9 tests (acierto/detrás/más-
 paralelo/vector-nulo/diagonal/fuera-de-segmento) + 2 de integración en `test_map_ui_whereami.py` (toggle
 CID 118 → tipo `ahead`; compute end-to-end reporta la vía apuntada y su distancia, excluyendo la actual).
 Suite **710/710** (699 + 9 + 2); ruff limpio; `lfs-insim list` OK. Solo lógica de UI del insim de ejemplo
-→ **no toca la API pública**; como es conducta/UI, **requiere validación en LFS**. Commit: el de la
-herramienta Apunta (S31).
+→ **no toca la API pública**; como es conducta/UI, ✅ **validado en LFS por el usuario** ("funciona
+perfectamente"). Commit: el de la herramienta Apunta (S31).
 
 **S30 (2026-07-11) — retoque de UI de `ai_control` (whereami → overlay fijo; fuera del plan) +
 validación en LFS del fix 2 de S29.** Sesión corta a petición del usuario, **sin continuar el trabajo
@@ -768,9 +768,7 @@ salidas juntas, (3) radar en transición road→roadlink. Ninguno toca la API p�
 **Pendiente de validar en LFS (se acumula para la próxima sesión de juego, mismo gate que W4):**
 - **W4** — crear una **intersección** (hoy `zones: 0` en todos los mapas) y validar el **ceda-el-paso del
   ACC** (S21) → desbloquea el gate del merge.
-- **Herramienta "Apunta"** (S31) — comprobar al conducir que indica bien la vía a la que apunta el morro y
-  la distancia (mapeando). Si hay que afinar el alcance del rayo: `_AHEAD_MAX_DIST_M` (map_ui, 300 m).
-- **Los 3 fixes de la Fase 7** una vez implementados (ver arriba).
+- **Los 3 fixes de la Fase 7** una vez implementados (ver arriba). *(Apunta, S31: ✅ ya validado en LFS.)*
 
 **Backlog offline (opcional, si no hay LFS a mano; no bloquea el merge):**
 1. **Desacople profundo de `base.py` (resto de P4):** reducir las 20 llamadas cross-mixin reales / romper
