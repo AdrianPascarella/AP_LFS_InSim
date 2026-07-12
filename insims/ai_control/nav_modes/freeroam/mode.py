@@ -69,6 +69,10 @@ class FreeroamMode(AINavModeState):
         # IA empezó a estar parada sin next_link. 0.0 = no está en ese estado.
         self._dead_end_since: float = 0.0
 
+        # Histéresis del ceda-el-paso (anti-parpadeo): instante hasta el que se
+        # mantiene el yield tras la última detección de un prioritario. 0.0 = sin hold.
+        self._yield_hold_until: float = 0.0
+
         # FSM de adelantamiento — inicialización garantizada en construcción
         self.overtake_state: str = "IDLE"
         self.overtake_cooldown: float = 0.0

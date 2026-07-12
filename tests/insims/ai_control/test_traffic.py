@@ -374,6 +374,28 @@ class TestIsPriorityVehicleActiveAtZone:
         assert got is False
 
 
+# ─── _should_keep_yielding: histéresis anti-parpadeo del ceda-el-paso ─────────
+#
+# Fase 7: la decisión de ceder no debe soltarse al primer tick sin prioritario
+# (causaba oscilación gas-a-fondo/freno-de-mano). Detectar un prioritario renueva
+# el "hold"; sin detección se sigue cediendo hasta que el hold expira.
+
+
+class TestShouldKeepYielding:
+    def test_detectado_siempre_cede(self, ai_control):
+        # Con prioritario detectado se cede, aunque el hold ya hubiera expirado.
+        assert ai_control._should_keep_yielding(True, 0.0, 100.0) is True
+
+    def test_sin_deteccion_dentro_del_hold_sigue_cediendo(self, ai_control):
+        # No detectado este tick, pero el hold aún no expiró → mantiene el yield.
+        assert ai_control._should_keep_yielding(False, 101.0, 100.0) is True
+
+    def test_sin_deteccion_hold_expirado_suelta(self, ai_control):
+        # Hold expirado (o justo en el límite) sin detección → suelta el yield.
+        assert ai_control._should_keep_yielding(False, 100.0, 100.0) is False
+        assert ai_control._should_keep_yielding(False, 99.0, 100.0) is False
+
+
 # ─── _find_valid_overtake_lane: elección del carril de adelantamiento ─────────
 #
 # RHT (conducción por la derecha) → se adelanta por la IZQUIERDA; LHT → por la

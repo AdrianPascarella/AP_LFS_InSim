@@ -22,6 +22,15 @@ if TYPE_CHECKING:
 
 
 class _OrchestratorMixin(_MixinBase):
+    def _should_keep_yielding(
+        self, detected: bool, hold_until: float, now: float
+    ) -> bool:
+        """Histéresis del ceda-el-paso (anti-parpadeo). True si la IA debe seguir
+        cediendo: hay un prioritario detectado este tick, o aún no ha expirado el
+        `hold_until` de la última detección. Evita soltar el yield —y pegar un
+        acelerón contra el freno de mano— por un único tick sin detección."""
+        return detected or now < hold_until
+
     def _update_traffic_behavior(self, ai: AI) -> None:
         """
         Orquestador táctico (Navegación Micro).
@@ -299,6 +308,7 @@ class _OrchestratorMixin(_MixinBase):
             PRIORITY_APPROACH_s = (
                 4.0  # Ventana para detectar coche prioritario aproximándose
             )
+            YIELD_HOLD_S = 1.0  # Histéresis: se sigue cediendo este tiempo tras la última detección
 
             if hasattr(self.map_recorder, "zones") and self.map_recorder.zones:
                 yielding_to_zone = False
@@ -415,8 +425,18 @@ class _OrchestratorMixin(_MixinBase):
                                     coche_prioritario_detectado = True
                                     break
 
-                    # 5. Aplicar freno o limpiar estado de ceda el paso
+                    # 5. Aplicar freno o limpiar estado (con histéresis anti-parpadeo:
+                    #    detectar renueva el hold; sin detección se cede hasta que expira).
+                    now = time.time()
                     if coche_prioritario_detectado:
+                        mode._yield_hold_until = now + YIELD_HOLD_S
+                        mode.yield_zone_id = zone_id
+                    hold_until = (
+                        mode._yield_hold_until if mode.yield_zone_id == zone_id else 0.0
+                    )
+                    if self._should_keep_yielding(
+                        coche_prioritario_detectado, hold_until, now
+                    ):
                         mode.yield_zone_id = zone_id
                         mode.yield_active = True
                         yielding_to_zone = True
