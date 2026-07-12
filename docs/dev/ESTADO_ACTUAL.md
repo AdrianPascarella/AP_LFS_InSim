@@ -1,32 +1,49 @@
 # 📍 Estado actual
 
-> Actualizado: **2026-07-12** — S32: **herramienta "Link auto" en la UI de mapeo (petición del usuario,
-> fuera de plan).** El usuario pidió pausar la Fase 7 e implementar una utilidad para mapear cómodo. Hecho:
-> nuevo botón **"Link auto"** en la pestaña **Grabar** de `map_ui.py` (CID 118, justo debajo de "RoadLink")
-> que graba un **RoadLink sin teclear origen ni destino** — el ORIGEN se toma de la vía más cercana al coche
-> que se graba (`recording_plid`) al iniciar y el DESTINO al pulsar Finalizar (ambos vía
-> `get_location_context`). Al finalizar: si `origen->destino` ya existe → pantalla de **conflicto**
-> (añadir sufijo a origen/destino y recomprobar / sobrescribir / cancelar); si no → pantalla de
-> **confirmación** con el nombre final (Aprobar / Cancelar). Estado del flujo en
-> `current_recording["auto_phase"]` (sobrevive a cerrar/reabrir el menú); reutiliza `_cmd_rec_end`. Red:
-> `test_map_ui_auto_link.py` (**13 tests**), suite **723/723**; ruff limpio; `lfs-insim list` OK. Solo UI del
-> insim de ejemplo → **no toca la API pública**; como es UI/conducta, **✅ validado en LFS por el usuario**
-> ("funciona perfectamente"). Al arrancar se **protegió el mapa South City** sin commitear (871 inserciones;
-> commit `data(ai_control)` `32a54d2` + push, §1.2). **También en S32:** (a) primera **skill de proyecto**
-> `ai-control-map-ui` (playbook de la UI de mapeo, para no re-explorar `map_ui.py`) creada y versionada — se
-> des-ignoró `.claude/skills/` en `.gitignore` para que se sincronice por git; (b) **3 ajustes de UI** pedidos
-> por el usuario: toggle "Trafico" movido de Mapa a Grabar, nuevo campo de **velocidad por defecto de
-> grabado** en Grabar, y **"Auto" ahora es pegajoso** (cancelar/terminar ya no lo apaga; el freeze del Link
-> auto se hace por fase). Red: `test_map_ui_grabar_prefs.py` (10 tests), suite **733/733**. **Próximo:**
-> (1) paso prioritario en PLAN — *evaluar el catálogo de skills*; (2) **editor MASIVO de elementos** (pedido
-> S32, aparcado para su propia sesión — buscador + multi-selección + aplicar-a-N; `TODO` en el código +
-> Ideas del PLAN); (3) retomar la **Fase 7** (3 fixes de conducción freeroam) → gate de LFS junto con W4.
-> Árbol limpio y en sync con `origin` tras los commits de cierre de S32.
+> Actualizado: **2026-07-12** — S33: **Fase 7 — fix (4) `is_closed` + fix (1) flip de enlace (red primero;
+> ⏳ pendientes de validar en LFS).** Se retomó la Fase 7 (3 bugs de conducción freeroam) y se abordaron dos
+> por impacto; el fix (3) queda para sesión nueva (decisión con el usuario: es el más pesado). **Fix (4)
+> (`d968abf`):** `traffic/overtake.py::_find_valid_overtake_lane` no comprobaba `is_closed` → la IA adelantaba
+> metiéndose en un carril cerrado. Auditados TODOS los consumidores de `is_closed` (era el único hueco de
+> conducción; radar y editor NO filtran a propósito). Fix con helper centralizado `MapRecorder.is_road_usable`
+> (existe ∧ no cerrada) en overtake + Filtro A de `_calculate_next_link`. Red: `test_carril_vecino_cerrado_no_se_usa`
+> (rojo→verde). Suite 734. **Fix (1) (`1a8eaac`):** en dos salidas RoadLink muy juntas, la IA cambiaba de
+> `next_link` (y de intermitente) en el último momento. Causa: al llegar al final de la vía (`fin_de_geometria`)
+> un re-plan **en la misma vía** re-tiraba `random.choice`; la asimetría es geométrica (culling de alcance), no
+> RHT/LHT (el intermitente de RoadLink sale de `link.indicators`). Fix **pegajosa-si-válida** (elegido por el
+> usuario): `_choose_link` conserva el enlace comprometido si sigue válido; `_plan_next_link` lo pasa como
+> `committed_link_id` en el re-plan de misma vía. Red: 2 tests de pegajosidad + 1 de wiring (rojo→verde). Suite
+> 737. Ambos **solo insim de ejemplo → no tocan la API pública**; como son conducta, **⏳ requieren validación
+> en LFS** (se acumulan con W4 y el fix (3)). **Próximo:** **fix (3)** — radar olvida coches en la transición
+> road→roadlink (extender la red de equivalencia del radar de S28 + matching topológico `current→next→to_road`).
+> Árbol limpio y en sync con `origin` tras los commits de cierre de S33.
 > **Rama de trabajo: `refactor/estabilizacion`.** Todo el refactor ocurre aquí; `main`
 > queda intacta hasta el merge final (cuando el proyecto esté estable). **Sync por GitHub:**
 > `git pull` al arrancar y `git push` al cerrar (permite continuar desde otro dispositivo).
 
 ## Estado
+
+**S33 (2026-07-12) — Fase 7: fix (4) `is_closed` + fix (1) flip de enlace (red primero; ⏳ validar en LFS).**
+Se retomó la Fase 7 (3 bugs de conducción freeroam del handoff de S31/S32) y se abordaron **(4) y (1)** por
+impacto; **(3) queda para sesión nueva** (el más pesado; decisión con el usuario). **Fix (4) — no adelantar
+por vía cerrada (commit `d968abf`):** el único hueco de conducción de `is_closed` era
+`traffic/overtake.py::_find_valid_overtake_lane`, que no lo comprobaba → la IA se metía en un carril cerrado
+para adelantar. Auditados todos los consumidores (Filtro A de `_calculate_next_link` y spawn/`get_location_context`
+ya filtran vía `ignore_closed_roads`; los 3 call-sites del radar y la UI del editor NO filtran a propósito).
+Fix: helper centralizado `MapRecorder.is_road_usable(road_id)` (existe ∧ no cerrada) en overtake y en Filtro A
+(refactor sin cambio de conducta, cubierto por `test_destino_cerrado_se_descarta`). Red primero:
+`test_carril_vecino_cerrado_no_se_usa` (rojo→verde). Suite **734/734**. **Fix (1) — `next_link` pegajoso
+(commit `1a8eaac`):** en dos salidas RoadLink muy juntas, la IA comprometía `next_link` (con intermitente) y en
+el último momento saltaba a la otra. Causa: al llegar al final de la vía sin cruzar su enlace (`fin_de_geometria`),
+un re-plan **en la misma vía** re-tiraba `random.choice` en `_calculate_next_link`; la asimetría es geométrica
+(`_is_link_reachable_ahead` desde el último segmento), **no** RHT/LHT (el intermitente de RoadLink sale de
+`link.indicators`, no de `_get_indicator_to_use`, que gobierna LatLinks). **Decisión de diseño (pregunta con
+recomendación, MODUS §6):** el usuario eligió **"pegajosa-si-válida"** (conservar el enlace comprometido solo si
+sigue siendo opción válida; nunca dejar sin salida) frente a "commit-on-blinker" (congelar aun no siendo
+alcanzable → riesgo). Fix: `_choose_link` + `committed_link_id`; `_plan_next_link` lo pasa en el re-plan de misma
+vía (rama `else`), no en el cruce a vía nueva. Red primero: 2 tests de pegajosidad + 1 de wiring (el de wiring
+mostraba el flip `R1->R2 ⇒ R1->R3`; rojo→verde). Suite **737/737**. Ambos: `ruff` limpio, `lfs-insim list` OK,
+**no tocan la API pública**; como son conducta, **⏳ requieren validación en LFS** (se acumulan con W4 y el fix (3)).
 
 **S32 (2026-07-12) — Herramienta "Link auto" en la UI de mapeo (petición del usuario, fuera de plan;
 ⏳ requiere validación en LFS).** A petición del usuario, se **pausó la Fase 7** para añadir una utilidad
@@ -809,20 +826,26 @@ bit-idéntica) + red de equivalencia (fuzz grid vs. lineal) + `ids_within` en el
 (`_is_dead_end_stop` puro + `mode._dead_end_since`, 4 s → `_cmd_spec`); red `TestIsDeadEndStop` (6).
 Suite 697. **Pendiente validación en LFS.** Los otros 3 bugs de conducción → **Fase 7** (ver PLAN).
 
-**Empezar AQUÍ la próxima sesión — IMPLEMENTAR los 3 fixes de la Fase 7 (decidido con el usuario en S31):**
+**Empezar AQUÍ la próxima sesión — IMPLEMENTAR el fix (3) de la Fase 7 (fix (4) y (1) ya hechos en S33):**
 
-**Frente principal: implementar la Fase 7 (offline, red primero).** Con W3 cerrado, **Fase 6 (pre-publish)
-está completa salvo W4**; el usuario decidió que el siguiente trabajo son los **3 bugs de conducción
-freeroam** de `PLAN.md § Fase 7`. Se implementan **offline con red primero** (extraer un predicado puro por
-fix y probarlo antes de tocar el orquestador, como el fix 2 de S29). **Una vez hechos, el usuario los
-confirma OBLIGATORIAMENTE en LFS** (son conducta): sin esa validación no se dan por buenos. Orden sugerido
-por impacto: (4) `is_closed` = inexistente (hueco claro y acotado en `overtake.py`), (1) flip de enlace en
-salidas juntas, (3) radar en transición road→roadlink. Ninguno toca la API pública.
+**Frente principal: fix (3) de la Fase 7 (offline, red primero).** Fase 6 (pre-publish) completa salvo W4.
+De los 3 bugs de conducción freeroam, **(4) `is_closed` y (1) flip de enlace se hicieron en S33** (commits
+`d968abf` y `1a8eaac`; ⏳ pendientes de validar en LFS). **Queda el fix (3):** el radar
+(`traffic/radar.py::_scan_lane_ahead`) acota los candidatos a la geometría de `mode.current_id` → al
+transicionar road→roadlink **olvida** a los coches que aún tenía delante en el road que deja (los choca), y
+al **entrar** a un road por un roadlink no ve a los que ya circulan dentro. Arreglo probable: durante la
+ventana de aproximación/transición, ampliar el match topológico de "delante en mi carril" a la **cadena
+`current→next→to_road`** (road actual + su roadlink saliente `next_link` + el `to_road` del link). Es el más
+pesado: **extender la red de equivalencia del radar de S28** (fuzz grid vs. lineal) antes de tocar. **Red
+primero** (MODUS §3). No toca la API pública. **Una vez hecho, el usuario lo confirma OBLIGATORIAMENTE en
+LFS** (es conducta). Ver `PLAN.md § Fase 7`, ítem (3).
 
 **Pendiente de validar en LFS (se acumula para la próxima sesión de juego, mismo gate que W4):**
 - **W4** — crear una **intersección** (hoy `zones: 0` en todos los mapas) y validar el **ceda-el-paso del
   ACC** (S21) → desbloquea el gate del merge.
-- **Los 3 fixes de la Fase 7** una vez implementados (ver arriba). *(Apunta, S31: ✅ ya validado en LFS.)*
+- **Fix (4) y fix (1) de la Fase 7 (S33)** — validar que la IA ya no adelanta por vías cerradas y que el
+  intermitente no hace flip en salidas juntas.
+- **Fix (3) de la Fase 7** una vez implementado (ver arriba). *(Apunta, S31: ✅ ya validado en LFS.)*
 
 **Backlog offline (opcional, si no hay LFS a mano; no bloquea el merge):**
 1. **Desacople profundo de `base.py` (resto de P4):** reducir las 20 llamadas cross-mixin reales / romper

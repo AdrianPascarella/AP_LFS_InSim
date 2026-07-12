@@ -5,6 +5,45 @@
 
 ---
 
+## S33 — 2026-07-12 — Fase 7: fix (4) `is_closed` + fix (1) flip de enlace (red primero; ⏳ validar en LFS)
+
+**Arranque:** protocolo de inicio. Ya en `refactor/estabilizacion`; `git pull` al día; árbol limpio (sin
+mapas sin commitear que proteger). Próximo paso del handoff de S32: implementar los 3 bugs de conducción
+freeroam de la Fase 7, offline y **red primero**, por impacto: (4) → (1) → (3). Se abordaron **(4) y (1)**;
+**(3) queda para sesión nueva** (decisión con el usuario: es el más pesado, rinde mejor con contexto fresco).
+
+**Fix (4) — no adelantar por vía cerrada (`is_closed`). Commit `d968abf`.** Auditoría de consumidores de
+`is_closed`: el único hueco de **conducción** era `traffic/overtake.py::_find_valid_overtake_lane`, que NO
+comprobaba `is_closed` → la IA podía meterse en un carril cerrado para adelantar. El resto ya estaba bien:
+`_calculate_next_link` (Filtro A) y spawn/`get_location_context` filtran vía `ignore_closed_roads`; los 3
+call-sites del radar **NO** filtran a propósito (deben *ver* coches en vías cerradas); la UI del editor
+tampoco (correcto). **Fix:** helper centralizado `MapRecorder.is_road_usable(road_id)` (existe ∧ no cerrada),
+aplicado en el hueco de overtake y en Filtro A (refactor **sin cambio de conducta**, cubierto por
+`test_destino_cerrado_se_descarta`). **Red primero:** `test_carril_vecino_cerrado_no_se_usa` (rojo→verde;
+hoy devolvía `('R2','R1<<>>R2')`, el carril cerrado). Suite 734/734.
+
+**Fix (1) — `next_link` pegajoso (flip de intermitente en salidas juntas). Commit `1a8eaac`.**
+**Diagnóstico:** conduciendo por `s2` hacia dos salidas RoadLink muy juntas, la IA comprometía `next_link`
+a `_b` (intermitente encendido) y en el último momento saltaba a `_a`. Causa: al llegar al final de la vía
+sin cruzar su enlace (`fin_de_geometria`, `navigation.py:669-672`), un re-plan **en la misma vía** re-tiraba
+`random.choice` en `_calculate_next_link` → podía elegir la otra salida. La **asimetría** es geométrica
+(`_is_link_reachable_ahead` evaluado desde el último segmento ve un enlace u otro según el sentido/orden de
+nodos), **no** RHT/LHT: el intermitente de RoadLink sale de `link.indicators`, no de `_get_indicator_to_use`
+(ese gobierna LatLinks) → la pista RHT/LHT del PLAN era un falso rastro para este caso.
+**Decisión de diseño (pregunta con recomendación, MODUS §6):** el usuario eligió **"pegajosa-si-válida"**
+(A) frente a "commit-on-blinker" (B): nuevo `_choose_link` conserva el enlace ya comprometido **solo si
+sigue siendo una opción válida** (no re-tira el dado); si dejó de serlo, re-planifica como antes → solo
+puede reducir flips espurios, **nunca deja sin salida** (B congelaría aun no siendo alcanzable → riesgo de
+quedar mal encarada). `_plan_next_link` pasa `mode.next_link_id` como `committed_link_id` en el re-plan de
+misma vía (rama `else`); el cruce de enlace (vía nueva) NO lo pasa (re-plan fresco). **Red primero:** 2
+tests de pegajosidad en `_calculate_next_link` + 1 de wiring en `_plan_next_link` (el de wiring mostraba el
+flip `R1->R2 ⇒ R1->R3`; rojo→verde). Suite 737/737.
+
+**Verificación (ambos):** suite **737/737** (733 +1 +3); `ruff check` + `format --check` limpios en lo
+tocado; `lfs-insim list` OK. Solo lógica del insim de ejemplo → **no tocan la API pública**. Como son
+**conducta**, ⏳ **requieren validación en LFS** (se acumulan con W4 y el fix (3) para la próxima sesión de
+juego). Cierre de sesión: docs actualizados + push.
+
 ## S32 — 2026-07-12 — Herramienta "Link auto" en la UI de mapeo (petición del usuario, fuera de plan)
 
 **Arranque:** protocolo de inicio. Ya en `refactor/estabilizacion`. **Mapa South City sin commitear**
