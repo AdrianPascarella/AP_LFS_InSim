@@ -75404,7 +75404,45 @@
             "traffic_rule": 1
         }
     },
-    "zones": {},
+    "zones": {
+        "A13_MonumentServices": {
+            "zone_id": "A13_MonumentServices",
+            "nodes": [
+                {
+                    "x": 87124890,
+                    "y": -61276219,
+                    "z": 517050
+                },
+                {
+                    "x": 85402306,
+                    "y": -61746671,
+                    "z": 505285
+                },
+                {
+                    "x": 85509122,
+                    "y": -62290165,
+                    "z": 505525
+                },
+                {
+                    "x": 85784198,
+                    "y": -62675295,
+                    "z": 504237
+                },
+                {
+                    "x": 86226320,
+                    "y": -62859426,
+                    "z": 505765
+                },
+                {
+                    "x": 87346409,
+                    "y": -61862845,
+                    "z": 532084
+                }
+            ],
+            "radius_m": 10.0,
+            "priority_rules": []
+        }
+    },
     "road_links": {
         "SOUTH_CITY_STATION_s2->HAVEN_LANE_S22_b": {
             "from_road_id": "SOUTH_CITY_STATION_s2",
