@@ -843,10 +843,8 @@ class _NavigationMixin(_MixinBase):
 
         # 2. Filtrar y clasificar usando una única lógica centralizada
         for l_id, l_type, target_road_id, link_nodes in candidatos:
-            target_road = self.map_recorder.roads.get(target_road_id)
-
             # Filtro A: La vía de destino debe existir y estar abierta
-            if not target_road or target_road.is_closed:
+            if not self.map_recorder.is_road_usable(target_road_id):
                 continue
 
             # Filtro B: Alcance espacial (Se ignora si estamos en una vía circular)

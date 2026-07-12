@@ -439,6 +439,24 @@ class TestFindValidOvertakeLane:
         )
         assert got == (None, None)
 
+    def test_carril_vecino_cerrado_no_se_usa(
+        self, ai_control, make_road, make_lateral_link, populate_graph
+    ):
+        # Fase 7 · fix (4): un carril vecino que geométricamente valdría para
+        # adelantar (RHT + vecino a la IZQUIERDA) pero cuya vía está CERRADA
+        # (is_closed) NO debe usarse — la IA no puede meterse en una vía cerrada.
+        populate_graph(
+            ai_control.map_recorder,
+            roads=[
+                make_road("R1", [(0, 0), (0, 100)]),
+                make_road("R2", [(-5, 0), (-5, 100)], is_closed=True),
+            ],
+            lateral_links=[make_lateral_link("R1", "R2", [(-2.5, 0), (-2.5, 100)])],
+        )
+        r1_nodes = ai_control.map_recorder.roads["R1"].nodes
+        got = ai_control._find_valid_overtake_lane("R1", TrafficRule.RHT, r1_nodes, 0)
+        assert got == (None, None)
+
 
 # ─── Helpers del FSM de adelantamiento (mutaciones de estado del mode) ────────
 

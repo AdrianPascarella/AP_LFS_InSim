@@ -55,6 +55,10 @@ class _OvertakeMixin(_MixinBase):
             if not road_geom or not lat_link:
                 continue
 
+            # Fase 7 · fix (4): no adelantar metiéndose en una vía cerrada.
+            if not self.map_recorder.is_road_usable(road_id):
+                continue
+
             side = self._get_indicator_to_use(
                 current_road_nodes, road_geom.nodes, node_index
             )

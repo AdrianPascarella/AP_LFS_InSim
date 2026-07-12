@@ -289,6 +289,18 @@ class MapRecorder(PacketSenderMixin):
             k += 1
         return best
 
+    def is_road_usable(self, road_id: str) -> bool:
+        """True si la vía existe y NO está cerrada (`is_closed=False`).
+
+        Predicado único de "la IA puede circular/rutear por esta vía". Lo
+        consultan la planificación de enlaces (`_calculate_next_link`, Filtro A)
+        y la selección de carril de adelantamiento (`_find_valid_overtake_lane`)
+        para no meter la IA en una vía cerrada. NO lo usan los barridos del radar,
+        que SÍ deben ver los coches que circulan por una vía cerrada.
+        """
+        road = self.roads.get(road_id)
+        return road is not None and not road.is_closed
+
     def get_location_context(
         self,
         px: float,
