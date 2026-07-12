@@ -12,11 +12,15 @@
 > `test_map_ui_auto_link.py` (**13 tests**), suite **723/723**; ruff limpio; `lfs-insim list` OK. Solo UI del
 > insim de ejemplo → **no toca la API pública**; como es UI/conducta, **✅ validado en LFS por el usuario**
 > ("funciona perfectamente"). Al arrancar se **protegió el mapa South City** sin commitear (871 inserciones;
-> commit `data(ai_control)` `32a54d2` + push, §1.2). **También en S32:** primera **skill de proyecto**
-> `ai-control-map-ui` (playbook de la UI de mapeo, para no re-explorar `map_ui.py` en cada ajuste) creada y
-> versionada — se des-ignoró `.claude/skills/` en `.gitignore` para que se sincronice por git. **Próximo:**
-> (1) **paso prioritario nuevo en PLAN** — *evaluar el catálogo de skills del proyecto y cómo gestionarlas*;
-> (2) retomar la **Fase 7** (3 fixes de conducción freeroam; offline, red primero) → gate de LFS junto con W4.
+> commit `data(ai_control)` `32a54d2` + push, §1.2). **También en S32:** (a) primera **skill de proyecto**
+> `ai-control-map-ui` (playbook de la UI de mapeo, para no re-explorar `map_ui.py`) creada y versionada — se
+> des-ignoró `.claude/skills/` en `.gitignore` para que se sincronice por git; (b) **3 ajustes de UI** pedidos
+> por el usuario: toggle "Trafico" movido de Mapa a Grabar, nuevo campo de **velocidad por defecto de
+> grabado** en Grabar, y **"Auto" ahora es pegajoso** (cancelar/terminar ya no lo apaga; el freeze del Link
+> auto se hace por fase). Red: `test_map_ui_grabar_prefs.py` (10 tests), suite **733/733**. **Próximo:**
+> (1) paso prioritario en PLAN — *evaluar el catálogo de skills*; (2) **editor MASIVO de elementos** (pedido
+> S32, aparcado para su propia sesión — buscador + multi-selección + aplicar-a-N; `TODO` en el código +
+> Ideas del PLAN); (3) retomar la **Fase 7** (3 fixes de conducción freeroam) → gate de LFS junto con W4.
 > Árbol limpio y en sync con `origin` tras los commits de cierre de S32.
 > **Rama de trabajo: `refactor/estabilizacion`.** Todo el refactor ocurre aquí; `main`
 > queda intacta hasta el merge final (cuando el proyecto esté estable). **Sync por GitHub:**
@@ -46,6 +50,21 @@ se mueve de A a F). Suite **723/723** (710 + 13); `ruff check` + `ruff format --
 `lfs-insim list` OK. Solo lógica de UI del insim de ejemplo → **no toca la API pública**. **Arranque
 (protección de mapas §1.2):** South City sin commitear (871 inserciones en `south_city.json` + render) →
 respaldo + commit `data(ai_control)` `32a54d2` + push antes de nada.
+
+**S32 (2026-07-12) — 3 ajustes de UI en la pestaña Grabar (pedido del usuario; ⏳ requiere validación en
+LFS).** Tres cambios pequeños y cohesivos, con red primero (`test_map_ui_grabar_prefs.py`, 10 tests):
+(1) **toggle "Trafico" movido de Mapa a Grabar** (CID 108): la norma por defecto de las nuevas vías se
+ajusta ahora donde se graba (fuera de `_map_ui_draw_tab_mapa`/`_map_ui_click_mapa`, entra en el idle de
+Grabar). (2) **Campo "Vel. grabar (km/h)"** (TypeIn CID 129) en Grabar: fija
+`MapRecorder.default_speed_limit_kmh` (nuevo, default 30), que `_cmd_rec_end` aplica al crear un `RoadSegment`
+(antes siempre 30 fijo); parseo en `on_ISP_BTT` (revierte si es inválido/≤0). (3) **"Auto" pegajoso**: el
+usuario reportó que **cancelar un road desmarcaba Auto** — se quitó el `auto_recording_enabled = False` de
+`_cmd_rec_cancel` y de la rama sin-nodos de `_cmd_rec_end` (es una preferencia del usuario, no debe apagarse).
+El **Link auto** dejó de apagar Auto al finalizar/commit: la captura se **congela por fase** (gate nuevo en
+`update_recording`: si `current_recording["auto_phase"]` no es `None`/`"recording"`, no añade nodos), así la
+preferencia Auto se mantiene intacta. Suite **733/733** (723 + 10); ruff limpio; `lfs-insim list` OK. Solo UI
+del insim de ejemplo → **no toca la API pública**. **Aparcado (su propia sesión):** editor **MASIVO** de
+elementos (buscador + multi-selección + aplicar-a-N) → `TODO` en `_map_ui_draw_tab_elementos` + Ideas del PLAN.
 
 **S32 (2026-07-12) — primera skill de proyecto + paso prioritario de tooling (con el usuario).** A raíz de
 que los ajustes de UI de ai_control son un pedido recurrente (coste de *orientación* alto: `map_ui.py` tiene

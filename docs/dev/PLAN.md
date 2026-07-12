@@ -614,6 +614,14 @@ el merge se continúa desde `main`.
 
 ## Ideas / pendientes sin fase asignada
 
+- **Editor MASIVO de elementos en la UI de mapeo (pedido S32, pendiente — su propia sesión).**
+  Un modo de la pestaña **Elementos** con **buscador** (como el de la lista actual) +
+  **multi-selección** (marcar N elementos) para **aplicar un mismo ajuste a todos a la vez**
+  (p. ej. `speed_limit_kmh`, `is_closed`, `traffic_rule`...). Requiere: estado de selección
+  múltiple, un selector de campo+valor, y aplicar el cambio en bucle sobre los seleccionados.
+  **Red primero** (MODUS §3), como el resto de la UI. Ya hay un `TODO` marcador en
+  `map_ui.py` (cabecera de `_map_ui_draw_tab_elementos`). Candidato a estrenar la skill
+  `ai-control-map-ui`. No urgente; es tooling offline (no toca API pública ni runtime).
 - **Post-merge (aplazado en S27): partir `map_ui.py` (3161) y `map_recorder.py` (2520)** —
   resto de P3. Es tooling offline de edición de mapas: no toca el runtime de conducción ni la
   API pública, y **no tiene red de caracterización** → escribirla antes de partir

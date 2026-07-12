@@ -78,6 +78,9 @@ class MapRecorder(PacketSenderMixin):
         ] = None
         self.auto_recording_enabled: bool = False
         self.default_traffic_rule: TrafficRule = TrafficRule.LHT
+        # Límite de velocidad por defecto (km/h) que se asigna a las NUEVAS vías
+        # que se graben (ajustable desde la pestaña Grabar de la UI).
+        self.default_speed_limit_kmh: float = 30.0
 
         # Nombre del mapa activo (para mostrar en los comandos y al guardar/cargar)
         self.active_map_name: Optional[str] = None
@@ -112,6 +115,12 @@ class MapRecorder(PacketSenderMixin):
         """
         # Escudos: Solo grabamos si hay una sesión activa y el autograbado está en ON
         if not self.current_recording or not self.auto_recording_enabled:
+            return
+
+        # Freeze del flujo "Link auto": durante las pantallas de confirmación /
+        # conflicto (auto_phase != "recording") la captura se congela SIN apagar la
+        # preferencia Auto del usuario. En grabaciones normales no hay auto_phase.
+        if self.current_recording.get("auto_phase") not in (None, "recording"):
             return
 
         # 1. Obtenemos la lista universal de nodos (Válido para TODO)
@@ -1367,7 +1376,8 @@ class MapRecorder(PacketSenderMixin):
                 )
             )
             self.current_recording = None
-            self.auto_recording_enabled = False
+            # NO tocamos auto_recording_enabled: es una preferencia "pegajosa" del
+            # usuario, no debe apagarse por terminar/cancelar una grabación.
             return
 
         rec_type = self.current_recording.get("type")
@@ -1388,6 +1398,7 @@ class MapRecorder(PacketSenderMixin):
                         road_id=obj_id,
                         nodes=nodes,
                         traffic_rule=self.default_traffic_rule,
+                        speed_limit_kmh=self.default_speed_limit_kmh,
                     )
                 self._invalidate_road_index()
                 msg_tipo = "Vía"
@@ -1540,9 +1551,10 @@ class MapRecorder(PacketSenderMixin):
         # 2. Extraemos el tipo para dar un feedback más personalizado (opcional pero queda pro)
         geom_type = self.current_recording.get("type", "geometría")
 
-        # 3. Purga completa de los estados de grabación
+        # 3. Purga del estado de grabación. auto_recording_enabled NO se toca: es
+        # una preferencia "pegajosa" del usuario (si lo tenía en ON, sigue en ON
+        # para la próxima grabación).
         self.current_recording = None
-        self.auto_recording_enabled = False
 
         # 4. Feedback al usuario
         self.send(

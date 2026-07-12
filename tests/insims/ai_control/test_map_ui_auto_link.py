@@ -145,7 +145,7 @@ def test_link_auto_sin_vias_error(ai_control, make_player, make_telemetry):
 
 
 def test_finalizar_sin_conflicto_va_a_confirm(
-    ai_control, make_player, make_telemetry, make_road, populate_graph
+    ai_control, make_player, make_telemetry, make_road, populate_graph, make_coords
 ):
     app = _reach_recording_on_dest(
         ai_control, make_player, make_telemetry, make_road, populate_graph
@@ -157,7 +157,12 @@ def test_finalizar_sin_conflicto_va_a_confirm(
     assert rec["auto_phase"] == "confirm"
     assert rec["dest_id"] == "F"
     assert rec["pending_link_id"] == "A->F"
-    assert app.map_recorder.auto_recording_enabled is False  # nodos congelados
+    # La preferencia Auto NO se apaga (es "pegajosa"); la captura se congela por
+    # fase: un update_recording durante la confirmación no añade nodos.
+    assert app.map_recorder.auto_recording_enabled is True
+    n_before = len(rec["nodes"])
+    app.map_recorder.update_recording(make_coords(500.0, 0.0), 30.0)
+    assert len(rec["nodes"]) == n_before
     # La pantalla de confirmación ofrece Aprobar y Cancelar.
     textos = {p.Text for p in _btns(app)}
     assert "Aprobar" in textos and "Cancelar" in textos

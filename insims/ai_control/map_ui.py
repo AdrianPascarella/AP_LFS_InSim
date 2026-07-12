@@ -434,19 +434,6 @@ class _MapUIMixin(_MixinBase):
                 Text="(sin mapas guardados)",
             )
 
-        rule = self.map_recorder.default_traffic_rule
-        self.send_ISP_BTN(
-            ReqI=1,
-            UCID=u,
-            ClickID=120,
-            BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
-            L=2,
-            T=70,
-            W=50,
-            H=8,
-            Text=f"Trafico: {rule.name}",
-        )
-
     def _map_ui_get_map_list(self) -> list:
         from insims.ai_control.nav_modes.freeroam import map_recorder as _mr_mod
 
@@ -509,6 +496,8 @@ class _MapUIMixin(_MixinBase):
                 Text=label,
             )
 
+        # Fila de preferencias de grabado: Auto (captura de nodos) + Trafico (norma
+        # por defecto de las nuevas vías) + velocidad por defecto de las nuevas vías.
         auto_on = self.map_recorder.auto_recording_enabled
         style = (
             ISB_STYLE.OK | ISB_STYLE.CLICK
@@ -526,6 +515,41 @@ class _MapUIMixin(_MixinBase):
             H=8,
             Text="Auto: ON" if auto_on else "Auto: OFF",
         )
+        rule = self.map_recorder.default_traffic_rule
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=108,
+            BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
+            L=46,
+            T=52,
+            W=58,
+            H=8,
+            Text=f"Trafico: {rule.name}",
+        )
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=109,
+            BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
+            L=2,
+            T=63,
+            W=88,
+            H=8,
+            Text="Vel. grabar (km/h):",
+        )
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=129,
+            BStyle=ISB_STYLE.LIGHT | ISB_STYLE.CLICK,
+            TypeIn=TYPEIN_FLAGS.INIT_WITH_TEXT | 8,
+            L=92,
+            T=63,
+            W=44,
+            H=8,
+            Text=str(self.map_recorder.default_speed_limit_kmh),
+        )
 
         # Selección de jugador a grabar
         rec_plid = self.map_recorder.recording_plid
@@ -540,7 +564,7 @@ class _MapUIMixin(_MixinBase):
             ClickID=116,
             BStyle=ISB_STYLE.DARK | ISB_STYLE.LEFT,
             L=2,
-            T=63,
+            T=74,
             W=130,
             H=8,
             Text=sel_text,
@@ -551,7 +575,7 @@ class _MapUIMixin(_MixinBase):
             ClickID=117,
             BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
             L=134,
-            T=63,
+            T=74,
             W=50,
             H=8,
             Text="Cambiar...",
@@ -1293,7 +1317,8 @@ class _MapUIMixin(_MixinBase):
             return
         rec["dest_id"] = dest
         rec["nodes"].append(copy.deepcopy(coords))  # cierra el trazado en el destino
-        mr.auto_recording_enabled = False  # congela los nodos durante la confirmacion
+        # La captura se congela sola al salir de la fase "recording" (gate por
+        # auto_phase en update_recording); no tocamos la preferencia Auto.
         self._map_ui_auto_link_evaluate("", "")
 
     def _map_ui_auto_link_evaluate(self, suffix_a: str, suffix_b: str):
@@ -1318,7 +1343,6 @@ class _MapUIMixin(_MixinBase):
         rec["link_id"] = rec.get("pending_link_id")
         rec["is_new"] = is_new
         mr._cmd_rec_end()  # crea/actualiza el RoadLink y limpia current_recording
-        mr.auto_recording_enabled = False
         self._ui_input_buffer = {}
         self._map_ui_redraw_content()
         self._map_ui_update_header()
@@ -2215,6 +2239,14 @@ class _MapUIMixin(_MixinBase):
 
     # ──────────────────────────────────────────────────────────────────────────
     # Tab: Elementos — dispatcher
+    #
+    # TODO (S32, pedido del usuario — pendiente, su propia sesión): edición MASIVA.
+    # Un modo de esta pestaña con buscador (como el de la lista de elementos) +
+    # multi-selección (marcar N elementos) para aplicar un mismo ajuste a todos a
+    # la vez (p. ej. speed_limit_kmh, is_closed, traffic_rule...). Requiere: estado
+    # de selección múltiple, un selector de campo+valor, y aplicar el cambio en
+    # bucle sobre los seleccionados. Hacerlo con red primero (test_map_ui_*).
+    # Ver PLAN § "Tooling de trabajo — Skills"/Ideas.
     # ──────────────────────────────────────────────────────────────────────────
 
     def _map_ui_draw_tab_elementos(self):
@@ -2710,6 +2742,28 @@ class _MapUIMixin(_MixinBase):
                 )
             return
 
+        # Velocidad por defecto de grabado (pestaña Grabar) — CID 129
+        if packet.ClickID == 129 and self._ui_tab == "grabar":
+            try:
+                val = float(text)
+                if val <= 0:
+                    raise ValueError
+                self.map_recorder.default_speed_limit_kmh = val
+            except ValueError:
+                # Texto inválido: revertir al valor válido actual.
+                self.send_ISP_BTN(
+                    ReqI=1,
+                    UCID=self._ui_ucid,
+                    ClickID=129,
+                    BStyle=0,
+                    L=0,
+                    T=0,
+                    W=0,
+                    H=0,
+                    Text=str(self.map_recorder.default_speed_limit_kmh),
+                )
+            return
+
         # En la vista detalle de Elementos, aplicar cambio inmediatamente
         if (
             self._ui_tab == "elementos"
@@ -2803,15 +2857,6 @@ class _MapUIMixin(_MixinBase):
                 self.map_recorder._cmd_set_map(maps[idx])
                 self._map_ui_update_header()
                 self._map_ui_redraw_content()
-        elif cid == 120:
-            from insims.ai_control.nav_modes.freeroam.enums import TrafficRule
-
-            current = self.map_recorder.default_traffic_rule
-            new_rule = (
-                TrafficRule.RHT if current == TrafficRule.LHT else TrafficRule.LHT
-            )
-            self.map_recorder._cmd_rec_road_rule(new_rule.name)
-            self._map_ui_redraw_content()
 
     def _map_ui_click_grabar(self, cid: int):
         rec = self.map_recorder.current_recording
@@ -2980,7 +3025,16 @@ class _MapUIMixin(_MixinBase):
                     Msg=f"{c.RED}Selecciona primero el jugador a grabar (botón Cambiar...)."
                 )
                 return
-            if cid == 118:  # Link auto (RoadLink con origen/destino auto-detectados)
+            if cid == 108:  # Toggle norma de trafico por defecto (nuevas vias)
+                from insims.ai_control.nav_modes.freeroam.enums import TrafficRule
+
+                current = self.map_recorder.default_traffic_rule
+                new_rule = (
+                    TrafficRule.RHT if current == TrafficRule.LHT else TrafficRule.LHT
+                )
+                self.map_recorder._cmd_rec_road_rule(new_rule.name)
+                self._map_ui_redraw_content()
+            elif cid == 118:  # Link auto (RoadLink con origen/destino auto-detectados)
                 self._map_ui_start_auto_link()
             elif cid == 110:
                 self._ui_pending_action = "rec_road"

@@ -63,6 +63,28 @@ convenciones), redactada en **estructura/convenciones, no números de línea**. 
 `cerrar-sesion`/`arrancar-sesion`) y ratificar la convención de gestión. Commit de cierre de S32 (skill +
 `.gitignore` + docs).
 
+**Extra S32 — 3 ajustes pequeños de UI en la pestaña Grabar (pedido del usuario; ⏳ requiere LFS).** Tras
+validar "Link auto", el usuario pidió un lote de 4 cambios de UI; se hicieron los **3 pequeños** ahora y se
+**aparcó el grande** (editor masivo) para su propia sesión (permiso explícito del usuario para repartir).
+Con red primero (`test_map_ui_grabar_prefs.py`, 10 tests):
+1. **Toggle "Trafico" movido de Mapa → Grabar** (CID 108): la norma por defecto de las nuevas vías se ajusta
+   donde se graba. Fuera de `_map_ui_draw_tab_mapa`/`_map_ui_click_mapa`; entra en el idle de Grabar.
+2. **Velocidad por defecto de grabado** (campo TypeIn CID 129 en Grabar): nuevo `default_speed_limit_kmh` en
+   `MapRecorder` (default 30) que `_cmd_rec_end` aplica al crear un `RoadSegment` (antes 30 fijo); parseo en
+   `on_ISP_BTT` (revierte si es inválido o ≤0).
+3. **"Auto" pegajoso** (bug reportado: cancelar un road desmarcaba Auto): quitado `auto_recording_enabled =
+   False` de `_cmd_rec_cancel` y de la rama sin-nodos de `_cmd_rec_end`. El **Link auto** dejó de apagar Auto
+   al finalizar/commit; en su lugar la captura se **congela por fase** (gate nuevo en `update_recording`: si
+   `current_recording["auto_phase"]` no es `None`/`"recording"`, no añade nodos) → la preferencia Auto queda
+   intacta. Se actualizó el test de auto-link afectado (ahora verifica Auto=ON + congelación por fase).
+
+**Decisión de reparto:** 3 pequeños ahora (cohesivos, en la zona Grabar/recorder que tenía fresca); el editor
+**MASIVO** (buscador + multi-selección + aplicar-a-N sobre elementos) se aparca con **`TODO` en
+`_map_ui_draw_tab_elementos`** + entrada en Ideas del PLAN (candidato a estrenar la skill `ai-control-map-ui`).
+Suite **733/733** (723 + 10); ruff limpio; `lfs-insim list` OK. Solo UI del insim de ejemplo → **no toca la
+API pública**. Como es UI/conducta, **⏳ pendiente de validar en LFS**. Se re-protegió el avance de mapeo de
+la sesión (South City, 33k líneas) en `997769a`. Commit de cierre (UI + tests + docs).
+
 ---
 
 ## S31 — 2026-07-11 — Cierre de W3 (Fase 6): FSM revisado, código muerto fuera, `base.py` adelgazado (P4), docs de arquitectura
