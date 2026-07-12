@@ -4,8 +4,12 @@ Tests del editor de REGLAS DE PRIORIDAD de Zonas en la pestaña Elementos
 podían fijar por el comando de chat (`!map set <zona> priority_rules add;A,B`);
 esto las expone en la UI gráfica (soporte para crear la intersección de W4).
 
-Red primero (MODUS §3), sobre el harness `ai_control` (CapturingClient: los
-envíos quedan en `app.client.sent`). Regla `[A, B]`: A tiene prioridad, B cede.
+El alta se hace con un **picker de vías** (misma UX que crear un RoadLink/
+LatLink): botón "+ Anadir regla" → sub-pantalla con slots Prio/Cede y la lista
+de vías; se eligen de la lista, no se teclean. Regla `[A, B]`: A tiene
+prioridad, B cede. Red primero (MODUS §3), sobre el harness `ai_control`.
+
+Vías del fixture (ordenadas): VIA_C (cid 122), VIA_P (cid 123), VIA_X (cid 124).
 """
 
 from insims.ai_control.nav_modes.freeroam.graph import IntersectionZone
@@ -40,7 +44,7 @@ def _setup_zone_detail(app, make_road, populate_graph, make_coords, rules=None):
 
 
 class TestZonePriorityEditor:
-    def test_detalle_zona_dibuja_editor_prioridad(
+    def test_detalle_zona_dibuja_boton_anadir(
         self, ai_control, make_road, populate_graph, make_coords
     ):
         _setup_zone_detail(ai_control, make_road, populate_graph, make_coords)
@@ -48,7 +52,7 @@ class TestZonePriorityEditor:
         btns = _btns(ai_control)
         texts = [b.Text for b in btns]
         assert any("Prioridad" in t for t in texts)  # título de la sección
-        assert any(t == "Anadir" for t in texts)  # botón de alta
+        assert any(t == "+ Anadir regla" for t in texts)
         assert any(b.ClickID == ai_control._ZONE_PRIO_ADD for b in btns)
 
     def test_zona_sin_reglas_muestra_aviso(
@@ -74,32 +78,57 @@ class TestZonePriorityEditor:
         assert any(t == "Quitar" for t in texts)
         assert ("VIA_P", "VIA_C") in ai_control._ui_zone_prio_map.values()
 
-    def test_anadir_regla_valida(
+    def test_boton_anadir_abre_el_picker(
+        self, ai_control, make_road, populate_graph, make_coords
+    ):
+        _setup_zone_detail(ai_control, make_road, populate_graph, make_coords)
+        ai_control._map_ui_click_elementos(ai_control._ZONE_PRIO_ADD)
+        assert ai_control._ui_zone_prio_adding is True
+        texts = [b.Text for b in _btns(ai_control)]
+        # la sub-pantalla muestra la lista de vías y los botones de acción
+        assert "VIA_P" in texts and "VIA_C" in texts
+        assert "Confirmar" in texts and "Cancelar" in texts
+
+    def test_picker_selecciona_y_confirma_regla(
         self, ai_control, make_road, populate_graph, make_coords
     ):
         zone = _setup_zone_detail(ai_control, make_road, populate_graph, make_coords)
-        ai_control._ui_input_buffer[ai_control._ZONE_PRIO_TI_A] = "VIA_P"
-        ai_control._ui_input_buffer[ai_control._ZONE_PRIO_TI_B] = "VIA_C"
-        ai_control._map_ui_click_elementos(ai_control._ZONE_PRIO_ADD)
+        ai_control._map_ui_click_elementos(ai_control._ZONE_PRIO_ADD)  # abre picker
+        ai_control._map_ui_click_elementos(123)  # VIA_P -> slot A (prioritaria)
+        ai_control._map_ui_click_elementos(122)  # VIA_C -> slot B (cede)
+        ai_control._map_ui_click_elementos(116)  # Confirmar
         assert ["VIA_P", "VIA_C"] in zone.priority_rules
+        assert ai_control._ui_zone_prio_adding is False  # vuelve al detalle
 
-    def test_anadir_rechaza_via_inexistente(
+    def test_seleccionar_via_avanza_de_slot(
+        self, ai_control, make_road, populate_graph, make_coords
+    ):
+        _setup_zone_detail(ai_control, make_road, populate_graph, make_coords)
+        ai_control._map_ui_click_elementos(ai_control._ZONE_PRIO_ADD)
+        assert ai_control._ui_road_picker_slot == "a"
+        ai_control._map_ui_click_elementos(123)  # elige prioritaria
+        assert ai_control._ui_road_picker_slot == "b"  # avanza a "cede" solo
+
+    def test_picker_cancelar_no_anade(
         self, ai_control, make_road, populate_graph, make_coords
     ):
         zone = _setup_zone_detail(ai_control, make_road, populate_graph, make_coords)
-        ai_control._ui_input_buffer[ai_control._ZONE_PRIO_TI_A] = "VIA_P"
-        ai_control._ui_input_buffer[ai_control._ZONE_PRIO_TI_B] = "NOPE"
         ai_control._map_ui_click_elementos(ai_control._ZONE_PRIO_ADD)
+        ai_control._map_ui_click_elementos(123)  # elige una vía
+        ai_control._map_ui_click_elementos(117)  # Cancelar
         assert zone.priority_rules == []
+        assert ai_control._ui_zone_prio_adding is False
 
-    def test_anadir_rechaza_ids_iguales(
+    def test_picker_rechaza_misma_via(
         self, ai_control, make_road, populate_graph, make_coords
     ):
         zone = _setup_zone_detail(ai_control, make_road, populate_graph, make_coords)
-        ai_control._ui_input_buffer[ai_control._ZONE_PRIO_TI_A] = "VIA_P"
-        ai_control._ui_input_buffer[ai_control._ZONE_PRIO_TI_B] = "VIA_P"
         ai_control._map_ui_click_elementos(ai_control._ZONE_PRIO_ADD)
+        ai_control._map_ui_click_elementos(123)  # VIA_P -> slot A, avanza a B
+        ai_control._map_ui_click_elementos(123)  # VIA_P -> slot B (misma vía)
+        ai_control._map_ui_click_elementos(116)  # Confirmar -> rechazado
         assert zone.priority_rules == []
+        assert ai_control._ui_zone_prio_adding is True  # sigue en el picker
 
     def test_quitar_regla(self, ai_control, make_road, populate_graph, make_coords):
         zone = _setup_zone_detail(

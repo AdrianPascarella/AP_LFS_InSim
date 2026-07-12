@@ -111,11 +111,13 @@ class _MapUIMixin(_MixinBase):
     # tras sus campos estándar). CIDs 140-151, dentro del área de contenido
     # (108-165) que se limpia en cada redibujado.
     _ZONE_PRIO_TITLE = 140
-    _ZONE_PRIO_TI_A = 141  # TypeIn: vía PRIORITARIA
-    _ZONE_PRIO_TI_B = 142  # TypeIn: vía que CEDE el paso
-    _ZONE_PRIO_ADD = 143  # botón "Anadir"
-    _ZONE_PRIO_ROW_BASE = 144  # regla i: label 144+i*2, quitar 145+i*2
-    _ZONE_PRIO_MAX_ROWS = 4
+    _ZONE_PRIO_ADD = 141  # botón "+ Anadir regla" (abre el picker de vías)
+    _ZONE_PRIO_ROW_BASE = 142  # regla i: label 142+i*2, quitar 143+i*2
+    _ZONE_PRIO_MAX_ROWS = 5
+    # La sub-pantalla de alta (picker de vías) REUTILIZA los CIDs y la mecánica
+    # del picker de RoadLink/LatLink: slots 120/121, lista 122-127, paginación
+    # 128/129/132, seleccionados 110/112, Confirmar 116, Cancelar 117. Las vías
+    # elegidas viven en _UI_CID_TI1 (prioritaria) y _UI_CID_TI2 (cede).
 
     # Overlay whereami "pineado" — CIDs FUERA del rango de contenido (108-165)
     # para sobrevivir a cambios de pestaña y al cierre del menú. Anclado a la
@@ -142,6 +144,7 @@ class _MapUIMixin(_MixinBase):
         self._ui_elem_detail_id: Optional[str] = None
         self._ui_detail_field_map: dict = {}  # {ClickID: (field_name, field_type)}
         self._ui_zone_prio_map: dict = {}  # {ClickID quitar: (via_a, via_b)}
+        self._ui_zone_prio_adding: bool = False  # sub-pantalla de alta de regla
         self._ui_info_stats: bool = False
         self._ui_info_check: bool = False
         self._ui_check_filter: str = "all"  # "all" | "error" | "warn"
@@ -2422,6 +2425,13 @@ class _MapUIMixin(_MixinBase):
             return
 
         obj_type = self._map_ui_elem_get_type(obj_id)
+
+        # Sub-pantalla de alta de regla de prioridad (picker de vías): ocupa todo
+        # el contenido, como el formulario de RoadLink/LatLink.
+        if obj_type == "zone" and self._ui_zone_prio_adding:
+            self._map_ui_draw_zone_prio_picker(obj, u)
+            return
+
         fields_def = _ELEM_FIELDS.get(obj_type, [])
 
         # Header de detalle
@@ -2571,9 +2581,9 @@ class _MapUIMixin(_MixinBase):
             self._map_ui_draw_zone_priority(obj, u)
 
     def _map_ui_draw_zone_priority(self, zone, u):
-        """Editor de `priority_rules` de una Zona: alta (dos vías + Anadir) y la
-        lista de reglas existentes con su botón Quitar. Regla `[A, B]`: A tiene
-        prioridad, B cede el paso. Reutiliza `_cmd_set` (add/del) del recorder."""
+        """Editor de `priority_rules` de una Zona: botón de alta (abre el picker
+        de vías) y la lista de reglas existentes con su botón Quitar. Regla
+        `[A, B]`: A tiene prioridad, B cede el paso."""
         # Título de la sección
         self.send_ISP_BTN(
             ReqI=1,
@@ -2586,41 +2596,17 @@ class _MapUIMixin(_MixinBase):
             H=6,
             Text="Prioridad (A>B: A pasa, B cede)",
         )
-        # Fila de alta: [prioritaria] [cede] [Anadir]
-        self.send_ISP_BTN(
-            ReqI=1,
-            UCID=u,
-            ClickID=self._ZONE_PRIO_TI_A,
-            BStyle=ISB_STYLE.LIGHT | ISB_STYLE.CLICK,
-            TypeIn=TYPEIN_FLAGS.INIT_WITH_TEXT | 48,
-            L=2,
-            T=57,
-            W=62,
-            H=6,
-            Text=self._ui_input_buffer.get(self._ZONE_PRIO_TI_A) or "Prioritaria",
-        )
-        self.send_ISP_BTN(
-            ReqI=1,
-            UCID=u,
-            ClickID=self._ZONE_PRIO_TI_B,
-            BStyle=ISB_STYLE.LIGHT | ISB_STYLE.CLICK,
-            TypeIn=TYPEIN_FLAGS.INIT_WITH_TEXT | 48,
-            L=66,
-            T=57,
-            W=62,
-            H=6,
-            Text=self._ui_input_buffer.get(self._ZONE_PRIO_TI_B) or "Cede",
-        )
+        # Botón de alta: abre la sub-pantalla con el picker de vías
         self.send_ISP_BTN(
             ReqI=1,
             UCID=u,
             ClickID=self._ZONE_PRIO_ADD,
             BStyle=ISB_STYLE.OK | ISB_STYLE.CLICK,
-            L=130,
+            L=2,
             T=57,
-            W=36,
+            W=164,
             H=6,
-            Text="Anadir",
+            Text="+ Anadir regla",
         )
         # Reglas existentes (cada una con su Quitar); se registran en el mapa de
         # clicks para el handler. Se muestran hasta _ZONE_PRIO_MAX_ROWS.
@@ -2667,25 +2653,237 @@ class _MapUIMixin(_MixinBase):
             )
             self._ui_zone_prio_map[del_cid] = (rule[0], rule[1])
 
-    def _map_ui_zone_prio_add(self):
-        """Alta de una regla de prioridad desde los dos TypeIn. Valida que ambas
-        vías existan y sean distintas (evita reglas muertas por typo)."""
-        if self._map_ui_elem_get_type(self._ui_elem_detail_id) != "zone":
-            return
-        a = (self._ui_input_buffer.get(self._ZONE_PRIO_TI_A) or "").strip()
-        b = (self._ui_input_buffer.get(self._ZONE_PRIO_TI_B) or "").strip()
-        roads = self.map_recorder.roads
-        if not a or not b or a == b or a not in roads or b not in roads:
-            self.send_ISP_MSL(
-                Msg=f"{c.YELLOW}Prioridad: escribe dos road_id validos y distintos "
-                f"(prioritaria y la que cede)."
-            )
-            return
-        self._map_ui_silent_set(
-            self._ui_elem_detail_id, "priority_rules", f"add;{a},{b}"
+    def _map_ui_draw_zone_prio_picker(self, zone, u):
+        """Sub-pantalla de alta de regla: se eligen las dos vías de una lista
+        (misma UX que crear un RoadLink/LatLink), no se teclean. Slot A =
+        prioritaria (_UI_CID_TI1), slot B = la que cede (_UI_CID_TI2)."""
+        buf = self._ui_input_buffer
+        # Título
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=109,
+            BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
+            L=2,
+            T=21,
+            W=182,
+            H=6,
+            Text=f"Nueva regla en {zone.zone_id}",
         )
-        self._ui_input_buffer.pop(self._ZONE_PRIO_TI_A, None)
-        self._ui_input_buffer.pop(self._ZONE_PRIO_TI_B, None)
+        # ── Columna izquierda: picker de vías ───────────────────────────────
+        slot = self._ui_road_picker_slot
+        style_a = (
+            (ISB_STYLE.OK | ISB_STYLE.CLICK)
+            if slot == "a"
+            else (ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK)
+        )
+        style_b = (
+            (ISB_STYLE.OK | ISB_STYLE.CLICK)
+            if slot == "b"
+            else (ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK)
+        )
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=120,
+            BStyle=style_a,
+            L=2,
+            T=28,
+            W=33,
+            H=6,
+            Text="-> Prio",
+        )
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=121,
+            BStyle=style_b,
+            L=37,
+            T=28,
+            W=33,
+            H=6,
+            Text="-> Cede",
+        )
+        all_roads = sorted(self.map_recorder.roads.keys())
+        per_page = self._UI_ROAD_PICKER_ITEMS
+        max_page = max(0, (len(all_roads) - 1) // per_page) if all_roads else 0
+        page = min(self._ui_road_picker_page, max_page)
+        self._ui_road_picker_page = page
+        items = all_roads[page * per_page : (page + 1) * per_page]
+        if not all_roads:
+            self.send_ISP_BTN(
+                ReqI=1,
+                UCID=u,
+                ClickID=122,
+                BStyle=ISB_STYLE.DARK | ISB_STYLE.LEFT,
+                L=2,
+                T=35,
+                W=68,
+                H=6,
+                Text="Sin roads",
+            )
+        else:
+            for i, road_id in enumerate(items):
+                self.send_ISP_BTN(
+                    ReqI=1,
+                    UCID=u,
+                    ClickID=122 + i,
+                    BStyle=ISB_STYLE.DARK
+                    | ISB_STYLE.SELECTED
+                    | ISB_STYLE.CLICK
+                    | ISB_STYLE.LEFT,
+                    L=2,
+                    T=35 + i * 7,
+                    W=68,
+                    H=6,
+                    Text=road_id,
+                )
+            for i in range(len(items), per_page):
+                self.send_ISP_BTN(
+                    ReqI=1,
+                    UCID=u,
+                    ClickID=122 + i,
+                    BStyle=ISB_STYLE.DARK,
+                    L=2,
+                    T=35 + i * 7,
+                    W=68,
+                    H=6,
+                    Text="",
+                )
+        # Paginación
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=128,
+            BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
+            L=2,
+            T=77,
+            W=20,
+            H=6,
+            Text="<",
+        )
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=129,
+            BStyle=ISB_STYLE.DARK | ISB_STYLE.LEFT,
+            L=24,
+            T=77,
+            W=24,
+            H=6,
+            Text=f"{page + 1}/{max_page + 1}",
+        )
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=132,
+            BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
+            L=50,
+            T=77,
+            W=20,
+            H=6,
+            Text=">",
+        )
+        # ── Columna derecha: seleccionados + acciones ───────────────────────
+        prio = buf.get(self._UI_CID_TI1) or "-"
+        cede = buf.get(self._UI_CID_TI2) or "-"
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=110,
+            BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
+            L=72,
+            T=28,
+            W=112,
+            H=6,
+            Text=f"Prioritaria: {prio}",
+        )
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=112,
+            BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
+            L=72,
+            T=39,
+            W=112,
+            H=6,
+            Text=f"Cede: {cede}",
+        )
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=116,
+            BStyle=ISB_STYLE.OK | ISB_STYLE.CLICK,
+            L=72,
+            T=55,
+            W=54,
+            H=8,
+            Text="Confirmar",
+        )
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=117,
+            BStyle=ISB_STYLE.CANCEL | ISB_STYLE.CLICK,
+            L=130,
+            T=55,
+            W=54,
+            H=8,
+            Text="Cancelar",
+        )
+
+    def _map_ui_click_zone_prio_picker(self, cid: int):
+        """Clicks de la sub-pantalla de alta de regla (picker de vías)."""
+        buf = self._ui_input_buffer
+        if cid == 120:  # slot prioritaria
+            self._ui_road_picker_slot = "a"
+            self._map_ui_redraw_content()
+        elif cid == 121:  # slot cede
+            self._ui_road_picker_slot = "b"
+            self._map_ui_redraw_content()
+        elif 122 <= cid <= 127:  # elegir vía del picker
+            all_roads = sorted(self.map_recorder.roads.keys())
+            idx = self._ui_road_picker_page * self._UI_ROAD_PICKER_ITEMS + (cid - 122)
+            if idx < len(all_roads):
+                road_id = all_roads[idx]
+                if self._ui_road_picker_slot == "a":
+                    buf[self._UI_CID_TI1] = road_id
+                    self._ui_road_picker_slot = "b"  # avanza al slot B
+                else:
+                    buf[self._UI_CID_TI2] = road_id
+                self._map_ui_redraw_content()
+        elif cid == 128:  # página anterior
+            if self._ui_road_picker_page > 0:
+                self._ui_road_picker_page -= 1
+                self._map_ui_redraw_content()
+        elif cid == 132:  # página siguiente
+            all_roads = sorted(self.map_recorder.roads.keys())
+            max_page = max(0, (len(all_roads) - 1) // self._UI_ROAD_PICKER_ITEMS)
+            if self._ui_road_picker_page < max_page:
+                self._ui_road_picker_page += 1
+                self._map_ui_redraw_content()
+        elif cid == 116:  # Confirmar
+            a = (buf.get(self._UI_CID_TI1) or "").strip()
+            b = (buf.get(self._UI_CID_TI2) or "").strip()
+            if a and b and a != b:
+                self._map_ui_silent_set(
+                    self._ui_elem_detail_id, "priority_rules", f"add;{a},{b}"
+                )
+                self._map_ui_zone_prio_exit_picker()
+            else:
+                self.send_ISP_MSL(
+                    Msg=f"{c.YELLOW}Elige dos vias distintas (prioritaria y la que cede)."
+                )
+        elif cid == 117:  # Cancelar
+            self._map_ui_zone_prio_exit_picker()
+
+    def _map_ui_zone_prio_exit_picker(self):
+        """Sale del picker de alta y vuelve al detalle de la zona."""
+        self._ui_zone_prio_adding = False
+        self._ui_input_buffer.pop(self._UI_CID_TI1, None)
+        self._ui_input_buffer.pop(self._UI_CID_TI2, None)
+        self._ui_road_picker_page = 0
+        self._ui_road_picker_slot = "a"
         self._map_ui_redraw_content()
 
     # ──────────────────────────────────────────────────────────────────────────
@@ -2942,6 +3140,7 @@ class _MapUIMixin(_MixinBase):
             self._ui_input_buffer = {}
             self._ui_elem_detail_id = None
             self._ui_detail_field_map = {}
+            self._ui_zone_prio_adding = False
             self._map_ui_draw_tabs()
             self._map_ui_redraw_content()
             return
@@ -3653,6 +3852,9 @@ class _MapUIMixin(_MixinBase):
     def _map_ui_click_elementos(self, cid: int):
         # ── Vista detalle ──────────────────────────────────────────────────
         if self._ui_elem_detail_id is not None:
+            if self._ui_zone_prio_adding:  # sub-pantalla de alta de regla
+                self._map_ui_click_zone_prio_picker(cid)
+                return
             if cid == 108:  # Volver
                 self._ui_elem_detail_id = None
                 self._map_ui_redraw_content()
@@ -3692,8 +3894,13 @@ class _MapUIMixin(_MixinBase):
                         new_val = cycle.get(cur, "off")
                         self._map_ui_silent_set(self._ui_elem_detail_id, fname, new_val)
                         self._map_ui_redraw_content()
-            elif cid == self._ZONE_PRIO_ADD:  # Alta de regla de prioridad
-                self._map_ui_zone_prio_add()
+            elif cid == self._ZONE_PRIO_ADD:  # abre el picker de vías
+                self._ui_zone_prio_adding = True
+                self._ui_road_picker_page = 0
+                self._ui_road_picker_slot = "a"
+                self._ui_input_buffer.pop(self._UI_CID_TI1, None)
+                self._ui_input_buffer.pop(self._UI_CID_TI2, None)
+                self._map_ui_redraw_content()
             elif cid in self._ui_zone_prio_map:  # Quitar una regla
                 via_a, via_b = self._ui_zone_prio_map[cid]
                 self._map_ui_silent_set(
@@ -3720,6 +3927,7 @@ class _MapUIMixin(_MixinBase):
             idx = self._ui_elem_page * _ITEMS_PER_PAGE + (cid - 114)
             if idx < len(items):
                 self._ui_elem_detail_id = items[idx]
+                self._ui_zone_prio_adding = False
                 self._map_ui_redraw_content()
         elif cid == 120:  # Página anterior
             if self._ui_elem_page > 0:
