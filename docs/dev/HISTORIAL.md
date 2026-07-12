@@ -47,8 +47,8 @@ cambiar de pestaña.
 
 **Verificación:** suite **723/723** (710 + 13); `ruff check` + `ruff format --check` limpios en lo tocado;
 `lfs-insim list` OK. Solo lógica de UI del insim de ejemplo → **no toca la API pública** del framework.
-Como es UI/conducta, **⏳ pendiente de validar en LFS por el usuario**. Commits: `32a54d2` (mapa) +
-el de cierre de S32.
+Como es UI/conducta se validó en LFS: **✅ el usuario confirma que "funciona perfectamente"**. Commits:
+`32a54d2` (mapa) + `b316ffb` (herramienta + tests + docs) + el de la validación.
 
 ---
 

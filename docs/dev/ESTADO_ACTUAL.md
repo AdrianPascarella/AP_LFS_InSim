@@ -10,11 +10,11 @@
 > **confirmación** con el nombre final (Aprobar / Cancelar). Estado del flujo en
 > `current_recording["auto_phase"]` (sobrevive a cerrar/reabrir el menú); reutiliza `_cmd_rec_end`. Red:
 > `test_map_ui_auto_link.py` (**13 tests**), suite **723/723**; ruff limpio; `lfs-insim list` OK. Solo UI del
-> insim de ejemplo → **no toca la API pública**; como es UI/conducta, **⏳ pendiente de validar en LFS por el
-> usuario**. Al arrancar se **protegió el mapa South City** sin commitear (871 inserciones; commit
-> `data(ai_control)` `32a54d2` + push, §1.2). **Próximo:** validar "Link auto" en LFS y retomar la **Fase 7**
-> (3 fixes de conducción freeroam; offline, red primero) → gate de LFS junto con W4. Árbol limpio y en sync
-> con `origin` tras los commits de cierre de S32.
+> insim de ejemplo → **no toca la API pública**; como es UI/conducta, **✅ validado en LFS por el usuario**
+> ("funciona perfectamente"). Al arrancar se **protegió el mapa South City** sin commitear (871 inserciones;
+> commit `data(ai_control)` `32a54d2` + push, §1.2). **Próximo:** retomar la **Fase 7** (3 fixes de conducción
+> freeroam; offline, red primero) → gate de LFS junto con W4. Árbol limpio y en sync con `origin` tras los
+> commits de cierre de S32.
 > **Rama de trabajo: `refactor/estabilizacion`.** Todo el refactor ocurre aquí; `main`
 > queda intacta hasta el merge final (cuando el proyecto esté estable). **Sync por GitHub:**
 > `git pull` al arrancar y `git push` al cerrar (permite continuar desde otro dispositivo).

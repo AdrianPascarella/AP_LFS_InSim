@@ -338,7 +338,7 @@ dispara en/tras el merge a `main`.
       vive en `current_recording["auto_phase"]` (recording→confirm/conflict) para sobrevivir a
       cerrar/reabrir el menú. Reutiliza el commit del recorder (`_cmd_rec_end`). Red:
       `test_map_ui_auto_link.py` (13 tests: inicio/guard, confirm, conflicto+3 opciones, persistencia).
-      Suite 723/723; ruff limpio. ⏳ **pendiente de validar en LFS por el usuario** (es UI/conducta).
+      Suite 723/723; ruff limpio. ✅ **validado en LFS por el usuario** ("funciona perfectamente"). Commit de cierre de S32.
 - [x] Auditar el hot-loop `on_ISP_MCI` (coste por tick, frecuencia real) — con el dispatch
       ya fuera del hilo IO (Fase 3) — S22: informe en `docs/dev/AUDITORIA_HOTLOOP.md` con
       mediciones reales. **Veredicto: el loop está SANO** (radar auto-regulado a ~7–10 Hz/IA
