@@ -107,6 +107,16 @@ class _MapUIMixin(_MixinBase):
     _UI_CID_TI3 = 132  # TypeIn terciario
     _UI_CID_LBL_CONF = 133  # Label de confirmación
 
+    # Editor de reglas de prioridad de Zonas (solo en el detalle de una zona,
+    # tras sus campos estándar). CIDs 140-151, dentro del área de contenido
+    # (108-165) que se limpia en cada redibujado.
+    _ZONE_PRIO_TITLE = 140
+    _ZONE_PRIO_TI_A = 141  # TypeIn: vía PRIORITARIA
+    _ZONE_PRIO_TI_B = 142  # TypeIn: vía que CEDE el paso
+    _ZONE_PRIO_ADD = 143  # botón "Anadir"
+    _ZONE_PRIO_ROW_BASE = 144  # regla i: label 144+i*2, quitar 145+i*2
+    _ZONE_PRIO_MAX_ROWS = 4
+
     # Overlay whereami "pineado" — CIDs FUERA del rango de contenido (108-165)
     # para sobrevivir a cambios de pestaña y al cierre del menú. Anclado a la
     # mitad-derecha de la pantalla; solo se quita deseleccionándolo en Info.
@@ -131,6 +141,7 @@ class _MapUIMixin(_MixinBase):
         self._ui_elem_search: str = ""
         self._ui_elem_detail_id: Optional[str] = None
         self._ui_detail_field_map: dict = {}  # {ClickID: (field_name, field_type)}
+        self._ui_zone_prio_map: dict = {}  # {ClickID quitar: (via_a, via_b)}
         self._ui_info_stats: bool = False
         self._ui_info_check: bool = False
         self._ui_check_filter: str = "all"  # "all" | "error" | "warn"
@@ -2450,6 +2461,7 @@ class _MapUIMixin(_MixinBase):
 
         # Filas de campos (máx. 8 filas, spacing=7 para que row7 quede en T=78)
         self._ui_detail_field_map = {}
+        self._ui_zone_prio_map = {}
         for row, (fname, ftype) in enumerate(fields_def[:8]):
             T = 29 + row * 7
             label_cid = 111 + row * 2
@@ -2553,6 +2565,128 @@ class _MapUIMixin(_MixinBase):
                     Text=val_str,
                 )
                 self._ui_detail_field_map[val_cid] = (fname, ftype)
+
+        # Editor de reglas de prioridad (solo Zonas, tras sus campos estándar)
+        if obj_type == "zone":
+            self._map_ui_draw_zone_priority(obj, u)
+
+    def _map_ui_draw_zone_priority(self, zone, u):
+        """Editor de `priority_rules` de una Zona: alta (dos vías + Anadir) y la
+        lista de reglas existentes con su botón Quitar. Regla `[A, B]`: A tiene
+        prioridad, B cede el paso. Reutiliza `_cmd_set` (add/del) del recorder."""
+        # Título de la sección
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=self._ZONE_PRIO_TITLE,
+            BStyle=ISB_STYLE.TITLE | ISB_STYLE.LEFT,
+            L=2,
+            T=50,
+            W=180,
+            H=6,
+            Text="Prioridad (A>B: A pasa, B cede)",
+        )
+        # Fila de alta: [prioritaria] [cede] [Anadir]
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=self._ZONE_PRIO_TI_A,
+            BStyle=ISB_STYLE.LIGHT | ISB_STYLE.CLICK,
+            TypeIn=TYPEIN_FLAGS.INIT_WITH_TEXT | 48,
+            L=2,
+            T=57,
+            W=62,
+            H=6,
+            Text=self._ui_input_buffer.get(self._ZONE_PRIO_TI_A) or "Prioritaria",
+        )
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=self._ZONE_PRIO_TI_B,
+            BStyle=ISB_STYLE.LIGHT | ISB_STYLE.CLICK,
+            TypeIn=TYPEIN_FLAGS.INIT_WITH_TEXT | 48,
+            L=66,
+            T=57,
+            W=62,
+            H=6,
+            Text=self._ui_input_buffer.get(self._ZONE_PRIO_TI_B) or "Cede",
+        )
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=self._ZONE_PRIO_ADD,
+            BStyle=ISB_STYLE.OK | ISB_STYLE.CLICK,
+            L=130,
+            T=57,
+            W=36,
+            H=6,
+            Text="Anadir",
+        )
+        # Reglas existentes (cada una con su Quitar); se registran en el mapa de
+        # clicks para el handler. Se muestran hasta _ZONE_PRIO_MAX_ROWS.
+        self._ui_zone_prio_map = {}
+        rules = [r for r in zone.priority_rules if len(r) == 2]
+        if not rules:
+            self.send_ISP_BTN(
+                ReqI=1,
+                UCID=u,
+                ClickID=self._ZONE_PRIO_ROW_BASE,
+                BStyle=ISB_STYLE.DARK | ISB_STYLE.LEFT,
+                L=2,
+                T=64,
+                W=164,
+                H=6,
+                Text="Sin reglas: la IA no cede el paso en esta zona.",
+            )
+            return
+        for i, rule in enumerate(rules[: self._ZONE_PRIO_MAX_ROWS]):
+            T = 64 + i * 7
+            lbl_cid = self._ZONE_PRIO_ROW_BASE + i * 2
+            del_cid = self._ZONE_PRIO_ROW_BASE + i * 2 + 1
+            self.send_ISP_BTN(
+                ReqI=1,
+                UCID=u,
+                ClickID=lbl_cid,
+                BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
+                L=2,
+                T=T,
+                W=140,
+                H=6,
+                Text=f"{rule[0]} > {rule[1]}",
+            )
+            self.send_ISP_BTN(
+                ReqI=1,
+                UCID=u,
+                ClickID=del_cid,
+                BStyle=ISB_STYLE.CANCEL | ISB_STYLE.CLICK,
+                L=144,
+                T=T,
+                W=22,
+                H=6,
+                Text="Quitar",
+            )
+            self._ui_zone_prio_map[del_cid] = (rule[0], rule[1])
+
+    def _map_ui_zone_prio_add(self):
+        """Alta de una regla de prioridad desde los dos TypeIn. Valida que ambas
+        vías existan y sean distintas (evita reglas muertas por typo)."""
+        if self._map_ui_elem_get_type(self._ui_elem_detail_id) != "zone":
+            return
+        a = (self._ui_input_buffer.get(self._ZONE_PRIO_TI_A) or "").strip()
+        b = (self._ui_input_buffer.get(self._ZONE_PRIO_TI_B) or "").strip()
+        roads = self.map_recorder.roads
+        if not a or not b or a == b or a not in roads or b not in roads:
+            self.send_ISP_MSL(
+                Msg=f"{c.YELLOW}Prioridad: escribe dos road_id validos y distintos "
+                f"(prioritaria y la que cede)."
+            )
+            return
+        self._map_ui_silent_set(
+            self._ui_elem_detail_id, "priority_rules", f"add;{a},{b}"
+        )
+        self._ui_input_buffer.pop(self._ZONE_PRIO_TI_A, None)
+        self._ui_input_buffer.pop(self._ZONE_PRIO_TI_B, None)
+        self._map_ui_redraw_content()
 
     # ──────────────────────────────────────────────────────────────────────────
     # Helpers del tab Elementos
@@ -3558,6 +3692,14 @@ class _MapUIMixin(_MixinBase):
                         new_val = cycle.get(cur, "off")
                         self._map_ui_silent_set(self._ui_elem_detail_id, fname, new_val)
                         self._map_ui_redraw_content()
+            elif cid == self._ZONE_PRIO_ADD:  # Alta de regla de prioridad
+                self._map_ui_zone_prio_add()
+            elif cid in self._ui_zone_prio_map:  # Quitar una regla
+                via_a, via_b = self._ui_zone_prio_map[cid]
+                self._map_ui_silent_set(
+                    self._ui_elem_detail_id, "priority_rules", f"del;{via_a},{via_b}"
+                )
+                self._map_ui_redraw_content()
             return
 
         # ── Vista lista ────────────────────────────────────────────────────
