@@ -357,6 +357,51 @@ class TestCalculateNextLink:
         }
         assert result == captured["seq"][0]
 
+    # ── Pegajosidad (Fase 7 · fix 1): al re-planificar en la misma vía, conservar
+    #    el enlace ya comprometido si sigue siendo válido (no re-tirar el dado) →
+    #    evita el flip de intermitente en dos salidas muy juntas. ───────────────
+    @staticmethod
+    def _dos_salidas(ai_control, make_road, make_road_link, populate_graph):
+        """R1 con DOS salidas RoadLink alcanzables: R1->R2 y R1->R3 (paralela cercana)."""
+        populate_graph(
+            ai_control.map_recorder,
+            roads=[
+                make_road("R1", _straight_y(0, 0, 100)),
+                make_road("R2", _straight_y(0, 100, 200)),
+                make_road("R3", [(5, 100), (5, 200)]),
+            ],
+            road_links=[
+                make_road_link("R1", "R2", [(0, 100), (0, 120)]),
+                make_road_link("R1", "R3", [(5, 100), (5, 120)]),
+            ],
+        )
+
+    def test_pegajoso_conserva_el_enlace_comprometido(
+        self, ai_control, make_road, make_road_link, populate_graph, monkeypatch
+    ):
+        # Con el enlace comprometido AÚN válido, se conserva aunque random.choice
+        # elegiría el otro (aquí forzado a la última opción = R1->R3).
+        self._dos_salidas(ai_control, make_road, make_road_link, populate_graph)
+        monkeypatch.setattr(
+            navigation, "random", SimpleNamespace(choice=lambda seq: seq[-1])
+        )
+        got = ai_control._calculate_next_link("R1", None, 0, committed_link_id="R1->R2")
+        assert got == ("R1->R2", "RoadLink")
+
+    def test_pegajoso_si_el_comprometido_ya_no_vale_replanifica(
+        self, ai_control, make_road, make_road_link, populate_graph, monkeypatch
+    ):
+        # Si el enlace comprometido ya no es una opción (inexistente/cerrado), se
+        # re-planifica normal (random.choice sobre las válidas, aquí la primera).
+        self._dos_salidas(ai_control, make_road, make_road_link, populate_graph)
+        monkeypatch.setattr(
+            navigation, "random", SimpleNamespace(choice=lambda seq: seq[0])
+        )
+        got = ai_control._calculate_next_link(
+            "R1", None, 0, committed_link_id="R1->NOPE"
+        )
+        assert got == ("R1->R2", "RoadLink")
+
 
 # ─── _plan_next_link: asignación del próximo enlace al estado del modo ─────────
 
@@ -403,6 +448,34 @@ class TestPlanNextLink:
         mode = FreeroamMode(current_road_id="R2", previous_road_id="R1", node_index=0)
         ai_control._plan_next_link(mode, on_link=(link_r1_r2, make_coords(0, 100)))
         assert (mode.next_link_id, mode.next_link_type) == ("R2->R3", "RoadLink")
+
+    def test_else_conserva_el_enlace_comprometido_pegajoso(
+        self, ai_control, make_road, make_road_link, populate_graph, monkeypatch
+    ):
+        # Fase 7 · fix (1): al re-planificar en la MISMA vía (rama else, p. ej.
+        # fin_de_geometria), _plan_next_link debe pasar mode.next_link_id como
+        # comprometido → si sigue válido se conserva (no flip de intermitente).
+        populate_graph(
+            ai_control.map_recorder,
+            roads=[
+                make_road("R1", _straight_y(0, 0, 100)),
+                make_road("R2", _straight_y(0, 100, 200)),
+                make_road("R3", [(5, 100), (5, 200)]),
+            ],
+            road_links=[
+                make_road_link("R1", "R2", [(0, 100), (0, 120)]),
+                make_road_link("R1", "R3", [(5, 100), (5, 120)]),
+            ],
+        )
+        # random elegiría la última (R1->R3), pero venimos comprometidos a R1->R2.
+        monkeypatch.setattr(
+            navigation, "random", SimpleNamespace(choice=lambda seq: seq[-1])
+        )
+        mode = FreeroamMode(current_road_id="R1", previous_road_id=None, node_index=0)
+        mode.next_link_id = "R1->R2"
+        mode.next_link_type = "RoadLink"
+        ai_control._plan_next_link(mode)
+        assert (mode.next_link_id, mode.next_link_type) == ("R1->R2", "RoadLink")
 
 
 # ─── _is_dead_end_stop: watchdog de fin de vía sin salida (Fix S29) ───────────

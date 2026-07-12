@@ -820,12 +820,32 @@ class _NavigationMixin(_MixinBase):
 
         return candidatos
 
+    def _choose_link(
+        self,
+        opciones: List[Tuple[Optional[str], Optional[str]]],
+        committed_link_id: Optional[str],
+    ) -> Tuple[Optional[str], Optional[str]]:
+        """Elige un enlace de `opciones`. Pegajosidad (Fase 7 · fix 1): si el
+        enlace ya comprometido sigue en la lista, se conserva (no se re-tira
+        `random.choice`); si no, se elige al azar como siempre. Así un re-plan en
+        la misma vía (p. ej. `fin_de_geometria`) no cambia una elección ya
+        comprometida —con intermitente encendido— en dos salidas muy juntas."""
+        if committed_link_id is not None:
+            for opcion in opciones:
+                if opcion[0] == committed_link_id:
+                    return opcion
+        return random.choice(opciones)
+
     def _calculate_next_link(
-        self, current_road_id: str, previous_road_id: Optional[str], current_index: int
+        self,
+        current_road_id: str,
+        previous_road_id: Optional[str],
+        current_index: int,
+        committed_link_id: Optional[str] = None,
     ) -> Tuple[Optional[str], Optional[Literal["RoadLink", "LatLink"]]]:
         """
         Busca todos los enlaces salientes de la vía actual, los pasa por un filtro de validación
-        y elige aleatoriamente uno que sea válido.
+        y elige uno que sea válido (aleatoriamente, o el ya comprometido si sigue siéndolo).
         """
         current_road = self.map_recorder.roads.get(current_road_id)
         if not current_road:
@@ -860,11 +880,11 @@ class _NavigationMixin(_MixinBase):
             else:
                 opciones_validas.append((l_id, l_type))
 
-        # 3. Decisión final
+        # 3. Decisión final (pegajosa si el enlace comprometido sigue válido)
         if opciones_validas:
-            return random.choice(opciones_validas)
+            return self._choose_link(opciones_validas, committed_link_id)
         elif opciones_retorno:
-            return random.choice(opciones_retorno)
+            return self._choose_link(opciones_retorno, committed_link_id)
 
         return None, None
 
@@ -885,8 +905,13 @@ class _NavigationMixin(_MixinBase):
         else:
             if not mode.current_road_id:
                 return  # Seguridad
+            # Re-plan en la MISMA vía: pasar el enlace ya comprometido como
+            # pegajoso (Fase 7 · fix 1) para no cambiar la elección si sigue válida.
             n_id, n_type = self._calculate_next_link(
-                mode.current_road_id, mode.previous_road_id, mode.node_index
+                mode.current_road_id,
+                mode.previous_road_id,
+                mode.node_index,
+                committed_link_id=mode.next_link_id,
             )
         mode.next_link_id = n_id
         mode.next_link_type = n_type
