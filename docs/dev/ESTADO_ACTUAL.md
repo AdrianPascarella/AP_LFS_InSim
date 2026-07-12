@@ -1,28 +1,48 @@
 # 📍 Estado actual
 
-> Actualizado: **2026-07-11** — S31: **cierre de W3 (Fase 6), offline (Frente A).** Hecho: (1) FSM de
-> adelantamiento revisado (IDLE→EVALUATING→OVERTAKING→RETURNING, estructura sólida) + cleanup del
-> parámetro `name` muerto de `_finish_overtake` (y su alias `_n`); (2) borrado el código muerto
-> `is_target_ahead_and_in_lane` (+ sus 5 tests); (3) los 4 marcadores `[!] OPTIMIZACIÓN` de `radar.py` →
-> comentarios normales; (4) **P4** — `base.py` adelgazado por auditoría del grafo de llamadas real: el
-> contrato `_MixinBase` pasa de 32 a **20** métodos (fuera las **12 self-local**), honestidad del contrato
-> bajo `TYPE_CHECKING` (cero runtime; el **desacople profundo** del "God object" queda pendiente, es
-> arquitectónico); (5) docs de arquitectura (CLAUDE.md: `_MapUIMixin`, fachada `traffic/`, FSM, rejilla del
-> radar; DIAGNOSTICO § P4). **Con esto W3 queda CERRADO** y **Fase 6 (pre-publish) completa salvo W4**
-> (validación en LFS del ceda-el-paso del ACC, bloqueada por `zones: 0`). Suite **699** (704−5 del código
-> muerto); ruff limpio; `lfs-insim list` OK. Solo estructura/comentarios/docs del insim de ejemplo → **no
-> toca la API pública ni requiere LFS**. **2ª petición de S31:** nueva herramienta **"Apunta"** en la
-> pestaña Info (overlay fijo, 6º tipo del whereami) que indica la **vía a la que apunta el morro del coche**
-> (distinta de la actual) y a qué distancia — para mapear; ray-cast puro `find_road_pointed_at` con red
-> (9 tests de geometría + 2 de integración), suite **710**; **✅ validado en LFS por el usuario**. **Próximo:
-> implementar los 3 fixes de la Fase 7** (bugs de conducción freeroam; offline, red primero) → **el usuario
-> los confirma OBLIGATORIAMENTE en LFS** después (mismo gate que W4; junto con validar "Apunta"). Arranque
-> limpio y en sync con `origin` (tip S30); árbol limpio tras los commits de cierre de S31.
+> Actualizado: **2026-07-12** — S32: **herramienta "Link auto" en la UI de mapeo (petición del usuario,
+> fuera de plan).** El usuario pidió pausar la Fase 7 e implementar una utilidad para mapear cómodo. Hecho:
+> nuevo botón **"Link auto"** en la pestaña **Grabar** de `map_ui.py` (CID 118, justo debajo de "RoadLink")
+> que graba un **RoadLink sin teclear origen ni destino** — el ORIGEN se toma de la vía más cercana al coche
+> que se graba (`recording_plid`) al iniciar y el DESTINO al pulsar Finalizar (ambos vía
+> `get_location_context`). Al finalizar: si `origen->destino` ya existe → pantalla de **conflicto**
+> (añadir sufijo a origen/destino y recomprobar / sobrescribir / cancelar); si no → pantalla de
+> **confirmación** con el nombre final (Aprobar / Cancelar). Estado del flujo en
+> `current_recording["auto_phase"]` (sobrevive a cerrar/reabrir el menú); reutiliza `_cmd_rec_end`. Red:
+> `test_map_ui_auto_link.py` (**13 tests**), suite **723/723**; ruff limpio; `lfs-insim list` OK. Solo UI del
+> insim de ejemplo → **no toca la API pública**; como es UI/conducta, **⏳ pendiente de validar en LFS por el
+> usuario**. Al arrancar se **protegió el mapa South City** sin commitear (871 inserciones; commit
+> `data(ai_control)` `32a54d2` + push, §1.2). **Próximo:** validar "Link auto" en LFS y retomar la **Fase 7**
+> (3 fixes de conducción freeroam; offline, red primero) → gate de LFS junto con W4. Árbol limpio y en sync
+> con `origin` tras los commits de cierre de S32.
 > **Rama de trabajo: `refactor/estabilizacion`.** Todo el refactor ocurre aquí; `main`
 > queda intacta hasta el merge final (cuando el proyecto esté estable). **Sync por GitHub:**
 > `git pull` al arrancar y `git push` al cerrar (permite continuar desde otro dispositivo).
 
 ## Estado
+
+**S32 (2026-07-12) — Herramienta "Link auto" en la UI de mapeo (petición del usuario, fuera de plan;
+⏳ requiere validación en LFS).** A petición del usuario, se **pausó la Fase 7** para añadir una utilidad
+de mapeo. Nuevo botón **"Link auto"** en la pestaña **Grabar** de `map_ui.py`, justo debajo de "RoadLink"
+(CID 118; el panel idle se reorganizó a filas T=21/31/41/52/63 para hacerle sitio). Graba un **RoadLink
+sin teclear origen ni destino**: (1) al pulsarlo, `_map_ui_start_auto_link` captura el road de ORIGEN de
+la vía más cercana al coche que se graba (`recording_plid`, humano o IA) con `get_location_context`,
+siembra el nodo de origen, activa el autograbado y entra en fase `recording`; (2) al **Finalizar**,
+`_map_ui_finalize_auto_link` detecta el road DESTINO por la posición actual, cierra el trazado con un nodo
+en el destino, **congela** el autograbado y evalúa el nombre `origen[suf]->destino[suf]`; (3) si el nombre
+está **libre** → pantalla de **confirmación** (nombre final + Aprobar / Cancelar); (4) si **ya existe** →
+pantalla de **conflicto** con **3 opciones**: añadir **sufijo** a origen y/o destino y **Recomprobar**
+(re-evalúa; si sigue chocando, avisa), **Sobrescribir** el existente (actualiza sus nodos) o **Cancelar**.
+Cancelar está en todas las pantallas. **Decisiones:** nombre "Link auto" (no "AUTOGRABAR", que chocaría
+con el toggle "Auto" de captura de nodos); el estado del flujo vive en `current_recording["auto_phase"]`
+(recording→confirm/conflict) para **sobrevivir a cerrar/reabrir el menú** sin estado nuevo que resetear;
+reutiliza `_cmd_rec_end` del recorder para materializar el RoadLink (crear o sobrescribir nodos). **Red
+primero (MODUS §3):** `tests/insims/ai_control/test_map_ui_auto_link.py` (**13 tests**) sobre la `AIControl`
+del harness + `MapRecorder` real con `get_location_context` de verdad (roads A@(0,0)/F@(100,0), coche que
+se mueve de A a F). Suite **723/723** (710 + 13); `ruff check` + `ruff format --check` limpios en lo tocado;
+`lfs-insim list` OK. Solo lógica de UI del insim de ejemplo → **no toca la API pública**. **Arranque
+(protección de mapas §1.2):** South City sin commitear (871 inserciones en `south_city.json` + render) →
+respaldo + commit `data(ai_control)` `32a54d2` + push antes de nada.
 
 **S31 (2026-07-11) — Fase 6 · cierre de W3 (Frente A, offline; NO requiere LFS).** Último bloque de W3.
 (1) **FSM de adelantamiento revisado** (`traffic/orchestrator.py` + `overtake.py`):

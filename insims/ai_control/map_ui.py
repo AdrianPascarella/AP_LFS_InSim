@@ -254,6 +254,13 @@ class _MapUIMixin(_MixinBase):
         rec = self.map_recorder.current_recording
         if not rec:
             return "Sin grabacion activa"
+        if rec.get("auto"):
+            origin = rec.get("origin_id", "?")
+            dest = rec.get("dest_id") or "?"
+            name = rec.get("pending_link_id") or f"{origin}->{dest}"
+            n = len(rec.get("nodes", []))
+            auto = " AUTO" if self.map_recorder.auto_recording_enabled else ""
+            return f"REC: LINK-AUTO '{name}' ({n}pts{auto})"
         rec_type = rec.get("type", "?").upper()
         obj_id = (
             rec.get("road_id")
@@ -459,7 +466,15 @@ class _MapUIMixin(_MixinBase):
 
     def _map_ui_draw_tab_grabar(self):
         rec = self.map_recorder.current_recording
-        if rec:
+        if rec and rec.get("auto"):
+            phase = rec.get("auto_phase")
+            if phase == "confirm":
+                self._map_ui_draw_auto_link_confirm(rec)
+            elif phase == "conflict":
+                self._map_ui_draw_auto_link_conflict(rec)
+            else:
+                self._map_ui_draw_auto_link_recording(rec)
+        elif rec:
             self._map_ui_draw_grabar_active(rec)
         elif self._ui_pending_action in ("rec_roadlink", "rec_laterallink"):
             self._map_ui_draw_grabar_two_args()
@@ -478,8 +493,9 @@ class _MapUIMixin(_MixinBase):
             (110, "Road", 2, 21),
             (111, "RoadLink", 36, 21),
             (112, "LatLink", 70, 21),
-            (113, "Zona", 2, 31),
-            (114, "Reg. Especial", 36, 31),
+            (118, "Link auto", 36, 31),  # RoadLink con origen/destino auto
+            (113, "Zona", 2, 41),
+            (114, "Reg. Especial", 36, 41),
         ]:
             self.send_ISP_BTN(
                 ReqI=1,
@@ -505,7 +521,7 @@ class _MapUIMixin(_MixinBase):
             ClickID=115,
             BStyle=style,
             L=2,
-            T=43,
+            T=52,
             W=40,
             H=8,
             Text="Auto: ON" if auto_on else "Auto: OFF",
@@ -524,7 +540,7 @@ class _MapUIMixin(_MixinBase):
             ClickID=116,
             BStyle=ISB_STYLE.DARK | ISB_STYLE.LEFT,
             L=2,
-            T=54,
+            T=63,
             W=130,
             H=8,
             Text=sel_text,
@@ -535,7 +551,7 @@ class _MapUIMixin(_MixinBase):
             ClickID=117,
             BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
             L=134,
-            T=54,
+            T=63,
             W=50,
             H=8,
             Text="Cambiar...",
@@ -1083,6 +1099,410 @@ class _MapUIMixin(_MixinBase):
             H=9,
             Text="Cancelar",
         )
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # Grabar: "Link auto" (RoadLink con origen/destino auto-detectados)
+    #
+    # Flujo pensado para mapear cómodo: te colocas en el road de ORIGEN, pulsas
+    # "Link auto" (no hay que teclear origen ni destino), conduces hasta el road
+    # de DESTINO y pulsas Finalizar. El origen se captura al iniciar y el destino
+    # al finalizar, ambos por la posición del coche que se está grabando
+    # (recording_plid). Al finalizar:
+    #   - si la combinación origen->destino YA existe → pantalla de CONFLICTO
+    #     (añadir sufijo y recomprobar / sobrescribir / cancelar),
+    #   - si no existe → pantalla de CONFIRMACIÓN (Aprobar / Cancelar).
+    # El estado del flujo vive en current_recording["auto_phase"] para sobrevivir
+    # a cerrar/reabrir el menú (la grabación sigue viva en el recorder).
+    # ──────────────────────────────────────────────────────────────────────────
+
+    def _map_ui_recording_coords(self):
+        """Coordenadas del coche que se está grabando (recording_plid), sea
+        humano o IA. None si no hay PLID seleccionado o no tiene telemetría."""
+        plid = self.map_recorder.recording_plid
+        if plid is None:
+            return None
+        player = self.user_manager.players.get(plid)
+        if player and player.telemetry:
+            return player.telemetry.coordinates
+        ai = self.user_manager.ais.get(plid)
+        if ai and ai.player.telemetry:
+            return ai.player.telemetry.coordinates
+        return None
+
+    def _map_ui_start_auto_link(self):
+        """Inicia una grabación de RoadLink capturando el ORIGEN de la posición
+        actual del coche a grabar. No pide origen/destino: los detecta solos."""
+        mr = self.map_recorder
+        if not mr.active_map_name:
+            self.send_ISP_MSL(Msg=f"{c.RED}Selecciona un mapa primero.")
+            return
+        coords = self._map_ui_recording_coords()
+        if not coords:
+            self.send_ISP_MSL(
+                Msg=f"{c.RED}No se pudo leer la telemetria del coche a grabar (en pista?)."
+            )
+            return
+        ctx = mr.get_location_context(
+            coords.x_m, coords.y_m, coords.z_m, find_links=False, find_zones=False
+        )
+        origin = ctx.road_id
+        if origin is None:
+            self.send_ISP_MSL(
+                Msg=f"{c.RED}No hay vias en el mapa: graba primero el road de origen."
+            )
+            return
+        mr.current_recording = {
+            "type": "road_link",
+            "link_id": None,
+            "origin_id": origin,
+            "dest_id": None,
+            "from_suffix": "",
+            "to_suffix": "",
+            "nodes": [copy.deepcopy(coords)],
+            "is_new": True,
+            "auto": True,
+            "auto_phase": "recording",
+        }
+        mr.auto_recording_enabled = True
+        self.send_ISP_MSL(
+            Msg=f"{c.GREEN}Link auto: origen {c.WHITE}{origin}{c.GREEN}. Conduce al destino y pulsa Finalizar."
+        )
+        self._map_ui_redraw_content()
+        self._map_ui_update_header()
+
+    def _map_ui_draw_auto_link_recording(self, rec: dict):
+        u = self._ui_ucid
+        origin = rec.get("origin_id", "?")
+        n = len(rec.get("nodes", []))
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=110,
+            BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
+            L=2,
+            T=21,
+            W=125,
+            H=7,
+            Text=f"Link auto: {origin} -> (conduce al destino)",
+        )
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=111,
+            BStyle=ISB_STYLE.DARK | ISB_STYLE.LEFT,
+            L=129,
+            T=21,
+            W=55,
+            H=7,
+            Text=f"* {n} nodos",
+        )
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=112,
+            BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
+            L=2,
+            T=37,
+            W=60,
+            H=8,
+            Text="+ Anadir punto",
+        )
+        auto_on = self.map_recorder.auto_recording_enabled
+        auto_style = (
+            ISB_STYLE.OK | ISB_STYLE.CLICK
+            if auto_on
+            else ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK
+        )
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=113,
+            BStyle=auto_style,
+            L=64,
+            T=37,
+            W=40,
+            H=8,
+            Text="Auto: ON" if auto_on else "Auto: OFF",
+        )
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=114,
+            BStyle=ISB_STYLE.OK | ISB_STYLE.CLICK,
+            L=2,
+            T=48,
+            W=60,
+            H=9,
+            Text="Finalizar",
+        )
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=115,
+            BStyle=ISB_STYLE.CANCEL | ISB_STYLE.CLICK,
+            L=64,
+            T=48,
+            W=60,
+            H=9,
+            Text="Cancelar",
+        )
+
+    def _map_ui_click_auto_link_recording(self, cid: int):
+        mr = self.map_recorder
+        if cid == 112:  # + Anadir punto (coords del coche que se graba)
+            coords = self._map_ui_recording_coords()
+            if coords:
+                mr.current_recording["nodes"].append(copy.deepcopy(coords))
+                n = len(mr.current_recording["nodes"])
+                self.send_ISP_MSL(Msg=f"{c.GREEN}Nodo #{n} anadido manualmente.")
+                self._map_ui_redraw_content()
+                self._map_ui_update_header()
+            else:
+                self.send_ISP_MSL(Msg=f"{c.RED}Error: no se pudo leer la telemetria.")
+        elif cid == 113:  # toggle auto
+            new = not mr.auto_recording_enabled
+            mr._cmd_rec_auto("true" if new else "false")
+            self._map_ui_redraw_content()
+            self._map_ui_update_header()
+        elif cid == 114:  # Finalizar → detecta destino
+            self._map_ui_finalize_auto_link()
+        elif cid == 115:  # Cancelar
+            mr._cmd_rec_cancel()
+            self._map_ui_redraw_content()
+            self._map_ui_update_header()
+
+    def _map_ui_finalize_auto_link(self):
+        """Detecta el road DESTINO por la posición actual del coche y pasa a la
+        pantalla de confirmación o de conflicto según exista ya el enlace."""
+        mr = self.map_recorder
+        rec = mr.current_recording
+        coords = self._map_ui_recording_coords()
+        if not coords:
+            self.send_ISP_MSL(
+                Msg=f"{c.RED}No se pudo leer la telemetria para detectar el destino."
+            )
+            return
+        ctx = mr.get_location_context(
+            coords.x_m, coords.y_m, coords.z_m, find_links=False, find_zones=False
+        )
+        dest = ctx.road_id
+        if dest is None:
+            self.send_ISP_MSL(
+                Msg=f"{c.RED}El coche no esta sobre ninguna via. Colocate en el road destino."
+            )
+            return
+        rec["dest_id"] = dest
+        rec["nodes"].append(copy.deepcopy(coords))  # cierra el trazado en el destino
+        mr.auto_recording_enabled = False  # congela los nodos durante la confirmacion
+        self._map_ui_auto_link_evaluate("", "")
+
+    def _map_ui_auto_link_evaluate(self, suffix_a: str, suffix_b: str):
+        """Construye el nombre origen[suf]->destino[suf] y decide la pantalla:
+        conflicto si ya existe en road_links, confirmación si está libre."""
+        mr = self.map_recorder
+        rec = mr.current_recording
+        origin = rec["origin_id"]
+        dest = rec["dest_id"]
+        link_id = f"{origin}{suffix_a}->{dest}{suffix_b}"
+        rec["from_suffix"] = suffix_a
+        rec["to_suffix"] = suffix_b
+        rec["pending_link_id"] = link_id
+        rec["auto_phase"] = "conflict" if link_id in mr.road_links else "confirm"
+        self._map_ui_redraw_content()
+        self._map_ui_update_header()
+
+    def _map_ui_commit_auto_link(self, is_new: bool):
+        """Materializa el RoadLink pendiente reutilizando el commit del recorder."""
+        mr = self.map_recorder
+        rec = mr.current_recording
+        rec["link_id"] = rec.get("pending_link_id")
+        rec["is_new"] = is_new
+        mr._cmd_rec_end()  # crea/actualiza el RoadLink y limpia current_recording
+        mr.auto_recording_enabled = False
+        self._ui_input_buffer = {}
+        self._map_ui_redraw_content()
+        self._map_ui_update_header()
+
+    def _map_ui_draw_auto_link_confirm(self, rec: dict):
+        u = self._ui_ucid
+        link_id = rec.get("pending_link_id", "?")
+        n = len(rec.get("nodes", []))
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=110,
+            BStyle=ISB_STYLE.TITLE | ISB_STYLE.LEFT,
+            L=2,
+            T=21,
+            W=182,
+            H=7,
+            Text="Enlace listo para crear:",
+        )
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=111,
+            BStyle=ISB_STYLE.OK | ISB_STYLE.LEFT,
+            L=2,
+            T=30,
+            W=182,
+            H=8,
+            Text=f"{link_id}   ({n} nodos)",
+        )
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=114,
+            BStyle=ISB_STYLE.OK | ISB_STYLE.CLICK,
+            L=2,
+            T=42,
+            W=60,
+            H=9,
+            Text="Aprobar",
+        )
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=115,
+            BStyle=ISB_STYLE.CANCEL | ISB_STYLE.CLICK,
+            L=64,
+            T=42,
+            W=60,
+            H=9,
+            Text="Cancelar",
+        )
+
+    def _map_ui_click_auto_link_confirm(self, cid: int):
+        if cid == 114:  # Aprobar
+            self._map_ui_commit_auto_link(is_new=True)
+        elif cid == 115:  # Cancelar
+            self.map_recorder._cmd_rec_cancel()
+            self._map_ui_redraw_content()
+            self._map_ui_update_header()
+
+    def _map_ui_draw_auto_link_conflict(self, rec: dict):
+        u = self._ui_ucid
+        link_id = rec.get("pending_link_id", "?")
+        origin = rec.get("origin_id", "?")
+        dest = rec.get("dest_id", "?")
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=110,
+            BStyle=ISB_STYLE.CANCEL | ISB_STYLE.LEFT,
+            L=2,
+            T=21,
+            W=182,
+            H=7,
+            Text=f"Ya existe el link: {link_id}",
+        )
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=111,
+            BStyle=ISB_STYLE.TITLE | ISB_STYLE.LEFT,
+            L=2,
+            T=30,
+            W=182,
+            H=6,
+            Text="Opcion 1: anade sufijo a origen y/o destino",
+        )
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=112,
+            BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
+            L=2,
+            T=38,
+            W=130,
+            H=8,
+            Text=f"Origen {origin}   sufijo:",
+        )
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=self._UI_CID_TI1,
+            BStyle=ISB_STYLE.LIGHT | ISB_STYLE.CLICK,
+            TypeIn=TYPEIN_FLAGS.INIT_WITH_TEXT | 20,
+            L=134,
+            T=38,
+            W=50,
+            H=8,
+            Text=self._ui_input_buffer.get(self._UI_CID_TI1, ""),
+        )
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=113,
+            BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
+            L=2,
+            T=48,
+            W=130,
+            H=8,
+            Text=f"Destino {dest}   sufijo:",
+        )
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=self._UI_CID_TI2,
+            BStyle=ISB_STYLE.LIGHT | ISB_STYLE.CLICK,
+            TypeIn=TYPEIN_FLAGS.INIT_WITH_TEXT | 20,
+            L=134,
+            T=48,
+            W=50,
+            H=8,
+            Text=self._ui_input_buffer.get(self._UI_CID_TI2, ""),
+        )
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=116,
+            BStyle=ISB_STYLE.OK | ISB_STYLE.CLICK,
+            L=2,
+            T=58,
+            W=182,
+            H=8,
+            Text="Recomprobar con sufijo",
+        )
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=118,
+            BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
+            L=2,
+            T=68,
+            W=90,
+            H=9,
+            Text="Opcion 2: Sobrescribir",
+        )
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=117,
+            BStyle=ISB_STYLE.CANCEL | ISB_STYLE.CLICK,
+            L=94,
+            T=68,
+            W=90,
+            H=9,
+            Text="Opcion 3: Cancelar",
+        )
+
+    def _map_ui_click_auto_link_conflict(self, cid: int):
+        mr = self.map_recorder
+        if cid == 116:  # Recomprobar con los sufijos escritos
+            suffix_a = self._ui_input_buffer.get(self._UI_CID_TI1, "").strip()
+            suffix_b = self._ui_input_buffer.get(self._UI_CID_TI2, "").strip()
+            self._map_ui_auto_link_evaluate(suffix_a, suffix_b)
+            if mr.current_recording.get("auto_phase") == "conflict":
+                self.send_ISP_MSL(
+                    Msg=f"{c.YELLOW}Ese nombre tambien existe. Prueba otro sufijo."
+                )
+        elif cid == 118:  # Sobrescribir el existente
+            self._map_ui_commit_auto_link(is_new=False)
+        elif cid == 117:  # Cancelar
+            mr._cmd_rec_cancel()
+            self._map_ui_redraw_content()
+            self._map_ui_update_header()
 
     # ──────────────────────────────────────────────────────────────────────────
     # Tab: Info
@@ -2397,6 +2817,16 @@ class _MapUIMixin(_MixinBase):
         rec = self.map_recorder.current_recording
         buf = self._ui_input_buffer
 
+        if rec and rec.get("auto"):
+            phase = rec.get("auto_phase")
+            if phase == "confirm":
+                self._map_ui_click_auto_link_confirm(cid)
+            elif phase == "conflict":
+                self._map_ui_click_auto_link_conflict(cid)
+            else:
+                self._map_ui_click_auto_link_recording(cid)
+            return
+
         if rec:
             if cid == 112:
                 coords = self.map_recorder.get_coords_fn(self._ui_ucid)
@@ -2543,14 +2973,16 @@ class _MapUIMixin(_MixinBase):
 
         else:  # idle
             if (
-                cid in (110, 111, 112, 113, 114)
+                cid in (110, 111, 112, 113, 114, 118)
                 and self.map_recorder.recording_plid is None
             ):
                 self.send_ISP_MSL(
                     Msg=f"{c.RED}Selecciona primero el jugador a grabar (botón Cambiar...)."
                 )
                 return
-            if cid == 110:
+            if cid == 118:  # Link auto (RoadLink con origen/destino auto-detectados)
+                self._map_ui_start_auto_link()
+            elif cid == 110:
                 self._ui_pending_action = "rec_road"
                 self._ui_input_buffer = {}
                 self._map_ui_redraw_content()

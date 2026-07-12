@@ -329,6 +329,16 @@ dispara en/tras el merge a `main`.
       LFS (misma fórmula que el orquestador); excluye la vía actual (la más cercana a la posición). Toggle
       CID 118, fila del overlay 172. Red: +2 tests de integración en `test_map_ui_whereami.py`. Suite 710;
       ruff limpio. ✅ **validado en LFS por el usuario** ("funciona perfectamente"). Commit de cierre de S31.
+- [x] (extra S32, no planeado) Herramienta **"Link auto"** en la pestaña Grabar (`map_ui.py`): botón bajo
+      "RoadLink" (CID 118) que graba un RoadLink **sin teclear origen ni destino**. El ORIGEN se captura de
+      la vía más cercana al coche que se graba (`recording_plid`) al iniciar y el DESTINO al pulsar
+      Finalizar (ambos vía `get_location_context`). Al finalizar, si `origen->destino` ya existe →
+      pantalla de **conflicto** (añadir sufijo a origen/destino y recomprobar / sobrescribir / cancelar);
+      si no → pantalla de **confirmación** con el nombre final (Aprobar / cancelar). El estado del flujo
+      vive en `current_recording["auto_phase"]` (recording→confirm/conflict) para sobrevivir a
+      cerrar/reabrir el menú. Reutiliza el commit del recorder (`_cmd_rec_end`). Red:
+      `test_map_ui_auto_link.py` (13 tests: inicio/guard, confirm, conflicto+3 opciones, persistencia).
+      Suite 723/723; ruff limpio. ⏳ **pendiente de validar en LFS por el usuario** (es UI/conducta).
 - [x] Auditar el hot-loop `on_ISP_MCI` (coste por tick, frecuencia real) — con el dispatch
       ya fuera del hilo IO (Fase 3) — S22: informe en `docs/dev/AUDITORIA_HOTLOOP.md` con
       mediciones reales. **Veredicto: el loop está SANO** (radar auto-regulado a ~7–10 Hz/IA

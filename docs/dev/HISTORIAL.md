@@ -5,6 +5,53 @@
 
 ---
 
+## S32 — 2026-07-12 — Herramienta "Link auto" en la UI de mapeo (petición del usuario, fuera de plan)
+
+**Arranque:** protocolo de inicio. Ya en `refactor/estabilizacion`. **Mapa South City sin commitear**
+(871 inserciones en `south_city.json` + su render, avance de mapeo del usuario) → **protegido** (§1.2):
+respaldo fuera del repo + commit `data(ai_control)` `32a54d2` + push antes de nada. `git pull`: ya al día.
+El usuario pidió **pausar el plan** (Fase 7) e implementar una herramienta que necesita **para mapear
+cómodo**.
+
+**Qué se hizo (red primero, MODUS §3):** nuevo botón **"Link auto"** en la pestaña **Grabar** de
+`map_ui.py`, justo debajo de "RoadLink" (CID 118, idle reorganizado a filas T=21/31/41/52/63). Graba un
+**RoadLink sin teclear origen ni destino**:
+
+1. **Inicio** (`_map_ui_start_auto_link`): captura el road de ORIGEN de la vía más cercana al coche que se
+   graba (`recording_plid`, humano o IA) vía `get_location_context`, siembra el nodo de origen, activa el
+   autograbado y entra en fase `recording`. Guardas: mapa activo, telemetría legible, hay vías en el mapa.
+2. **Finalizar** (`_map_ui_finalize_auto_link`): detecta el road DESTINO por la posición actual, cierra el
+   trazado con un nodo en el destino, **congela** el autograbado y evalúa el nombre `origen[suf]->destino[suf]`.
+3. **Confirmación** (nombre libre): pantalla con el nombre final + **Aprobar** / **Cancelar**.
+4. **Conflicto** (el nombre ya existe): pantalla con **3 opciones** — (1) añadir **sufijo** a origen y/o
+   destino y **Recomprobar** (re-evalúa; si sigue chocando, avisa), (2) **Sobrescribir** el existente
+   (actualiza sus nodos), (3) **Cancelar**. Cancelar disponible en todas las pantallas.
+
+**Decisiones de diseño:**
+- **Nombre "Link auto"** en vez de "AUTOGRABAR": ya existe un toggle **"Auto"** (captura de nodos en
+  movimiento) → "AUTOGRABAR" habría sido ambiguo. "Link auto" deja claro que es el enlace lo automático.
+- **Estado del flujo en `current_recording["auto_phase"]`** (no en estado de UI): así **sobrevive a
+  cerrar/reabrir el menú** (la grabación vive en el recorder, no en la sesión de menú) sin añadir estado
+  que resetear en `_init_ui_state`.
+- **Reutiliza `_cmd_rec_end`** del recorder para materializar el RoadLink (crear si `is_new`, actualizar
+  nodos si sobrescribe) → cero duplicación de la lógica de guardado.
+- El origen/destino se toman de `recording_plid` (el coche que se graba), no del UCID del menú.
+
+**Red:** nuevo `tests/insims/ai_control/test_map_ui_auto_link.py` (**13 tests**) sobre la `AIControl` del
+harness + `MapRecorder` real con `get_location_context` de verdad (roads A@(0,0) y F@(100,0); el coche se
+mueve de A a F): botón dibujado bajo RoadLink, guard sin PLID, captura de origen, error sin vías, finalizar
+→ confirm (nombre `A->F`), Aprobar crea el RoadLink, Cancelar no crea nada, finalizar con conflicto → las
+3 opciones + campos de sufijo, sufijo libera el nombre (`A->Fb`), recomprobar sin sufijo sigue en conflicto,
+sobrescribir reemplaza los nodos del mismo objeto, cancelar deja el link intacto, y el flujo sobrevive a
+cambiar de pestaña.
+
+**Verificación:** suite **723/723** (710 + 13); `ruff check` + `ruff format --check` limpios en lo tocado;
+`lfs-insim list` OK. Solo lógica de UI del insim de ejemplo → **no toca la API pública** del framework.
+Como es UI/conducta, **⏳ pendiente de validar en LFS por el usuario**. Commits: `32a54d2` (mapa) +
+el de cierre de S32.
+
+---
+
 ## S31 — 2026-07-11 — Cierre de W3 (Fase 6): FSM revisado, código muerto fuera, `base.py` adelgazado (P4), docs de arquitectura
 
 **Arranque:** protocolo de inicio. Ya en `refactor/estabilizacion` y en sync con `origin` (tip S30,
