@@ -35,5 +35,7 @@ Thumbs.db
 # --- Config local por máquina (secretos / rutas) ---
 config/settings_local.py
 
-# claude
-.claude
+# claude — todo local por máquina (settings, caché...) MENOS las skills de
+# proyecto, que sí se versionan para compartirlas por git entre dispositivos.
+.claude/*
+!.claude/skills/

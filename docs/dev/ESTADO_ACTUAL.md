@@ -12,9 +12,12 @@
 > `test_map_ui_auto_link.py` (**13 tests**), suite **723/723**; ruff limpio; `lfs-insim list` OK. Solo UI del
 > insim de ejemplo → **no toca la API pública**; como es UI/conducta, **✅ validado en LFS por el usuario**
 > ("funciona perfectamente"). Al arrancar se **protegió el mapa South City** sin commitear (871 inserciones;
-> commit `data(ai_control)` `32a54d2` + push, §1.2). **Próximo:** retomar la **Fase 7** (3 fixes de conducción
-> freeroam; offline, red primero) → gate de LFS junto con W4. Árbol limpio y en sync con `origin` tras los
-> commits de cierre de S32.
+> commit `data(ai_control)` `32a54d2` + push, §1.2). **También en S32:** primera **skill de proyecto**
+> `ai-control-map-ui` (playbook de la UI de mapeo, para no re-explorar `map_ui.py` en cada ajuste) creada y
+> versionada — se des-ignoró `.claude/skills/` en `.gitignore` para que se sincronice por git. **Próximo:**
+> (1) **paso prioritario nuevo en PLAN** — *evaluar el catálogo de skills del proyecto y cómo gestionarlas*;
+> (2) retomar la **Fase 7** (3 fixes de conducción freeroam; offline, red primero) → gate de LFS junto con W4.
+> Árbol limpio y en sync con `origin` tras los commits de cierre de S32.
 > **Rama de trabajo: `refactor/estabilizacion`.** Todo el refactor ocurre aquí; `main`
 > queda intacta hasta el merge final (cuando el proyecto esté estable). **Sync por GitHub:**
 > `git pull` al arrancar y `git push` al cerrar (permite continuar desde otro dispositivo).
@@ -43,6 +46,18 @@ se mueve de A a F). Suite **723/723** (710 + 13); `ruff check` + `ruff format --
 `lfs-insim list` OK. Solo lógica de UI del insim de ejemplo → **no toca la API pública**. **Arranque
 (protección de mapas §1.2):** South City sin commitear (871 inserciones en `south_city.json` + render) →
 respaldo + commit `data(ai_control)` `32a54d2` + push antes de nada.
+
+**S32 (2026-07-12) — primera skill de proyecto + paso prioritario de tooling (con el usuario).** A raíz de
+que los ajustes de UI de ai_control son un pedido recurrente (coste de *orientación* alto: `map_ui.py` tiene
+3200+ líneas), se creó la skill de proyecto **`ai-control-map-ui`** (`.claude/skills/ai-control-map-ui/
+SKILL.md`): un playbook con la estructura estable de la UI (rangos de CID 108–165 contenido / 166+
+persistente, patrón `_map_ui_draw_tab_*` ↔ `_map_ui_click_*`, TypeIn vía `_ui_input_buffer`, receta para
+añadir botón/pantalla, harness de tests `ai_control`, convenciones). Escrita en **estructura/convenciones, no
+números de línea** (para que no envejezca). Una skill on-demand es mejor vehículo que CLAUDE.md (que se carga
+siempre) para conocimiento solo-a-veces-relevante. Para **sincronizarla por git** entre dispositivos se
+des-ignoró `.claude/skills/` en `.gitignore` (el resto de `.claude` sigue local). **Nuevo paso prioritario en
+PLAN** (§ "Tooling de trabajo — Skills"): evaluar qué otros flujos merecen skill (candidatas: cierre/arranque
+de sesión) y ratificar la convención de gestión. **Se usará/probará la skill** en el próximo ajuste de UI.
 
 **S31 (2026-07-11) — Fase 6 · cierre de W3 (Frente A, offline; NO requiere LFS).** Último bloque de W3.
 (1) **FSM de adelantamiento revisado** (`traffic/orchestrator.py` + `overtake.py`):

@@ -501,6 +501,31 @@ orquestadores con `time.time()` siguen sin red → cubrir antes de tocarlos).
 
 ---
 
+## 🧩 Tooling de trabajo — Skills de Claude Code  ⭐ PRIORITARIO (S32)
+
+> **Iniciado en S32:** se creó la primera skill de proyecto, **`ai-control-map-ui`**
+> (`.claude/skills/ai-control-map-ui/SKILL.md`), un playbook para tocar la UI de mapeo de
+> `map_ui.py` sin re-explorar 3000+ líneas — ahorra tokens de *orientación* y da consistencia
+> (rangos de CID, patrón dibujar↔click, harness de tests). Para que se **sincronice entre
+> dispositivos** se des-ignoró `.claude/skills/` en `.gitignore` (el resto de `.claude` sigue
+> local). Motivación (con el usuario): los ajustes de UI de ai_control son un pedido recurrente
+> y de coste de orientación alto → candidato ideal a skill on-demand.
+
+- [ ] **Evaluar el catálogo de skills del proyecto (qué merece skill y qué no).** Candidatas
+      detectadas: (a) protocolo de **cierre de sesión** (`cerrar-sesion`: actualizar docs + commit
+      + push con el workaround de `gh`) — cómodo, ahorro marginal; (b) protocolo de **arranque**
+      (`arrancar-sesion`: proteger mapas §1.2 + `pull` + leer `docs/dev/`); (c) otras zonas de
+      re-exploración cara (¿`traffic/`? ¿navegación freeroam?). **Criterio:** una skill vale para
+      conocimiento **procedimental y solo-a-veces-relevante** (mejor que CLAUDE.md, que se carga
+      SIEMPRE); mantenerla en **estructura/convenciones, NO números de línea** (envejecen). Coste:
+      mantenimiento si el código se mueve.
+- [ ] **Definir cómo gestionarlas (convención).** Propuesta de partida (a ratificar/afinar al
+      evaluar a/b/c): skills de proyecto en `.claude/skills/<nombre>/SKILL.md` versionadas por git
+      (ya des-ignoradas); una skill por flujo repetible; `description` afinada para que se dispare
+      sola cuando toca; revisarlas si el código al que apuntan cambia mucho.
+
+---
+
 ## Fase 7 — Robustez de conducción freeroam (ai_control)  ◀️ PRÓXIMO (S31)
 
 > **▶️ PRÓXIMO TRABAJO (S31, decidido con el usuario):** los **3 fixes pendientes de abajo son el

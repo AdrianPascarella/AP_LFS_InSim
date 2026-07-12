@@ -50,6 +50,19 @@ cambiar de pestaña.
 Como es UI/conducta se validó en LFS: **✅ el usuario confirma que "funciona perfectamente"**. Commits:
 `32a54d2` (mapa) + `b316ffb` (herramienta + tests + docs) + el de la validación.
 
+**Extra S32 — primera skill de proyecto + paso prioritario de tooling.** El usuario preguntó si podía
+autocrearme skills y si servirían para optimizar (menos tokens) los ajustes recurrentes de la UI de
+ai_control. Tras explicar el modelo (una skill es un *playbook on-demand*, no una caché del código: recorta
+la *orientación*, no el editar/verificar; mejor que CLAUDE.md porque solo se carga cuando es relevante), se
+decidió **crearla ahora** (el mapa de `map_ui.py` estaba fresco en contexto → barato y preciso; diferirlo
+obligaría a releer 3200+ líneas en frío). Creada **`ai-control-map-ui`** (`.claude/skills/ai-control-map-ui/
+SKILL.md`): estructura de la UI (rangos de CID, patrón dibujar↔click, TypeIn, receta, harness de tests,
+convenciones), redactada en **estructura/convenciones, no números de línea**. Para sincronizarla por git se
+**des-ignoró `.claude/skills/`** en `.gitignore` (el resto de `.claude` sigue local). Se añadió al PLAN un
+**paso prioritario** (§ "Tooling de trabajo — Skills"): evaluar qué otros flujos merecen skill (candidatas:
+`cerrar-sesion`/`arrancar-sesion`) y ratificar la convención de gestión. Commit de cierre de S32 (skill +
+`.gitignore` + docs).
+
 ---
 
 ## S31 — 2026-07-11 — Cierre de W3 (Fase 6): FSM revisado, código muerto fuera, `base.py` adelgazado (P4), docs de arquitectura
