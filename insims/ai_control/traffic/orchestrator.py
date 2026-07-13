@@ -124,8 +124,15 @@ class _OrchestratorMixin(_MixinBase):
                         )
                         for rid in mode.active_special_rules
                     )
+                    # Nunca se ABRE una maniobra dentro de un cruce: ahí el radar ve la
+                    # cadena del enlace (Fase 7 · fix (3)) y el coche que bloquea puede
+                    # ir por otra vía, pero `_find_valid_overtake_lane` buscaría carril
+                    # en la vía que ya dejamos, con el `node_index` del enlace. En un
+                    # RoadLink se frena por él (ACC) y punto. Un adelantamiento YA en
+                    # curso no se toca: lo cierran sus propios estados del FSM.
                     if (
-                        not lane_change_blocked
+                        mode.current_type == "Road"
+                        and not lane_change_blocked
                         and closest_speed_kmh < velocidad_base * 0.95
                         and current_time > mode.overtake_cooldown
                         and closest_dist < max_dist_m

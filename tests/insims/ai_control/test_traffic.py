@@ -1117,6 +1117,92 @@ class TestScanLaneAheadChain:
         assert ai_control._scan_lane_ahead(scanner, mode, 100.0) == []
 
 
+class TestOvertakeTriggerGuard:
+    """El gatillo IDLE→EVALUATING del FSM, con y sin cruce de por medio.
+
+    Primera red sobre `_update_traffic_behavior` (el orquestador se dejó sin cubrir
+    por usar `time.time()`; aquí el tiempo solo entra en comparaciones de cooldown
+    con 0.0, así que el gatillo es determinista). Va ligada al fix (3): al ver ahora
+    a los coches de la cadena del cruce, la IA podía dispararse a adelantar DENTRO de
+    un RoadLink — donde `_find_valid_overtake_lane` mira los laterales de la vía que
+    ya dejó y `node_index` es el del enlace. El adelantamiento se inicia solo en Road.
+    """
+
+    @staticmethod
+    def _slow_car(make_ai, make_behavior, x_m, y_m, road_id, node_index):
+        return _place_ai(
+            make_ai,
+            make_behavior,
+            2,
+            x_m,
+            y_m,
+            speed_kmh=5,
+            mode_fields={
+                "current_type": "Road",
+                "current_id": road_id,
+                "node_index": node_index,
+            },
+        )
+
+    def test_en_un_road_el_coche_lento_dispara_el_adelantamiento(
+        self,
+        ai_control,
+        populate_graph,
+        make_road,
+        make_road_link,
+        make_ai,
+        make_behavior,
+    ):
+        # Caso normal (sin cruce): sigue disparándose como siempre.
+        _chain_graph(ai_control, populate_graph, make_road, make_road_link)
+        scanner = make_ai(plid=1, x_m=0, y_m=50, speed_kmh=30)
+        mode = FreeroamMode(
+            current_type="Road", current_id="R1", current_road_id="R1", node_index=5
+        )
+        scanner.extra["aic"].active_mode = mode
+        _set_ais(
+            ai_control, scanner, self._slow_car(make_ai, make_behavior, 0, 60, "R1", 6)
+        )
+
+        ai_control._update_traffic_behavior(scanner)
+
+        assert mode.overtake_state == "EVALUATING"
+        assert mode.overtake_target_plid == 2
+
+    def test_dentro_de_un_roadlink_no_se_inicia_un_adelantamiento(
+        self,
+        ai_control,
+        populate_graph,
+        make_road,
+        make_road_link,
+        make_ai,
+        make_behavior,
+    ):
+        # Mismo coche lento, pero nosotros vamos DENTRO del enlace: se frena por él
+        # (ACC) y NO se abre la maniobra. El FSM se queda en IDLE.
+        _chain_graph(ai_control, populate_graph, make_road, make_road_link)
+        scanner = make_ai(plid=1, x_m=0, y_m=105, speed_kmh=30)
+        mode = FreeroamMode(
+            current_type="RoadLink",
+            current_id="R1->R2",
+            current_road_id="R1",
+            node_index=1,
+        )
+        scanner.extra["aic"].active_mode = mode
+        _set_ais(
+            ai_control,
+            scanner,
+            self._slow_car(make_ai, make_behavior, 0, 115, "R1", 11),
+        )
+
+        ai_control._update_traffic_behavior(scanner)
+
+        assert mode.overtake_state == "IDLE"
+        assert mode.overtake_target_plid is None
+        # Pero el coche del cruce SÍ se ve: es el que nos bloquea (fix (3)).
+        assert mode.blocking_plid == 2
+
+
 class TestScanTargetLane:
     @staticmethod
     def _scanner_and_mode(ai_control, populate_graph, make_road, make_ai):
