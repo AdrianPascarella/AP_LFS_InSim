@@ -44,7 +44,8 @@ unchecked it silently becomes a second journal and buries the next step under mo
 
 **Stable IDs.** Problems are `P<n>` (`DIAGNOSIS.md`), workstreams `W<n>` (`PLAN.md`), sessions `S<n>`
 (`LOG.md`). An ID never changes meaning. A solved problem keeps its ID and gains
-`RESOLVED (S<n>): <how>` — it is never deleted.
+`RESOLVED (S<n>): <how>` — it is never deleted. **You assign the session number yourself at close:
+the last one in `LOG.md` plus one.** Never reuse or renumber an ID.
 *Why: without stable IDs every document re-explains the same thing in different words, and the
 versions drift apart.*
 
@@ -80,7 +81,9 @@ destroys weeks of it. Why (6): a session that ended badly leaves lying docs.*
    cap; spill the old material into `LOG.md`.
 2. Append an entry to `LOG.md`: what was done, **decisions with their why**, verification results,
    commits.
-3. Tick off what is done in `PLAN.md`; add what you discovered.
+3. Tick off what is done in `PLAN.md`; add the tasks you discovered. **A defect or a structural
+   problem you found goes to `DIAGNOSIS.md` with a new `P<n>`** — with its evidence, even if you are
+   not going to fix it now. *Why: a problem found and not filed is a problem found twice.*
 4. Run `python scripts/close_check.py --context-dir {{context_dir}}` and **paste its output**. It
    checks what would otherwise be a promise: clean tree, everything pushed, `STATE.md` under the cap,
    a next step and a validation queue actually present. If it fails, fix it — do not report a close
@@ -91,6 +94,8 @@ If the user stops abruptly, do this at the first good stopping point.
 
 ## §5 — Touching fragile code: the safety net
 
+- **Check `DIAGNOSIS.md` before touching a fragile file.** What you are about to "discover" may
+  already be a filed problem with a decided plan. Search it by ID or by file; do not read it whole.
 - **Characterization tests first.** Before modifying fragile, load-bearing or poorly understood
   logic, write tests that capture its **current** behaviour — including the quirks you disagree with.
   Refactor only with the net in place.
@@ -230,6 +235,7 @@ protocol with no way to grow decays into the protocol of the first day.*
 | A design decision and its reasons | `LOG.md` (and `STATE.md` if it constrains the next step) |
 | A fact about where the work stands | `STATE.md` |
 | A task or an idea for later | `PLAN.md` |
+| A defect or structural problem, found by anyone | `DIAGNOSIS.md`, with a new `P<n>` |
 
 The shape of an entry:
 

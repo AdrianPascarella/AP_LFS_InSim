@@ -240,7 +240,8 @@ unchecked it silently becomes a second journal and buries the next step under mo
 
 **Stable IDs.** Problems are `P<n>` (`DIAGNOSIS.md`), workstreams `W<n>` (`PLAN.md`), sessions
 `S<n>` (`LOG.md`). An ID never changes meaning. A solved problem keeps its ID and gains
-`RESOLVED (S<n>): <how>` — it is never deleted.
+`RESOLVED (S<n>): <how>` — it is never deleted. **You assign the session number yourself at close:
+the last one in `LOG.md` plus one.** Never reuse or renumber an ID.
 *Why: without stable IDs every document re-explains the same thing in different words, and the
 versions drift apart.*
 
@@ -276,7 +277,9 @@ moment destroys weeks of it. Why (6): a session that ended badly leaves lying do
    the cap; spill the old material into `LOG.md`.
 2. Append an entry to `LOG.md`: what was done, **decisions with their why**, verification results,
    commits.
-3. Tick off what is done in `PLAN.md`; add what you discovered.
+3. Tick off what is done in `PLAN.md`; add the tasks you discovered. **A defect or a structural
+   problem you found goes to `DIAGNOSIS.md` with a new `P<n>`** — with its evidence, even if you are
+   not going to fix it now. *Why: a problem found and not filed is a problem found twice.*
 4. If the environment lets you run scripts, install a **close check** and run it here, pasting its
    output: clean tree, nothing unpushed, `STATE.md` under the cap, a next step and a validation
    queue actually present. A rule a script verifies stops being a promise. (The Claude Code skill of
@@ -287,6 +290,8 @@ If the user stops abruptly, do this at the first good stopping point.
 
 ## §5 — Touching fragile code: the safety net
 
+- **Check `DIAGNOSIS.md` before touching a fragile file.** What you are about to "discover" may
+  already be a filed problem with a decided plan. Search it by ID or by file; do not read it whole.
 - **Characterization tests first.** Before modifying fragile, load-bearing or poorly understood
   logic, write tests that capture its **current** behaviour — including the quirks you disagree
   with. Refactor only with the net in place.
@@ -426,6 +431,7 @@ protocol with no way to grow decays into the protocol of the first day.*
 | A design decision and its reasons | `LOG.md` (and `STATE.md` if it constrains the next step) |
 | A fact about where the work stands | `STATE.md` |
 | A task or an idea for later | `PLAN.md` |
+| A defect or structural problem, found by anyone | `DIAGNOSIS.md`, with a new `P<n>` |
 
 The shape of an entry (real examples, from the project this protocol was distilled from):
 
@@ -436,6 +442,22 @@ The shape of an entry (real examples, from the project this protocol was distill
   the choice unguided.
 - 2026-07-11 — At the end of a task, say whether to continue in this session or open a new one.
 ```
+
+Start this section **empty**, with its heading and this instruction in place, so the first standing
+rule the user gives has somewhere to land.
+
+## §16 — Keeping the system alive
+
+The system is yours to maintain, not the user's.
+
+- **The configuration is not frozen.** When reality changes — a new verify command, a new trap, a new
+  branch, a blind spot the user discovers later — you update `PROTOCOL.md` yourself and say that you
+  did.
+- **When a rule proves wrong for this project, propose changing it** — with the reason, and marking
+  your recommendation. Then write the change. Do not quietly ignore a rule you dislike: a rule you
+  stop following without saying so is worse than a rule that was never written.
+- **The user only ever has to talk to you.** If they are editing these files by hand, the system has
+  failed and you should fix whatever made that necessary.
 
 ---
 
@@ -547,17 +569,3 @@ Max ~40 lines. Older narrative belongs in LOG.md.>
 - **Resolved (S<n>):** <how, and what proved it>
 ```
 
----
-
-# PART IV — KEEPING THE SYSTEM ALIVE
-
-The system is yours to maintain, not the user's.
-
-- **The configuration is not frozen.** When reality changes — a new verify command, a new trap, a
-  new branch, a blind spot the user discovers later — you update `PROTOCOL.md` yourself and say
-  that you did.
-- **When a rule proves wrong for this project, propose changing it** — with the reason, and marking
-  your recommendation. Then write the change. Do not quietly ignore a rule you dislike: a rule you
-  stop following without saying so is worse than a rule that was never written.
-- **The user only ever has to talk to you.** If they are editing these files by hand, the system
-  has failed and you should fix whatever made that necessary.
