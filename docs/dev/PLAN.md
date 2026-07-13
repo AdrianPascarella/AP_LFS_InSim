@@ -528,14 +528,13 @@ orquestadores con `time.time()` siguen sin red → cubrir antes de tocarlos).
 
 ---
 
-## Fase 7 — Robustez de conducción freeroam (ai_control)  ◀️ PRÓXIMO (S31)
+## Fase 7 — Robustez de conducción freeroam (ai_control)  ✅ COMPLETA EN CÓDIGO (S34) · ⏳ validar en LFS
 
-> **▶️ PRÓXIMO TRABAJO (actualizado S33):** **fix (4), fix (1) y el fix del ceda-el-paso tembloroso (5)
-> HECHOS en S33** (red primero, offline; commits `d968abf`, `1a8eaac`, `73bbae7`; ⏳ pendientes de validar
-> en LFS junto con W4, ya desbloqueada). **Queda solo el fix (3)** (radar en transición road→roadlink) — el
-> más pesado: extender la **red de equivalencia del radar de S28** + matching topológico de la cadena
-> `current→next→to_road`. Se implementa **con red primero** (offline). Una vez hecho, **el usuario lo confirma
-> OBLIGATORIAMENTE en LFS** (es conducta), junto con la validación pendiente del resto (mismo gate del merge).
+> **▶️ ESTADO (S34): los 5 fixes están HECHOS.** (2) en S29; (4), (1) y (5) en S33 (`d968abf`, `1a8eaac`,
+> `73bbae7`); **(3) en S34** (`3a628c3`) + su **guard** de no-adelantar-en-cruce (`8af862d`). Solo (2) está
+> validado en LFS; **los otros 4 esperan validación** junto con W4 (ya desbloqueada) — **mismo gate del merge**.
+> No queda trabajo offline en esta fase.
+>
 > **Aparte (no de conducción):** en S33 se añadió el **editor de reglas de prioridad de zonas en la UI**
 > (Elementos → Zona, picker de vías; `a29fde3`→`5f9af3d`) que desbloqueó crear la primera intersección.
 >
@@ -573,15 +572,24 @@ orquestadores con `time.time()` siguen sin red → cubrir antes de tocarlos).
       re-plan de misma vía (rama `else`). **Red primero:** 2 tests de pegajosidad en `_calculate_next_link`
       + 1 de wiring en `_plan_next_link` (el de wiring mostraba el flip `R1->R2 ⇒ R1->R3`). Suite 737.
       Commit `1a8eaac`.
-- [ ] **(3) El radar olvida a los coches al pasar de road a roadlink.** Al transicionar road→roadlink,
-      `traffic/radar.py::_scan_lane_ahead` acota los candidatos a la geometría de `mode.current_id` (solo
-      el link) → olvida a los coches que aún tenía delante en el road que deja (si se podía seguir de
-      frente y el de delante iba más lento, lo choca). Además, al **entrar** a un road por un roadlink no
-      ve a los que ya circulan dentro (les corta el paso). Arreglo probable: durante la ventana de
-      aproximación/transición, ampliar el match topológico de "delante en mi carril" a la **cadena
-      current→next**: road actual + su roadlink saliente (`next_link`) + el `to_road` del link, para que
-      detecte a los de las salidas y a los de dentro del road destino. **Red primero** (extender la red
-      de equivalencia del radar de S28).
+- [x] **(3) El radar olvida a los coches al pasar de road a roadlink** — **S34 (HECHO, ⏳ validar en LFS).**
+      **Causa raíz:** la topología de la IA cambia **antes** que su posición — `navigation.py:551` la mete en
+      el RoadLink en cuanto está a `TRIGGER_DIST_M` (**3,5 m**) de él, mucho antes de separarse físicamente de
+      la vía; y `_scan_lane_ahead` solo aceptaba coches en `mode.current_id` (+ `in_our_next_link` yendo por un
+      Road). **Fix:** `_lane_chain_ids` (pura) ensancha "mi carril, delante" a la cadena
+      **`from_road → link → to_road`**, acotada por una **ventana de transición** medida al **nodo de entrada**
+      del enlace (`_LINK_TRANSITION_WINDOW_M` = 25 m): en un **Road**, el próximo RoadLink siempre (= el
+      `in_our_next_link` de antes) y —solo en la ventana— su **vía de destino**; dentro de un **RoadLink**, la
+      **vía de destino** siempre (es nuestro carril) y —solo en la ventana— la **vía que dejamos**. La ventana es
+      lo que evita el **frenado fantasma** por tráfico de una transversal (el lookahead real es ≈83 m a 30 km/h).
+      **Guard asociado (commit aparte, `8af862d`):** el gatillo `IDLE→EVALUATING` del FSM no miraba `current_type`
+      → con los coches nuevos, la IA intentaría **adelantar dentro del cruce** (con `_find_valid_overtake_lane`
+      mirando los laterales de la vía que ya dejó y el `node_index` del enlace) → **el adelantamiento solo se
+      ABRE en un Road**. **Red primero:** 18 tests — helpers puros (8), integración de los 2 choques + bordes de
+      la ventana (6), **la red de equivalencia del radar de S28 extendida** al escáner dentro de un RoadLink
+      (fuzz rejilla vs. lineal) y la **primera red sobre `_update_traffic_behavior`** (2, el gatillo). Verificada
+      en **rojo** contra el código viejo (los 2 choques se reproducen; el `non_empty` del fuzz cae a 0). Suite
+      767. Commits `3a628c3` + `8af862d`.
 - [x] **(4) Road cerrado = inexistente en TODOS los casos** — **S33 (HECHO, ⏳ validar en LFS).** Hueco:
       `traffic/overtake.py::_find_valid_overtake_lane` NO comprobaba `is_closed` → la IA podía adelantar
       metiéndose en un carril cerrado. **Auditoría de consumidores** (lo que pedía el ítem): el único
@@ -605,7 +613,8 @@ orquestadores con `time.time()` siguen sin red → cubrir antes de tocarlos).
 
 **Criterio de aceptación:** las conductas corregidas y **validadas por el usuario en LFS**; red de
 caracterización en cada fix antes de tocar el orquestador; suite + CI verdes. No tocan la API pública.
-**Estado S33:** (2)/(4)/(1)/(5) hechos; **(3) pendiente**; todos ⏳ pendientes de validación en LFS.
+**Estado S34:** los **5 fixes hechos** (código completo). Solo (2) está validado en LFS; (1), (3), (4), (5) y el
+guard ⏳ **esperan validación** — junto con W4, es el único trabajo que queda antes del merge.
 
 ---
 

@@ -5,6 +5,70 @@
 
 ---
 
+## S34 — 2026-07-13 — Fase 7: fix (3) el radar pierde coches en la transición road↔roadlink → **FASE 7 COMPLETA (código)**
+
+**Arranque:** protocolo de inicio. Ya en `refactor/estabilizacion`, árbol limpio (nada de mapas que proteger);
+el `git pull` trajo TODO S33 desde el otro equipo (fixes (4)/(1)/(5), editor de prioridad de zonas, la primera
+intersección `test1`). Handoff de S33: dos frentes — (A) validar en LFS lo acumulado (W4 ya desbloqueada) o
+(B) implementar el fix (3), el último bug de conducción. **El usuario eligió (B)** (recomendado: es lo único
+que se puede avanzar offline; la validación la hace él cuando juegue, y así llega a esa sesión con TODO junto).
+
+**Diagnóstico (rastreado en el código, no en la descripción del bug).** `radar.py::_scan_lane_ahead` solo
+aceptaba coches cuyo `current_id` fuera el nuestro (`same_segment`), con UNA excepción: `in_our_next_link`
+(yendo por un Road, ve a los que ya entraron en su próximo RoadLink). La causa raíz de los dos choques es que
+**la topología de la IA cambia ANTES que su posición**: `navigation.py:551` la mete en el RoadLink en cuanto
+está a `TRIGGER_DIST_M` (**3,5 m**) de él, mucho antes de separarse físicamente de la vía. De ahí:
+**(a)** dentro del enlace dejaba de ver al coche lento que aún tenía delante en la **vía que deja** (si se podía
+seguir de frente, lo chocaba); **(b)** no veía a los que ya circulaban en la **vía de destino**.
+
+**Fix — la cadena topológica del cruce (commit `3a628c3`).** `_lane_chain_ids` (función pura) ensancha
+"mi carril, delante" a la cadena **`from_road → link → to_road`**, acotada por una **ventana de transición**
+medida al **nodo de entrada** del enlace (`_LINK_TRANSITION_WINDOW_M = 25 m`, ajustable):
+- **En un Road:** el próximo RoadLink **siempre** (= el `in_our_next_link` de antes, byte-equivalente) y, **solo
+  dentro de la ventana**, su **vía de destino** → frena a tiempo por una cola al otro lado del cruce, en vez de
+  descubrirla al meterse ya en él.
+- **Dentro de un RoadLink:** la **vía de destino siempre** (estamos comprometidos: es nuestro carril) y, **solo
+  dentro de la ventana**, la **vía que dejamos**.
+
+**Por qué la ventana (decisión de diseño):** sin ella, con el lookahead real (`max(15, v·10)` ≈ **83 m a 30 km/h**)
+la IA frenaría por coches de una **vía transversal** lejana que nunca va a seguir → **frenado fantasma en cada
+cruce**, justo lo que el usuario está probando ahora con las intersecciones. Fuera de la ventana el match vuelve
+a ser **estricto** (como antes). Los de la cadena se filtran por **producto escalar** (que estén delante), igual
+que hacía `in_our_next_link`; su `node_index` NO es comparable (geometrías distintas).
+
+**Guard: no adelantar dentro de un cruce (commit `8af862d`, decidido con el usuario).** Efecto secundario cazado
+ANTES de tocar nada: `_scan_lane_ahead` no alimenta solo al ACC, también al **gatillo `IDLE→EVALUATING`** del FSM
+(`orchestrator.py`), que **no comprobaba `current_type`**. Con más coches detectados, la IA se dispararía a
+adelantar **dentro del enlace**, donde `_find_valid_overtake_lane` busca carril en los laterales de la vía que ya
+dejó y con el `node_index` del enlace aplicado a los nodos del road (índice de **otra geometría**) → el fix pasaría
+de evitar un choque a provocar una maniobra absurda. **Opción elegida (pregunta con recomendación, MODUS §6):**
+guard = el adelantamiento **solo se ABRE en un Road**; dentro de un enlace se frena por el coche (ACC intacto) y
+punto. Uno **ya en curso** no se toca (lo cierran sus estados del FSM). **Commit aparte a propósito**, para poder
+revertirlo solo si en LFS resulta demasiado conservador.
+
+**Red primero (MODUS §3) — 18 tests.** (1) Unitarios de los helpers puros (`_is_near_link_entry`,
+`_lane_chain_ids`: 8). (2) Integración por `_scan_lane_ahead` (6): los **dos choques reportados**, el de detrás,
+los **dos bordes de la ventana** (dentro detecta / fuera no → congela el "no frenar fantasma"). (3) **Red de
+equivalencia del radar de S28 EXTENDIDA** al escáner **dentro de un RoadLink** (fuzz rejilla vs. barrido lineal,
+40 semillas): la cadena admite muchos más candidatos → había que volver a demostrar que la **rejilla no pierde
+ninguno**. (4) **Primera red sobre `_update_traffic_behavior`** (2): el orquestador se había dejado sin cubrir por
+usar `time.time()`, pero en el gatillo el tiempo solo entra en comparaciones de cooldown con 0.0 → es determinista.
+**Verificación en ROJO contra el comportamiento viejo** (no vale con que pase en verde): los 2 choques se
+reproducen, el guard `non_empty ≥ 5` del fuzz cae a **0** (prueba de que el fuzz no es vacuo) y sin el guard el FSM
+sale en `EVALUATING` dentro del enlace. Los que pasaban en rojo son justo los "**no** debe detectar" → la ventana
+no rompe nada.
+
+**De paso:** el docstring de `radar.py` decía que el índice espacial "aterrizará" aquí; llegó en S28.
+
+**Verificación:** suite **767/767** (749 + 18); `ruff check .` + `format --check .` limpios (106 ficheros);
+`lfs-insim list` OK (4 insims). Solo lógica del insim de ejemplo → **no toca la API pública**. Como es **conducta**,
+⏳ **requiere validación en LFS**.
+
+**Estado:** con esto la **Fase 7 queda COMPLETA en código** (5/5 fixes). Todo el trabajo restante del proyecto es
+**validación en LFS** (W4 + los 5 fixes) → es el gate del merge. Commits: `3a628c3` (radar) + `8af862d` (guard).
+
+---
+
 ## S33 — 2026-07-12 — Fase 7: fix (4) `is_closed` + fix (1) flip de enlace (red primero; ⏳ validar en LFS)
 
 **Arranque:** protocolo de inicio. Ya en `refactor/estabilizacion`; `git pull` al día; árbol limpio (sin
