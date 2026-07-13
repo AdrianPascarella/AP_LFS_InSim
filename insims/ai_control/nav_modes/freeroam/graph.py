@@ -30,6 +30,19 @@ class RoadLink:
 
     speed_limit_kmh: float = 30.0
 
+    # Cesión de paso (Fase 8, S38). `yield_line` vacía ⇒ este giro NO cede
+    # (los mapas viejos cargan así). Si tiene puntos: al tomar el enlace hay
+    # que parar ANTES de la línea si hay tráfico vigilado a menos de
+    # `yield_time_s` segundos del punto de conflicto; cruzada la línea, la
+    # maniobra está comprometida y no se frena dentro del cruce.
+    yield_line: List[Coordinates] = field(default_factory=list)
+    yield_time_s: Optional[float] = None  # None ⇒ default global de config
+    yield_zone_id: Optional[str] = None  # zona (punto de conflicto) extra a vigilar
+
+    @property
+    def has_yield(self) -> bool:
+        return bool(self.yield_line)
+
     @property
     def min_speed_kmh(self) -> float:
         return self.speed_limit_kmh / 2.0
@@ -72,13 +85,20 @@ class LateralLink:
 @dataclass
 class IntersectionZone:
     """
-    Área puramente destinada a GESTIONAR CONFLICTOS DE TRÁFICO.
-    Solo es un nodo de reglas. Si un bot entra en su dominio, sabe que tiene que mirar a los lados.
+    Punto de conflicto de un cruce múltiple (Fase 8, S38): los RoadLink con
+    cesión que lo referencian (`yield_zone_id`) vigilan además el tráfico a
+    menos de `yield_time_s` segundos de este punto. La zona NO decide quién
+    cede (eso lo hace la `yield_line` de cada link); solo amplía qué se vigila.
     """
 
     zone_id: str
     nodes: List[Coordinates] = field(default_factory=list)
 
+    yield_time_s: Optional[float] = None  # None ⇒ default global de config
+
+    # ─── Modelo VIEJO (área + pares de prioridad) ───────────────────────────
+    # En retirada (Fase 8): la conducta que los consume se sustituye en el
+    # bloque 8.3 y el JSON se migra en el 8.6.
     radius_m: float = 10.0
 
     # [[viaPrioritaria_id, viaNoPrioritaria_id], ...]

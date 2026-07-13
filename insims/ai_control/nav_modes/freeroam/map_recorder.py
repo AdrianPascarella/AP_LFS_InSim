@@ -51,6 +51,34 @@ logger = logging.getLogger(__name__)
 _ROAD_GRID_CELL_M = 20.0
 
 
+def _json_map_default(obj):
+    """Serializador JSON del mapa: Enums → su valor; cualquier otro raro, a str."""
+    return obj.value if isinstance(obj, Enum) else str(obj)
+
+
+def _graph_item_from_json(dataclass_type, item_data: dict):
+    """Reconstruye una entidad del grafo desde su dict del JSON.
+
+    Convierte los campos de coordenadas (`nodes`, `yield_line`) a Coordinates,
+    castea los Enums, y filtra claves desconocidas: los campos retirados del
+    modelo se descartan y los que falten toman el default del dataclass (así
+    los mapas viejos cargan intactos — compatibilidad de la Fase 8).
+    """
+    item_data = dict(item_data)
+
+    for coords_key in ("nodes", "yield_line"):
+        if item_data.get(coords_key):
+            item_data[coords_key] = [Coordinates(**n) for n in item_data[coords_key]]
+
+    if item_data.get("traffic_rule") is not None:
+        item_data["traffic_rule"] = TrafficRule(item_data["traffic_rule"])
+    if item_data.get("indicators") is not None:
+        item_data["indicators"] = CSVAL.INDICATORS(item_data["indicators"])
+
+    valid_fields = {f.name for f in fields(dataclass_type)}
+    return dataclass_type(**{k: v for k, v in item_data.items() if k in valid_fields})
+
+
 class MapRecorder(PacketSenderMixin):
     def __init__(
         self,
@@ -658,60 +686,7 @@ class MapRecorder(PacketSenderMixin):
             with open(full_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
 
-            # Limpiamos la memoria ANTES de cargar para evitar mezclas con mapas anteriores
-            self.roads.clear()
-            self.zones.clear()
-            self.road_links.clear()
-            self.lateral_links.clear()
-            self.special_rules.clear()
-            self._invalidate_road_index()  # los roads se repueblan abajo
-
-            # ==========================================
-            # 1-5. Reconstruir Objetos Dinámicamente
-            # ==========================================
-            # Relacionamos la clave del JSON con el diccionario destino y su Dataclass
-            mapeo_carga = [
-                ("roads", self.roads, RoadSegment),
-                ("zones", self.zones, IntersectionZone),
-                ("road_links", self.road_links, RoadLink),
-                ("lateral_links", self.lateral_links, LateralLink),
-                ("special_rules", self.special_rules, SpecialRule),
-            ]
-
-            for json_key, target_dict, dataclass_type in mapeo_carga:
-                valid_fields = {f.name for f in fields(dataclass_type)}
-
-                for item_id, item_data in data.get(json_key, {}).items():
-                    # Como todos usan 'nodes', la conversión es universal
-                    if "nodes" in item_data:
-                        item_data["nodes"] = [
-                            Coordinates(**n) for n in item_data["nodes"]
-                        ]
-
-                    # =========================================================
-                    # NUEVO: Casteo de Enums (Desde JSON int/str a objeto Enum)
-                    # =========================================================
-                    if (
-                        "traffic_rule" in item_data
-                        and item_data["traffic_rule"] is not None
-                    ):
-                        item_data["traffic_rule"] = TrafficRule(
-                            item_data["traffic_rule"]
-                        )
-
-                    if (
-                        "indicators" in item_data
-                        and item_data["indicators"] is not None
-                    ):
-                        item_data["indicators"] = CSVAL.INDICATORS(
-                            item_data["indicators"]
-                        )
-
-                    filtered_data = {
-                        k: v for k, v in item_data.items() if k in valid_fields
-                    }
-                    target_dict[item_id] = dataclass_type(**filtered_data)
-
+            self._load_map_from_data(data)
             return True
 
         except Exception as e:
@@ -723,6 +698,39 @@ class MapRecorder(PacketSenderMixin):
                 )
             )
             return False
+
+    def _load_map_from_data(self, data: dict) -> None:
+        """Reconstruye el mapa en memoria desde su dict maestro (formato JSON)."""
+        # Limpiamos la memoria ANTES de cargar para evitar mezclas con mapas anteriores
+        self.roads.clear()
+        self.zones.clear()
+        self.road_links.clear()
+        self.lateral_links.clear()
+        self.special_rules.clear()
+        self._invalidate_road_index()  # los roads se repueblan abajo
+
+        # Relacionamos la clave del JSON con el diccionario destino y su Dataclass
+        mapeo_carga = [
+            ("roads", self.roads, RoadSegment),
+            ("zones", self.zones, IntersectionZone),
+            ("road_links", self.road_links, RoadLink),
+            ("lateral_links", self.lateral_links, LateralLink),
+            ("special_rules", self.special_rules, SpecialRule),
+        ]
+
+        for json_key, target_dict, dataclass_type in mapeo_carga:
+            for item_id, item_data in data.get(json_key, {}).items():
+                target_dict[item_id] = _graph_item_from_json(dataclass_type, item_data)
+
+    def _serialize_map_data(self) -> dict:
+        """El dict maestro del mapa activo, con el MISMO formato que el JSON en disco."""
+        return {
+            "roads": {k: asdict(v) for k, v in self.roads.items()},
+            "zones": {k: asdict(v) for k, v in self.zones.items()},
+            "road_links": {k: asdict(v) for k, v in self.road_links.items()},
+            "lateral_links": {k: asdict(v) for k, v in self.lateral_links.items()},
+            "special_rules": {k: asdict(v) for k, v in self.special_rules.items()},
+        }
 
     def _cmd_save_map(self):
         """Guarda el mapa activo en el disco duro."""
@@ -761,27 +769,18 @@ class MapRecorder(PacketSenderMixin):
         full_path = os.path.join(maps_folder, filename)
 
         try:
-            # Preparamos el diccionario maestro (ADAPTADO A LA NUEVA ESTRUCTURA TOPOLÓGICA)
-            data_to_save = {
-                "roads": {k: asdict(v) for k, v in self.roads.items()},
-                "zones": {k: asdict(v) for k, v in self.zones.items()},
-                "road_links": {k: asdict(v) for k, v in self.road_links.items()},
-                "lateral_links": {k: asdict(v) for k, v in self.lateral_links.items()},
-                "special_rules": {k: asdict(v) for k, v in self.special_rules.items()},
-            }
+            # El diccionario maestro (mismo formato que la carga)
+            data_to_save = self._serialize_map_data()
 
             # Guardado en disco
             with open(full_path, "w", encoding="utf-8") as f:
                 # ensure_ascii=False permite guardar bien tildes o caracteres especiales
-                # EL TRUCO MÁGICO PARA LOS ENUMS: default=lambda obj...
                 json.dump(
                     data_to_save,
                     f,
                     indent=4,
                     ensure_ascii=False,
-                    default=lambda obj: (
-                        obj.value if isinstance(obj, Enum) else str(obj)
-                    ),
+                    default=_json_map_default,
                 )
 
             # Feedback al usuario
@@ -926,25 +925,13 @@ class MapRecorder(PacketSenderMixin):
         skipped_ids = []
 
         for json_key, target_dict, dataclass_type in mapeo:
-            valid_fields = {f.name for f in fields(dataclass_type)}
             for item_id, item_data in data.get(json_key, {}).items():
                 if item_id in target_dict:
                     skipped += 1
                     skipped_ids.append(item_id)
                     continue
 
-                if "nodes" in item_data:
-                    item_data["nodes"] = [Coordinates(**n) for n in item_data["nodes"]]
-                if (
-                    "traffic_rule" in item_data
-                    and item_data["traffic_rule"] is not None
-                ):
-                    item_data["traffic_rule"] = TrafficRule(item_data["traffic_rule"])
-                if "indicators" in item_data and item_data["indicators"] is not None:
-                    item_data["indicators"] = CSVAL.INDICATORS(item_data["indicators"])
-
-                filtered = {k: v for k, v in item_data.items() if k in valid_fields}
-                target_dict[item_id] = dataclass_type(**filtered)
+                target_dict[item_id] = _graph_item_from_json(dataclass_type, item_data)
                 added += 1
 
         self.send(
