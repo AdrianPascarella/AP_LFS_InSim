@@ -48,6 +48,17 @@ unchecked it silently becomes a second journal and buries the next step under mo
 *Why: without stable IDs every document re-explains the same thing in different words, and the
 versions drift apart.*
 
+**Reading budget — what you read at the start of a session, and what you do not.**
+
+| Read in full | Read partially | Do NOT read on start |
+|---|---|---|
+| `STATE.md` (it is capped for exactly this reason) · this file | the **last entry** of `LOG.md` · the **active phase** of `PLAN.md` | the rest of `LOG.md` · the rest of `PLAN.md` · `DIAGNOSIS.md` (on demand, searched by ID) |
+
+*Why: `LOG.md` grows without bound by design — it is an append-only journal, and only its last entry
+is context. An agent that reads it whole burns its window on history it will not use. If a file you
+are supposed to read in full has become too big to read, that is a defect **in the file** (§2), not
+a licence to read more.*
+
 ## §3 — Session START
 
 1. Be on `{{work_branch}}`.

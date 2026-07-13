@@ -42,6 +42,12 @@ they end up holding them** (Step 7).
 | **Start of every session** | *"Start the session following your protocol."* | The install wrote a hook into the file this harness auto-loads on every session (Step 6). That hook points at `{{context_dir}}` and forces §3. |
 | **End of a session** | *"Close the session following the protocol."* | §4. You must also do it on your own when you reach a milestone or a good stopping point — never wait to be told. |
 
+**This document is read once, at install, and never again.** It is not per-session context: nobody
+re-reads the installer, the templates or this section on every session. What the project keeps
+afterwards is (a) the hook, ~15 lines auto-loaded by the harness, and (b) `{{context_dir}}/PROTOCOL.md`
+— Part II alone, with the placeholders resolved. The per-session reading budget is fixed and small;
+it is stated in §2 and it is a rule, not a suggestion.
+
 **If this environment has no auto-loaded file** (a plain chat with file access, no `CLAUDE.md` /
 `AGENTS.md` / `.cursorrules` mechanism), the short start sentence cannot work: nothing would tell
 the next session that the protocol exists. In that case the user's start sentence must be
@@ -237,6 +243,17 @@ unchecked it silently becomes a second journal and buries the next step under mo
 `RESOLVED (S<n>): <how>` — it is never deleted.
 *Why: without stable IDs every document re-explains the same thing in different words, and the
 versions drift apart.*
+
+**Reading budget — what you read at the start of a session, and what you do not.**
+
+| Read in full | Read partially | Do NOT read on start |
+|---|---|---|
+| `STATE.md` (it is capped for exactly this reason) · `PROTOCOL.md` | the **last entry** of `LOG.md` · the **active phase** of `PLAN.md` | the rest of `LOG.md` · the rest of `PLAN.md` · `DIAGNOSIS.md` (on demand, searched by ID) · the installer spec (it was consumed once, at install, and is never read again) |
+
+*Why: `LOG.md` grows without bound by design — it is an append-only journal, and only its last
+entry is context. An agent that reads it whole burns its window on history it will not use. If a
+file you are supposed to read in full has become too big to read, that is a defect **in the file**
+(§2), not a licence to read more.*
 
 ## §3 — Session START
 
