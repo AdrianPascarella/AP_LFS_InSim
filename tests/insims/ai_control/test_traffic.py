@@ -1,29 +1,29 @@
 """
-Tests de CARACTERIZACIÓN de _TrafficMixin (insims/ai_control/traffic/).
+Tests de CARACTERIZACIÃ“N de _TrafficMixin (insims/ai_control/traffic/).
 
-Congelan el comportamiento ACTUAL de la lógica DETERMINISTA de tráfico antes de
-tocar nada (red de seguridad, MODUS_OPERANDI §3). Cubre, de menor a mayor setup:
+Congelan el comportamiento ACTUAL de la lÃ³gica DETERMINISTA de trÃ¡fico antes de
+tocar nada (red de seguridad, MODUS_OPERANDI Â§3). Cubre, de menor a mayor setup:
 
-  - Matemática pura (sin grafo ni estado): `_apply_adaptive_cruise_control` (el
+  - MatemÃ¡tica pura (sin grafo ni estado): `_apply_adaptive_cruise_control` (el
     ACC de 3 zonas), `_estimate_overtake_distance`, `_get_relative_dist_to_cover`,
     `_calc_path_length`, `_get_lookahead_point`.
 
-El gran orquestador `_update_traffic_behavior` NO se cubre a propósito: usa
-`time.time()` y muta muchísimo estado del `mode` (mismo criterio que los métodos
+El gran orquestador `_update_traffic_behavior` NO se cubre a propÃ³sito: usa
+`time.time()` y muta muchÃ­simo estado del `mode` (mismo criterio que los mÃ©todos
 gordos de navigation.py `_update_freeroam_navigation` / `_get_radar_speed_limit`).
 
-Sobre el "PARCHE DE SEGURIDAD MATEMÁTICO" del ACC: los 2 tests que lo congelaban se
-reescribieron en S21, cuando el parche se ELIMINÓ (ver DIAGNOSTICO § P25). Hoy estos
+Sobre el "PARCHE DE SEGURIDAD MATEMÃTICO" del ACC: los 2 tests que lo congelaban se
+reescribieron en S21, cuando el parche se ELIMINÃ“ (ver DIAGNOSTICO Â§ P25). Hoy estos
 tests fijan el ACC sin parche: los `min_dist`/`max_dist` del llamador se respetan.
 
-Los métodos viven repartidos por responsabilidad en el paquete `traffic/` (radar,
+Los mÃ©todos viven repartidos por responsabilidad en el paquete `traffic/` (radar,
 cruise_control, zones, overtake, paths, orchestrator); `_TrafficMixin` los compone.
-Los tests los ejercitan a través de `AIControl` (fixture `ai_control`), así que el
+Los tests los ejercitan a travÃ©s de `AIControl` (fixture `ai_control`), asÃ­ que el
 reparto interno les es transparente.
 
 Convenciones LFS relevantes (mismas que test_physics / test_navigation):
   - Coordenadas en metros; `make_coords` guarda en unidades LFS (1 m = 65536 units).
-  - Velocidades en km/h; el ACC trabaja internamente pasando a m/s (÷3.6).
+  - Velocidades en km/h; el ACC trabaja internamente pasando a m/s (Ã·3.6).
 """
 
 import random
@@ -31,10 +31,26 @@ import random
 import pytest
 
 from insims.ai_control.nav_modes.freeroam.enums import AIManeuverState, TrafficRule
+from insims.ai_control.nav_modes.freeroam.geometry import (
+    apply_antilag_window,
+    evaluate_dynamic_capture,
+)
 from insims.ai_control.nav_modes.freeroam.graph import IntersectionZone
 from insims.ai_control.nav_modes.freeroam.mode import FreeroamMode
 from insims.ai_control.traffic.radar import _is_near_link_entry, _lane_chain_ids
+from insims.users_management.main import Coordinates
 from lfs_insim.insim_enums import CSVAL
+from lfs_insim.utils import lfs_pos_to_meters
+
+
+def _coords_xy(x_m: float, y_m: float) -> Coordinates:
+    """Coordinates desde metros (mismo constructor que `make_coords` del conftest)."""
+    return Coordinates(
+        lfs_pos_to_meters(x_m, rev=True),
+        lfs_pos_to_meters(y_m, rev=True),
+        lfs_pos_to_meters(0.0, rev=True),
+    )
+
 
 LEFT = CSVAL.INDICATORS.LEFT
 RIGHT = CSVAL.INDICATORS.RIGHT
@@ -45,101 +61,101 @@ HEADING_NORTH = 0
 HEADING_SOUTH = 32768
 
 
-# ─── _apply_adaptive_cruise_control: ACC de 3 zonas (S21: parche eliminado) ────
+# â”€â”€â”€ _apply_adaptive_cruise_control: ACC de 3 zonas (S21: parche eliminado) â”€â”€â”€â”€
 #
 # Firma: (base_speed_kmh, closest_speed_kmh, closest_dist_m, min_dist_m, max_dist_m)
 # Los min/max del llamador se respetan tal cual (el viejo "PARCHE DE SEGURIDAD
-# MATEMÁTICO" que los reescribía se eliminó en S21; ver DIAGNOSTICO § P25). Zonas:
+# MATEMÃTICO" que los reescribÃ­a se eliminÃ³ en S21; ver DIAGNOSTICO Â§ P25). Zonas:
 #   critical = max(5.0, min_dist*0.5)   (suelo duro de parada incluido)
-#   ROJA    (dist ≤ critical)          → 0.0
-#   NARANJA (critical < dist ≤ min)    → closest_speed * ratio; <2 km/h → 0.0 (anti-creep)
-#   AMARILLA(min < dist < max)         → lerp hacia match_speed = min(closest, base)
-#   fuera   (dist ≥ max)               → base_speed
-# Ratios acotados a [0,1] y denominadores blindados con ε → nunca ZeroDivisionError.
+#   ROJA    (dist â‰¤ critical)          â†’ 0.0
+#   NARANJA (critical < dist â‰¤ min)    â†’ closest_speed * ratio; <2 km/h â†’ 0.0 (anti-creep)
+#   AMARILLA(min < dist < max)         â†’ lerp hacia match_speed = min(closest, base)
+#   fuera   (dist â‰¥ max)               â†’ base_speed
+# Ratios acotados a [0,1] y denominadores blindados con Îµ â†’ nunca ZeroDivisionError.
 
 
 class TestApplyAdaptiveCruiseControl:
-    # Setup "limpio": min=10, max=20 ⇒ el parche NO altera nada (critical=5,
-    # min≥7 y max≥15 ya se cumplen), así cada zona se razona directamente.
+    # Setup "limpio": min=10, max=20 â‡’ el parche NO altera nada (critical=5,
+    # minâ‰¥7 y maxâ‰¥15 ya se cumplen), asÃ­ cada zona se razona directamente.
 
     def test_zona_roja_para_en_seco(self, ai_control):
-        # dist == critical (5) → parada absoluta.
+        # dist == critical (5) â†’ parada absoluta.
         assert ai_control._apply_adaptive_cruise_control(50, 30, 5.0, 10, 20) == 0.0
-        # dist < critical → también 0.
+        # dist < critical â†’ tambiÃ©n 0.
         assert ai_control._apply_adaptive_cruise_control(50, 30, 3.0, 10, 20) == 0.0
 
     def test_zona_naranja_frena_proporcional_a_la_distancia(self, ai_control):
-        # dist=7 en (5, 10]: ratio=(7-5)/(10-5)=0.4 → 30*0.4 = 12 km/h.
+        # dist=7 en (5, 10]: ratio=(7-5)/(10-5)=0.4 â†’ 30*0.4 = 12 km/h.
         got = ai_control._apply_adaptive_cruise_control(50, 30, 7.0, 10, 20)
         assert got == pytest.approx(12.0)
 
     def test_zona_naranja_en_el_borde_min_iguala_al_lider(self, ai_control):
-        # dist == min_dist (10): ratio=1.0 → target = closest_speed exacto.
+        # dist == min_dist (10): ratio=1.0 â†’ target = closest_speed exacto.
         got = ai_control._apply_adaptive_cruise_control(50, 30, 10.0, 10, 20)
         assert got == pytest.approx(30.0)
 
     def test_zona_naranja_anticreep_para_si_baja_de_2(self, ai_control):
-        # dist=6, closest=3: ratio=0.2 → 0.6 km/h < 2 → frena en seco (0.0).
+        # dist=6, closest=3: ratio=0.2 â†’ 0.6 km/h < 2 â†’ frena en seco (0.0).
         got = ai_control._apply_adaptive_cruise_control(50, 3, 6.0, 10, 20)
         assert got == 0.0
 
     def test_zona_amarilla_interpola_hacia_el_lider(self, ai_control):
-        # dist=15 en (10, 20): ratio=0.5, match=min(30,50)=30 → 30+(50-30)*0.5 = 40.
+        # dist=15 en (10, 20): ratio=0.5, match=min(30,50)=30 â†’ 30+(50-30)*0.5 = 40.
         got = ai_control._apply_adaptive_cruise_control(50, 30, 15.0, 10, 20)
         assert got == pytest.approx(40.0)
 
     def test_zona_amarilla_lider_mas_rapido_no_supera_base(self, ai_control):
-        # closest=80 > base=50: match=min(80,50)=50 → target=50 (nunca por encima de base).
+        # closest=80 > base=50: match=min(80,50)=50 â†’ target=50 (nunca por encima de base).
         got = ai_control._apply_adaptive_cruise_control(50, 80, 15.0, 10, 20)
         assert got == pytest.approx(50.0)
 
     def test_fuera_de_rango_va_a_velocidad_base(self, ai_control):
-        # dist > max → base. Y en el borde exacto dist==max también (el test es `< max`).
+        # dist > max â†’ base. Y en el borde exacto dist==max tambiÃ©n (el test es `< max`).
         assert ai_control._apply_adaptive_cruise_control(50, 30, 25.0, 10, 20) == 50.0
         assert ai_control._apply_adaptive_cruise_control(50, 30, 20.0, 10, 20) == 50.0
 
     def test_critical_escala_con_min_dist_grande(self, ai_control):
-        # min=20 → critical=max(5, 10)=10. dist==10 → roja (0.0); dist=11 → naranja.
+        # min=20 â†’ critical=max(5, 10)=10. dist==10 â†’ roja (0.0); dist=11 â†’ naranja.
         assert ai_control._apply_adaptive_cruise_control(50, 30, 10.0, 20, 30) == 0.0
-        # ratio=(11-10)/(20-10)=0.1 → 30*0.1 = 3.0.
+        # ratio=(11-10)/(20-10)=0.1 â†’ 30*0.1 = 3.0.
         got = ai_control._apply_adaptive_cruise_control(50, 30, 11.0, 20, 30)
         assert got == pytest.approx(3.0)
 
     def test_min_pequeno_no_se_reescribe_cae_en_amarilla(self, ai_control):
         # S21: el min del llamador (2) YA NO se empuja a 7. critical=max(5, 1)=5.
-        # dist=6 > min=2 → AMARILLA: ratio=(6-2)/(20-2)=0.222, match=30 →
-        # 30+(50-30)*0.222 = 34.44. (Con el viejo parche caía en NARANJA = 15.)
+        # dist=6 > min=2 â†’ AMARILLA: ratio=(6-2)/(20-2)=0.222, match=30 â†’
+        # 30+(50-30)*0.222 = 34.44. (Con el viejo parche caÃ­a en NARANJA = 15.)
         got = ai_control._apply_adaptive_cruise_control(50, 30, 6.0, 2, 20)
         assert got == pytest.approx(34.4444, abs=1e-3)
 
     def test_max_menor_que_min_no_se_reescribe(self, ai_control):
-        # S21: max=12 YA NO se empuja a 15. dist=14 ≥ max=12 → fuera de rango →
-        # base=50. (Con el viejo parche caía en AMARILLA = 46.)
+        # S21: max=12 YA NO se empuja a 15. dist=14 â‰¥ max=12 â†’ fuera de rango â†’
+        # base=50. (Con el viejo parche caÃ­a en AMARILLA = 46.)
         got = ai_control._apply_adaptive_cruise_control(50, 30, 14.0, 10, 12)
         assert got == pytest.approx(50.0)
 
     def test_min_en_el_suelo_no_lanza(self, ai_control):
         # S21: a baja velocidad min llega a su suelo (5) y critical=max(5, 2.5)=5,
-        # con lo que la zona naranja se colapsa. NO hay ZeroDivisionError: dist≤5 →
-        # parada; dist>5 → amarilla directamente. (Antes el parche empujaba min a 7
-        # para crear una franja naranja artificial y así tapar el denominador.)
+        # con lo que la zona naranja se colapsa. NO hay ZeroDivisionError: distâ‰¤5 â†’
+        # parada; dist>5 â†’ amarilla directamente. (Antes el parche empujaba min a 7
+        # para crear una franja naranja artificial y asÃ­ tapar el denominador.)
         assert ai_control._apply_adaptive_cruise_control(50, 30, 5.0, 5, 15) == 0.0
-        # dist=10 en amarilla: ratio=(10-5)/(15-5)=0.5, match=min(30,50)=30 → 40.
+        # dist=10 en amarilla: ratio=(10-5)/(15-5)=0.5, match=min(30,50)=30 â†’ 40.
         got = ai_control._apply_adaptive_cruise_control(50, 30, 10.0, 5, 15)
         assert got == pytest.approx(40.0)
 
     def test_max_igual_a_min_no_lanza(self, ai_control):
-        # Denominador amarillo (max-min) = 0 blindado con ε: no ZeroDivisionError.
-        # dist=12 > min=10 y ≥ max=10 → fuera → base. dist=10 → borde de naranja.
+        # Denominador amarillo (max-min) = 0 blindado con Îµ: no ZeroDivisionError.
+        # dist=12 > min=10 y â‰¥ max=10 â†’ fuera â†’ base. dist=10 â†’ borde de naranja.
         assert ai_control._apply_adaptive_cruise_control(50, 30, 12.0, 10, 10) == 50.0
         got = ai_control._apply_adaptive_cruise_control(50, 30, 10.0, 10, 10)
-        assert got == pytest.approx(30.0)  # dist==min → naranja, ratio=1 → closest
+        assert got == pytest.approx(30.0)  # dist==min â†’ naranja, ratio=1 â†’ closest
 
 
-# ─── _estimate_overtake_distance: asfalto y tiempo para adelantar ─────────────
+# â”€â”€â”€ _estimate_overtake_distance: asfalto y tiempo para adelantar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 #
 # Firma: (overtake_lane_speed_kmh, target_vehicle_speed_kmh, relative_dist_to_cover_m)
-# → (metros_de_asfalto, segundos). Si el delta de velocidad ≤ 0.1 m/s → (inf, inf).
+# â†’ (metros_de_asfalto, segundos). Si el delta de velocidad â‰¤ 0.1 m/s â†’ (inf, inf).
 
 
 class TestEstimateOvertakeDistance:
@@ -150,27 +166,27 @@ class TestEstimateOvertakeDistance:
         assert t == pytest.approx(5.0)
 
     def test_delta_nulo_es_infinito(self, ai_control):
-        # Misma velocidad → delta 0 ≤ 0.1 → (inf, inf).
+        # Misma velocidad â†’ delta 0 â‰¤ 0.1 â†’ (inf, inf).
         assert ai_control._estimate_overtake_distance(36, 36, 50) == (
             float("inf"),
             float("inf"),
         )
 
     def test_carril_mas_lento_es_infinito(self, ai_control):
-        # El carril de adelantamiento es más lento que el objetivo → imposible.
+        # El carril de adelantamiento es mÃ¡s lento que el objetivo â†’ imposible.
         assert ai_control._estimate_overtake_distance(36, 72, 50) == (
             float("inf"),
             float("inf"),
         )
 
     def test_objetivo_parado_usa_suelo_de_velocidad(self, ai_control):
-        # target=0 → target_ms = max(0, 0.1) = 0.1. 36 km/h = 10 m/s → delta=9.9.
+        # target=0 â†’ target_ms = max(0, 0.1) = 0.1. 36 km/h = 10 m/s â†’ delta=9.9.
         dist, t = ai_control._estimate_overtake_distance(36, 0, 99)
         assert t == pytest.approx(99 / 9.9)
         assert dist == pytest.approx(10.0 * (99 / 9.9))
 
 
-# ─── _get_relative_dist_to_cover: distancia total a cubrir (convoy) ───────────
+# â”€â”€â”€ _get_relative_dist_to_cover: distancia total a cubrir (convoy) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 class TestGetRelativeDistToCover:
@@ -178,29 +194,29 @@ class TestGetRelativeDistToCover:
         assert ai_control._get_relative_dist_to_cover([]) == 0.0
 
     def test_un_solo_coche(self, ai_control):
-        # last=first=10 → 10 + 10 + extra(5) = 25.
+        # last=first=10 â†’ 10 + 10 + extra(5) = 25.
         assert ai_control._get_relative_dist_to_cover([10.0], extra_dist=5) == 25.0
 
     def test_convoy_pegado_se_agrupa(self, ai_control):
-        # [10,15]: gap=5 ≤ first+extra(15) → last=15 → 15 + 10 + 5 = 30.
+        # [10,15]: gap=5 â‰¤ first+extra(15) â†’ last=15 â†’ 15 + 10 + 5 = 30.
         assert (
             ai_control._get_relative_dist_to_cover([10.0, 15.0], extra_dist=5) == 30.0
         )
 
     def test_hueco_grande_corta_el_convoy(self, ai_control):
-        # [10,40]: gap=30 > first+extra(15) → break con last=10 → 10 + 10 + 5 = 25.
+        # [10,40]: gap=30 > first+extra(15) â†’ break con last=10 â†’ 10 + 10 + 5 = 25.
         assert (
             ai_control._get_relative_dist_to_cover([10.0, 40.0], extra_dist=5) == 25.0
         )
 
     def test_ordena_la_lista_de_entrada_in_place(self, ai_control):
-        # Efecto documentado: la función ORDENA el argumento in-place.
+        # Efecto documentado: la funciÃ³n ORDENA el argumento in-place.
         entrada = [15.0, 10.0]
         ai_control._get_relative_dist_to_cover(entrada, extra_dist=5)
         assert entrada == [10.0, 15.0]
 
 
-# ─── _calc_path_length: longitud de un trazado desde un índice ────────────────
+# â”€â”€â”€ _calc_path_length: longitud de un trazado desde un Ã­ndice â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 class TestCalcPathLength:
@@ -218,7 +234,7 @@ class TestCalcPathLength:
         assert ai_control._calc_path_length(nodes, start_idx=5) == 0.0
 
     def test_indice_negativo_se_trata_como_cero(self, ai_control, make_coords):
-        # start_idx negativo no dispara la guarda (>= len-1) y luego se sube a 0 → longitud completa.
+        # start_idx negativo no dispara la guarda (>= len-1) y luego se sube a 0 â†’ longitud completa.
         nodes = [make_coords(0, 0), make_coords(0, 10), make_coords(0, 30)]
         assert ai_control._calc_path_length(nodes, start_idx=-1) == pytest.approx(30.0)
 
@@ -232,12 +248,12 @@ class TestCalcPathLength:
         assert ai_control._calc_path_length(nodes) == pytest.approx(0.0)
 
 
-# ─── _get_lookahead_point: punto a `lookahead_m` sobre la polilínea ───────────
+# â”€â”€â”€ _get_lookahead_point: punto a `lookahead_m` sobre la polilÃ­nea â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 class TestGetLookaheadPoint:
     def test_punto_intermedio_del_primer_tramo(self, ai_control, make_coords):
-        # Desde (0,0), 5 m sobre una vía recta en +Y → (0, 5).
+        # Desde (0,0), 5 m sobre una vÃ­a recta en +Y â†’ (0, 5).
         nodes = [make_coords(0, 0), make_coords(0, 10), make_coords(0, 20)]
         x, y = ai_control._get_lookahead_point(0.0, 0.0, 0, nodes, 5.0)
         assert (x, y) == pytest.approx((0.0, 5.0))
@@ -251,7 +267,7 @@ class TestGetLookaheadPoint:
         assert ai_control._get_lookahead_point(3.0, 7.0, 0, [], 5.0) == (3.0, 7.0)
 
     def test_reverse_avanza_hacia_indices_menores(self, ai_control, make_coords):
-        # reverse: desde (0,20) en el índice 2, 5 m hacia atrás → (0, 15).
+        # reverse: desde (0,20) en el Ã­ndice 2, 5 m hacia atrÃ¡s â†’ (0, 15).
         nodes = [make_coords(0, 0), make_coords(0, 10), make_coords(0, 20)]
         x, y = ai_control._get_lookahead_point(0.0, 20.0, 2, nodes, 5.0, reverse=True)
         assert (x, y) == pytest.approx((0.0, 15.0))
@@ -262,16 +278,16 @@ class TestGetLookaheadPoint:
         assert (x, y) == pytest.approx((0.0, 0.0))
 
 
-# ─── Geometría de zonas de intersección (círculo / cápsula / polígono) ────────
+# â”€â”€â”€ GeometrÃ­a de zonas de intersecciÃ³n (cÃ­rculo / cÃ¡psula / polÃ­gono) â”€â”€â”€â”€â”€â”€â”€â”€
 #
 # _is_point_in_zone / _get_dist_to_zone_edge / _get_zone_centroid interpretan los
-# nodos de la IntersectionZone según cuántos haya: 0 (vacía), 1 (círculo de radio
-# radius_m), 2 (cápsula = segmento con grosor radius_m), 3+ (polígono, radius
+# nodos de la IntersectionZone segÃºn cuÃ¡ntos haya: 0 (vacÃ­a), 1 (cÃ­rculo de radio
+# radius_m), 2 (cÃ¡psula = segmento con grosor radius_m), 3+ (polÃ­gono, radius
 # ignorado para la pertenencia).
 
 
 def _zone(zone_id, points, radius_m=10.0, make_coords=None):
-    """IntersectionZone con nodos en metros (helper local; no hay factoría aún)."""
+    """IntersectionZone con nodos en metros (helper local; no hay factorÃ­a aÃºn)."""
     nodes = [make_coords(*p) for p in points]
     return IntersectionZone(zone_id=zone_id, nodes=nodes, radius_m=radius_m)
 
@@ -337,13 +353,13 @@ class TestGetDistToZoneEdge:
     def test_poligono_dentro_es_cero_fuera_mide_al_borde(self, ai_control, make_coords):
         z = _zone("Z", [(0, 0), (10, 0), (10, 10), (0, 10)], make_coords=make_coords)
         assert ai_control._get_dist_to_zone_edge(5, 5, z) == 0.0
-        # (20,5): el borde más cercano es la arista x=10 → 10 m.
+        # (20,5): el borde mÃ¡s cercano es la arista x=10 â†’ 10 m.
         assert ai_control._get_dist_to_zone_edge(20, 5, z) == pytest.approx(10.0)
 
 
 class TestIsPriorityVehicleActiveAtZone:
     def test_dentro_de_la_zona_siempre_activo(self, ai_control, make_coords):
-        # Dentro del círculo → True aunque vaya despacio y mire hacia otro lado.
+        # Dentro del cÃ­rculo â†’ True aunque vaya despacio y mire hacia otro lado.
         z = _zone("Z", [(0, 50)], radius_m=10.0, make_coords=make_coords)
         got = ai_control._is_priority_vehicle_active_at_zone(
             make_coords(0, 52), 5.0, HEADING_SOUTH, z, approach_time_s=4.0
@@ -351,7 +367,7 @@ class TestIsPriorityVehicleActiveAtZone:
         assert got is True
 
     def test_lejos_para_su_velocidad_no_esta_activo(self, ai_control, make_coords):
-        # Borde a 40 m, 18 km/h (5 m/s) → 8 s > 4 s de anticipación → False.
+        # Borde a 40 m, 18 km/h (5 m/s) â†’ 8 s > 4 s de anticipaciÃ³n â†’ False.
         z = _zone("Z", [(0, 50)], radius_m=10.0, make_coords=make_coords)
         got = ai_control._is_priority_vehicle_active_at_zone(
             make_coords(0, 0), 18.0, HEADING_NORTH, z, approach_time_s=4.0
@@ -359,7 +375,7 @@ class TestIsPriorityVehicleActiveAtZone:
         assert got is False
 
     def test_cerca_y_apuntando_a_la_zona_esta_activo(self, ai_control, make_coords):
-        # Borde a 10 m, 36 km/h (10 m/s) → 1 s ≤ 4 s, y mira a +Y (hacia la zona) → True.
+        # Borde a 10 m, 36 km/h (10 m/s) â†’ 1 s â‰¤ 4 s, y mira a +Y (hacia la zona) â†’ True.
         z = _zone("Z", [(0, 50)], radius_m=10.0, make_coords=make_coords)
         got = ai_control._is_priority_vehicle_active_at_zone(
             make_coords(0, 30), 36.0, HEADING_NORTH, z, approach_time_s=4.0
@@ -367,7 +383,7 @@ class TestIsPriorityVehicleActiveAtZone:
         assert got is True
 
     def test_cerca_pero_alejandose_no_esta_activo(self, ai_control, make_coords):
-        # Mismo caso pero mirando a -Y (se aleja de la zona) → producto escalar ≤ 0 → False.
+        # Mismo caso pero mirando a -Y (se aleja de la zona) â†’ producto escalar â‰¤ 0 â†’ False.
         z = _zone("Z", [(0, 50)], radius_m=10.0, make_coords=make_coords)
         got = ai_control._is_priority_vehicle_active_at_zone(
             make_coords(0, 30), 36.0, HEADING_SOUTH, z, approach_time_s=4.0
@@ -375,11 +391,11 @@ class TestIsPriorityVehicleActiveAtZone:
         assert got is False
 
 
-# ─── _should_keep_yielding: histéresis anti-parpadeo del ceda-el-paso ─────────
+# â”€â”€â”€ _should_keep_yielding: histÃ©resis anti-parpadeo del ceda-el-paso â”€â”€â”€â”€â”€â”€â”€â”€â”€
 #
-# Fase 7: la decisión de ceder no debe soltarse al primer tick sin prioritario
-# (causaba oscilación gas-a-fondo/freno-de-mano). Detectar un prioritario renueva
-# el "hold"; sin detección se sigue cediendo hasta que el hold expira.
+# Fase 7: la decisiÃ³n de ceder no debe soltarse al primer tick sin prioritario
+# (causaba oscilaciÃ³n gas-a-fondo/freno-de-mano). Detectar un prioritario renueva
+# el "hold"; sin detecciÃ³n se sigue cediendo hasta que el hold expira.
 
 
 class TestShouldKeepYielding:
@@ -388,20 +404,20 @@ class TestShouldKeepYielding:
         assert ai_control._should_keep_yielding(True, 0.0, 100.0) is True
 
     def test_sin_deteccion_dentro_del_hold_sigue_cediendo(self, ai_control):
-        # No detectado este tick, pero el hold aún no expiró → mantiene el yield.
+        # No detectado este tick, pero el hold aÃºn no expirÃ³ â†’ mantiene el yield.
         assert ai_control._should_keep_yielding(False, 101.0, 100.0) is True
 
     def test_sin_deteccion_hold_expirado_suelta(self, ai_control):
-        # Hold expirado (o justo en el límite) sin detección → suelta el yield.
+        # Hold expirado (o justo en el lÃ­mite) sin detecciÃ³n â†’ suelta el yield.
         assert ai_control._should_keep_yielding(False, 100.0, 100.0) is False
         assert ai_control._should_keep_yielding(False, 99.0, 100.0) is False
 
 
-# ─── _find_valid_overtake_lane: elección del carril de adelantamiento ─────────
+# â”€â”€â”€ _find_valid_overtake_lane: elecciÃ³n del carril de adelantamiento â”€â”€â”€â”€â”€â”€â”€â”€â”€
 #
-# RHT (conducción por la derecha) → se adelanta por la IZQUIERDA; LHT → por la
+# RHT (conducciÃ³n por la derecha) â†’ se adelanta por la IZQUIERDA; LHT â†’ por la
 # DERECHA. El carril vecino se acepta si `_get_indicator_to_use` (navigation.py)
-# da ese lado. Ejes: vía en +Y; vecino a -X = LEFT, a +X = RIGHT.
+# da ese lado. Ejes: vÃ­a en +Y; vecino a -X = LEFT, a +X = RIGHT.
 
 
 class TestFindValidOvertakeLane:
@@ -426,7 +442,7 @@ class TestFindValidOvertakeLane:
     def test_rht_adelanta_por_la_izquierda(
         self, ai_control, make_road, make_lateral_link, populate_graph
     ):
-        # Vecino a -X (izquierda). RHT quiere LEFT → coincide.
+        # Vecino a -X (izquierda). RHT quiere LEFT â†’ coincide.
         r1_nodes = self._graph_with_neighbor(
             ai_control, make_road, make_lateral_link, populate_graph, neighbor_x=-5
         )
@@ -436,7 +452,7 @@ class TestFindValidOvertakeLane:
     def test_lht_con_vecino_izquierdo_no_encuentra(
         self, ai_control, make_road, make_lateral_link, populate_graph
     ):
-        # Vecino a -X (izquierda) pero LHT quiere RIGHT → no coincide.
+        # Vecino a -X (izquierda) pero LHT quiere RIGHT â†’ no coincide.
         r1_nodes = self._graph_with_neighbor(
             ai_control, make_road, make_lateral_link, populate_graph, neighbor_x=-5
         )
@@ -446,7 +462,7 @@ class TestFindValidOvertakeLane:
     def test_lht_adelanta_por_la_derecha(
         self, ai_control, make_road, make_lateral_link, populate_graph
     ):
-        # Vecino a +X (derecha). LHT quiere RIGHT → coincide.
+        # Vecino a +X (derecha). LHT quiere RIGHT â†’ coincide.
         r1_nodes = self._graph_with_neighbor(
             ai_control, make_road, make_lateral_link, populate_graph, neighbor_x=5
         )
@@ -465,9 +481,9 @@ class TestFindValidOvertakeLane:
     def test_carril_vecino_cerrado_no_se_usa(
         self, ai_control, make_road, make_lateral_link, populate_graph
     ):
-        # Fase 7 · fix (4): un carril vecino que geométricamente valdría para
-        # adelantar (RHT + vecino a la IZQUIERDA) pero cuya vía está CERRADA
-        # (is_closed) NO debe usarse — la IA no puede meterse en una vía cerrada.
+        # Fase 7 Â· fix (4): un carril vecino que geomÃ©tricamente valdrÃ­a para
+        # adelantar (RHT + vecino a la IZQUIERDA) pero cuya vÃ­a estÃ¡ CERRADA
+        # (is_closed) NO debe usarse â€” la IA no puede meterse en una vÃ­a cerrada.
         populate_graph(
             ai_control.map_recorder,
             roads=[
@@ -481,7 +497,7 @@ class TestFindValidOvertakeLane:
         assert got == (None, None)
 
 
-# ─── Helpers del FSM de adelantamiento (mutaciones de estado del mode) ────────
+# â”€â”€â”€ Helpers del FSM de adelantamiento (mutaciones de estado del mode) â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 class TestOvertakeFSMHelpers:
@@ -519,17 +535,17 @@ class TestOvertakeFSMHelpers:
         assert mode.overtake_cooldown == pytest.approx(208.0)
 
 
-# ─── Radar de tráfico (_scan_lane_ahead / _scan_target_lane / _scan_return_lane_gap) ──
+# â”€â”€â”€ Radar de trÃ¡fico (_scan_lane_ahead / _scan_target_lane / _scan_return_lane_gap) â”€â”€
 #
-# Se ejercita SOLO con vehículos IA (no jugadores humanos): la rama de IA lee la
-# topología directa de `extra['aic'].active_mode` y es DETERMINISTA, mientras que la
-# de humanos usa `time.time()` + `get_location_context` (misma razón por la que los
-# métodos gordos con tiempo se dejan fuera). Escenario base: vía recta R1 en +Y con
-# nodos cada 10 m (índices 0..9) y el coche que escanea en (0,50), node_index=5.
+# Se ejercita SOLO con vehÃ­culos IA (no jugadores humanos): la rama de IA lee la
+# topologÃ­a directa de `extra['aic'].active_mode` y es DETERMINISTA, mientras que la
+# de humanos usa `time.time()` + `get_location_context` (misma razÃ³n por la que los
+# mÃ©todos gordos con tiempo se dejan fuera). Escenario base: vÃ­a recta R1 en +Y con
+# nodos cada 10 m (Ã­ndices 0..9) y el coche que escanea en (0,50), node_index=5.
 
 
 def _pts_y(x=0.0, y0=0.0, y1=90.0, step=10.0):
-    """Puntos (x, y) de una recta en +Y (por defecto índices 0..9 cada 10 m)."""
+    """Puntos (x, y) de una recta en +Y (por defecto Ã­ndices 0..9 cada 10 m)."""
     n = int(round((y1 - y0) / step))
     return [(x, y0 + i * step) for i in range(n + 1)]
 
@@ -537,7 +553,7 @@ def _pts_y(x=0.0, y0=0.0, y1=90.0, step=10.0):
 def _place_ai(make_ai, make_behavior, plid, x_m, y_m, speed_kmh=0.0, mode_fields=None):
     """AI en pista con FreeroamMode en extra['aic'].active_mode.
 
-    mode_fields=None → active_mode=None (sin topología: el radar lo ignora).
+    mode_fields=None â†’ active_mode=None (sin topologÃ­a: el radar lo ignora).
     """
     mode = FreeroamMode(**mode_fields) if mode_fields is not None else None
     return make_ai(
@@ -586,7 +602,7 @@ class TestScanLaneAhead:
         assert len(got) == 1
         dist, speed, plid = got[0]
         assert dist == pytest.approx(15.0)
-        assert speed == pytest.approx(20.0, abs=0.1)  # cuantización de speed_lfs
+        assert speed == pytest.approx(20.0, abs=0.1)  # cuantizaciÃ³n de speed_lfs
         assert plid == 2
 
     def test_ignora_coche_detras_por_indice(
@@ -595,7 +611,7 @@ class TestScanLaneAhead:
         scanner, mode = self._scanner_and_mode(
             ai_control, populate_graph, make_road, make_ai
         )
-        # node_index 4 < 5 → idx_diff negativo → detrás → ignorado (aunque esté cerca).
+        # node_index 4 < 5 â†’ idx_diff negativo â†’ detrÃ¡s â†’ ignorado (aunque estÃ© cerca).
         other = _place_ai(
             make_ai,
             make_behavior,
@@ -613,7 +629,7 @@ class TestScanLaneAhead:
         scanner, mode = self._scanner_and_mode(
             ai_control, populate_graph, make_road, make_ai
         )
-        _set_ais(ai_control, scanner)  # solo él mismo → se salta por plid
+        _set_ais(ai_control, scanner)  # solo Ã©l mismo â†’ se salta por plid
         assert ai_control._scan_lane_ahead(scanner, mode, 30.0) == []
 
     def test_ignora_ia_sin_modo_activo(
@@ -622,7 +638,7 @@ class TestScanLaneAhead:
         scanner, mode = self._scanner_and_mode(
             ai_control, populate_graph, make_road, make_ai
         )
-        # extra['aic'] presente pero active_mode=None → sin current_id → ignorado.
+        # extra['aic'] presente pero active_mode=None â†’ sin current_id â†’ ignorado.
         other = _place_ai(make_ai, make_behavior, 2, 0, 65, mode_fields=None)
         _set_ais(ai_control, scanner, other)
         assert ai_control._scan_lane_ahead(scanner, mode, 30.0) == []
@@ -633,7 +649,7 @@ class TestScanLaneAhead:
         scanner, mode = self._scanner_and_mode(
             ai_control, populate_graph, make_road, make_ai
         )
-        # En otra vía (R2) y sin next_link declarado → ni mismo segmento ni next_link.
+        # En otra vÃ­a (R2) y sin next_link declarado â†’ ni mismo segmento ni next_link.
         other = _place_ai(
             make_ai,
             make_behavior,
@@ -651,7 +667,7 @@ class TestScanLaneAhead:
         scanner, mode = self._scanner_and_mode(
             ai_control, populate_graph, make_road, make_ai
         )
-        # Mismo node_index (5) pero MÁS cerca del nodo objetivo (0,60) que nosotros → delante.
+        # Mismo node_index (5) pero MÃS cerca del nodo objetivo (0,60) que nosotros â†’ delante.
         other = _place_ai(
             make_ai,
             make_behavior,
@@ -670,7 +686,7 @@ class TestScanLaneAhead:
         scanner, mode = self._scanner_and_mode(
             ai_control, populate_graph, make_road, make_ai
         )
-        # Mismo node_index pero MÁS lejos del nodo objetivo → detrás → ignorado.
+        # Mismo node_index pero MÃS lejos del nodo objetivo â†’ detrÃ¡s â†’ ignorado.
         other = _place_ai(
             make_ai,
             make_behavior,
@@ -703,7 +719,7 @@ class TestScanLaneAhead:
     def test_empate_al_nodo_el_plid_mayor_si_lo_ve(
         self, ai_control, populate_graph, make_road, make_ai, make_behavior
     ):
-        # El mismo empate, pero ahora el que escanea tiene plid MAYOR → sí lo ve.
+        # El mismo empate, pero ahora el que escanea tiene plid MAYOR â†’ sÃ­ lo ve.
         scanner, mode = self._scanner_and_mode(
             ai_control, populate_graph, make_road, make_ai, plid=9
         )
@@ -725,8 +741,8 @@ class TestScanLaneAhead:
         scanner, mode = self._scanner_and_mode(
             ai_control, populate_graph, make_road, make_ai
         )
-        # idx_diff=2 (≤3): aunque el índice diga "delante", si geométricamente está
-        # DETRÁS (0,45) el producto cruzado lo descarta.
+        # idx_diff=2 (â‰¤3): aunque el Ã­ndice diga "delante", si geomÃ©tricamente estÃ¡
+        # DETRÃS (0,45) el producto cruzado lo descarta.
         other = _place_ai(
             make_ai,
             make_behavior,
@@ -744,8 +760,8 @@ class TestScanLaneAhead:
         scanner, mode = self._scanner_and_mode(
             ai_control, populate_graph, make_road, make_ai
         )
-        # idx_diff=4 (>3): ya NO hay chequeo de producto cruzado → se detecta aun estando
-        # geométricamente detrás (0,45). Es el comportamiento actual (confía en el índice).
+        # idx_diff=4 (>3): ya NO hay chequeo de producto cruzado â†’ se detecta aun estando
+        # geomÃ©tricamente detrÃ¡s (0,45). Es el comportamiento actual (confÃ­a en el Ã­ndice).
         other = _place_ai(
             make_ai,
             make_behavior,
@@ -807,8 +823,8 @@ class TestScanLaneAhead:
     def test_coche_en_nuestro_proximo_roadlink_cuenta_como_delante(
         self, ai_control, populate_graph, make_road, make_ai, make_behavior
     ):
-        # En un Road, un coche ya metido en nuestro próximo RoadLink se trata como
-        # obstáculo delante (evita pileup en la entrada del enlace).
+        # En un Road, un coche ya metido en nuestro prÃ³ximo RoadLink se trata como
+        # obstÃ¡culo delante (evita pileup en la entrada del enlace).
         scanner, mode = self._scanner_and_mode(
             ai_control,
             populate_graph,
@@ -834,20 +850,20 @@ class TestScanLaneAhead:
         assert [(round(d, 3), p) for d, _, p in got] == [(20.0, 2)]
 
 
-# ─── Fase 7 · fix (3): la cadena topológica from_road → link → to_road ────────
+# â”€â”€â”€ Fase 7 Â· fix (3): la cadena topolÃ³gica from_road â†’ link â†’ to_road â”€â”€â”€â”€â”€â”€â”€â”€
 #
-# El radar solo aceptaba coches en `mode.current_id` (+ el próximo RoadLink yendo
-# por un Road). Al entrar en un RoadLink, la IA conmuta su topología ANTES de
-# separarse físicamente de la vía vieja (navigation.py: `dist_to_link < TRIGGER_DIST_M`,
-# 3.5 m) → dejaba de ver (a) al coche lento que aún tenía delante en la vía que deja
-# y (b) a los que ya circulaban dentro de la vía destino. `_lane_chain_ids` ensancha
-# el match a esa cadena, acotado por una VENTANA de transición medida al nodo de
+# El radar solo aceptaba coches en `mode.current_id` (+ el prÃ³ximo RoadLink yendo
+# por un Road). Al entrar en un RoadLink, la IA conmuta su topologÃ­a ANTES de
+# separarse fÃ­sicamente de la vÃ­a vieja (navigation.py: `dist_to_link < TRIGGER_DIST_M`,
+# 3.5 m) â†’ dejaba de ver (a) al coche lento que aÃºn tenÃ­a delante en la vÃ­a que deja
+# y (b) a los que ya circulaban dentro de la vÃ­a destino. `_lane_chain_ids` ensancha
+# el match a esa cadena, acotado por una VENTANA de transiciÃ³n medida al nodo de
 # entrada del enlace: lejos del cruce el filtro vuelve a ser estricto (sin frenado
 # fantasma por coches de una transversal).
 
 # Grafo de los tests de cadena: R1 recta en +Y (0..200); el enlace R1->R2 arranca en
-# (0,100) y sigue recto hasta (0,140); R2 continúa de (0,140) a (0,220). R1 sigue
-# existiendo más allá del cruce (un coche puede seguir de frente sin tomar el enlace).
+# (0,100) y sigue recto hasta (0,140); R2 continÃºa de (0,140) a (0,220). R1 sigue
+# existiendo mÃ¡s allÃ¡ del cruce (un coche puede seguir de frente sin tomar el enlace).
 _CHAIN_LINK_NODES = [
     (0.0, 100.0),
     (0.0, 110.0),
@@ -900,7 +916,7 @@ class TestLaneChainIds:
         assert _lane_chain_ids(mode, None, link, 0.0, 90.0, 25.0) == set()
 
     def test_en_road_lejos_del_enlace_solo_el_enlace(self, make_road_link):
-        # Comportamiento de ANTES (`in_our_next_link`): el enlace sí, su destino no.
+        # Comportamiento de ANTES (`in_our_next_link`): el enlace sÃ­, su destino no.
         mode = FreeroamMode(
             current_type="Road",
             current_id="R1",
@@ -921,7 +937,7 @@ class TestLaneChainIds:
         assert _lane_chain_ids(mode, None, link, 0.0, 90.0, 25.0) == {"R1->R2", "R2"}
 
     def test_en_roadlink_la_via_destino_siempre_cuenta(self, make_road_link):
-        # Ya comprometidos con el enlace: to_road es nuestro carril → siempre.
+        # Ya comprometidos con el enlace: to_road es nuestro carril â†’ siempre.
         mode = FreeroamMode(current_type="RoadLink", current_id="R1->R2")
         link = self._link(make_road_link)
         assert _lane_chain_ids(mode, link, None, 0.0, 135.0, 25.0) == {"R2"}
@@ -939,7 +955,7 @@ class TestLaneChainIds:
 
 
 class TestScanLaneAheadChain:
-    """El radar, ya con la cadena: los dos choques que reportó el usuario."""
+    """El radar, ya con la cadena: los dos choques que reportÃ³ el usuario."""
 
     @staticmethod
     def _scanner_in_link(make_ai, y_m, node_index):
@@ -962,7 +978,7 @@ class TestScanLaneAheadChain:
         make_behavior,
     ):
         # BUG A: acabamos de entrar al enlace (a 5 m de su entrada) y el coche lento
-        # que veníamos siguiendo sigue de frente por R1 → antes desaparecía del radar.
+        # que venÃ­amos siguiendo sigue de frente por R1 â†’ antes desaparecÃ­a del radar.
         _chain_graph(ai_control, populate_graph, make_road, make_road_link)
         scanner, mode = self._scanner_in_link(make_ai, y_m=105.0, node_index=1)
         other = _place_ai(
@@ -987,8 +1003,8 @@ class TestScanLaneAheadChain:
         make_ai,
         make_behavior,
     ):
-        # BUG B: vamos por el enlace y en R2 (nuestra vía destino) ya circula alguien
-        # delante → antes no existía para el radar y se le echaba encima.
+        # BUG B: vamos por el enlace y en R2 (nuestra vÃ­a destino) ya circula alguien
+        # delante â†’ antes no existÃ­a para el radar y se le echaba encima.
         _chain_graph(ai_control, populate_graph, make_road, make_road_link)
         scanner, mode = self._scanner_in_link(make_ai, y_m=130.0, node_index=3)
         other = _place_ai(
@@ -1013,7 +1029,7 @@ class TestScanLaneAheadChain:
         make_ai,
         make_behavior,
     ):
-        # Mismo tramo, pero DETRÁS (producto escalar ≤ 0) → no es obstáculo.
+        # Mismo tramo, pero DETRÃS (producto escalar â‰¤ 0) â†’ no es obstÃ¡culo.
         _chain_graph(ai_control, populate_graph, make_road, make_road_link)
         scanner, mode = self._scanner_in_link(make_ai, y_m=105.0, node_index=1)
         other = _place_ai(
@@ -1036,8 +1052,8 @@ class TestScanLaneAheadChain:
         make_ai,
         make_behavior,
     ):
-        # Ya metidos en el enlace (a 30 m de su entrada > ventana): físicamente hemos
-        # dejado R1 → un coche suyo "delante" ya no está en nuestra trayectoria.
+        # Ya metidos en el enlace (a 30 m de su entrada > ventana): fÃ­sicamente hemos
+        # dejado R1 â†’ un coche suyo "delante" ya no estÃ¡ en nuestra trayectoria.
         _chain_graph(ai_control, populate_graph, make_road, make_road_link)
         scanner, mode = self._scanner_in_link(make_ai, y_m=130.0, node_index=3)
         other = _place_ai(
@@ -1060,8 +1076,8 @@ class TestScanLaneAheadChain:
         make_ai,
         make_behavior,
     ):
-        # Aproximación: a 10 m de la entrada del enlace, un coche parado en R2 (justo
-        # al otro lado del cruce) ya cuenta → frena a tiempo en vez de al entrar.
+        # AproximaciÃ³n: a 10 m de la entrada del enlace, un coche parado en R2 (justo
+        # al otro lado del cruce) ya cuenta â†’ frena a tiempo en vez de al entrar.
         _chain_graph(ai_control, populate_graph, make_road, make_road_link)
         scanner = make_ai(plid=1, x_m=0, y_m=90, speed_kmh=0)
         mode = FreeroamMode(
@@ -1094,7 +1110,7 @@ class TestScanLaneAheadChain:
         make_behavior,
     ):
         # A 50 m de la entrada (fuera de la ventana): el coche de R2 NO cuenta. Es lo
-        # que evita el frenado fantasma por tráfico de una vía transversal lejana.
+        # que evita el frenado fantasma por trÃ¡fico de una vÃ­a transversal lejana.
         _chain_graph(ai_control, populate_graph, make_road, make_road_link)
         scanner = make_ai(plid=1, x_m=0, y_m=50, speed_kmh=0)
         mode = FreeroamMode(
@@ -1117,15 +1133,153 @@ class TestScanLaneAheadChain:
         assert ai_control._scan_lane_ahead(scanner, mode, 100.0) == []
 
 
-class TestOvertakeTriggerGuard:
-    """El gatillo IDLE→EVALUATING del FSM, con y sin cruce de por medio.
+class TestScanLaneAheadHumano:
+    """Un HUMANO delante, en la misma vÃ­a: Â¿lo ve la IA en TODO momento?
 
-    Primera red sobre `_update_traffic_behavior` (el orquestador se dejó sin cubrir
-    por usar `time.time()`; aquí el tiempo solo entra en comparaciones de cooldown
-    con 0.0, así que el gatillo es determinista). Va ligada al fix (3): al ver ahora
-    a los coches de la cadena del cruce, la IA podía dispararse a adelantar DENTRO de
-    un RoadLink — donde `_find_valid_overtake_lane` mira los laterales de la vía que
-    ya dejó y `node_index` es el del enlace. El adelantamiento se inicia solo en Road.
+    Los humanos van por la otra rama del radar: no publican topologÃ­a, asÃ­ que se les
+    calcula. La IA compara `other_node_index` con su `mode.node_index`, y ahÃ­ estÃ¡ el
+    problema: **son dos cosas distintas**. El `node_index` de una IA es el nodo que
+    PERSIGUE (lo captura ~5 m ANTES de llegar: `evaluate_dynamic_capture`), mientras
+    que al humano se le asigna el nodo MÃS CERCANO. Comparar "objetivo" contra
+    "cercano" mete un sesgo de un nodo â†’ un humano que va fÃ­sicamente DELANTE puede
+    dar `idx_diff < 0` ("va detrÃ¡s") y desaparecer del radar.
+
+    Esto reproduce el escenario del usuario en LFS: la IA le sigue a distancia normal
+    mientras ambos avanzan. El humano tiene que estar detectado en CADA paso.
+    """
+
+    def test_humano_delante_se_ve_en_todo_el_recorrido(
+        self,
+        ai_control,
+        populate_graph,
+        make_road,
+        make_ai,
+        make_player,
+        make_telemetry,
+    ):
+        # VÃ­a recta con nodos cada 10 m (espaciado tÃ­pico de los mapas grabados).
+        road = make_road("R1", _pts_y(y0=0.0, y1=300.0))
+        populate_graph(ai_control.map_recorder, roads=[road])
+
+        GAP_M = 7.0  # el humano va 7 m por delante: claramente delante, y cerca
+        SPEED_KMH = 30.0
+        node_index = 0
+        fallos = []
+
+        # La pareja avanza 1 m por paso. El `node_index` de la IA se mantiene EXACTAMENTE
+        # como en producciÃ³n (`navigation.py`): con `evaluate_dynamic_capture`.
+        for paso in range(0, 200):
+            y_ia = 20.0 + paso
+            # Secuencia EXACTA de navigation.py: antilag (engancha el nodo) y luego
+            # captura dinÃ¡mica (lo adelanta al acercarse). Ese +1 es el sesgo.
+            mis_coords = _coords_xy(0.0, y_ia)
+            node_index = apply_antilag_window(
+                my_coords=mis_coords,
+                current_idx=node_index,
+                list_of_nodes=road.nodes,
+                window_size=5,
+                is_waypoint=False,
+            )
+            siguiente = evaluate_dynamic_capture(
+                my_coords=mis_coords,
+                current_target_idx=node_index,
+                list_of_nodes=road.nodes,
+                speed_kmh=SPEED_KMH,
+                min_radius=2.5,
+                max_radius=12.0,
+                lookahead_time=0.3,
+                is_waypoint=False,
+            )
+            if siguiente > node_index:
+                node_index = siguiente
+            scanner = make_ai(plid=1, x_m=0, y_m=y_ia, speed_kmh=SPEED_KMH)
+            mode = FreeroamMode(
+                current_type="Road",
+                current_id="R1",
+                current_road_id="R1",
+                node_index=node_index,
+            )
+            ai_control.user_manager.ais = {1: scanner}
+            ai_control.user_manager.players = {
+                2: make_player(
+                    plid=2,
+                    ucid=2,
+                    telemetry=make_telemetry(x_m=0.0, y_m=y_ia + GAP_M, speed_kmh=20.0),
+                )
+            }
+            ai_control._radar_human_cache.clear()  # sin cachÃ©: medimos la decisiÃ³n, no el lag
+
+            visto = [p for _, _, p in ai_control._scan_lane_ahead(scanner, mode, 40.0)]
+            if 2 not in visto:
+                fallos.append((round(y_ia, 1), node_index))
+
+        assert not fallos, (
+            f"La IA PIERDE al humano que lleva 7 m delante en {len(fallos)}/200 pasos "
+            f"(y_ia, node_index): {fallos[:12]}..."
+        )
+
+    def test_otra_ia_escaneando_desde_otra_via_no_ciega_el_radar(
+        self,
+        ai_control,
+        populate_graph,
+        make_road,
+        make_ai,
+        make_behavior,
+        make_player,
+        make_telemetry,
+    ):
+        # La caché de humanos (`_radar_human_cache`) es COMPARTIDA por todas las IAs,
+        # pero el índice de nodo que guardaba se medía contra la geometría de QUIEN
+        # escaneó primero. Una IA que va por otra vía dejaba ahí un índice inválido
+        # (-1, porque el humano no iba en SU vía) y la IA de detrás del humano lo leía
+        # como "va detrás" → lo perdía durante toda la ventana de caché (0,1 s).
+        populate_graph(
+            ai_control.map_recorder,
+            roads=[
+                make_road("R1", _pts_y(y1=200.0)),
+                make_road("R2", _pts_y(x=50.0, y1=200.0)),
+            ],
+        )
+        # La IA de detrás del humano, en R1.
+        detras = make_ai(plid=1, x_m=0, y_m=50, speed_kmh=30)
+        mode = FreeroamMode(
+            current_type="Road", current_id="R1", current_road_id="R1", node_index=5
+        )
+        # Otra IA, lejos y en OTRA vía (R2). Escanea primero y toca la misma caché.
+        otra = _place_ai(
+            make_ai,
+            make_behavior,
+            3,
+            50,
+            50,
+            speed_kmh=30,
+            mode_fields={"current_type": "Road", "current_id": "R2", "node_index": 5},
+        )
+        otra_mode = otra.extra["aic"].active_mode
+        ai_control.user_manager.ais = {1: detras, 3: otra}
+        ai_control.user_manager.players = {
+            2: make_player(
+                plid=2, ucid=2, telemetry=make_telemetry(x_m=0, y_m=58, speed_kmh=10)
+            )
+        }
+
+        # La IA de R2 escanea primero (envenena la caché del humano).
+        ai_control._scan_lane_ahead(otra, otra_mode, 40.0)
+        # Y ahora la que va justo detrás del humano, dentro de la ventana de caché.
+        visto = [p for _, _, p in ai_control._scan_lane_ahead(detras, mode, 40.0)]
+
+        assert 2 in visto, "la IA de detrás perdió al humano por la caché de otra IA"
+
+
+class TestOvertakeTriggerGuard:
+    """El gatillo IDLEâ†’EVALUATING del FSM, con y sin cruce de por medio.
+
+    Primera red sobre `_update_traffic_behavior` (el orquestador se dejÃ³ sin cubrir
+    por usar `time.time()`; aquÃ­ el tiempo solo entra en comparaciones de cooldown
+    con 0.0, asÃ­ que el gatillo es determinista). Va ligada al fix (3): al ver ahora
+    a los coches de la cadena del cruce, la IA podÃ­a dispararse a adelantar DENTRO de
+    un RoadLink â€” donde `_find_valid_overtake_lane` mira los laterales de la vÃ­a que
+    ya dejÃ³ y `node_index` es el del enlace. El adelantamiento se inicia solo en Road.
     """
 
     @staticmethod
@@ -1153,7 +1307,7 @@ class TestOvertakeTriggerGuard:
         make_ai,
         make_behavior,
     ):
-        # Caso normal (sin cruce): sigue disparándose como siempre.
+        # Caso normal (sin cruce): sigue disparÃ¡ndose como siempre.
         _chain_graph(ai_control, populate_graph, make_road, make_road_link)
         scanner = make_ai(plid=1, x_m=0, y_m=50, speed_kmh=30)
         mode = FreeroamMode(
@@ -1178,7 +1332,7 @@ class TestOvertakeTriggerGuard:
         make_ai,
         make_behavior,
     ):
-        # Mismo coche lento, pero nosotros vamos DENTRO del enlace: se frena por él
+        # Mismo coche lento, pero nosotros vamos DENTRO del enlace: se frena por Ã©l
         # (ACC) y NO se abre la maniobra. El FSM se queda en IDLE.
         _chain_graph(ai_control, populate_graph, make_road, make_road_link)
         scanner = make_ai(plid=1, x_m=0, y_m=105, speed_kmh=30)
@@ -1199,7 +1353,7 @@ class TestOvertakeTriggerGuard:
 
         assert mode.overtake_state == "IDLE"
         assert mode.overtake_target_plid is None
-        # Pero el coche del cruce SÍ se ve: es el que nos bloquea (fix (3)).
+        # Pero el coche del cruce SÃ se ve: es el que nos bloquea (fix (3)).
         assert mode.blocking_plid == 2
 
 
@@ -1230,7 +1384,7 @@ class TestScanTargetLane:
         scanner, mode = self._scanner_and_mode(
             ai_control, populate_graph, make_road, make_ai
         )
-        # Mismo carril objetivo pero DETRÁS (producto escalar ≤ 0) → ignorado.
+        # Mismo carril objetivo pero DETRÃS (producto escalar â‰¤ 0) â†’ ignorado.
         other = _place_ai(
             make_ai, make_behavior, 2, 0, 40, mode_fields={"current_id": "R2"}
         )
@@ -1243,7 +1397,7 @@ class TestScanTargetLane:
         scanner, mode = self._scanner_and_mode(
             ai_control, populate_graph, make_road, make_ai
         )
-        # Delante pero en R3, no en el carril objetivo R2 → ignorado.
+        # Delante pero en R3, no en el carril objetivo R2 â†’ ignorado.
         other = _place_ai(
             make_ai, make_behavior, 2, 0, 60, mode_fields={"current_id": "R3"}
         )
@@ -1295,7 +1449,7 @@ class TestScanReturnLaneGap:
         scanner, mode = self._scanner_and_mode(
             ai_control, populate_graph, make_road, make_ai
         )
-        # current_road_id (no current_id) es el campo que mira este escáner.
+        # current_road_id (no current_id) es el campo que mira este escÃ¡ner.
         delante = _place_ai(
             make_ai, make_behavior, 2, 0, 60, mode_fields={"current_road_id": "R1"}
         )
@@ -1323,15 +1477,15 @@ class TestScanReturnLaneGap:
         )
 
 
-# ─── Equivalencia: rejilla espacial de vehículos vs. barrido lineal (W3) ──────
+# â”€â”€â”€ Equivalencia: rejilla espacial de vehÃ­culos vs. barrido lineal (W3) â”€â”€â”€â”€â”€â”€
 #
-# La rejilla dinámica (`_build_vehicle_grid`) devuelve un SUPERCONJUNTO de los
-# vehículos dentro del radio de culling → cada barrido debe dar EXACTAMENTE la misma
-# salida que iterando todos los vehículos. Se comprueba corriendo cada escáner dos
-# veces —sin rejilla (referencia) y con rejilla— sobre muchas configuraciones
-# aleatorias, y comparando bit a bit. Es la caracterización del radar "como unidad"
-# que el plan (W3) exige ANTES de meter la rejilla en producción, y el análogo del
-# fuzz de equivalencia del índice espacial de geometría (S23).
+# La rejilla dinÃ¡mica (`_build_vehicle_grid`) devuelve un SUPERCONJUNTO de los
+# vehÃ­culos dentro del radio de culling â†’ cada barrido debe dar EXACTAMENTE la misma
+# salida que iterando todos los vehÃ­culos. Se comprueba corriendo cada escÃ¡ner dos
+# veces â€”sin rejilla (referencia) y con rejillaâ€” sobre muchas configuraciones
+# aleatorias, y comparando bit a bit. Es la caracterizaciÃ³n del radar "como unidad"
+# que el plan (W3) exige ANTES de meter la rejilla en producciÃ³n, y el anÃ¡logo del
+# fuzz de equivalencia del Ã­ndice espacial de geometrÃ­a (S23).
 
 
 class TestRadarSpatialGridEquivalence:
@@ -1339,10 +1493,10 @@ class TestRadarSpatialGridEquivalence:
     def _run_both(app, scan_call):
         """Devuelve (salida_sin_rejilla, salida_con_rejilla).
 
-        Limpia las cachés de humanos antes de CADA corrida: así la rama de humano
-        (que usa `time.time()` + caché por PLID) recomputa de forma determinista y
-        ambas corridas parten del mismo estado. La única diferencia entre las dos es
-        de dónde salen los candidatos (todos vs. vecindario de la rejilla).
+        Limpia las cachÃ©s de humanos antes de CADA corrida: asÃ­ la rama de humano
+        (que usa `time.time()` + cachÃ© por PLID) recomputa de forma determinista y
+        ambas corridas parten del mismo estado. La Ãºnica diferencia entre las dos es
+        de dÃ³nde salen los candidatos (todos vs. vecindario de la rejilla).
         """
         app._radar_human_cache.clear()
         app._target_lane_human_cache.clear()
@@ -1358,15 +1512,15 @@ class TestRadarSpatialGridEquivalence:
 
     @staticmethod
     def _spread(rng, app, scanner, make_ai, make_behavior, make_player, make_telemetry):
-        """Puebla user_manager con una mezcla aleatoria de IAs (con topología) y
-        humanos. Mezcla vehículos CERCA del escáner (para producir detecciones) y
+        """Puebla user_manager con una mezcla aleatoria de IAs (con topologÃ­a) y
+        humanos. Mezcla vehÃ­culos CERCA del escÃ¡ner (para producir detecciones) y
         LEJOS (para ejercitar el culling y celdas de rejilla distantes). El
-        `node_index` de los que van en R1 se deriva de su `y` (como en producción:
-        R1 tiene nodos en y=0,10,…,400). Devuelve el nº de vehículos colocados."""
+        `node_index` de los que van en R1 se deriva de su `y` (como en producciÃ³n:
+        R1 tiene nodos en y=0,10,â€¦,400). Devuelve el nÂº de vehÃ­culos colocados."""
         ais = {scanner.player.plid: scanner}
         humans: dict = {}
         for k in range(2, 2 + rng.randint(5, 14)):
-            if rng.random() < 0.6:  # cerca del escáner (0,100)
+            if rng.random() < 0.6:  # cerca del escÃ¡ner (0,100)
                 x = rng.uniform(-18.0, 18.0)
                 y = rng.uniform(60.0, 220.0)
             else:  # lejos: cubre culling y celdas distantes
@@ -1446,10 +1600,10 @@ class TestRadarSpatialGridEquivalence:
         make_player,
         make_telemetry,
     ):
-        # Fase 7 · fix (3): con el escáner DENTRO de un RoadLink, la cadena topológica
-        # (from_road/to_road) admite muchos más vehículos que antes → hay que volver a
+        # Fase 7 Â· fix (3): con el escÃ¡ner DENTRO de un RoadLink, la cadena topolÃ³gica
+        # (from_road/to_road) admite muchos mÃ¡s vehÃ­culos que antes â†’ hay que volver a
         # demostrar que la rejilla no pierde ninguno respecto al barrido lineal. El
-        # escáner recorre el enlace (dentro y fuera de la ventana de transición).
+        # escÃ¡ner recorre el enlace (dentro y fuera de la ventana de transiciÃ³n).
         populate_graph(
             ai_control.map_recorder,
             roads=[
@@ -1484,7 +1638,7 @@ class TestRadarSpatialGridEquivalence:
             )
             assert got == ref, f"seed={seed} y={y} max_dist={max_dist}"
             non_empty += bool(ref)
-        assert non_empty >= 5  # la cadena detecta de verdad en un buen puñado de casos
+        assert non_empty >= 5  # la cadena detecta de verdad en un buen puÃ±ado de casos
 
     def test_scan_target_lane_equivale_al_barrido_lineal(
         self,
@@ -1558,8 +1712,8 @@ class TestRadarSpatialGridEquivalence:
         self, ai_control, populate_graph, make_road, make_ai, make_behavior
     ):
         # Coche DETECTADO (dentro de max_dist) pero en una celda de rejilla distinta
-        # a la del escáner (diagonal). La consulta por CAJA lo incluye; una consulta
-        # de solo-celda-central lo perdería → aquí got != ref. Discrimina el bug.
+        # a la del escÃ¡ner (diagonal). La consulta por CAJA lo incluye; una consulta
+        # de solo-celda-central lo perderÃ­a â†’ aquÃ­ got != ref. Discrimina el bug.
         populate_graph(
             ai_control.map_recorder, roads=[make_road("R1", _pts_y(y1=400.0))]
         )
@@ -1583,7 +1737,7 @@ class TestRadarSpatialGridEquivalence:
         assert [p for _, _, p in got] == [2]  # detectado por ambos caminos
 
 
-# ─── _get_available_overtake_distance: asfalto disponible para maniobrar ──────
+# â”€â”€â”€ _get_available_overtake_distance: asfalto disponible para maniobrar â”€â”€â”€â”€â”€â”€
 
 
 class TestGetAvailableOvertakeDistance:
@@ -1598,7 +1752,7 @@ class TestGetAvailableOvertakeDistance:
     def test_sin_next_link_usa_solo_la_longitud_del_lateral(
         self, ai_control, make_lateral_link, make_coords
     ):
-        # Sin próximo giro, la ruta no limita (inf) → manda la línea discontinua.
+        # Sin prÃ³ximo giro, la ruta no limita (inf) â†’ manda la lÃ­nea discontinua.
         lat = make_lateral_link("R1", "R2", [(0, 0), (0, 20), (0, 50)])
         mode = FreeroamMode(current_road_id="R1", node_index=0, next_link_id=None)
         got = ai_control._get_available_overtake_distance(mode, make_coords(0, 0), lat)
@@ -1607,7 +1761,7 @@ class TestGetAvailableOvertakeDistance:
     def test_con_next_link_manda_el_mas_corto(
         self, ai_control, make_road, make_lateral_link, make_coords, populate_graph
     ):
-        # Ruta (R1 desde node 7 = 20 m) más corta que el lateral (50 m) → gana 20 m.
+        # Ruta (R1 desde node 7 = 20 m) mÃ¡s corta que el lateral (50 m) â†’ gana 20 m.
         populate_graph(ai_control.map_recorder, roads=[make_road("R1", _pts_y())])
         lat = make_lateral_link("R1", "R2", [(0, 0), (0, 50)])
         mode = FreeroamMode(current_road_id="R1", node_index=7, next_link_id="R1->R2")
@@ -1615,11 +1769,11 @@ class TestGetAvailableOvertakeDistance:
         assert got == pytest.approx(20.0)
 
 
-# ─── _is_lane_safe_to_overtake: puerta de seguridad del adelantamiento ────────
+# â”€â”€â”€ _is_lane_safe_to_overtake: puerta de seguridad del adelantamiento â”€â”€â”€â”€â”€â”€â”€â”€
 #
-# Combina piezas ya congeladas: chequeo de salida (next RoadLink), límite físico
+# Combina piezas ya congeladas: chequeo de salida (next RoadLink), lÃ­mite fÃ­sico
 # (_get_available_overtake_distance) y escaneo del carril objetivo (_scan_target_lane).
-# El coche escanea desde (0,0) a 36 km/h (≈10 m/s → safe_gap ≈ 20 m).
+# El coche escanea desde (0,0) a 36 km/h (â‰ˆ10 m/s â†’ safe_gap â‰ˆ 20 m).
 
 
 class TestIsLaneSafeToOvertake:
@@ -1641,7 +1795,7 @@ class TestIsLaneSafeToOvertake:
     ):
         ai, mode = self._scanner(ai_control, populate_graph, make_road, make_ai)
         lat = make_lateral_link("R1", "R2", [(0, 0), (0, 100)], is_circular=True)
-        _set_ais(ai_control, ai)  # sin tráfico en el carril objetivo
+        _set_ais(ai_control, ai)  # sin trÃ¡fico en el carril objetivo
         got = ai_control._is_lane_safe_to_overtake(
             ai,
             mode,
@@ -1657,7 +1811,7 @@ class TestIsLaneSafeToOvertake:
         self, ai_control, populate_graph, make_road, make_ai, make_lateral_link
     ):
         ai, mode = self._scanner(ai_control, populate_graph, make_road, make_ai)
-        # Lateral de solo 30 m; req(50) + safe_gap(≈20) > 30 → no cabe.
+        # Lateral de solo 30 m; req(50) + safe_gap(â‰ˆ20) > 30 â†’ no cabe.
         lat = make_lateral_link("R1", "R2", [(0, 0), (0, 30)])
         _set_ais(ai_control, ai)
         got = ai_control._is_lane_safe_to_overtake(
@@ -1680,7 +1834,7 @@ class TestIsLaneSafeToOvertake:
         make_road_link,
         make_lateral_link,
     ):
-        # next RoadLink (salida) a 10 m; req(50) > 10 → la maniobra no cabe antes del giro.
+        # next RoadLink (salida) a 10 m; req(50) > 10 â†’ la maniobra no cabe antes del giro.
         ai, mode = self._scanner(
             ai_control,
             populate_graph,
@@ -1716,7 +1870,7 @@ class TestIsLaneSafeToOvertake:
     ):
         ai, mode = self._scanner(ai_control, populate_graph, make_road, make_ai)
         lat = make_lateral_link("R1", "R2", [(0, 0), (0, 100)], is_circular=True)
-        # Coche parado a 20 m en R2: su posición futura no deja el hueco de seguridad.
+        # Coche parado a 20 m en R2: su posiciÃ³n futura no deja el hueco de seguridad.
         blocker = _place_ai(
             make_ai,
             make_behavior,
@@ -1749,7 +1903,7 @@ class TestIsLaneSafeToOvertake:
     ):
         ai, mode = self._scanner(ai_control, populate_graph, make_road, make_ai)
         lat = make_lateral_link("R1", "R2", [(0, 0), (0, 100)], is_circular=True)
-        # Carril contrario: coche a 30 m acercándose a 36 km/h → consume demasiado asfalto.
+        # Carril contrario: coche a 30 m acercÃ¡ndose a 36 km/h â†’ consume demasiado asfalto.
         oncoming = _place_ai(
             make_ai,
             make_behavior,
@@ -1776,7 +1930,7 @@ class TestIsLaneSafeToOvertake:
     ):
         ai, mode = self._scanner(ai_control, populate_graph, make_road, make_ai)
         lat = make_lateral_link("R1", "R2", [(0, 0), (0, 100)], is_circular=True)
-        # Contrario pero parado y lejos (90 m), maniobra corta (1 s) → hay margen → seguro.
+        # Contrario pero parado y lejos (90 m), maniobra corta (1 s) â†’ hay margen â†’ seguro.
         oncoming = _place_ai(
             make_ai,
             make_behavior,

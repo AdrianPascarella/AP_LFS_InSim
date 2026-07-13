@@ -155,6 +155,25 @@ class _RadarMixin(_MixinBase):
             if entry is not None:
                 yield entry
 
+    def _my_closest_node_index(self, my_coords, geom) -> int:
+        """Índice del nodo MÁS CERCANO a la IA en su geometría actual.
+
+        NO es lo mismo que `mode.node_index`, y esa diferencia era un bug: `node_index`
+        es el nodo **objetivo** (el que persigue), y la captura dinámica lo adelanta al
+        siguiente hasta `2.5 + v·0.3` m ANTES de llegar (`evaluate_dynamic_capture`) →
+        va sistemáticamente un nodo por delante de la posición real.
+
+        A un HUMANO se le asigna el nodo **más cercano** (no publica topología). Comparar
+        "más cercano" (él) contra "objetivo" (nosotros) daba `idx_diff = -1` a un humano
+        que iba físicamente DELANTE → el radar lo tomaba por un coche de detrás y **lo
+        perdía**, en una ventana ciega periódica de ~3 m por cada nodo. La IA se quedaba
+        sin nadie delante → velocidad base → gas; al reaparecer, ACC → freno: el
+        stop-and-go que se veía en el juego. Comparando su índice contra ESTE (misma
+        regla, "más cercano") desaparece el sesgo.
+        """
+        idx, _ = self._get_closest_node_index(my_coords.x_m, my_coords.y_m, geom.nodes)
+        return idx
+
     def _scan_lane_ahead(
         self, ai: AI, mode: FreeroamMode, max_dist_m: float
     ) -> list[tuple[float, float, int]]:
@@ -251,16 +270,25 @@ class _RadarMixin(_MixinBase):
 
             other_road_id = None
             other_node_index = -1
+            # Índice MÍO con el que comparar el suyo. Tiene que estar medido con la
+            # MISMA regla que el suyo, o el `idx_diff` de abajo compara peras con
+            # manzanas (ver `_my_closest_node_index`).
+            my_index_ref = mode.node_index
 
             # ---------------------------------------------------------
             # EXTRACCIÓN TOPOLÓGICA
             # ---------------------------------------------------------
             if is_ai and other_ai and "aic" in other_ai.extra:
+                # Otra IA publica su `node_index` (nodo OBJETIVO) → misma regla que el
+                # nuestro: se comparan directamente.
                 other_mode = other_ai.extra["aic"].active_mode
                 if other_mode and other_mode.current_id:
                     other_road_id = other_mode.current_id
                     other_node_index = other_mode.node_index
             else:
+                # Un humano no publica topología: se le calcula. Su índice es el del
+                # nodo MÁS CERCANO, así que hay que compararlo contra NUESTRO nodo más
+                # cercano, no contra nuestro nodo objetivo.
                 current_time = time.time()
                 if len(self._radar_human_cache) > 64:
                     self._radar_human_cache = {
@@ -279,23 +307,24 @@ class _RadarMixin(_MixinBase):
                         if (ctx.link_id and ctx.link_dist < ctx.road_dist)
                         else ctx.road_id
                     )
-                    calc_node_index = -1
-
-                    # Índice exacto del jugador solo si comparte nuestra calle
-                    if calc_road_id == mode.current_id:
-                        calc_node_index, _ = self._get_closest_node_index(
-                            other_coords.x_m, other_coords.y_m, geom.nodes
-                        )
-
+                    # Solo se cachea la VÍA (no depende de quién escanea). El índice de
+                    # nodo NO se cachea: se mide contra la geometría del escáner, y la
+                    # caché es compartida por todas las IAs → una IA en otra vía dejaba
+                    # ahí un índice inválido (o -1) que la IA de detrás leía como
+                    # "va detrás" y perdía al humano.
                     self._radar_human_cache[other_player.plid] = (
                         current_time,
                         calc_road_id,
-                        calc_node_index,
                     )
                     other_road_id = calc_road_id
-                    other_node_index = calc_node_index
                 else:
-                    _, other_road_id, other_node_index = cached_data
+                    _, other_road_id = cached_data
+
+                if other_road_id == mode.current_id:
+                    other_node_index, _ = self._get_closest_node_index(
+                        other_coords.x_m, other_coords.y_m, geom.nodes
+                    )
+                    my_index_ref = self._my_closest_node_index(my_coords, geom)
 
             # ---------------------------------------------------------
             # FILTROS ESTRICTOS DE CARRIL
@@ -316,9 +345,9 @@ class _RadarMixin(_MixinBase):
 
             if same_segment:
                 idx_diff = (
-                    mode.node_index - other_node_index
+                    my_index_ref - other_node_index
                     if is_opposing
-                    else other_node_index - mode.node_index
+                    else other_node_index - my_index_ref
                 )
 
                 # Vehículo en nodo inferior = detrás de nosotros → nunca es bloqueante
