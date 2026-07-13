@@ -25,15 +25,32 @@ Antes de tocar nada:
 7. Verificar con `git status` y `git log --oneline -5` que el repo coincide con lo escrito.
 8. Resumir al usuario en 2-3 líneas dónde estamos y qué propongo. Luego actuar.
 
+### Presupuesto de lectura del arranque (S37)
+
+Qué se lee al arrancar — y, tan importante, qué NO:
+
+- **Entero:** `ESTADO_ACTUAL.md` (≤120 líneas, tope verificado por `close_check.py`) y este
+  `MODUS_OPERANDI.md`.
+- **En parte:** `HISTORIAL.md` → **solo la última entrada**; `PLAN.md` → **solo la fase activa /
+  próximo paso** (localizar por headings con grep, no leerlo entero).
+- **NO se lee al arrancar** (solo bajo demanda, cuando la tarea lo pida): el resto de `HISTORIAL.md`
+  y su **Anexo (S37)**, `DIAGNOSTICO.md`, `AUDITORIA_HOTLOOP.md`, `PUBLICACION.md`, `docs/guia/`,
+  `.meta/agentic-protocol/`.
+
 ## 2. Protocolo de CIERRE de sesión (o de hito)
 
 Antes de terminar, SIEMPRE:
-1. Actualizar `ESTADO_ACTUAL.md`: estado, fase, próximo paso concreto y qué quedó a medias.
+1. Actualizar `ESTADO_ACTUAL.md`: estado, fase, próximo paso concreto, qué quedó a medias y la
+   **cola de validación en LFS** (casillas que **solo cierra el usuario**). **Tope duro: 120
+   líneas** — lo que sobre se vuelca a `HISTORIAL.md`, no se acumula.
 2. Añadir entrada a `HISTORIAL.md` (fecha, qué se hizo, decisiones tomadas, commits si los hubo).
 3. Marcar en `PLAN.md` lo completado; reflejar tareas nuevas descubiertas.
 4. Si hubo una decisión de diseño relevante, dejarla registrada con su porqué.
 5. **Commit + `git push`** a `origin/refactor/estabilizacion`: no terminar nunca con trabajo
    local sin subir (permite continuar desde otro dispositivo).
+6. **Último paso, tras el push: `.venv\Scripts\python.exe scripts\close_check.py`** y pegar su
+   salida. Debe dar **PASS** (árbol limpio, todo pusheado, tope del handoff, próximo paso y cola
+   presentes); si da FAIL, arreglar y repetir. Convierte este protocolo en algo comprobable.
 
 > Si el usuario cierra de golpe, hacer este cierre en cuanto se detecte un buen punto de parada.
 

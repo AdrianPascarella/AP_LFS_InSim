@@ -533,21 +533,20 @@ orquestadores con `time.time()` siguen sin red → cubrir antes de tocarlos).
       otra forma: el arranque/cierre no son skills, viven en el enganche del `CLAUDE.md` (una sola
       fuente de verdad, y funciona también desde otra IA). Commits `a1c77a9`, `6fda6bc`.
 
-### ▶️ PRÓXIMO PASO (S37, sesión nueva) — aplicar el protocolo a ESTE proyecto
+### ✅ Aplicado a ESTE proyecto en S37 (queda solo la revisión adversarial)
 
-Su prueba de fuego: el repo tiene justo los dos fallos que el protocolo dice curar.
+Su prueba de fuego: el repo tenía justo los dos fallos que el protocolo dice curar.
 
-- [ ] **Partir `ESTADO_ACTUAL.md`** (**1031 líneas**, se lee entera en CADA sesión) en un handoff
-      de **≤120 líneas** — estado, cola de validación, próximo paso, lo que quedó a medias — y
-      **volcar el resto a `HISTORIAL.md`** (que ya es append-only y del que solo se lee la última
-      entrada). Sin perder nada.
-- [ ] **Montar la cola de validación** con todo lo ⏳ pendiente de probar en LFS, hoy disperso en
-      prosa: ley nueva del ACC (S35), **W4**, los 4 fixes de la Fase 7 + el guard. Una lista con
-      casillas que **solo cierra el usuario**.
-- [ ] **Instalar `close_check.py`** en `scripts/` y añadirlo al protocolo de cierre del
-      `MODUS_OPERANDI` (§2) — convierte tres reglas en un chequeo real.
-- [ ] **Escribir el presupuesto de lectura por sesión** en `MODUS_OPERANDI`/`00_INDEX` (qué se lee
-      entero, qué en parte y qué NO se lee al arrancar).
+- [x] **(S37) Partir `ESTADO_ACTUAL.md`** — de **1073 líneas a ~90** (tope 120): estado, cola de
+      validación, próximo paso y notas. El resto volcado **ÍNTEGRO** (verificado byte-a-byte) al
+      **Anexo (S37)** al final de `HISTORIAL.md`. Sin perder nada.
+- [x] **(S37) Montar la cola de validación** — en el handoff, con casillas que **solo cierra el
+      usuario**: ley nueva del ACC (S35), fix (3) + guard (S34), fixes (4)/(1)/(5) (S33),
+      herramientas de mapeo (S32/S33); **W4 figura como probada-y-NO-superada** (→ Fase 8).
+- [x] **(S37) Instalar `close_check.py`** — en `scripts/` (default adaptado a `ESTADO_ACTUAL.md`)
+      y enganchado como **paso 6 del cierre** en `MODUS_OPERANDI §2`.
+- [x] **(S37) Presupuesto de lectura por sesión** — en `MODUS_OPERANDI §1` + puntero en
+      `00_INDEX.md` (qué se lee entero, qué en parte y qué NO se lee al arrancar).
 - [ ] **Después de usarlo (no antes): revisión adversarial del protocolo en sesión fresca.** Un
       lector que **no sepa lo que quisimos decir** recorre el ciclo de vida completo (instalación →
       sesión 1 → sesión 5 → norma permanente → defecto nuevo → cierre → otra máquina) y nombra lo
@@ -647,7 +646,7 @@ uno** → siguen ⏳. **W4 / ceda-el-paso: "funciona, pero regular"** → no se 
 
 ---
 
-## Fase 8 — Rediseño de las intersecciones (ai_control)  ◀️ PRÓXIMO (S35)
+## Fase 8 — Rediseño de las intersecciones (ai_control)  ◀️ ACTIVA (S37) — empieza con sesión de DISEÑO
 
 > **Origen (S35, 2026-07-13):** con los tirones ya resueltos, el usuario probó las intersecciones en LFS:
 > **"funcionan, pero son difíciles de crear y su funcionamiento es regular"**. Trae un **diseño propio** (abajo).
@@ -723,6 +722,17 @@ el merge se continúa desde `main`.
 
 ## Ideas / pendientes sin fase asignada
 
+- **Desacople profundo de `base.py` (resto de P4, backlog S31/S34):** reducir las 20 llamadas
+  cross-mixin reales / romper el "God object". Refactor arquitectónico de riesgo: el orquestador
+  `_update_traffic_behavior` **casi no tiene red** (S34 le puso la primera: 2 tests del gatillo de
+  adelantamiento; el resto sigue descubierto) → caracterizar más ANTES de tocarlo. Ver DIAGNOSTICO § P4.
+- **Tipado gradual (backlog S16):** quitar overrides de `[tool.mypy]` módulo a módulo al tocar cada
+  uno — `packets` (dataclasses de protocolo), `insim_loader` (fricción con `importlib`: merece
+  None-checks reales, no `type: ignore`), `insim_packet_decoders`/`utils` (2 errores puntuales cada
+  uno). No urge; el job de mypy no bloquea el CI.
+- **DX del connect inicial fallido (idea Fase 4):** hoy imprime un traceback feo (`exc_info=True` +
+  re-raise) — valorar mensaje limpio y/o `connect_retry` para poder arrancar el insim antes que LFS.
+  (La pista de "ISI likely rejected" ya está hecha; el fallback de cfg.txt está más abajo.)
 - **Editor MASIVO de elementos en la UI de mapeo (pedido S32, pendiente — su propia sesión).**
   Un modo de la pestaña **Elementos** con **buscador** (como el de la lista actual) +
   **multi-selección** (marcar N elementos) para **aplicar un mismo ajuste a todos a la vez**

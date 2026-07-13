@@ -21,6 +21,11 @@ versión corta como *"arranca la sesión según tu protocolo de inicio"* funcion
 4. **[DIAGNOSTICO.md](DIAGNOSTICO.md)** — referencia de problemas conocidos (consultar según haga falta).
 5. **[MODUS_OPERANDI.md](MODUS_OPERANDI.md)** — cómo se trabaja aquí (reglas de obligado cumplimiento).
 
+> **Presupuesto de lectura (S37):** no todo se lee, ni entero — ver `MODUS_OPERANDI.md §1`
+> (entero: handoff y MODUS; en parte: última entrada del HISTORIAL y fase activa del PLAN;
+> NO al arrancar: resto del HISTORIAL y su Anexo, DIAGNOSTICO, auditorías, guías, `.meta/`).
+> El cierre de sesión se verifica con **`scripts/close_check.py`** (MODUS §2, debe dar PASS).
+
 ## Los archivos
 
 | Archivo | Qué es | Cuándo se actualiza |
