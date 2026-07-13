@@ -646,7 +646,7 @@ uno** → siguen ⏳. **W4 / ceda-el-paso: "funciona, pero regular"** → no se 
 
 ---
 
-## Fase 8 — Rediseño de las intersecciones (ai_control)  ◀️ ACTIVA (S37) — empieza con sesión de DISEÑO
+## Fase 8 — Rediseño de las intersecciones (ai_control)  ◀️ ACTIVA — diseño cerrado (S38), implementación por bloques
 
 > **Origen (S35, 2026-07-13):** con los tirones ya resueltos, el usuario probó las intersecciones en LFS:
 > **"funcionan, pero son difíciles de crear y su funcionamiento es regular"**. Trae un **diseño propio** (abajo).
@@ -676,19 +676,50 @@ es la métrica correcta (un coche a 40 m a 80 km/h es urgente; a 20 km/h no lo e
 ahí: `_is_priority_vehicle_active_at_zone` usa una ventana de 4 s; (c) la **línea de detención** es *donde para un
 conductor*, no el borde de un círculo, y regala el **punto de compromiso**.
 
-**Preguntas abiertas (cerrar en la sesión de diseño, ANTES de tocar código):**
-- **¿A qué coches se vigila?** "A menos de T segundos del punto de unión" — ¿los que van por el `to_road`
-  acercándose? Definir cómo se calcula el tiempo (dist/velocidad; un coche parado ⇒ ∞ ⇒ se ignora) y **excluir**
-  a los que ya pasaron el punto y a los que van detrás de la IA.
-- **¿Hacen falta los DOS mecanismos?** (1) cubre *incorporarse*; un cruce de 4 ramas yendo **recto** tiene tráfico
-  que cruza tu trayectoria **sin tocar tu punto de unión** → ahí sí hace falta (2). Conclusión provisional: sí,
-  ambos, pero **compartiendo maquinaria** (mismo predicado de tiempo-al-punto; la línea de detención siempre
-  colgada del link) → un solo concepto con dos formas de "qué vigilo", no dos sistemas.
-- **UI de mapeo:** falta que el usuario lo explique (grabar la línea, fijar T, verlo en el render). Usar la skill
-  `ai-control-map-ui`.
-- **Modelo de datos y compatibilidad:** RoadLink gana un campo → cambia el JSON del mapa. **South City (222 roads
-  / 328 links) tiene que seguir cargando** (campo opcional con default). Decidir qué pasa con las zonas y
-  `priority_rules` actuales (`test1` las usa): ¿conviven, se migran o se retiran?
+**Diseño CERRADO (S38, decidido con el usuario por selector de opciones):**
+
+1. **La cesión cuelga del RoadLink**, campo opcional que **nace vacío** (⇒ ese giro no cede; las
+   intersecciones sin ceda son válidas y deseadas). Guarda: **línea de detención** (lista de puntos
+   grabados con el coche), **T** (`None` ⇒ default global en config; valor inicial 4 s, la ventana
+   que ya usaba `_is_priority_vehicle_active_at_zone`) y, opcionalmente, el **id de la zona a
+   vigilar** (referencia explícita — sin umbrales mágicos de cercanía; varios links comparten zona).
+2. **Quién cede = quien tiene línea de detención en su link.** La zona NO decide prioridades: solo
+   amplía QUÉ se vigila. Desaparecen los pares `priority_rules`.
+3. **Zona nueva = punto de conflicto + T** (sin área/radio que tunear). "Parar antes de entrar" =
+   parar en TU línea de detención.
+4. **Qué vigila un link con cesión:** coches del `to_road` acercándose al punto de unión
+   (t = dist a lo largo de la vía / velocidad; parado ⇒ ∞ ⇒ se ignora) + los que **ya atraviesan el
+   cruce** (t≈0) + (si referencia zona) los que están a <T de su punto. Excluidos: los que ya
+   pasaron el punto y los que van detrás de la IA. **Punto de compromiso:** si la IA ya cruzó su
+   línea, no frena en mitad del cruce.
+5. **Maquinaria común:** un único predicado tiempo-al-punto con dos formas de "qué vigilo"
+   (punto de unión del link / punto de la zona). No son dos sistemas.
+6. **Modelo de datos:** campos opcionales con default en `RoadLink` (⚠️ ya existe `time`, que es la
+   duración de travesía — el campo nuevo se llama distinto, p. ej. `yield_*`); `south_city.json`
+   (222 roads / 328 links) tiene que cargar intacto.
+7. **Modelo viejo: migrar y retirar YA** (decisión del usuario; se descartó la convivencia
+   recomendada). Es barato: la única zona existente es `test1` (en `south_city.json`, 2 pares).
+8. **UI (visión del usuario):** al crear un link, el campo cesión nace vacío; en el detalle
+   (Elementos) clicar el campo abre un **grabador de puntos** (añadir manual o auto; **default
+   SIEMPRE manual** aunque el toggle "Auto" general esté activo); al terminar los puntos pide T
+   automáticamente (TypeIn con default). Zona a vigilar: picker como el de vías existente.
+9. **Visualización:** en el render (`map_renderer.py` → `*_rendered.png`) + pestaña Elementos.
+
+**Checklist de implementación (red de tests PRIMERO en cada bloque):**
+
+- [ ] **8.1 Modelo de datos** — cesión en `RoadLink` + zona punto+T + (de)serialización JSON;
+      test de que South City carga intacto (round-trip).
+- [ ] **8.2 Predicados puros** — tiempo-al-punto, "¿cruzó la línea?", selección de vigilados
+      (acercándose / ya pasó / detrás). Módulo aparte o `geometry.py`; tests unitarios primero.
+- [ ] **8.3 Conducta** — integrar en `traffic/` (orquestador + `zones.py`): frenar antes de la
+      línea (reusar la histéresis del fix (5)), punto de compromiso; **retirar** el código de
+      zona-área + `priority_rules`.
+- [ ] **8.4 UI de mapeo** — grabador de puntos + T + picker de zona en el detalle del link
+      (skill `ai-control-map-ui`); tests `test_map_ui_*`.
+- [ ] **8.5 Render** — pintar líneas de detención y puntos de zona (con su T).
+- [ ] **8.6 Migración** — convertir `test1` al modelo nuevo y retirar `priority_rules` del JSON
+      y del código muerto restante.
+- [ ] **8.7 Validación en LFS (usuario)** → cola de validación del handoff.
 
 **Criterio de aceptación:** intersecciones **fáciles de crear** (sin teclear ids ni razonar en pares) y conducta
 **validada en LFS**; red primero (predicados puros de tiempo-al-punto y de "línea cruzada"); no toca la API

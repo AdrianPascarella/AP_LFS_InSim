@@ -98,6 +98,10 @@ Antes de terminar, SIEMPRE:
 - Recomendar una opción, no enumerar exhaustivamente. Cuando haya información suficiente, actuar.
 - **Al plantear una pregunta con opciones, marcar SIEMPRE cuál es la recomendada**
   (p. ej. «(Recomendada)» en la etiqueta) y decir por qué. Nunca dejar la elección sin guía.
+- **Las preguntas al usuario se hacen con el selector interactivo de opciones**
+  (herramienta `AskUserQuestion`) **siempre que sea posible** — no como texto libre en el
+  chat (instrucción del usuario, S38). La recomendada va primera y marcada. Texto libre
+  solo cuando la respuesta sea genuinamente abierta (explicar una visión, describir un bug).
 - **Al terminar una tarea, recomendar si conviene seguir en esta misma sesión o abrir una
   nueva** (para evitar el context-rot cuando el contexto se alarga). Decir cuál recomiendo.
   **Si recomiendo abrir una sesión nueva, comprobar SIEMPRE —sin que el usuario lo pida— que

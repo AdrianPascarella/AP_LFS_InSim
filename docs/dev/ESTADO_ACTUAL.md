@@ -1,16 +1,15 @@
 # 📍 Estado actual
 
-> Actualizado: **2026-07-13** — **S37**: aplicado el **protocolo agéntico** a este repo — handoff
-> partido a ≤120 líneas (la narrativa histórica está ÍNTEGRA en `HISTORIAL.md § Anexo (S37)`),
-> **cola de validación** montada abajo, `scripts/close_check.py` instalado (MODUS §2) y
-> **presupuesto de lectura** escrito (MODUS §1). No se tocó código del framework; suite
-> **773/773** verificada en este equipo tras el pull. Árbol limpio y en sync.
+> Actualizado: **2026-07-13** — **S38**: **diseño de la Fase 8 CERRADO con el usuario** (por
+> selector de opciones — método ahora obligatorio para preguntar, MODUS §6): cesión colgada del
+> RoadLink (línea de detención + T + zona opcional por referencia), quién-cede = quien tiene
+> línea, zona = punto+T sin radio, migrar-y-retirar `priority_rules` YA. Decisiones y checklist
+> de bloques 8.1–8.7 en `PLAN.md § Fase 8`.
 >
-> **▶️ PRÓXIMO: Fase 8 — rediseño de las intersecciones. Es una sesión de DISEÑO primero, no de
-> código.** Leer `PLAN.md § Fase 8`: propuesta del usuario (línea de detención + tiempo T colgados
-> del RoadLink; zonas por tiempo en vez de por área) y sus **preguntas abiertas**, que hay que
-> cerrar ANTES de tocar código. **Falta que el usuario explique cómo quiere mapearlo en la UI** —
-> preguntárselo al arrancar; usar la skill `ai-control-map-ui`.
+> **▶️ PRÓXIMO: implementar la Fase 8 por bloques, red primero.** Bloque **8.1** (modelo de
+> datos: cesión en `RoadLink` — ⚠️ ya existe `time`, usar `yield_*` — + zona punto+T + JSON;
+> South City debe cargar intacto) y **8.2** (predicados puros de tiempo-al-punto / línea
+> cruzada). Para 8.4 (UI) usar la skill `ai-control-map-ui`.
 
 **Rama de trabajo: `refactor/estabilizacion`** (`main` intacta hasta el merge). Sync por GitHub:
 `git pull` al arrancar, commit + `git push` al cerrar (si el push se cuelga: MODUS §7 y la memoria
@@ -23,9 +22,9 @@ del equipo `git-push-gcm-workaround`).
   Solo queda abierta **W4** (ceda-el-paso en LFS), que se rehace en la Fase 8.
 - **Fase 7 (robustez de conducción freeroam) COMPLETA EN CÓDIGO** (S34): los 5 fixes hechos; el
   (2) validado; (1)(3)(4)(5) + el guard están en la cola de abajo. Sin trabajo offline pendiente.
-- **Fase 8 (intersecciones) es la fase activa.** El usuario probó el modelo actual (zona +
-  `priority_rules`): *"funcionan, pero son difíciles de crear y su funcionamiento es regular"* →
-  NO se da por bueno; trae un diseño propio (semilla y preguntas en `PLAN.md § Fase 8`).
+- **Fase 8 (intersecciones) es la fase activa; diseño cerrado en S38** (el modelo viejo de zona +
+  `priority_rules` "funciona, pero regular" → se retira). Implementación por bloques 8.1–8.7
+  (decisiones + checklist en `PLAN.md § Fase 8`), red de tests primero en cada bloque.
 - **Merge a `main` + publish a PyPI esperan** a Fase 8 validada y a la cola de abajo (criterios en
   `PLAN.md § Merge`). PyPI está **preparado sin publicar** (S17; runbook `PUBLICACION.md`).
 - S36 fue META (protocolo agéntico portable en `.meta/agentic-protocol/`); S37 lo aplicó aquí.
@@ -68,9 +67,8 @@ Cerradas (referencia):
 
 ## Bloqueos / restricciones ahora mismo
 
-- **La Fase 8 necesita al usuario:** la sesión de diseño no puede cerrarse sin su respuesta sobre
-  la UI de mapeo y las preguntas abiertas del PLAN (a quién se vigila, compatibilidad del JSON de
-  South City, qué pasa con las `priority_rules` actuales).
+- **El diseño de la Fase 8 ya NO bloquea** (cerrado en S38); lo que sigue necesitando al usuario
+  es la **validación en LFS** (cola de arriba + bloque 8.7 cuando llegue).
 - El **merge** espera a: Fase 8 hecha y validada + cola de arriba despejada + pytest y CI verdes.
 - Pendiente del protocolo (PLAN § Tooling): **revisión adversarial en sesión fresca**, DESPUÉS de
   haberlo usado unas sesiones (regla §6 del propio protocolo).
