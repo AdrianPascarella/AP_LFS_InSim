@@ -77,7 +77,10 @@ line-length = 88
 target-version = "py39"
 # Los .pyi son artefactos autogenerados (lfs-insim stubs): no los toca ruff,
 # los regenera el generador. .venv/build/dist ya estan en el exclude por defecto.
-extend-exclude = ["*.pyi"]
+# .meta/ es el protocolo agentico portable (S36), deliberadamente ajeno al
+# proyecto: su tooling no se rige por la config de este repo (sus scripts
+# rompian `ruff format --check` en CI sin que el codigo del proyecto cambiara).
+extend-exclude = ["*.pyi", ".meta"]
 
 [tool.ruff.lint]
 # Arranque conservador (decidido en S16): pycodestyle E/W, pyflakes F, isort I.
