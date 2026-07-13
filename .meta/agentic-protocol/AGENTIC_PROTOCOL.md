@@ -397,6 +397,46 @@ time), write a playbook: the stable structure, the conventions, the recipe. Key 
 and conventions, never to line numbers** — line numbers rot within a week. Keep it out of the
 always-loaded file and load it on demand.
 
+## §15 — Standing instructions (this section grows)
+
+The user will hand you rules meant to hold in **every future session**: *"always X"*, *"never Y"*,
+*"from now on Z"*, or a correction of something you did that must not happen again. **Those are not
+chat — they are configuration.** They arrive in conversation and they die there unless you write
+them down.
+
+When you receive one:
+
+1. **Write it into this section**, dated, in the user's own words as far as possible.
+2. **Tell them you wrote it**, and where.
+3. **Apply it from that moment on.**
+
+If you cannot tell whether an instruction is standing or one-off, **ask**. One question is cheaper
+than a rule silently lost — or than a one-off frozen into law forever.
+
+*Why: the rules that make a project work are discovered while working on it, not at install time. A
+protocol with no way to grow decays into the protocol of the first day.*
+
+**Route what the user gives you — do not dump everything in one file:**
+
+| What arrives | Where it goes |
+|---|---|
+| A rule about how to work, forever | Here (§15) |
+| A way this machine or toolchain has damaged the work | §13 — scar tissue |
+| A verdict on something you could not verify | The validation queue in `STATE.md` |
+| A design decision and its reasons | `LOG.md` (and `STATE.md` if it constrains the next step) |
+| A fact about where the work stands | `STATE.md` |
+| A task or an idea for later | `PLAN.md` |
+
+The shape of an entry (real examples, from the project this protocol was distilled from):
+
+```
+- 2026-07-03 — Back up the hand-recorded maps before ANY pull/checkout/stash. Pre-authorized:
+  do it without asking.
+- 2026-07-09 — When offering options, always mark the recommended one and say why. Never leave
+  the choice unguided.
+- 2026-07-11 — At the end of a task, say whether to continue in this session or open a new one.
+```
+
 ---
 
 # PART III — WHAT YOU WRITE
