@@ -548,6 +548,11 @@ Su prueba de fuego: el repo tiene justo los dos fallos que el protocolo dice cur
       `MODUS_OPERANDI` (§2) — convierte tres reglas en un chequeo real.
 - [ ] **Escribir el presupuesto de lectura por sesión** en `MODUS_OPERANDI`/`00_INDEX` (qué se lee
       entero, qué en parte y qué NO se lee al arrancar).
+- [ ] **Después de usarlo (no antes): revisión adversarial del protocolo en sesión fresca.** Un
+      lector que **no sepa lo que quisimos decir** recorre el ciclo de vida completo (instalación →
+      sesión 1 → sesión 5 → norma permanente → defecto nuevo → cierre → otra máquina) y nombra lo
+      que el documento NO dice. Antes de aplicarlo solo podría imaginarlo; después tendrá las
+      cicatrices del uso real. Es la regla `§6` del propio protocolo aplicada a sí mismo.
 
 ---
 

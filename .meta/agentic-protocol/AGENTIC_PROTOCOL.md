@@ -318,6 +318,24 @@ Done means all of these, and you have shown it:
 Report honestly. If a test fails, say so with the real output. If you skipped a step, say it.
 *Why: agents claim green. Make the claim cost a command.*
 
+**When no command can verify the deliverable** — a document, a plan, a protocol, a playbook, a schema
+— "done" is **not** re-reading it. Three things replace the missing command:
+
+- **Walk it; do not review it.** Simulate its whole lifecycle and, at each step, name what the
+  artifact does **not** tell you: install → first session → fifth session → the user hands you a
+  standing rule → you discover a new defect → close → another machine picks it up. *Why: what these
+  artifacts fail at is **absences**, and an absence is invisible when you re-read — you fill the hole
+  from memory. It only surfaces when you try to **use** the thing.*
+- **Get a reader who does not know what you meant.** A fresh session, a subagent, the user. *Why: the
+  author's context has the gaps pre-filled. That is exactly why the author cannot see them.*
+- **If the same content lives in two places, it will diverge.** Derive one from the other, or check
+  them with a command — never with good intentions.
+
+*Why this rule exists: this protocol was written without any of the three and shipped four holes — no
+start trigger, no per-session reading budget, no way for standing instructions to accumulate, and a
+numbering divergence between its own two copies. Every one of them was found by someone **walking**
+it, not by anyone reading it.*
+
 ## §7 — The blind spot: the human is the oracle
 
 `{{agent_cannot_verify}}` is what you **structurally cannot check**. For anything that lands there:

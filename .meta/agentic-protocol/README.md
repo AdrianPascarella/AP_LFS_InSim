@@ -80,9 +80,28 @@ leen únicamente cuando hacen falta, y **puede traer un script** que verifica de
 `.md` solo puede pedir por escrito. A cambio, solo funciona en Claude Code: el `.md` sigue siendo la
 fuente portable.
 
+## Mantenimiento: las reglas viven en dos sitios
+
+Las reglas están duplicadas a propósito (dos vehículos: el `.md` portable y la skill), y **el
+contenido duplicado se separa solo** — ya pasó una vez. Por eso hay un comando, no una buena
+intención:
+
+```powershell
+python .meta\agentic-protocol\scripts\parity_check.py
+```
+
+Exige que las **secciones sean idénticas** en ambas copias y que **cualquier divergencia de cuerpo
+esté declarada** con su motivo en `KNOWN_DIFFS` (hoy: 4, todas legítimas — la skill trae script y el
+`.md` no, etc.). Una divergencia **no declarada** es un fallo. Ejecútalo siempre que toques las
+reglas.
+
 ## Estado
 
 - [x] **Capa 1** — el `.md` maestro, agnóstico de harness (se pega en cualquier IA).
 - [x] **Capa 2** — skill de Claude Code (`/agentic-protocol`), con chequeo de cierre ejecutable.
-- [ ] Prueba de fuego: aplicarlo a este proyecto (partir el `ESTADO_ACTUAL.md` de 1031 líneas en
-      handoff + historial, y montar la cola de validación con lo que hay ⏳ pendiente).
+- [x] Regla de "hecho" para entregables que **ningún comando puede verificar** (§6) + chequeo de
+      paridad ejecutable entre las dos copias.
+- [ ] **Prueba de fuego (S37):** aplicarlo a este proyecto — partir el `ESTADO_ACTUAL.md` (>1000
+      líneas) en handoff + historial, y montar la cola de validación con lo que hay ⏳ pendiente.
+- [ ] **Después de usarlo:** revisión adversarial en sesión fresca (un lector que no sepa lo que
+      quisimos decir), con las cicatrices que deje el uso real.

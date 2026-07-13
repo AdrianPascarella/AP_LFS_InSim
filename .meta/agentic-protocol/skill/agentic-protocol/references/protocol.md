@@ -16,7 +16,7 @@ below refers to those values.
 
 Context lives in files, not in the chat session. Never assume you will remember anything from one
 session to the next. If it matters, it goes into `{{context_dir}}`.
-*Why: otherwise you restart from zero every session and the user re-explains the project forever.
+*Why: without this you restart from zero every session and the user re-explains the project forever.
 Files in git also outlive the model, the tool and the machine.*
 
 ## §1 — You own the files
@@ -122,6 +122,24 @@ Done means all of these, and you have shown it:
 Report honestly. If a test fails, say so with the real output. If you skipped a step, say it.
 *Why: agents claim green. Make the claim cost a command.*
 
+**When no command can verify the deliverable** — a document, a plan, a protocol, a playbook, a schema
+— "done" is **not** re-reading it. Three things replace the missing command:
+
+- **Walk it; do not review it.** Simulate its whole lifecycle and, at each step, name what the
+  artifact does **not** tell you: install → first session → fifth session → the user hands you a
+  standing rule → you discover a new defect → close → another machine picks it up. *Why: what these
+  artifacts fail at is **absences**, and an absence is invisible when you re-read — you fill the hole
+  from memory. It only surfaces when you try to **use** the thing.*
+- **Get a reader who does not know what you meant.** A fresh session, a subagent, the user. *Why: the
+  author's context has the gaps pre-filled. That is exactly why the author cannot see them.*
+- **If the same content lives in two places, it will diverge.** Derive one from the other, or check
+  them with a command — never with good intentions.
+
+*Why this rule exists: this protocol was written without any of the three and shipped four holes — no
+start trigger, no per-session reading budget, no way for standing instructions to accumulate, and a
+numbering divergence between its own two copies. Every one of them was found by someone **walking**
+it, not by anyone reading it.*
+
 ## §7 — The blind spot: the human is the oracle
 
 `{{agent_cannot_verify}}` is what you **structurally cannot check**. For anything that lands there:
@@ -170,7 +188,7 @@ dares to remove.*
 
 - Record every relevant decision **with its why** in `LOG.md`, including what you rejected and why.
   *Why: the "what" is in the diff; the "why" is what survives.*
-- **When you present options, mark the recommended one and justify it.** Recommend; do not enumerate
+- **When you present options, mark the recommended one and justify it.** Recommend, do not enumerate
   exhaustively.
 - When you have enough information to act, act. Do not ask what you can find out.
 
@@ -250,10 +268,13 @@ rule the user gives has somewhere to land.
 
 ## §16 — Keeping the system alive
 
+The system is yours to maintain, not the user's.
+
 - **The configuration is not frozen.** When reality changes — a new verify command, a new trap, a new
-  branch, a blind spot discovered later — you update this file yourself and say that you did.
-- **When a rule proves wrong for this project, propose changing it**, with the reason and your
-  recommendation, and then write the change. Do not quietly ignore a rule you dislike: a rule you
+  branch, a blind spot the user discovers later — you update `PROTOCOL.md` yourself and say that you
+  did.
+- **When a rule proves wrong for this project, propose changing it** — with the reason, and marking
+  your recommendation. Then write the change. Do not quietly ignore a rule you dislike: a rule you
   stop following without saying so is worse than a rule that was never written.
 - **The user only ever has to talk to you.** If they are editing these files by hand, the system has
   failed and you should fix whatever made that necessary.

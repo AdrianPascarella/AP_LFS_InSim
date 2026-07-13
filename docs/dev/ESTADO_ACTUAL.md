@@ -75,7 +75,19 @@ equipo). **Principio rector nuevo (del usuario):** los archivos de contexto tien
 el humano **nunca los edita**, solo habla y los lee para auditar. **Único capaz de verificar de verdad:**
 `close_check.py` (árbol limpio, todo pusheado, tope de `STATE.md`, próximo paso y cola de validación presentes) —
 probado contra este repo, y **falló señalando exactamente lo que denuncia** (1031 > 120 líneas; sin cola de
-validación). Commits `a1c77a9`, `6fda6bc`. **No requiere validación en LFS** (no toca código).
+validación). **No requiere validación en LFS** (no toca código).
+
+**S36 (cont.) — lo que la propia sesión enseñó, y la regla que salió de ahí.** Al usuario se le escaparon cinco
+huecos del documento y **los cazó él** (preguntando: *"¿cómo arranca cada sesión?"*, *"¿se lo lee entero?"*,
+*"¿dónde se acumulan las instrucciones fijas?"*); un barrido final destapó tres más. **No fue context-rot ni falta
+de modelo** (el barrido los encontró en dos minutos con el mismo modelo y contexto, solo cambiando de modo): es la
+**asimetría entre escribir y revisar** — los fallos eran **ausencias**, y una ausencia es invisible desde dentro
+porque el hueco está relleno en la cabeza del autor. **Cura, una sola regla (`§6`):** para entregables que ningún
+comando puede verificar, "hecho" = **recorrerlos simulando su uso** (no releerlos) + **un lector que no sepa lo
+que querías decir** + **si el mismo contenido vive en dos sitios, comprobarlo con un comando**. De ahí sale
+**`parity_check.py`**: la duplicación maestro↔skill ya se había separado sola (numeración distinta según el
+vehículo) y al automatizar la comprobación aparecieron **3 derivas más** invisibles a ojo → **17 secciones
+idénticas, 4 divergencias declaradas**. Commits `a1c77a9`, `6fda6bc`, `9f30739`, `439ca35` + el de cierre.
 
 **S35 (2026-07-13) — 3 bugs VIEJOS del radar con HUMANOS (el stop-and-go). ✅ VALIDADO en LFS.** Probando lo de
 S34, el usuario reportó que la IA iba **"a saltos: ahora sí, o no... aún no era"**, hasta **pararse del todo y

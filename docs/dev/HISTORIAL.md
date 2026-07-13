@@ -62,7 +62,34 @@ código** (suite intacta de S35, 773/773).
 (copia el contenido, no la carpeta) — pasó al instalar la skill; hay que pasar `-Destination` con la ruta final
 completa. Corregido también en el comando documentado.
 
-**Commits:** `a1c77a9` (protocolo + skill), `6fda6bc` (presupuesto de lectura por sesión). Pusheados.
+**Lección de método (la más valiosa de la sesión).** Al usuario se le escaparon **cinco** huecos del
+documento y **los cinco los cazó él**, casi todos preguntando: *"¿cómo arranca cada sesión?"*, *"¿la IA se lo
+lee entero cada vez?"*, *"¿dónde se acumulan las instrucciones fijas?"*. Al pedir un barrido final aparecieron
+tres más (paridad rota entre las dos copias, `DIAGNOSIS` que no se mantenía sola, nadie asignaba el `S<n>`).
+**Diagnóstico honesto:** no es context-rot (los fallos conceptuales ocurrieron con el contexto fresco) ni falta
+de modelo (el barrido los encontró en dos minutos con **el mismo modelo y el mismo contexto**, solo cambiando de
+modo). Es una **asimetría estructural entre escribir y revisar**: al producir se optimiza por coherencia, y todos
+los fallos eran **ausencias**, no contradicciones — y una ausencia es invisible desde dentro porque *el hueco está
+relleno en la cabeza del autor*. Ironía registrada: se escribió un documento sobre verificación **sin verificar el
+documento**. **Cura (una regla, no una por incidente):** `§6` gana la definición de "hecho" para entregables que
+**ningún comando puede verificar** — (a) **recorrerlo simulando su uso**, no releerlo (instalación → sesión 1 →
+sesión 5 → llega una norma permanente → aparece un defecto → cierre → otra máquina); (b) **un lector que no sepa
+lo que querías decir** (sesión fresca, subagente, el usuario); (c) **si el mismo contenido vive en dos sitios, se
+separará** → derivar uno del otro o comprobarlo con un comando. Descartado a propósito: meterlo en las cicatrices
+(`§13` es para daño del toolchain, no fallos de proceso) y añadir una regla por cada agujero (un protocolo que
+engorda una regla por incidente deja de leerse).
+
+**`parity_check.py` (`.meta/agentic-protocol/scripts/`).** La duplicación maestro↔skill es deliberada (dos
+vehículos) pero se separó sola: el maestro tenía "Keeping the system alive" fuera de las reglas y la skill como
+`§16` → el protocolo instanciado salía con **numeración distinta según por dónde entrases**. Lo cacé con una
+comparación a mano; eso es una buena intención, no un sistema. Ahora es un comando: exige **mismas secciones** en
+ambas copias y que **toda divergencia de cuerpo esté DECLARADA** con su motivo (`KNOWN_DIFFS`); una no declarada
+es fallo. Al ejecutarlo aparecieron **3 derivas más** que yo no había visto a ojo (§0, §10, §16: palabras
+cambiadas y una frase perdida) → alineadas. Estado: **17 secciones idénticas, 4 divergencias declaradas**.
+
+**Commits:** `a1c77a9` (protocolo + skill), `6fda6bc` (presupuesto de lectura), `9f30739` (instrucciones
+permanentes + tabla de enrutado), `439ca35` (paridad de numeración + `DIAGNOSIS` y `S<n>`), y el de cierre
+(regla `§6` de entregables no ejecutables + `parity_check.py`). Todos pusheados.
 
 **Próximo (decidido con el usuario): sesión nueva para APLICAR el protocolo a este proyecto** — partir
 `ESTADO_ACTUAL.md` en handoff ≤120 líneas + volcado a `HISTORIAL.md`, montar la **cola de validación** con lo ⏳
