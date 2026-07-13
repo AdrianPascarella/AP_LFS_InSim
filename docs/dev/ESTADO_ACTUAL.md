@@ -1,13 +1,24 @@
 # 📍 Estado actual
 
-> Actualizado: **2026-07-13** — S35 (tras probar en LFS): **3 bugs VIEJOS del radar con HUMANOS (el
-> stop-and-go) — ✅ VALIDADOS en LFS: "desaparecieron todos los tirones"** — y **nueva ley de seguimiento del
-> ACC** (al ir bloqueado se IGUALA al de delante, no se reduce; hueco mínimo mayor), ⏳ pendiente de validar.
-> Suite **773/773**, ruff limpio, rama en sync.
-> **▶️ PRÓXIMO: Fase 8 — REDISEÑO DE LAS INTERSECCIONES** (nueva). El usuario las probó: *"funcionan, pero son
-> difíciles de crear y su funcionamiento es regular"*, y trae un **diseño propio** (línea de detención + tiempo
-> en el RoadLink; zonas por tiempo en vez de por área). La **semilla de diseño y las preguntas abiertas están en
-> `PLAN.md § Fase 8`** — empezar por ahí. Falta que el usuario explique **cómo quiere mapearlo en la UI**.
+> Actualizado: **2026-07-13** — S36 (**sesión META: no toca el proyecto**): se destiló el sistema de trabajo de
+> este repo en un **protocolo agéntico portable** (`.meta/agentic-protocol/`): un **prompt maestro** agnóstico de
+> harness + la misma cosa como **skill de Claude Code** (`/agentic-protocol`) con un **chequeo de cierre
+> ejecutable**. Commits `a1c77a9` y `6fda6bc`, pusheados. **No se tocó nada del framework** → suite intacta
+> (773/773 de S35), ruff limpio, árbol limpio y en sync.
+> **▶️ PRÓXIMO (sesión nueva, decidido con el usuario): APLICAR ESE PROTOCOLO A ESTE PROYECTO** — es su prueba
+> de fuego, y este repo tiene justo los dos fallos que dice curar: (1) **partir este `ESTADO_ACTUAL.md`**
+> (1031 líneas) en un handoff de ≤120 líneas, volcando lo viejo a `HISTORIAL.md`; (2) montar la **cola de
+> validación** con todo lo que hay ⏳ pendiente de probar en LFS (ley nueva del ACC de S35, W4, los 4 fixes de la
+> Fase 7 + el guard) — hoy está disperso en prosa y nadie sabe qué está realmente probado; (3) instalar
+> `close_check.py`. Detalle en `PLAN.md § Tooling de trabajo`.
+> **Después: Fase 8 — REDISEÑO DE LAS INTERSECCIONES.** El usuario las probó: *"funcionan, pero son difíciles de
+> crear y su funcionamiento es regular"*, y trae un **diseño propio** (línea de detención + tiempo en el RoadLink;
+> zonas por tiempo en vez de por área). Semilla de diseño y preguntas abiertas en `PLAN.md § Fase 8`; falta que el
+> usuario explique **cómo quiere mapearlo en la UI**.
+>
+> _(S35, contexto previo: **3 bugs VIEJOS del radar con HUMANOS** (el stop-and-go) — ✅ **VALIDADOS en LFS**
+> ("desaparecieron todos los tirones") — y **nueva ley de seguimiento del ACC** (al ir bloqueado se IGUALA al de
+> delante, no se reduce; hueco mínimo mayor), ⏳ **pendiente de validar**.)_
 >
 > _(S34, contexto previo: Fase 7 · fix (3) — el radar perdía coches en la transición road↔roadlink (`3a628c3`)
 > + guard de no-adelantar-dentro-de-un-cruce (`8af862d`) → **Fase 7 completa en código, 5/5 fixes**.)_
@@ -47,6 +58,24 @@
 > `git pull` al arrancar y `git push` al cerrar (permite continuar desde otro dispositivo).
 
 ## Estado
+
+**S36 (2026-07-13) — META: protocolo agéntico portable (`.meta/agentic-protocol/`). No toca el proyecto.**
+A petición del usuario, sesión **ajena al framework**: destilar *cómo se trabaja aquí* en algo que pueda darse a
+**cualquier IA agéntica en cualquier proyecto**. Diagnóstico del sistema actual: funciona porque cura los **tres
+fallos estructurales** de un agente — **amnesia** (el contexto vive en archivos versionados), **ceguera** (el
+`MODUS §4` declara "no puedo ejecutar LFS" → el humano es el oráculo de verificación) y **temeridad** (red de
+caracterización antes de tocar lógica frágil). Y cuatro agujeros detectados **en nuestro propio sistema**, que el
+protocolo corrige: (1) el handoff **no tiene tope** y se ha vuelto un segundo historial (1031 líneas, se lee
+entera **cada sesión**); (2) lo ⏳ pendiente de validar en LFS **está disperso en prosa** → no hay cola; (3) el
+"hecho" no es comprobable por máquina; (4) no está escrito **qué NO se lee al arrancar** (esta misma sesión gastó
+40k tokens leyendo medio `ESTADO_ACTUAL.md`). **Entregado:** `AGENTIC_PROTOCOL.md` (maestro agnóstico: instalador
+ejecutado por la IA — idioma → auditoría → entrevista → generación → enganche → entrega de las frases; reglas;
+plantillas) y `skill/agentic-protocol/` (skill de Claude Code, ya instalada en `~/.claude/skills/` de este
+equipo). **Principio rector nuevo (del usuario):** los archivos de contexto tienen **un solo escritor, la IA** —
+el humano **nunca los edita**, solo habla y los lee para auditar. **Único capaz de verificar de verdad:**
+`close_check.py` (árbol limpio, todo pusheado, tope de `STATE.md`, próximo paso y cola de validación presentes) —
+probado contra este repo, y **falló señalando exactamente lo que denuncia** (1031 > 120 líneas; sin cola de
+validación). Commits `a1c77a9`, `6fda6bc`. **No requiere validación en LFS** (no toca código).
 
 **S35 (2026-07-13) — 3 bugs VIEJOS del radar con HUMANOS (el stop-and-go). ✅ VALIDADO en LFS.** Probando lo de
 S34, el usuario reportó que la IA iba **"a saltos: ahora sí, o no... aún no era"**, hasta **pararse del todo y

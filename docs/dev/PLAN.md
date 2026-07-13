@@ -525,6 +525,29 @@ orquestadores con `time.time()` siguen sin red → cubrir antes de tocarlos).
       evaluar a/b/c): skills de proyecto en `.claude/skills/<nombre>/SKILL.md` versionadas por git
       (ya des-ignoradas); una skill por flujo repetible; `description` afinada para que se dispare
       sola cuando toca; revisarlas si el código al que apuntan cambia mucho.
+- [x] **(S36) Protocolo agéntico portable** — se destiló el sistema de trabajo de este repo en
+      `.meta/agentic-protocol/` (**ajeno al proyecto**): `AGENTIC_PROTOCOL.md` (prompt maestro
+      agnóstico de harness: instalador ejecutado por la IA + reglas + plantillas) y
+      `skill/agentic-protocol/` (skill de Claude Code `/agentic-protocol`, instalada en
+      `~/.claude/skills/`, con `close_check.py`). Resuelve las candidatas (a) y (b) de arriba de
+      otra forma: el arranque/cierre no son skills, viven en el enganche del `CLAUDE.md` (una sola
+      fuente de verdad, y funciona también desde otra IA). Commits `a1c77a9`, `6fda6bc`.
+
+### ▶️ PRÓXIMO PASO (S37, sesión nueva) — aplicar el protocolo a ESTE proyecto
+
+Su prueba de fuego: el repo tiene justo los dos fallos que el protocolo dice curar.
+
+- [ ] **Partir `ESTADO_ACTUAL.md`** (**1031 líneas**, se lee entera en CADA sesión) en un handoff
+      de **≤120 líneas** — estado, cola de validación, próximo paso, lo que quedó a medias — y
+      **volcar el resto a `HISTORIAL.md`** (que ya es append-only y del que solo se lee la última
+      entrada). Sin perder nada.
+- [ ] **Montar la cola de validación** con todo lo ⏳ pendiente de probar en LFS, hoy disperso en
+      prosa: ley nueva del ACC (S35), **W4**, los 4 fixes de la Fase 7 + el guard. Una lista con
+      casillas que **solo cierra el usuario**.
+- [ ] **Instalar `close_check.py`** en `scripts/` y añadirlo al protocolo de cierre del
+      `MODUS_OPERANDI` (§2) — convierte tres reglas en un chequeo real.
+- [ ] **Escribir el presupuesto de lectura por sesión** en `MODUS_OPERANDI`/`00_INDEX` (qué se lee
+      entero, qué en parte y qué NO se lee al arrancar).
 
 ---
 

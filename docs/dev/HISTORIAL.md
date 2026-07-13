@@ -5,6 +5,71 @@
 
 ---
 
+## S36 — 2026-07-13 — META: protocolo agéntico portable (prompt maestro + skill). No toca el proyecto
+
+**Contexto:** el usuario pidió una sesión **ajena al framework**: resumir por qué este proyecto funciona bien con
+IAs agénticas y destilarlo en un **prompt maestro configurable** aplicable a cualquier proyecto con cualquier IA.
+Se arrancó igualmente con el protocolo de inicio (rama, `pull`, lectura de `docs/dev/`) y **no se tocó ni una
+línea del framework**.
+
+**Diagnóstico del sistema actual (lo que se entregó como análisis).** Funciona porque cura los **tres fallos
+estructurales** de un agente: **amnesia** → el contexto vive en archivos versionados (`docs/dev/`, sincronizados
+por GitHub); **ceguera** → `MODUS §4` declara "no puedo ejecutar LFS", así que el humano es el **oráculo de
+verificación** y los cambios se entregan con nota de "qué probar" y marca ⏳/✅; **temeridad** → red de
+caracterización antes de tocar lógica frágil, extracción segura, medir antes de arreglar. Piezas secundarias que
+valen más de lo que parecen: **IDs estables** (`Pn`/`Wn`/`Sn`), la regla de **marcar siempre la opción
+recomendada**, y la lista de **trampas del entorno** (mojibake de `Get-Content|Set-Content`, mirar qué es un
+proceso antes de matarlo).
+
+**Cuatro agujeros hallados en NUESTRO propio sistema** (y corregidos en el protocolo): (1) el handoff **no tiene
+tope** y se ha convertido en un segundo historial — `ESTADO_ACTUAL.md` son **1031 líneas** que se leen **cada
+sesión**, con el próximo paso enterrado; (2) lo **pendiente de validar en LFS está en prosa**, disperso → nadie
+sabe qué está realmente probado; (3) el "hecho" **no es comprobable por máquina**; (4) **no está escrito qué NO se
+lee al arrancar** — esta misma sesión gastó ~40k tokens leyendo medio `ESTADO_ACTUAL.md` porque nada decía dónde
+parar.
+
+**Entregado (`.meta/agentic-protocol/`, carpeta deliberadamente ajena al proyecto):**
+- **`AGENTIC_PROTOCOL.md`** — el maestro, **agnóstico de harness**. Tres capas: **instalador** (que ejecuta la
+  IA: idioma → auditoría del repo → modo FRESH/ADOPT/UPGRADE → entrevista → generación → enganche → entrega de
+  las frases), **reglas** (§0–§15) y **plantillas**. Reglas nuevas respecto a lo que ya hacíamos: tope duro del
+  handoff, **cola de validación** que solo cierra el usuario, definición de "hecho" con salida real pegada,
+  prohibición de debilitar tests, verificar la red **en ROJO**, cambio arriesgado en **commit aparte**, y
+  **presupuesto de lectura por sesión** (qué se lee entero, qué en parte y qué **no** se lee).
+- **`skill/agentic-protocol/`** — lo mismo como **skill de Claude Code** (`/agentic-protocol`), con revelación
+  progresiva (`references/` se leen solo al escribir los archivos) y **`scripts/close_check.py`**: el chequeo de
+  cierre **ejecutable** (árbol limpio, todo pusheado, tope de `STATE.md`, próximo paso y cola presentes).
+  Instalada en `~/.claude/skills/` de este equipo.
+
+**Decisiones (con su porqué):**
+- **Protocolo en inglés, idioma de trabajo como parámetro** (`working_language`). Razón: robustez con modelos
+  pequeños, ~20% menos tokens por sesión y vocabulario nativo del oficio; el agente igualmente habla, commitea y
+  documenta en español. Es el mismo patrón que ya usa el repo (core en inglés, docs en español).
+- **Un solo escritor: la IA** (corrección del usuario a la v1, que era una plantilla para rellenar a mano). El
+  humano **nunca edita** los archivos generados: responde en el chat y los lee para auditar. Contrapartida que se
+  fijó como regla: los archivos deben quedar **legibles por un humano** (su idioma, prosa) — si no, se pierde la
+  única supervisión que tiene.
+- **Skill = solo instalación** (no `/arranca` ni `/cierra`): el arranque y el cierre viven en el enganche del
+  `CLAUDE.md`, una sola fuente de verdad que además funciona desde otra IA o desde una máquina sin la skill.
+- **Con script de chequeo** frente a solo prosa: una regla que un script verifica deja de ser una promesa. Es la
+  única capacidad que el `.md` portable no puede dar.
+
+**Verificación:** `close_check.py` probado contra este repo — y **falló señalando justo lo que denuncia**
+(`STATE.md cap: 1031 > 120`, `validation queue: no checklist items`). Probado también el camino de error. Salida
+forzada a ASCII porque la consola de Windows destrozaba los guiones largos. **No se ejecutó `pytest`: no se tocó
+código** (suite intacta de S35, 773/773).
+
+**Aviso operativo:** `Copy-Item -Recurse` con destino una carpeta que **ya existe** **aplana** la estructura
+(copia el contenido, no la carpeta) — pasó al instalar la skill; hay que pasar `-Destination` con la ruta final
+completa. Corregido también en el comando documentado.
+
+**Commits:** `a1c77a9` (protocolo + skill), `6fda6bc` (presupuesto de lectura por sesión). Pusheados.
+
+**Próximo (decidido con el usuario): sesión nueva para APLICAR el protocolo a este proyecto** — partir
+`ESTADO_ACTUAL.md` en handoff ≤120 líneas + volcado a `HISTORIAL.md`, montar la **cola de validación** con lo ⏳
+pendiente en LFS, e instalar `close_check.py`. Es su prueba de fuego.
+
+---
+
 ## S35 — 2026-07-13 — Validación en LFS: 3 bugs del radar con HUMANOS (stop-and-go) + nueva ley de seguimiento del ACC + semilla de la Fase 8
 
 **Contexto:** continuación de S34. El usuario probó en LFS y reportó que la IA iba **"a saltos: ahora sí, o
