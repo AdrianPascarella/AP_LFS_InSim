@@ -1,15 +1,16 @@
 # 📍 Estado actual
 
 > Actualizado: **2026-07-13** — **S38**: **diseño de la Fase 8 CERRADO con el usuario** (por
-> selector de opciones — método ahora obligatorio para preguntar, MODUS §6): cesión colgada del
-> RoadLink (línea de detención + T + zona opcional por referencia), quién-cede = quien tiene
-> línea, zona = punto+T sin radio, migrar-y-retirar `priority_rules` YA. Decisiones y checklist
-> de bloques 8.1–8.7 en `PLAN.md § Fase 8`.
+> selector de opciones — método ahora obligatorio para preguntar, MODUS §6) y **bloques 8.1 y
+> 8.2 implementados en verde (795/795)**: modelo de datos de cesión (`yield_*` en `RoadLink`,
+> punto+T en zona, costuras de persistencia testables en `map_recorder.py`) y predicados puros
+> (`traffic/yielding.py`). Decisiones y checklist en `PLAN.md § Fase 8`.
 >
-> **▶️ PRÓXIMO: implementar la Fase 8 por bloques, red primero.** Bloque **8.1** (modelo de
-> datos: cesión en `RoadLink` — ⚠️ ya existe `time`, usar `yield_*` — + zona punto+T + JSON;
-> South City debe cargar intacto) y **8.2** (predicados puros de tiempo-al-punto / línea
-> cruzada). Para 8.4 (UI) usar la skill `ai-control-map-ui`.
+> **▶️ PRÓXIMO: bloque 8.3 — conducta.** Integrar la cesión en `traffic/` (orquestador +
+> `zones.py`) componiendo los predicados de `traffic/yielding.py`: frenar antes de la línea
+> (reusar la histéresis del fix (5)), punto de compromiso, y RETIRAR el modelo viejo
+> (zona-área + `priority_rules`). ⚠️ El orquestador casi no tiene red (2 tests, S34):
+> **caracterizar ANTES de tocar** (MODUS §3). Después: 8.4 UI (skill `ai-control-map-ui`).
 
 **Rama de trabajo: `refactor/estabilizacion`** (`main` intacta hasta el merge). Sync por GitHub:
 `git pull` al arrancar, commit + `git push` al cerrar (si el push se cuelga: MODUS §7 y la memoria
@@ -23,7 +24,8 @@ del equipo `git-push-gcm-workaround`).
 - **Fase 7 (robustez de conducción freeroam) COMPLETA EN CÓDIGO** (S34): los 5 fixes hechos; el
   (2) validado; (1)(3)(4)(5) + el guard están en la cola de abajo. Sin trabajo offline pendiente.
 - **Fase 8 (intersecciones) es la fase activa; diseño cerrado en S38** (el modelo viejo de zona +
-  `priority_rules` "funciona, pero regular" → se retira). Implementación por bloques 8.1–8.7
+  `priority_rules` "funciona, pero regular" → se retira). Bloques **8.1 y 8.2 hechos** (S38);
+  quedan 8.3 conducta → 8.4 UI → 8.5 render → 8.6 migración → 8.7 validación
   (decisiones + checklist en `PLAN.md § Fase 8`), red de tests primero en cada bloque.
 - **Merge a `main` + publish a PyPI esperan** a Fase 8 validada y a la cola de abajo (criterios en
   `PLAN.md § Merge`). PyPI está **preparado sin publicar** (S17; runbook `PUBLICACION.md`).
@@ -75,7 +77,7 @@ Cerradas (referencia):
 
 ## Notas operativas
 
-- Tests: `.venv\Scripts\python.exe -m pytest -q` (**773/773**). Python 3.9 se verifica vía CI:
+- Tests: `.venv\Scripts\python.exe -m pytest -q` (**795/795**). Python 3.9 se verifica vía CI:
   `gh run list --branch refactor/estabilizacion` (en este equipo no hay `.venv39`).
 - Cierre de sesión: MODUS §2 — el último paso es `.venv\Scripts\python.exe scripts\close_check.py`
   (debe dar PASS) y pegar su salida.

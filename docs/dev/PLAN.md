@@ -707,10 +707,10 @@ conductor*, no el borde de un círculo, y regala el **punto de compromiso**.
 
 **Checklist de implementación (red de tests PRIMERO en cada bloque):**
 
-- [ ] **8.1 Modelo de datos** — cesión en `RoadLink` + zona punto+T + (de)serialización JSON;
-      test de que South City carga intacto (round-trip).
-- [ ] **8.2 Predicados puros** — tiempo-al-punto, "¿cruzó la línea?", selección de vigilados
-      (acercándose / ya pasó / detrás). Módulo aparte o `geometry.py`; tests unitarios primero.
+- [x] **8.1 Modelo de datos** — cesión en `RoadLink` + zona punto+T + (de)serialización JSON;
+      test de que South City carga intacto (round-trip). ✅ S38 (`test_map_persistencia.py`).
+- [x] **8.2 Predicados puros** — tiempo-al-punto, "¿cruzó la línea?", selección de vigilados
+      (acercándose / ya pasó / detrás). ✅ S38 (`traffic/yielding.py` + `test_yielding.py`).
 - [ ] **8.3 Conducta** — integrar en `traffic/` (orquestador + `zones.py`): frenar antes de la
       línea (reusar la histéresis del fix (5)), punto de compromiso; **retirar** el código de
       zona-área + `priority_rules`.

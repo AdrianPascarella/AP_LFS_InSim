@@ -5,6 +5,43 @@
 
 ---
 
+## S38 — 2026-07-13 — Fase 8: diseño cerrado con el usuario + bloques 8.1 (modelo de datos) y 8.2 (predicados puros)
+
+**Contexto:** la sesión de DISEÑO que pedía el PLAN. Novedad de método: el usuario pidió que las preguntas
+se le hagan con el **selector interactivo de opciones** siempre que sea posible — instrucción añadida a
+`MODUS §6` y usada durante toda la sesión (3 tandas de preguntas; aceptó todas las recomendadas salvo el
+destino del modelo viejo).
+
+**Diseño (decidido por selector; detalle en `PLAN § Fase 8`):** la cesión cuelga del **RoadLink** (línea de
+detención grabada por puntos + T con default global y override + **zona opcional por referencia explícita**);
+**quién cede = quien tiene línea** (la zona no decide prioridades, solo amplía qué se vigila — desaparecen
+las tablas de pares); **zona nueva = punto de conflicto + T** (sin radio); se vigila el `to_road` acercándose
+al punto de unión y a los que ya cruzan (parado ⇒ ∞ ⇒ se ignora; pasado/detrás excluidos), con **punto de
+compromiso** al cruzar la línea. **Modelo viejo: migrar y retirar YA** (decisión del usuario, contra la
+convivencia recomendada; barato — la única zona real es `test1`, 2 pares). UI: el campo cesión nace vacío,
+su editor abre un **grabador de puntos** (default SIEMPRE manual aunque el "Auto" general esté activo) y
+pide T al terminar; visualización en render + Elementos.
+
+**Hecho (código):**
+- **8.1 Modelo de datos:** `yield_line`/`yield_time_s`/`yield_zone_id` + `has_yield` en `RoadLink`
+  (⚠️ `time` ya existía y es otra cosa); `yield_time_s` en `IntersectionZone` (área+pares marcados legacy
+  hasta 8.3/8.6). Extracción de costuras en `map_recorder.py`: `_serialize_map_data` / `_load_map_from_data`
+  / `_json_map_default` / `_graph_item_from_json` — este último compartido por carga y merge (elimina el
+  bucle de reconstrucción duplicado). Red nueva `test_map_persistencia.py` (5): South City
+  (222/328/28 + `test1`) carga INTACTO, round-trip de cesión, defaults en mapas viejos.
+- **8.2 Predicados puros:** `traffic/yielding.py` — `time_to_point_s` (**parado ⇒ inf**, cambio deliberado
+  frente al suelo de 0.5 m/s del modelo viejo), `forward_arc_dist_m` (lineal: `None` si ya pasó; circular:
+  envuelve por el cierre), `has_crossed_line` (compromiso estricto; cuerda 1º→último), `is_heading_towards`
+  (misma convención LFS que `zones.py`), `DEFAULT_YIELD_TIME_S = 4.0`. Red `test_yielding.py` (17).
+
+**Verificación:** ambas redes verificadas **EN ROJO** antes de implementar; suite **795/795** (34 s);
+ruff limpio; `lfs-insim list` carga los 4 insims. El 8.3 (orquestador, casi sin red) se dejó a propósito
+para una sesión fresca.
+
+**Commits:** `docs(dev)` diseño+MODUS · `feat(ai_control)` 8.1 · `feat(ai_control)` 8.2 · `docs(dev)` cierre.
+
+---
+
 ## S37 — 2026-07-13 — Aplicación del protocolo agéntico a ESTE repo (handoff, cola, close_check, presupuesto)
 
 **Contexto:** la prueba de fuego del protocolo destilado en S36, decidida con el usuario: este repo tenía
