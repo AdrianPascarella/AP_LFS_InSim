@@ -1,27 +1,57 @@
 # 📍 Estado actual
 
-> Actualizado: **2026-07-12** — S33: **Fase 7 — fix (4) `is_closed` + fix (1) flip de enlace (red primero;
-> ⏳ pendientes de validar en LFS).** Se retomó la Fase 7 (3 bugs de conducción freeroam) y se abordaron dos
-> por impacto; el fix (3) queda para sesión nueva (decisión con el usuario: es el más pesado). **Fix (4)
-> (`d968abf`):** `traffic/overtake.py::_find_valid_overtake_lane` no comprobaba `is_closed` → la IA adelantaba
-> metiéndose en un carril cerrado. Auditados TODOS los consumidores de `is_closed` (era el único hueco de
-> conducción; radar y editor NO filtran a propósito). Fix con helper centralizado `MapRecorder.is_road_usable`
-> (existe ∧ no cerrada) en overtake + Filtro A de `_calculate_next_link`. Red: `test_carril_vecino_cerrado_no_se_usa`
-> (rojo→verde). Suite 734. **Fix (1) (`1a8eaac`):** en dos salidas RoadLink muy juntas, la IA cambiaba de
-> `next_link` (y de intermitente) en el último momento. Causa: al llegar al final de la vía (`fin_de_geometria`)
-> un re-plan **en la misma vía** re-tiraba `random.choice`; la asimetría es geométrica (culling de alcance), no
-> RHT/LHT (el intermitente de RoadLink sale de `link.indicators`). Fix **pegajosa-si-válida** (elegido por el
-> usuario): `_choose_link` conserva el enlace comprometido si sigue válido; `_plan_next_link` lo pasa como
-> `committed_link_id` en el re-plan de misma vía. Red: 2 tests de pegajosidad + 1 de wiring (rojo→verde). Suite
-> 737. Ambos **solo insim de ejemplo → no tocan la API pública**; como son conducta, **⏳ requieren validación
-> en LFS** (se acumulan con W4 y el fix (3)). **Próximo:** **fix (3)** — radar olvida coches en la transición
-> road→roadlink (extender la red de equivalencia del radar de S28 + matching topológico `current→next→to_road`).
-> Árbol limpio y en sync con `origin` tras los commits de cierre de S33.
+> Actualizado: **2026-07-12/13** — S33 (sesión larga): **Fase 7 — fix (4) `is_closed` + fix (1) flip de enlace
+> + fix del ceda-el-paso tembloroso; editor de reglas de prioridad de zonas en la UI (picker); y el usuario
+> creó la PRIMERA intersección → W4 desbloqueada. Todo red primero; ⏳ pendiente de validar en LFS.**
+> **Fix (4) (`d968abf`):** `overtake.py::_find_valid_overtake_lane` no comprobaba `is_closed` → la IA adelantaba
+> por carril cerrado. Helper centralizado `MapRecorder.is_road_usable` en overtake + Filtro A. **Fix (1)
+> (`1a8eaac`):** flip de intermitente en salidas RoadLink muy juntas — un re-plan en la misma vía
+> (`fin_de_geometria`) re-tiraba `random.choice`; fix **pegajosa-si-válida** (`_choose_link` + `committed_link_id`
+> en `_plan_next_link`). **Editor de prioridad de zonas (`a29fde3`→`5f9af3d`):** el detalle de una Zona en
+> Elementos ahora deja editar `priority_rules` (antes solo por `!map set`); tras feedback del usuario, el alta usa
+> el **mismo picker de vías** que crear un RoadLink/LatLink (slots Prio/Cede + lista) en vez de teclear ids.
+> **Fix ceda-el-paso tembloroso (`73bbae7`):** en la intersección la IA hacía "gas a fondo mientras metía el
+> freno de mano repetidamente" — la decisión de ceder no tenía histéresis y parpadeaba; como `speed_request=0`
+> dispara el aparcado (freno de mano + motor OFF) y `>0` el gas a fondo, oscilaba a ~100 Hz. Fix: histéresis
+> `_should_keep_yielding` + `mode._yield_hold_until` (1 s tras la última detección). Solo `orchestrator.py`, no
+> toca la física. **El usuario creó la primera intersección** (`test1` en South City: cápsula + `priority_rules`
+> `HAVEN_LANE_S22_a/b` > `SOUTH_CITY_STATION_s2`; commit `12c29a4`) → **W4 ya NO está bloqueada por `zones: 0`**.
+> Suite **749/749**; ruff limpio; no tocan la API pública. **Próximo:** (a) **validar en LFS** el ceda-el-paso
+> (W4) + los fixes (4)/(1)/histéresis; (b) **fix (3)** — radar olvida coches en la transición road→roadlink
+> (extender la red de equivalencia del radar de S28 + matching `current→next→to_road`). Árbol limpio y en sync
+> con `origin` tras el cierre de S33.
 > **Rama de trabajo: `refactor/estabilizacion`.** Todo el refactor ocurre aquí; `main`
 > queda intacta hasta el merge final (cuando el proyecto esté estable). **Sync por GitHub:**
 > `git pull` al arrancar y `git push` al cerrar (permite continuar desde otro dispositivo).
 
 ## Estado
+
+**S33 cont. (2026-07-13) — Fix del ceda-el-paso tembloroso (histéresis del yield; ⏳ validar en LFS).**
+Probando la primera intersección, el usuario reportó que la IA entraba en "acelerar a fondo mientras mete el
+freno de mano repetidamente". **Diagnóstico (rastreado en el código):** al ceder, `velocidad_final` baja a 0 →
+`behavior.speed_request = 0.0` (`orchestrator.py:490`); la física (`physics.py:107‑119`) trata `speed_request==0`
+como **aparcar** → `HANDBRAKE=MAX` + `IGNITION=OFF`; y `>0` dispara encendido + gas a fondo desde parado. La
+decisión de ceder (`orchestrator.py`) **no tenía histéresis** y se soltaba al primer tick sin prioritario
+detectado → el `speed_request` parpadeaba 0↔base y con él la física oscilaba entre aparcar y acelerar a ~100 Hz.
+**Fix (opción elegida por el usuario: histéresis, sin tocar la física):** predicado puro
+`_should_keep_yielding(detected, hold_until, now)` + `mode._yield_hold_until`; detectar un prioritario renueva el
+hold (`YIELD_HOLD_S=1.0 s`) y sin detección se sigue cediendo hasta que expira → un dropout de 1 tick ya no
+suelta el freno. Descartada (opción B, para más adelante): que la parada temporal NO apague motor/freno de mano
+(toca la física de TODAS las paradas → más validación). Red primero: `TestShouldKeepYielding` (3). Commit
+`73bbae7`. Suite **749/749**.
+
+**S33 cont. (2026-07-12/13) — Editor de reglas de prioridad de zonas en la UI + primera intersección (W4).**
+A raíz de que el usuario no podía asignar vías prioritarias al crear una zona (la UI solo exponía `zone_id`/
+`nodes`/`radius_m`; las `priority_rules` solo se fijaban por `!map set <zona> priority_rules add;A,B`), se añadió
+un **editor de `priority_rules` en el detalle de una Zona** (pestaña Elementos). Primera versión (`a29fde3`) con
+dos TypeIn; **tras feedback del usuario** se rehízo (`5f9af3d`) para que el alta use el **mismo picker de vías**
+que crear un RoadLink/LatLink: botón "+ Anadir regla" → sub-pantalla con slots "-> Prio"/"-> Cede" + lista
+paginada de vías (elegir de la lista elimina typos → validación = "dos vías distintas"), + la lista de reglas con
+su Quitar. Reutiliza el picker (`_ui_road_picker_*`, `_UI_CID_TI1/TI2`) y `_cmd_set` (add/del) del recorder. Red
+primero: `test_map_ui_zone_priority.py` (9 tests). Se usó la skill `ai-control-map-ui`. **El usuario creó la
+PRIMERA intersección del proyecto** (`test1` en South City: cápsula 2 nodos + reglas `HAVEN_LANE_S22_a/b` >
+`SOUTH_CITY_STATION_s2`; protegida en `12c29a4`, antes hubo `A13_MonumentServices` en `638698e`) → **W4 ya NO
+está bloqueada por `zones: 0`.** Solo UI del insim de ejemplo → no toca la API pública.
 
 **S33 (2026-07-12) — Fase 7: fix (4) `is_closed` + fix (1) flip de enlace (red primero; ⏳ validar en LFS).**
 Se retomó la Fase 7 (3 bugs de conducción freeroam del handoff de S31/S32) y se abordaron **(4) y (1)** por
@@ -826,11 +856,14 @@ bit-idéntica) + red de equivalencia (fuzz grid vs. lineal) + `ids_within` en el
 (`_is_dead_end_stop` puro + `mode._dead_end_since`, 4 s → `_cmd_spec`); red `TestIsDeadEndStop` (6).
 Suite 697. **Pendiente validación en LFS.** Los otros 3 bugs de conducción → **Fase 7** (ver PLAN).
 
-**Empezar AQUÍ la próxima sesión — IMPLEMENTAR el fix (3) de la Fase 7 (fix (4) y (1) ya hechos en S33):**
+**Empezar AQUÍ la próxima sesión — dos frentes: (A) validar en LFS lo acumulado (W4 desbloqueada) y (B)
+implementar el fix (3) de la Fase 7. Empezar por lo que haya: si hay LFS a mano, validar; si no, fix (3).**
 
-**Frente principal: fix (3) de la Fase 7 (offline, red primero).** Fase 6 (pre-publish) completa salvo W4.
-De los 3 bugs de conducción freeroam, **(4) `is_closed` y (1) flip de enlace se hicieron en S33** (commits
-`d968abf` y `1a8eaac`; ⏳ pendientes de validar en LFS). **Queda el fix (3):** el radar
+**Frente A — validación en LFS (ahora POSIBLE: ya existe la intersección `test1`).** Con el usuario habiendo
+creado la primera zona con `priority_rules`, **W4 dejó de estar bloqueada**. Pendiente de que el usuario valide
+en el juego (todo es conducta, no se da por bueno sin verlo). Ver la lista de abajo.
+
+**Frente B — fix (3) de la Fase 7 (offline, red primero).** El único fix de conducción que queda. El radar
 (`traffic/radar.py::_scan_lane_ahead`) acota los candidatos a la geometría de `mode.current_id` → al
 transicionar road→roadlink **olvida** a los coches que aún tenía delante en el road que deja (los choca), y
 al **entrar** a un road por un roadlink no ve a los que ya circulan dentro. Arreglo probable: durante la
@@ -840,12 +873,17 @@ pesado: **extender la red de equivalencia del radar de S28** (fuzz grid vs. line
 primero** (MODUS §3). No toca la API pública. **Una vez hecho, el usuario lo confirma OBLIGATORIAMENTE en
 LFS** (es conducta). Ver `PLAN.md § Fase 7`, ítem (3).
 
-**Pendiente de validar en LFS (se acumula para la próxima sesión de juego, mismo gate que W4):**
-- **W4** — crear una **intersección** (hoy `zones: 0` en todos los mapas) y validar el **ceda-el-paso del
-  ACC** (S21) → desbloquea el gate del merge.
-- **Fix (4) y fix (1) de la Fase 7 (S33)** — validar que la IA ya no adelanta por vías cerradas y que el
-  intermitente no hace flip en salidas juntas.
-- **Fix (3) de la Fase 7** una vez implementado (ver arriba). *(Apunta, S31: ✅ ya validado en LFS.)*
+**Pendiente de validar en LFS (todo junto en la próxima sesión de juego; W4 ya desbloqueada por `test1`):**
+- **W4 / ceda-el-paso del ACC (S21) + histéresis (S33):** en la intersección `test1`, que la IA de
+  `SOUTH_CITY_STATION_s2` **ceda** a las prioritarias `HAVEN_LANE_S22_a/b` y —tras el fix `73bbae7`— que lo
+  haga **sin el temblor** de gas/freno de mano, arrancando limpio cuando pase el prioritario. Es el gate del merge.
+- **Fix (4) y fix (1) de la Fase 7 (S33)** — que la IA ya no adelante por vías cerradas y que el intermitente
+  no haga flip en salidas juntas.
+- **Editor de prioridad de zonas (UI, S33)** — que el picker "+ Anadir regla" (Elementos → Zona) añada/quite
+  reglas bien (ya lo usó para crear `test1`; confirmar Quitar/Cancelar).
+- **Fix (3) de la Fase 7** una vez implementado (ver Frente B). *(Apunta, S31: ✅ ya validado en LFS.)*
+- Si tras ceder aún hay un tirón al arrancar → considerar la **opción B** del fix del ceda-el-paso (parada
+  temporal que no apague motor/freno de mano; toca `physics.py`, más validación).
 
 **Backlog offline (opcional, si no hay LFS a mano; no bloquea el merge):**
 1. **Desacople profundo de `base.py` (resto de P4):** reducir las 20 llamadas cross-mixin reales / romper
@@ -875,9 +913,10 @@ LFS** (es conducta). Ver `PLAN.md § Fase 7`, ítem (3).
   robusto se hacen **antes** del merge/publish (Fase 6 re-secuenciada; ver Fase activa y PLAN).
   Todo en la rama; un solo merge a `main` cuando esté publish-ready + validado, luego publish. No
   es un bloqueo: es el plan de trabajo.
-- **W4 (validación en LFS del ceda-el-paso del ACC, S21): BLOQUEADA.** Necesita una **intersección**
-  creada y ningún mapa tiene (`zones: 0`, incluido el South City ampliado). Es el gate del merge:
-  cuando el usuario cree una intersección y valide el ceda-el-paso (+ smoke test), se desbloquea.
+- **W4 (validación en LFS del ceda-el-paso del ACC, S21): DESBLOQUEADA en S33.** El usuario creó la
+  primera intersección (`test1` en South City, con `priority_rules`) — ya no hay `zones: 0`. Queda solo
+  **validar en el juego** el ceda-el-paso (+ el fix de histéresis `73bbae7`); cuando el usuario lo confirme,
+  se cierra el gate del merge. No es un bloqueo técnico: es trabajo de validación pendiente.
 
 ## Notas para la próxima sesión
 

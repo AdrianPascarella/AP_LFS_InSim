@@ -39,10 +39,49 @@ misma vía (rama `else`); el cruce de enlace (vía nueva) NO lo pasa (re-plan fr
 tests de pegajosidad en `_calculate_next_link` + 1 de wiring en `_plan_next_link` (el de wiring mostraba el
 flip `R1->R2 ⇒ R1->R3`; rojo→verde). Suite 737/737.
 
-**Verificación (ambos):** suite **737/737** (733 +1 +3); `ruff check` + `format --check` limpios en lo
+**Verificación (fixes 4 y 1):** suite **737/737** (733 +1 +3); `ruff check` + `format --check` limpios en lo
 tocado; `lfs-insim list` OK. Solo lógica del insim de ejemplo → **no tocan la API pública**. Como son
-**conducta**, ⏳ **requieren validación en LFS** (se acumulan con W4 y el fix (3) para la próxima sesión de
-juego). Cierre de sesión: docs actualizados + push.
+**conducta**, ⏳ **requieren validación en LFS**.
+
+**Continuación de S33 (la sesión siguió; el usuario preguntó cómo asignar vías prioritarias a una zona).**
+
+**Editor de reglas de prioridad de zonas en la UI (`a29fde3` → `5f9af3d`).** El usuario no podía asignar
+prioritarias al crear una zona: el detalle de una Zona en Elementos solo exponía `zone_id`/`nodes`/`radius_m`;
+las `priority_rules` solo se fijaban por chat (`!map set <zona> priority_rules add;A,B`). Se añadió un editor en
+ese detalle. **Primera versión (`a29fde3`):** dos TypeIn (prioritaria/cede) + Anadir, con validación de que las
+vías existan. **Tras feedback del usuario** ("que se seleccionen como al crear un RoadLink/LatLink") se rehízo
+(`5f9af3d`): el botón "+ Anadir regla" abre una **sub-pantalla con el mismo picker de vías** — slots
+"-> Prio"/"-> Cede", lista paginada, se elige de la lista (auto-avanza de slot), Confirmar/Cancelar; la lista de
+reglas queda con su Quitar. Reutiliza `_ui_road_picker_*`, `_UI_CID_TI1/TI2` y `_cmd_set` (add/del) del recorder;
+estado `_ui_zone_prio_adding` reseteado al abrir otro detalle o cambiar de pestaña. Se **usó la skill de proyecto
+`ai-control-map-ui`** para orientarse. Red primero: `test_map_ui_zone_priority.py` (9 tests, reescritos a la UX
+del picker). Solo UI del insim de ejemplo → no toca la API pública.
+
+**Primera intersección del proyecto → W4 desbloqueada.** El usuario, en LFS, creó la primera zona con reglas.
+Llegó por el árbol de trabajo dos veces (protección §1.2): `A13_MonumentServices` (`638698e`) y luego `test1`
+(`12c29a4`: cápsula 2 nodos + `priority_rules` `HAVEN_LANE_S22_a/b` > `SOUTH_CITY_STATION_s2`). **W4 ya no está
+bloqueada por `zones: 0`** — queda validarla en el juego.
+
+**Duda de diseño resuelta (sin código):** ¿el privilegio/restricción de zona se mantiene mientras se recorre un
+roadlink? **Sí para IAs:** al entrar a un roadlink, `navigation.py` cambia `current_id`/`current_type` pero NO
+`current_road_id` (solo se actualiza a `to_road_id` en `fin_de_geometria`); y el ceda-el-paso se apoya en
+`current_road_id` (`orchestrator.py:310`/`:366`). **Matiz:** un coche HUMANO se localiza geométricamente
+(`get_location_context`), no por id conservado → aproximado. (Posible mejora futura.)
+
+**Fix del ceda-el-paso tembloroso (`73bbae7`).** Probando `test1`, el usuario reportó que la IA "acelera a fondo
+mientras mete el freno de mano repetidamente". **Diagnóstico:** al ceder, `speed_request=0` → la física
+(`physics.py:107‑119`) lo trata como **aparcar** (`HANDBRAKE=MAX` + `IGNITION=OFF`), y `>0` dispara encendido +
+gas a fondo; la decisión de ceder (`orchestrator.py`) **no tenía histéresis** y se soltaba al primer tick sin
+prioritario → `speed_request` parpadeaba 0↔base y la física oscilaba a ~100 Hz. **Decisión (pregunta con
+recomendación, MODUS §6):** el usuario eligió **histéresis** (sin tocar la física) frente a la opción B (que la
+parada temporal no apague motor/freno de mano — toca TODAS las paradas, aparcada). **Fix:** predicado puro
+`_should_keep_yielding(detected, hold_until, now)` + `mode._yield_hold_until` (renovado a `now + YIELD_HOLD_S=1.0s`
+al detectar; sin detección se cede hasta que expira). Solo `orchestrator.py` + campo en `mode.py`. Red primero:
+`TestShouldKeepYielding` (3). Suite **749/749**; ruff limpio.
+
+**Cierre de S33:** docs de `docs/dev/` actualizados + commits pusheados (CI verde tras los fixes 4/1; el resto
+son commits posteriores, mismo árbol). Todo ⏳ pendiente de validación en LFS (W4 + fixes de conducta + editor).
+**Próximo:** validar en LFS (Frente A) y/o implementar el **fix (3)** (radar en transición road→roadlink, Frente B).
 
 ## S32 — 2026-07-12 — Herramienta "Link auto" en la UI de mapeo (petición del usuario, fuera de plan)
 

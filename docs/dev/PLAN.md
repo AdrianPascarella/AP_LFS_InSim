@@ -365,7 +365,9 @@ dispara en/tras el merge a `main`.
 
 **Criterio de aceptación:** lógica de P2 congelada por tests; sin parches ad-hoc; el usuario
 valida en LFS. **Estado:** cumplido salvo la validación en LFS del ceda-el-paso del ACC (S21) =
-**W4** (bloqueada: el mapa aún tiene `zones: 0`, ninguna intersección creada). Es el gate del merge.
+**W4**. **DESBLOQUEADA en S33:** el usuario creó la primera intersección (`test1` en South City, con
+`priority_rules`) → ya no hay `zones: 0`. Queda solo validar en el juego (incluye el fix de histéresis
+del ceda-el-paso, `73bbae7`, S33). Es el gate del merge.
 
 ---
 
@@ -528,12 +530,14 @@ orquestadores con `time.time()` siguen sin red → cubrir antes de tocarlos).
 
 ## Fase 7 — Robustez de conducción freeroam (ai_control)  ◀️ PRÓXIMO (S31)
 
-> **▶️ PRÓXIMO TRABAJO (actualizado S33):** **fix (4) y fix (1) HECHOS en S33** (red primero, offline,
-> commits `d968abf` y `1a8eaac`; ⏳ pendientes de validar en LFS junto con W4). **Queda solo el fix (3)**
-> (radar en transición road→roadlink) — el más pesado: extender la **red de equivalencia del radar de
-> S28** + matching topológico de la cadena `current→next→to_road`. Se implementa **con red primero**
-> (offline). Una vez hecho, **el usuario lo confirma OBLIGATORIAMENTE en LFS** (es conducta), junto con
-> la validación pendiente de (4) y (1) y el ceda-el-paso de W4 (mismo gate del merge).
+> **▶️ PRÓXIMO TRABAJO (actualizado S33):** **fix (4), fix (1) y el fix del ceda-el-paso tembloroso (5)
+> HECHOS en S33** (red primero, offline; commits `d968abf`, `1a8eaac`, `73bbae7`; ⏳ pendientes de validar
+> en LFS junto con W4, ya desbloqueada). **Queda solo el fix (3)** (radar en transición road→roadlink) — el
+> más pesado: extender la **red de equivalencia del radar de S28** + matching topológico de la cadena
+> `current→next→to_road`. Se implementa **con red primero** (offline). Una vez hecho, **el usuario lo confirma
+> OBLIGATORIAMENTE en LFS** (es conducta), junto con la validación pendiente del resto (mismo gate del merge).
+> **Aparte (no de conducción):** en S33 se añadió el **editor de reglas de prioridad de zonas en la UI**
+> (Elementos → Zona, picker de vías; `a29fde3`→`5f9af3d`) que desbloqueó crear la primera intersección.
 >
 > **Origen (S29, 2026-07-11):** el usuario, conduciendo en LFS, reportó 4 bugs de comportamiento
 > del modo Freeroam. Uno (fin de vía → espectadores) se pidió y **se resolvió en el acto**; los
@@ -588,9 +592,20 @@ orquestadores con `time.time()` siguen sin red → cubrir antes de tocarlos).
       cerrada) aplicado en el hueco de overtake y en Filtro A (refactor sin cambio de conducta, cubierto
       por `test_destino_cerrado_se_descarta`). **Red primero:** `test_carril_vecino_cerrado_no_se_usa`
       (rojo→verde). Suite 734. Commit `d968abf`.
+- [x] **(5) Ceda-el-paso tembloroso (gas a fondo + freno de mano repetido)** — **S33 (HECHO, ⏳ validar en
+      LFS).** Descubierto al probar la primera intersección (`test1`). Al ceder, `speed_request=0` → la física
+      (`physics.py:107‑119`) lo trata como **aparcar** (`HANDBRAKE=MAX` + `IGNITION=OFF`) y `>0` dispara
+      encendido + gas a fondo; la decisión de ceder (`orchestrator.py`) **no tenía histéresis** y se soltaba al
+      primer tick sin prioritario → `speed_request` parpadeaba 0↔base y la física oscilaba a ~100 Hz. **Fix
+      (elegido por el usuario: histéresis, sin tocar la física):** predicado puro
+      `_should_keep_yielding(detected, hold_until, now)` + `mode._yield_hold_until` (renovado a
+      `now + YIELD_HOLD_S=1.0 s` al detectar). Red primero: `TestShouldKeepYielding` (3). Suite 749. Commit
+      `73bbae7`. **Opción B aparcada:** que la parada temporal NO apague motor/freno de mano (toca `physics.py`
+      y TODAS las paradas → más validación); reconsiderar solo si tras ceder aún hay un tirón al arrancar.
 
-**Criterio de aceptación:** las 4 conductas corregidas y **validadas por el usuario en LFS**; red de
+**Criterio de aceptación:** las conductas corregidas y **validadas por el usuario en LFS**; red de
 caracterización en cada fix antes de tocar el orquestador; suite + CI verdes. No tocan la API pública.
+**Estado S33:** (2)/(4)/(1)/(5) hechos; **(3) pendiente**; todos ⏳ pendientes de validación en LFS.
 
 ---
 
