@@ -20,6 +20,13 @@ from insims.ai_control.nav_modes.freeroam.mode import FreeroamMode
 if TYPE_CHECKING:
     from insims.users_management.main import AI
 
+# Suelo de la distancia de seguridad (m): el hueco que dejan los coches entre sí cuando
+# el time-gap (velocidad × segundos) se queda corto — marcha lenta y, sobre todo, parados
+# en cola. Subido de 5 a 8 m en S35 a petición del usuario ("un poco más grande"). Es el
+# dial del hueco mínimo junto con `PARADA_ABSOLUTA_M` (7 m) de cruise_control.py, que es
+# el suelo duro por debajo del cual se para en seco. Ajustable.
+MIN_GAP_FLOOR_M = 8.0
+
 
 class _OrchestratorMixin(_MixinBase):
     def _should_keep_yielding(
@@ -86,7 +93,10 @@ class _OrchestratorMixin(_MixinBase):
             my_speed_ms = max(ai.player.telemetry.speed.speed_kmh / 3.6, 0.1)
             safe_gap_s = behavior.human_safe_gap
             warn_gap_s = behavior.human_warn_gap
-            min_dist_m = max(5.0, my_speed_ms * safe_gap_s)
+            # Distancia de seguridad por time-gap, con un SUELO para la marcha lenta y el
+            # parado (a 0 km/h el time-gap se iría a 0). Ese suelo es el hueco que dejan
+            # los coches en una cola: subido de 5 a 8 m en S35 a petición del usuario.
+            min_dist_m = max(MIN_GAP_FLOOR_M, my_speed_ms * safe_gap_s)
             max_dist_m = max(15.0, my_speed_ms * warn_gap_s)
 
             # Por defecto, asumimos que podemos ir a la velocidad base

@@ -61,95 +61,118 @@ HEADING_NORTH = 0
 HEADING_SOUTH = 32768
 
 
-# ─── _apply_adaptive_cruise_control: ACC de 3 zonas (S21: parche eliminado) ────
+# ─── _apply_adaptive_cruise_control: ley de seguimiento (S35: sin reducir al seguir) ──
 #
-# Firma: (base_speed_kmh, closest_speed_kmh, closest_dist_m, min_dist_m, max_dist_m)
-# Los min/max del llamador se respetan tal cual (el viejo "PARCHE DE SEGURIDAD
-# MATEMÁTICO" que los reescribía se eliminó en S21; ver DIAGNOSTICO § P25). Zonas:
-#   critical = max(5.0, min_dist*0.5)   (suelo duro de parada incluido)
-#   ROJA    (dist ≤ critical)          → 0.0
-#   NARANJA (critical < dist ≤ min)    → closest_speed * ratio; <2 km/h → 0.0 (anti-creep)
-#   AMARILLA(min < dist < max)         → lerp hacia match_speed = min(closest, base)
-#   fuera   (dist ≥ max)               → base_speed
-# Ratios acotados a [0,1] y denominadores blindados con ε → nunca ZeroDivisionError.
+# Firma: (base_speed_kmh, closest_speed_kmh, closest_dist_m, min_dist_m, max_dist_m).
+# Los min/max del llamador se respetan tal cual (el "PARCHE DE SEGURIDAD MATEMÁTICO"
+# que los reescribía se eliminó en S21; ver DIAGNOSTICO § P25).
+#
+# S35 — cambio pedido por el usuario tras probar en LFS: **al ir bloqueado, la IA IGUALA
+# la velocidad del de delante en vez de reducirla** (reducir abría el hueco, luego
+# aceleraba, luego volvía a cerrarlo → oscilaba). Reducir solo es legítimo si te has
+# metido DEMASIADO cerca, así que la rampa de frenado baja a la franja de emergencia (por
+# debajo de `critical`), y la banda de seguimiento pasa a ser igualación pura. La ley
+# queda CONTINUA de punta a punta (sin escalones que exciten la oscilación):
+#
+#   match = min(closest_speed, base)             (nunca por encima de la base)
+#   critical = max(PARADA_ABSOLUTA(7), min*0.5)
+#
+#   PARADA    (dist ≤ 7)                → 0.0            suelo duro (hueco en parado)
+#   EMERGENCIA(7 < dist ≤ critical)     → match * ratio  rampa 0 → match; <2 km/h → 0.0
+#   SEGUIMIENTO(critical < dist ≤ min)  → match          IGUALA (antes: reducía)
+#   ADAPTACIÓN(min < dist < max)        → lerp match → base
+#   libre     (dist ≥ max)              → base
+#
+# Continuidad: en `critical` la rampa vale match (=SEGUIMIENTO); en `min` SEGUIMIENTO vale
+# match (= inicio del lerp); en `max` el lerp vale base. Ratios acotados a [0,1] y
+# denominadores blindados con ε → nunca ZeroDivisionError (ni con critical == PARADA).
 
 
 class TestApplyAdaptiveCruiseControl:
-    # Setup "limpio": min=10, max=20 ⇒ el parche NO altera nada (critical=5,
-    # min≥7 y max≥15 ya se cumplen), así cada zona se razona directamente.
+    # Setup de referencia: base=50, closest=30, min=20, max=40 ⇒ critical=max(7,10)=10.
 
-    def test_zona_roja_para_en_seco(self, ai_control):
-        # dist == critical (5) → parada absoluta.
-        assert ai_control._apply_adaptive_cruise_control(50, 30, 5.0, 10, 20) == 0.0
-        # dist < critical → también 0.
-        assert ai_control._apply_adaptive_cruise_control(50, 30, 3.0, 10, 20) == 0.0
+    def test_suelo_duro_de_parada(self, ai_control):
+        # El hueco mínimo en parado: por debajo de 7 m, parada absoluta.
+        assert ai_control._apply_adaptive_cruise_control(50, 30, 7.0, 20, 40) == 0.0
+        assert ai_control._apply_adaptive_cruise_control(50, 30, 4.0, 20, 40) == 0.0
 
-    def test_zona_naranja_frena_proporcional_a_la_distancia(self, ai_control):
-        # dist=7 en (5, 10]: ratio=(7-5)/(10-5)=0.4 → 30*0.4 = 12 km/h.
-        got = ai_control._apply_adaptive_cruise_control(50, 30, 7.0, 10, 20)
-        assert got == pytest.approx(12.0)
+    def test_emergencia_frena_proporcional_a_la_distancia(self, ai_control):
+        # dist=8.5 en (7, 10]: ratio=(8.5-7)/(10-7)=0.5 → 30*0.5 = 15 km/h.
+        got = ai_control._apply_adaptive_cruise_control(50, 30, 8.5, 20, 40)
+        assert got == pytest.approx(15.0)
 
-    def test_zona_naranja_en_el_borde_min_iguala_al_lider(self, ai_control):
-        # dist == min_dist (10): ratio=1.0 → target = closest_speed exacto.
-        got = ai_control._apply_adaptive_cruise_control(50, 30, 10.0, 10, 20)
-        assert got == pytest.approx(30.0)
+    def test_emergencia_empalma_con_el_seguimiento_sin_escalon(self, ai_control):
+        # En el borde `critical` (10) la rampa ya vale match (30): la ley es continua.
+        assert ai_control._apply_adaptive_cruise_control(
+            50, 30, 10.0, 20, 40
+        ) == pytest.approx(30.0)
 
-    def test_zona_naranja_anticreep_para_si_baja_de_2(self, ai_control):
-        # dist=6, closest=3: ratio=0.2 → 0.6 km/h < 2 → frena en seco (0.0).
-        got = ai_control._apply_adaptive_cruise_control(50, 3, 6.0, 10, 20)
-        assert got == 0.0
+    def test_emergencia_anticreep_para_si_baja_de_2(self, ai_control):
+        # dist=8, closest=3: ratio=1/3 → 1.0 km/h < 2 → frena en seco (0.0).
+        assert ai_control._apply_adaptive_cruise_control(50, 3, 8.0, 20, 40) == 0.0
 
-    def test_zona_amarilla_interpola_hacia_el_lider(self, ai_control):
-        # dist=15 en (10, 20): ratio=0.5, match=min(30,50)=30 → 30+(50-30)*0.5 = 40.
-        got = ai_control._apply_adaptive_cruise_control(50, 30, 15.0, 10, 20)
+    def test_seguimiento_iguala_al_de_delante_no_reduce(self, ai_control):
+        # EL CAMBIO DE S35. En toda la banda (critical, min] va a la velocidad del de
+        # delante — no por debajo. Antes, dist=15 daba 30*(15-10)/(20-10) = 15 km/h:
+        # la IA se descolgaba, el hueco se abría y arrancaba la oscilación.
+        for dist in (11.0, 15.0, 20.0):
+            got = ai_control._apply_adaptive_cruise_control(50, 30, dist, 20, 40)
+            assert got == pytest.approx(30.0), f"dist={dist}"
+
+    def test_seguimiento_no_supera_la_velocidad_base(self, ai_control):
+        # closest=80 > base=50 → match=50: seguir a uno más rápido no nos pone por encima.
+        got = ai_control._apply_adaptive_cruise_control(50, 80, 15.0, 20, 40)
+        assert got == pytest.approx(50.0)
+
+    def test_seguimiento_anticreep_con_lider_casi_parado(self, ai_control):
+        # Igualar a uno que se arrastra a 1 km/h sería arrastrarse: paramos.
+        assert ai_control._apply_adaptive_cruise_control(50, 1, 15.0, 20, 40) == 0.0
+
+    def test_adaptacion_interpola_hacia_la_base(self, ai_control):
+        # dist=30 en (20, 40): ratio=0.5, match=30 → 30 + (50-30)*0.5 = 40.
+        got = ai_control._apply_adaptive_cruise_control(50, 30, 30.0, 20, 40)
         assert got == pytest.approx(40.0)
 
-    def test_zona_amarilla_lider_mas_rapido_no_supera_base(self, ai_control):
-        # closest=80 > base=50: match=min(80,50)=50 → target=50 (nunca por encima de base).
-        got = ai_control._apply_adaptive_cruise_control(50, 80, 15.0, 10, 20)
+    def test_adaptacion_lider_mas_rapido_no_supera_base(self, ai_control):
+        got = ai_control._apply_adaptive_cruise_control(50, 80, 30.0, 20, 40)
         assert got == pytest.approx(50.0)
 
     def test_fuera_de_rango_va_a_velocidad_base(self, ai_control):
-        # dist > max → base. Y en el borde exacto dist==max también (el test es `< max`).
-        assert ai_control._apply_adaptive_cruise_control(50, 30, 25.0, 10, 20) == 50.0
-        assert ai_control._apply_adaptive_cruise_control(50, 30, 20.0, 10, 20) == 50.0
+        # dist ≥ max → base (el borde exacto incluido: el test es `< max`).
+        assert ai_control._apply_adaptive_cruise_control(50, 30, 45.0, 20, 40) == 50.0
+        assert ai_control._apply_adaptive_cruise_control(50, 30, 40.0, 20, 40) == 50.0
 
     def test_critical_escala_con_min_dist_grande(self, ai_control):
-        # min=20 → critical=max(5, 10)=10. dist==10 → roja (0.0); dist=11 → naranja.
-        assert ai_control._apply_adaptive_cruise_control(50, 30, 10.0, 20, 30) == 0.0
-        # ratio=(11-10)/(20-10)=0.1 → 30*0.1 = 3.0.
-        got = ai_control._apply_adaptive_cruise_control(50, 30, 11.0, 20, 30)
-        assert got == pytest.approx(3.0)
+        # min=40 → critical=max(7, 20)=20: la franja de emergencia se estira con la
+        # velocidad (min viene del time-gap del llamador).
+        # dist=13.5: ratio=(13.5-7)/(20-7)=0.5 → 30*0.5 = 15.
+        got = ai_control._apply_adaptive_cruise_control(50, 30, 13.5, 40, 60)
+        assert got == pytest.approx(15.0)
+        # dist=25 ya es seguimiento → iguala.
+        assert ai_control._apply_adaptive_cruise_control(
+            50, 30, 25.0, 40, 60
+        ) == pytest.approx(30.0)
 
-    def test_min_pequeno_no_se_reescribe_cae_en_amarilla(self, ai_control):
-        # S21: el min del llamador (2) YA NO se empuja a 7. critical=max(5, 1)=5.
-        # dist=6 > min=2 → AMARILLA: ratio=(6-2)/(20-2)=0.222, match=30 →
-        # 30+(50-30)*0.222 = 34.44. (Con el viejo parche caía en NARANJA = 15.)
-        got = ai_control._apply_adaptive_cruise_control(50, 30, 6.0, 2, 20)
-        assert got == pytest.approx(34.4444, abs=1e-3)
+    def test_min_en_el_suelo_no_lanza(self, ai_control):
+        # A baja velocidad min cae a su suelo (8) y critical=max(7, 4)=7 ⇒ la franja de
+        # emergencia se COLAPSA (denominador 0). No hay ZeroDivisionError: dist≤7 →
+        # parada; justo por encima → seguimiento (iguala).
+        assert ai_control._apply_adaptive_cruise_control(50, 30, 7.0, 8, 15) == 0.0
+        assert ai_control._apply_adaptive_cruise_control(
+            50, 30, 7.5, 8, 15
+        ) == pytest.approx(30.0)
 
     def test_max_menor_que_min_no_se_reescribe(self, ai_control):
-        # S21: max=12 YA NO se empuja a 15. dist=14 ≥ max=12 → fuera de rango →
-        # base=50. (Con el viejo parche caía en AMARILLA = 46.)
+        # S21: los min/max del llamador se respetan. dist=14 ≥ max=12 → base.
         got = ai_control._apply_adaptive_cruise_control(50, 30, 14.0, 10, 12)
         assert got == pytest.approx(50.0)
 
-    def test_min_en_el_suelo_no_lanza(self, ai_control):
-        # S21: a baja velocidad min llega a su suelo (5) y critical=max(5, 2.5)=5,
-        # con lo que la zona naranja se colapsa. NO hay ZeroDivisionError: dist≤5 →
-        # parada; dist>5 → amarilla directamente. (Antes el parche empujaba min a 7
-        # para crear una franja naranja artificial y así tapar el denominador.)
-        assert ai_control._apply_adaptive_cruise_control(50, 30, 5.0, 5, 15) == 0.0
-        # dist=10 en amarilla: ratio=(10-5)/(15-5)=0.5, match=min(30,50)=30 → 40.
-        got = ai_control._apply_adaptive_cruise_control(50, 30, 10.0, 5, 15)
-        assert got == pytest.approx(40.0)
-
     def test_max_igual_a_min_no_lanza(self, ai_control):
-        # Denominador amarillo (max-min) = 0 blindado con ε: no ZeroDivisionError.
-        # dist=12 > min=10 y ≥ max=10 → fuera → base. dist=10 → borde de naranja.
-        assert ai_control._apply_adaptive_cruise_control(50, 30, 12.0, 10, 10) == 50.0
-        got = ai_control._apply_adaptive_cruise_control(50, 30, 10.0, 10, 10)
-        assert got == pytest.approx(30.0)  # dist==min → naranja, ratio=1 → closest
+        # Denominador de la adaptación (max-min) = 0, blindado con ε: no
+        # ZeroDivisionError. dist=25 ≥ max → base; dist=20 (== min) → seguimiento.
+        assert ai_control._apply_adaptive_cruise_control(50, 30, 25.0, 20, 20) == 50.0
+        got = ai_control._apply_adaptive_cruise_control(50, 30, 20.0, 20, 20)
+        assert got == pytest.approx(30.0)
 
 
 # ─── _estimate_overtake_distance: asfalto y tiempo para adelantar ─────────────

@@ -18,75 +18,80 @@ class _CruiseControlMixin(_MixinBase):
         min_dist_m: float,
         max_dist_m: float,
     ) -> float:
-        """
-        Regula la velocidad de la IA con 3 zonas: Adaptación suave, Frenado agresivo y Parada crítica.
+        """Velocidad que se pide a la IA teniendo en cuenta al coche de delante.
+
+        Ley CONTINUA (sin escalones, que son los que excitan la oscilación):
+
+            PARADA      (dist ≤ 7 m)             → 0            suelo duro
+            EMERGENCIA  (7 < dist ≤ critical)    → rampa 0 → match
+            SEGUIMIENTO (critical < dist ≤ min)  → match        IGUALA al de delante
+            ADAPTACIÓN  (min < dist < max)       → lerp match → base
+            libre       (dist ≥ max)             → base
+
+        `match = min(velocidad_del_de_delante, base)`. En `critical` la rampa ya vale
+        `match`, en `min` el seguimiento vale `match` (= inicio del lerp) y en `max` el
+        lerp vale `base` → la curva empalma en los tres bordes.
+
+        S35 (tras probar en LFS): **al ir bloqueado se IGUALA la velocidad del de
+        delante, no se reduce.** Reducir (lo que hacía la vieja "zona naranja") abría el
+        hueco → la IA aceleraba → volvía a cerrarlo → oscilaba. Reducir solo es legítimo
+        si te has metido demasiado cerca, así que esa rampa vive ahora en la franja de
+        EMERGENCIA, por debajo de `critical`. Los `min`/`max` del llamador se respetan
+        tal cual (el "PARCHE DE SEGURIDAD MATEMÁTICO" se eliminó en S21 — ver P25).
         """
         # ==========================================
         # CONSTANTES DE LA LEY DE CONTROL
-        # (antes eran números mágicos dispersos por el cuerpo del método)
         # ==========================================
-        PARADA_ABSOLUTA_M = 5.0  # suelo físico: nunca acercarse a menos de esto
-        CRITICAL_FRACTION = 0.5  # zona roja = mitad del min de seguridad
-        ANTICREEP_KMH = 2.0  # por debajo de esto en naranja, parar en seco
+        PARADA_ABSOLUTA_M = 7.0  # hueco mínimo entre coches (en parado). Ajustable.
+        CRITICAL_FRACTION = 0.5  # la emergencia empieza a la mitad del min de seguridad
+        ANTICREEP_KMH = 2.0  # por debajo de esto, parar en seco (no arrastrarse)
         EPSILON = 1e-6  # blinda los denominadores contra el 0
 
-        # Suelo duro de parada, explícito y separado de la matemática de zonas.
+        # Nunca se pide ir más rápido que la base por seguir a alguien más rápido.
+        match_speed = min(closest_speed_kmh, base_speed_kmh)
+
+        # ==========================================
+        # PARADA: suelo duro, explícito y fuera de la matemática de zonas
+        # ==========================================
         if closest_dist_m <= PARADA_ABSOLUTA_M:
             return 0.0
 
-        # La distancia crítica (inicio de la zona roja) nunca baja del suelo absoluto.
-        # Al llevar el suelo DENTRO de `critical` (en vez de en un parche que reescribe
-        # los min/max del llamador), el umbral rojo efectivo sigue siendo max(5, min/2)
-        # —comportamiento histórico— y la rampa naranja arranca de 0 justo en ese punto.
-        # Como en zona naranja se cumple critical < dist ≤ min ⇒ min > critical, el
-        # denominador naranja (min − critical) es > 0 por construcción; el ε es un
-        # cinturón extra. Los min/max del llamador se respetan tal cual (el viejo
-        # "PARCHE DE SEGURIDAD MATEMÁTICO" que los inflaba se eliminó — ver P25).
+        # El inicio de la emergencia escala con el min de seguridad (que el llamador
+        # deriva de la velocidad: time-gap), pero nunca baja del suelo. Si min es tan
+        # pequeño que critical == PARADA, la franja de emergencia se COLAPSA: el ε evita
+        # el 0/0 y el ratio se satura a 1 → se entra directo en SEGUIMIENTO.
         critical_dist_m = max(PARADA_ABSOLUTA_M, min_dist_m * CRITICAL_FRACTION)
 
         # ==========================================
-        # ZONA ROJA: Peligro inminente de colisión
+        # EMERGENCIA: demasiado cerca → frenar para recuperar el hueco
         # ==========================================
         if closest_dist_m <= critical_dist_m:
-            return 0.0
+            denom = max(critical_dist_m - PARADA_ABSOLUTA_M, EPSILON)
+            ratio = min(1.0, max(0.0, (closest_dist_m - PARADA_ABSOLUTA_M) / denom))
+            target_speed = match_speed * ratio
 
-        # ==========================================
-        # ZONA NARANJA: Warning Area (Frenado directo)
-        # ==========================================
-        if closest_dist_m <= min_dist_m:
-            # Aquí frenamos agresivamente de forma proporcional (ratio acotado a [0,1]).
-            denom = max(min_dist_m - critical_dist_m, EPSILON)
-            ratio_frenado = min(
-                1.0, max(0.0, (closest_dist_m - critical_dist_m) / denom)
-            )
-
-            # Pedimos ir MÁS LENTO que el coche de delante para recuperar la distancia de seguridad
-            target_speed = closest_speed_kmh * ratio_frenado
-
-            # ANTI-CREEP: Evita el frenado asintótico. Si la velocidad objetivo es ridículamente
-            # baja (ej. arrastrarse a 1.5 km/h frente a un ceda el paso), frenamos en seco.
+            # Arrastrarse a 1 km/h no sirve de nada: se para del todo.
             if target_speed < ANTICREEP_KMH:
                 return 0.0
 
             return target_speed
 
         # ==========================================
-        # ZONA AMARILLA: Safety Area (Adaptación)
+        # SEGUIMIENTO: bloqueado pero a distancia sana → IGUALAR, no reducir
+        # ==========================================
+        if closest_dist_m <= min_dist_m:
+            if match_speed < ANTICREEP_KMH:
+                return 0.0  # el de delante está parado/arrastrándose → parar
+            return match_speed
+
+        # ==========================================
+        # ADAPTACIÓN: hay hueco → interpolar hacia la velocidad base
         # ==========================================
         if closest_dist_m < max_dist_m:
-            # Interpolación (Lerp) para igualar la velocidad del líder de forma suave
-            # (ratio acotado a [0,1] y denominador blindado con ε contra max ≤ min).
             denom = max(max_dist_m - min_dist_m, EPSILON)
-            ratio_adaptacion = min(1.0, max(0.0, (closest_dist_m - min_dist_m) / denom))
-
-            # Buscamos igualar la velocidad del coche de delante
-            match_speed = min(closest_speed_kmh, base_speed_kmh)
-
-            # A medida que nos acercamos al min_dist_m, la velocidad cae a match_speed
-            target_speed = (
-                match_speed + (base_speed_kmh - match_speed) * ratio_adaptacion
-            )
+            ratio = min(1.0, max(0.0, (closest_dist_m - min_dist_m) / denom))
+            target_speed = match_speed + (base_speed_kmh - match_speed) * ratio
             return min(target_speed, base_speed_kmh)
 
-        # Si está fuera de los radares (más lejos que max_dist_m), vamos a la velocidad base
+        # Fuera del alcance del radar: velocidad base.
         return base_speed_kmh
