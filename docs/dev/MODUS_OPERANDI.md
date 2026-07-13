@@ -54,6 +54,13 @@ Antes de terminar, SIEMPRE:
 - Los tests que dependan de red/sockets deben aislarse con mocks (no conectar a LFS real).
 - El entorno del sistema (Python 3.14) no tiene el paquete ni pytest instalados: trabajar
   siempre dentro del venv del proyecto (`.venv`).
+- **NUNCA editar fuentes con `Get-Content | ... | Set-Content` (PowerShell 5.1).** `Get-Content`
+  lee como ANSI, no como UTF-8: reescribe el fichero **doble-codificado** y deja todos los
+  acentos en mojibake (pasó en S35 con `test_traffic.py`, y se coló en 2 commits). Los tests
+  siguen pasando —es texto válido— así que no te enteras. Editar con las herramientas de edición.
+- **Antes de matar procesos "huérfanos", mirar qué son** (`Get-CimInstance Win32_Process`): en S35
+  los que parecían restos de un comando abortado eran **el InSim del propio usuario** probando en
+  LFS. También explican que la suite tarde el doble: no toda lentitud es una regresión.
 
 ## 5. Convenciones del proyecto
 

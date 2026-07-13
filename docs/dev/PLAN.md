@@ -613,8 +613,59 @@ orquestadores con `time.time()` siguen sin red → cubrir antes de tocarlos).
 
 **Criterio de aceptación:** las conductas corregidas y **validadas por el usuario en LFS**; red de
 caracterización en cada fix antes de tocar el orquestador; suite + CI verdes. No tocan la API pública.
-**Estado S34:** los **5 fixes hechos** (código completo). Solo (2) está validado en LFS; (1), (3), (4), (5) y el
-guard ⏳ **esperan validación** — junto con W4, es el único trabajo que queda antes del merge.
+**Estado S35:** los **5 fixes hechos**, y el usuario probó en LFS. (2) y los **3 bugs del radar con humanos**
+(S35) ✅ **validados**; (1), (3), (4), (5) y el guard: sin incidencias en esa prueba, pero **no confirmados uno a
+uno** → siguen ⏳. **W4 / ceda-el-paso: "funciona, pero regular"** → no se da por bueno; motiva la **Fase 8**.
+
+---
+
+## Fase 8 — Rediseño de las intersecciones (ai_control)  ◀️ PRÓXIMO (S35)
+
+> **Origen (S35, 2026-07-13):** con los tirones ya resueltos, el usuario probó las intersecciones en LFS:
+> **"funcionan, pero son difíciles de crear y su funcionamiento es regular"**. Trae un **diseño propio** (abajo).
+> La sesión se cerró aquí a propósito: el rediseño necesita conversación de diseño (falta que explique **cómo
+> quiere mapearlo en la UI**), toca el **modelo de datos** y merece empezar en limpio.
+
+**Diagnóstico de por qué el modelo actual duele.** Hoy ceder el paso se declara en una **zona** (círculo/cápsula)
++ una tabla de `priority_rules` con pares "la vía A tiene prioridad sobre la B". Eso es una codificación
+**global e indirecta** de algo que en realidad es **local**: ceder es una propiedad de **hacer ese giro**. De ahí
+que crearlas sea un suplicio (hay que nombrar vías a mano y razonar en pares) y que la conducta sea vaga (la IA
+frena "al borde de la zona", un punto geométricamente arbitrario).
+
+**Propuesta del usuario (a desarrollar, NO cerrada):**
+
+1. **Ceder al cambiar de vía → campo nuevo en el RoadLink.** Opcional (o nulo). Si NO es nulo, guarda dos cosas:
+   una **línea de detención** (lista de puntos) y un **tiempo T**. Tenerlo ⇒ al tomar ese enlace **hay que ceder**:
+   si viene un coche a **menos de T segundos** del **último nodo del link** (el punto donde te incorporas), la IA
+   frena **antes de la línea** y le deja pasar. Si el coche se detecta cuando la IA **ya pasó la línea**, se
+   ignora (**punto de compromiso**: no frenar en mitad del cruce).
+2. **Prioridades en cruces múltiples → zonas, pero por TIEMPO.** Como las de ahora, pero el campo **área/radio se
+   sustituye por tiempo** (cuentan los coches a menos de T segundos de la zona, medido coche→zona). Quien tiene
+   que parar, para **antes de entrar** en la zona.
+
+**Por qué es mejor (valoración de Claude, S35):** (a) la regla cuelga de la **maniobra** (el RoadLink **es** el
+giro) en vez de una tabla global → se autoriza sola al grabar el enlace; (b) **tiempo-a-llegada en vez de radio**
+es la métrica correcta (un coche a 40 m a 80 km/h es urgente; a 20 km/h no lo es) — y el código ya va medio por
+ahí: `_is_priority_vehicle_active_at_zone` usa una ventana de 4 s; (c) la **línea de detención** es *donde para un
+conductor*, no el borde de un círculo, y regala el **punto de compromiso**.
+
+**Preguntas abiertas (cerrar en la sesión de diseño, ANTES de tocar código):**
+- **¿A qué coches se vigila?** "A menos de T segundos del punto de unión" — ¿los que van por el `to_road`
+  acercándose? Definir cómo se calcula el tiempo (dist/velocidad; un coche parado ⇒ ∞ ⇒ se ignora) y **excluir**
+  a los que ya pasaron el punto y a los que van detrás de la IA.
+- **¿Hacen falta los DOS mecanismos?** (1) cubre *incorporarse*; un cruce de 4 ramas yendo **recto** tiene tráfico
+  que cruza tu trayectoria **sin tocar tu punto de unión** → ahí sí hace falta (2). Conclusión provisional: sí,
+  ambos, pero **compartiendo maquinaria** (mismo predicado de tiempo-al-punto; la línea de detención siempre
+  colgada del link) → un solo concepto con dos formas de "qué vigilo", no dos sistemas.
+- **UI de mapeo:** falta que el usuario lo explique (grabar la línea, fijar T, verlo en el render). Usar la skill
+  `ai-control-map-ui`.
+- **Modelo de datos y compatibilidad:** RoadLink gana un campo → cambia el JSON del mapa. **South City (222 roads
+  / 328 links) tiene que seguir cargando** (campo opcional con default). Decidir qué pasa con las zonas y
+  `priority_rules` actuales (`test1` las usa): ¿conviven, se migran o se retiran?
+
+**Criterio de aceptación:** intersecciones **fáciles de crear** (sin teclear ids ni razonar en pares) y conducta
+**validada en LFS**; red primero (predicados puros de tiempo-al-punto y de "línea cruzada"); no toca la API
+pública (es el insim de ejemplo).
 
 ---
 

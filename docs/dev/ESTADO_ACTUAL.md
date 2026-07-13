@@ -1,9 +1,16 @@
 # 📍 Estado actual
 
-> Actualizado: **2026-07-13** — S34: **Fase 7 · fix (3) — el radar perdía coches en la transición
-> road↔roadlink (commit `3a628c3`) + guard de no-adelantar-dentro-de-un-cruce (`8af862d`). Con esto la
-> FASE 7 QUEDA COMPLETA EN CÓDIGO (5/5 fixes).** Red primero, suite **767/767**, ruff limpio; no toca la API
-> pública. **⏳ Pendiente de validar en LFS.**
+> Actualizado: **2026-07-13** — S35 (tras probar en LFS): **3 bugs VIEJOS del radar con HUMANOS (el
+> stop-and-go) — ✅ VALIDADOS en LFS: "desaparecieron todos los tirones"** — y **nueva ley de seguimiento del
+> ACC** (al ir bloqueado se IGUALA al de delante, no se reduce; hueco mínimo mayor), ⏳ pendiente de validar.
+> Suite **773/773**, ruff limpio, rama en sync.
+> **▶️ PRÓXIMO: Fase 8 — REDISEÑO DE LAS INTERSECCIONES** (nueva). El usuario las probó: *"funcionan, pero son
+> difíciles de crear y su funcionamiento es regular"*, y trae un **diseño propio** (línea de detención + tiempo
+> en el RoadLink; zonas por tiempo en vez de por área). La **semilla de diseño y las preguntas abiertas están en
+> `PLAN.md § Fase 8`** — empezar por ahí. Falta que el usuario explique **cómo quiere mapearlo en la UI**.
+>
+> _(S34, contexto previo: Fase 7 · fix (3) — el radar perdía coches en la transición road↔roadlink (`3a628c3`)
+> + guard de no-adelantar-dentro-de-un-cruce (`8af862d`) → **Fase 7 completa en código, 5/5 fixes**.)_
 > **Causa raíz del fix (3):** la topología de la IA cambia ANTES que su posición — `navigation.py:551` la mete
 > en el RoadLink en cuanto está a `TRIGGER_DIST_M` (**3,5 m**) de él —, y `_scan_lane_ahead` solo aceptaba coches
 > en `mode.current_id` → dentro del enlace dejaba de ver al lento que aún tenía delante en la **vía que deja** y
@@ -40,6 +47,47 @@
 > `git pull` al arrancar y `git push` al cerrar (permite continuar desde otro dispositivo).
 
 ## Estado
+
+**S35 (2026-07-13) — 3 bugs VIEJOS del radar con HUMANOS (el stop-and-go). ✅ VALIDADO en LFS.** Probando lo de
+S34, el usuario reportó que la IA iba **"a saltos: ahora sí, o no... aún no era"**, hasta **pararse del todo y
+rearrancar**, en los TRES escenarios (recta, cruce, ceda-el-paso) — siempre con alguien delante. Pista clave al
+preguntarle: **solo lo había probado con él mismo (un humano) delante, no con otras IAs**. **Se midió antes de
+tocar**, y eso evitó dos arreglos equivocados: la hipótesis "el ACC oscila" quedó **refutada** simulando el lazo
+cerrado con el ACC real (converge suave), y la de "se le asigna un LatLink" quedó refutada **por el eje del
+carril** (0/5848 nodos del mapa real). La causa apareció leyendo el código: **(1)** `_scan_lane_ahead` comparaba
+`other_node_index` contra `mode.node_index`, que **no significan lo mismo** — el de la IA es el nodo **objetivo**
+(la captura dinámica lo adelanta hasta 5 m antes de llegar) y al humano se le asigna el **más cercano** →
+`idx_diff = -1` a alguien que va **delante** → se le toma por un coche de detrás y **se le pierde**. Reproducido:
+**60 de 200 pasos ciego**, en ventanas **periódicas de ~3 m por nodo** (~0,35 s de ceguera cada ~1,2 s a
+30 km/h) → sin nadie delante → `velocidad_base` → gas; al recuperarlo → ACC → freno; y con `speed_request=0` la
+física **aparca** (freno de mano + motor OFF) → el tirón. **(2)** La **caché de humanos es compartida** entre
+todas las IAs y guardaba un índice de nodo válido solo para **quien escaneó** → una IA en otra vía dejaba un `-1`
+y la de detrás del humano lo leía como "va detrás". **(3)** Al humano se le asignaba **cualquier enlace más
+cercano, incluido un LatLink** (la tira que une dos carriles, por la que nadie circula y que corre casi paralela):
+medido en South City, **a 1 m del eje —conduciendo normal— el 4,9% de los puntos** lo hacía invisible (con el fix,
+**0,5%**). Lo revelador: **`navigation.py:361` ya lo hacía bien** (solo un RoadLink puede desbancar a la vía); las
+dos copias del radar **se habían dejado la comprobación del tipo** → no es rediseño, es alinear el radar con la
+regla canónica. En `_scan_target_lane` era peor: decide si el carril está libre para adelantar → un humano
+descentrado era invisible y **la IA se le echaba encima**. Los tres bugs son **viejos** (nada que ver con el fix
+(3) de S34) y **solo afectan a humanos** — por eso el tráfico IA-IA se veía bien. Commits `d6785a4` y `87a1142`.
+
+**S35 — Nueva ley de seguimiento del ACC (⏳ validar en LFS).** A petición del usuario: **(a)** hueco mínimo un
+poco mayor y **(b)** que al ir bloqueado la IA **iguale** la velocidad del de delante **en vez de reducirla** ("si
+no, terminan oscilando"). (a) → dos diales con nombre: `PARADA_ABSOLUTA_M` 5→**7 m** (suelo duro) y
+`MIN_GAP_FLOOR_M` 5→**8 m** (suelo de la distancia de seguridad cuando el time-gap se queda corto: marcha lenta y
+colas); el time-gap a velocidad (2 s) no se toca. (b) **obligaba a cambiar la forma de la ley, no un número**: con
+la banda de seguimiento igualando, la vieja zona roja (0 de golpe) quedaba debajo como un **acantilado** → habría
+vuelto a oscilar ahí. La rampa de frenado **baja a una franja de EMERGENCIA** (bajo `critical`, donde reducir sí
+es legítimo) y el seguimiento pasa a ser **igualación pura** → ley **CONTINUA en los tres bordes**. Verificado en
+**lazo cerrado** (offline, ACC real): converge a un **punto fijo**, iguala exactamente la velocidad y el hueco se
+estabiliza (8 m en marcha lenta; 11,1 m a 20 km/h). La caracterización del ACC (S19/S21) se **reescribió**: cambio
+de comportamiento **deliberado**. Commit `35870bb`.
+
+**S35 — dos avisos operativos.** (1) Un `Get-Content | Set-Content` de PowerShell **corrompió la codificación**
+de `test_traffic.py` (mojibake en todos los acentos) y se coló en 2 commits; reparado y verificado contra la
+versión limpia (`cb9c3b3`). **No usar `Get-Content | Set-Content` sobre fuentes.** (2) La suite pasó de 43 s a
+100 s: NO era regresión, era **el InSim del propio usuario** comiendo un núcleo. Aparecían **dos** procesos
+`lfs-insim run ai_control` a la vez → si son dos clientes conectados, ambos mandan órdenes a los mismos coches.
 
 **S34 (2026-07-13) — Fase 7 · fix (3): el radar perdía coches en la transición road↔roadlink. FASE 7
 COMPLETA EN CÓDIGO (⏳ validar en LFS).** Último bug de conducción del handoff de S29. **Diagnóstico
@@ -833,8 +881,13 @@ validación en LFS del ceda-el-paso del ACC (W4)**, hoy bloqueada porque ningún
 intersección (`zones: 0`). **Fase 6: W1 (split `utils.py`), W5 (sweep de API) y W2 (`init` con
 perfiles) y W3 (refactor interno + radar) HECHOS** (S24/S25/S26/S27/S28/**S31**). **W3 CERRADO en S31**
 (FSM revisado, código muerto fuera, `base.py` adelgazado por P4, docs de arquitectura). **Fase 6 completa
-salvo W4** (LFS). **Fase 7 COMPLETA EN CÓDIGO (S34): los 5 fixes de conducción están hechos.** Ya **no queda
-trabajo offline** que bloquee el merge: solo la **validación en LFS** (W4 + los 4 fixes sin validar + el guard).
+salvo W4** (LFS). **Fase 7 COMPLETA EN CÓDIGO (S34): los 5 fixes de conducción están hechos.**
+
+**FASE ACTIVA REAL (S35): Fase 8 — rediseño de las intersecciones.** Al validar en LFS, el usuario dio por
+buenos los fixes del stop-and-go, pero las **intersecciones "funcionan, pero son difíciles de crear y su
+funcionamiento es regular"** → no se dan por buenas, y **W4 no se cierra con el modelo actual**. Trae un diseño
+propio; la semilla y las preguntas abiertas están en **`PLAN.md § Fase 8`**. El merge espera a que las
+intersecciones estén rehechas y validadas.
 
 **Recorte de W3 (S27, con el usuario):** los splits de `map_ui.py` (3161) y `map_recorder.py`
 (2520) **salen del pre-publish** y pasan a post-merge (ver PLAN § Ideas). Son tooling offline,
@@ -901,32 +954,26 @@ bit-idéntica) + red de equivalencia (fuzz grid vs. lineal) + `ids_within` en el
 (`_is_dead_end_stop` puro + `mode._dead_end_since`, 4 s → `_cmd_spec`); red `TestIsDeadEndStop` (6).
 Suite 697. **Pendiente validación en LFS.** Los otros 3 bugs de conducción → **Fase 7** (ver PLAN).
 
-**▶️ EMPEZAR AQUÍ: ya NO queda trabajo offline pendiente. Lo único que separa el proyecto del merge es la
-VALIDACIÓN EN LFS** (la hace el usuario; Claude no puede ejecutar LFS, MODUS §4). La Fase 6 está completa salvo
-W4, y la **Fase 7 está completa en código** (5/5 fixes). La próxima sesión debería ser **una sesión de juego**:
-el usuario prueba la lista de abajo y reporta; Claude corrige lo que falle. Si el usuario prefiere trabajo
-offline, está el **backlog** (no bloquea el merge).
+**▶️ EMPEZAR AQUÍ: Fase 8 — rediseño de las intersecciones. Es una sesión de DISEÑO primero, no de código.**
+Leer **`PLAN.md § Fase 8`**: lleva la propuesta del usuario (línea de detención + tiempo colgados del RoadLink;
+zonas por tiempo en vez de por área), por qué es mejor que el modelo actual, y las **preguntas abiertas** que hay
+que cerrar ANTES de tocar código (a qué coches se vigila, si hacen falta los dos mecanismos, compatibilidad del
+JSON del mapa con el South City actual, y qué pasa con las `priority_rules` de hoy). **Falta que el usuario
+explique cómo quiere mapearlo en la UI** — preguntárselo al arrancar; usar la skill `ai-control-map-ui`.
 
-**Pendiente de validar en LFS (todo junto, en una sesión de juego; W4 ya desbloqueada por `test1`):**
-- **W4 / ceda-el-paso del ACC (S21) + histéresis (S33):** en la intersección `test1`, que la IA de
-  `SOUTH_CITY_STATION_s2` **ceda** a las prioritarias `HAVEN_LANE_S22_a/b` y —tras el fix `73bbae7`— que lo
-  haga **sin el temblor** de gas/freno de mano, arrancando limpio cuando pase el prioritario. Es el gate del merge.
-- **Fix (3) + guard (S34)** — el que más se nota: **que la IA ya no choque en los cruces**. Concretamente: (a) al
-  meterse en un enlace **sigue frenando** por el coche lento que se quedó de frente en la vía que deja; (b) al
-  salir del enlace **ve a los que ya circulan** en la vía de destino; (c) **no** frena "por fantasmas" lejos del
-  cruce (tráfico de una transversal); y (d) **no intenta adelantar dentro de un cruce** (guard `8af862d` — si
-  resulta demasiado conservador, ese commit se revierte **solo**, sin tocar el fix del radar).
-- **Fix (4) y fix (1) de la Fase 7 (S33)** — que la IA ya no adelante por vías cerradas y que el intermitente
-  no haga flip en salidas juntas.
-- **Editor de prioridad de zonas (UI, S33)** — que el picker "+ Anadir regla" (Elementos → Zona) añada/quite
-  reglas bien (ya lo usó para crear `test1`; confirmar Quitar/Cancelar).
-- Si tras ceder aún hay un tirón al arrancar → considerar la **opción B** del fix del ceda-el-paso (parada
-  temporal que no apague motor/freno de mano; toca `physics.py`, más validación).
-- *(Apunta, S31: ✅ ya validado. Fix (2), fin de vía → espectadores, S29: ✅ ya validado.)*
-
-**Ajustables del fix (3), por si en LFS hay que afinar:** `_LINK_TRANSITION_WINDOW_M` (25 m, en
-`traffic/radar.py`) — subirlo si la IA aún se despista en cruces largos; bajarlo si aparece frenado de más cerca
-del cruce.
+**Pendiente de validar en LFS (acumulado; el usuario lo mira cuando juegue):**
+- **Ley de seguimiento nueva del ACC (S35)** — que la IA **iguale** al de delante sin descolgarse ni oscilar, y
+  que el **hueco** (7 m suelo duro / 8 m en cola) se note bien. Diales: `PARADA_ABSOLUTA_M` (cruise_control) y
+  `MIN_GAP_FLOOR_M` (orchestrator).
+- **Fix (3) + guard (S34)** — que no choque en los cruces: (a) al entrar en un enlace sigue frenando por el lento
+  que se quedó de frente en la vía que deja; (b) ve a los que ya circulan en la vía de destino; (c) **no** frena
+  por fantasmas lejos del cruce; (d) **no adelanta dentro de un cruce** (si resulta demasiado conservador, el
+  commit `8af862d` se revierte **solo**, sin tocar el radar). Dial: `_LINK_TRANSITION_WINDOW_M` (25 m, radar.py).
+- **Fix (4) y fix (1) (S33)** — no adelantar por vías cerradas; el intermitente no hace flip en salidas juntas.
+- **Ceda-el-paso (W4)** — *"funciona, pero regular"*: **no se da por bueno**; es lo que motiva la Fase 8. No
+  perder tiempo afinando el modelo viejo.
+- *(✅ ya validados: los 3 bugs del radar con humanos (S35, "desaparecieron todos los tirones"), Apunta (S31) y
+  fin de vía → espectadores (S29).)*
 
 **Backlog offline (opcional, si no hay LFS a mano; no bloquea el merge):**
 1. **Desacople profundo de `base.py` (resto de P4):** reducir las 20 llamadas cross-mixin reales / romper
@@ -957,10 +1004,10 @@ del cruce.
   robusto se hacen **antes** del merge/publish (Fase 6 re-secuenciada; ver Fase activa y PLAN).
   Todo en la rama; un solo merge a `main` cuando esté publish-ready + validado, luego publish. No
   es un bloqueo: es el plan de trabajo.
-- **W4 (validación en LFS del ceda-el-paso del ACC, S21): DESBLOQUEADA en S33.** El usuario creó la
-  primera intersección (`test1` en South City, con `priority_rules`) — ya no hay `zones: 0`. Queda solo
-  **validar en el juego** el ceda-el-paso (+ el fix de histéresis `73bbae7`); cuando el usuario lo confirme,
-  se cierra el gate del merge. No es un bloqueo técnico: es trabajo de validación pendiente.
+- **W4 (ceda-el-paso): PROBADA en LFS (S35) y NO superada.** El usuario creó la intersección `test1` y la
+  condujo: *"funcionan, pero son difíciles de crear y su funcionamiento es regular"*. **No se cierra el gate
+  afinando el modelo actual** — el problema es el modelo de datos (reglas de prioridad globales por pares en vez
+  de reglas locales colgadas de la maniobra). Se rehace en la **Fase 8**; el merge espera a eso.
 
 ## Notas para la próxima sesión
 

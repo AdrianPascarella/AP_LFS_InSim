@@ -5,6 +5,89 @@
 
 ---
 
+## S35 — 2026-07-13 — Validación en LFS: 3 bugs del radar con HUMANOS (stop-and-go) + nueva ley de seguimiento del ACC + semilla de la Fase 8
+
+**Contexto:** continuación de S34. El usuario probó en LFS y reportó que la IA iba **"a saltos: ahora sí, o
+no... aún no era"**, llegando a **pararse del todo y rearrancar**, en los TRES escenarios (recta, cruce y
+ceda-el-paso) — siempre que hubiera alguien delante. Dato clave que dio al preguntarle: **solo lo había probado
+con él mismo delante (un humano), no con otras IAs.**
+
+**Método (lo que evitó tres arreglos equivocados).** Se midió antes de tocar. (1) Primera hipótesis —el ACC
+oscila por sus umbrales dependientes de la propia velocidad— **REFUTADA**: simulando el lazo cerrado con el ACC
+real, la velocidad pedida converge suave. (2) Segunda —a los humanos se les asigna un LatLink— **refutada para el
+eje del carril** (0/5848 nodos del South City real). Solo entonces, leyendo el código con lupa, apareció la causa
+real. Moraleja registrada: en este dominio, **medir antes de arreglar**.
+
+**Bug 1 — se comparaban dos índices que NO significan lo mismo (commit `d6785a4`).** `_scan_lane_ahead` decide
+"delante o detrás" con `idx_diff = other_node_index - mode.node_index`. Pero `mode.node_index` es el nodo
+**OBJETIVO** de la IA, y `evaluate_dynamic_capture` lo adelanta al siguiente hasta `2.5 + v·0.3` m **antes** de
+llegar (5 m a 30 km/h) → va sistemáticamente un nodo por delante de su posición. A otra **IA** se le lee su
+`node_index` (misma regla → comparables), pero a un **HUMANO**, que no publica topología, se le asigna el nodo
+**MÁS CERCANO**. Comparar "cercano" contra "objetivo" da `idx_diff = -1` a un humano que va físicamente
+**delante** → se le toma por un coche de detrás y **se le pierde**. **Reproducido** en un test que camina 200
+pasos con el humano 7 m por delante, manteniendo el índice con la MISMA secuencia que `navigation.py`
+(antilag + captura): **60 de 200 pasos ciego**, en una ventana **periódica de ~3 m por cada nodo** (a 30 km/h:
+~0,35 s de ceguera cada ~1,2 s). En el hueco la IA no ve a nadie → `velocidad_base` → gas; al recuperarlo → ACC →
+freno. **Y con `speed_request = 0` la física aparca el coche** (freno de mano + motor OFF) → el tirón al
+rearrancar. **Fix:** cada vehículo se compara contra MI índice medido con **su misma regla** (nuevo
+`_my_closest_node_index`). Sin fudge factors.
+
+**Bug 2 — la caché de humanos es COMPARTIDA por todas las IAs (mismo commit).** Guardaba el índice de nodo, que
+solo vale para la geometría de **quien escaneó**. Una IA que iba por otra vía dejaba ahí un `-1`, y la IA que iba
+justo detrás del humano lo leía como "va detrás" → lo perdía durante toda la ventana de caché (0,1 s). **Fix:** la
+caché guarda solo la **vía** (independiente del escáner); el índice se calcula por escáner y solo para humanos que
+van en su misma vía (un puñado) → coste despreciable.
+
+**Bug 3 — a los humanos se les asignaba un LatLink como si fuera su vía (commit `87a1142`).** La fórmula del
+radar dejaba que **cualquier** enlace más cercano desbancase a la vía. Pero un LatLink es la tira que **une** dos
+carriles: nadie circula por ella, y como se graban conduciendo pegado al carril, corren casi **paralelos**.
+**Medido sobre el South City real** (humano desplazado lateralmente dentro de su carril): a **1 m del eje** —o
+sea, conduciendo normal— el **4,9%** de los puntos le asignaba un LatLink → invisible. **Hallazgo decisivo:**
+`navigation.py:361` **ya lo hacía bien** (`... and ctx.link_type == "RoadLink"`) para localizar a la propia IA;
+las **dos copias del radar se habían dejado la comprobación del tipo** → no es un cambio de diseño, es alinear el
+radar con la regla canónica. Con el fix, la ceguera a 1 m baja a **0,5%** (lo que queda a 2-3 m es ambigüedad
+física real: ir a caballo entre dos carriles). En `_scan_target_lane` el agujero era **peor**: es el escáner que
+decide si el carril está libre para adelantar → un humano descentrado ahí era invisible y **la IA se le echaba
+encima**.
+
+**✅ VALIDADO en LFS por el usuario: "Desaparecieron todos los tirones. En todo lo que antes daba tirones ya no
+los da".** Los 3 bugs eran **viejos** (nada que ver con el fix (3) de S34) y **solo afectaban a los humanos** —
+por eso el tráfico IA-IA se veía bien y nunca se cazaron.
+
+**Nueva ley de seguimiento del ACC (commit `35870bb`), a petición del usuario.** Pidió dos cosas: **(a)** hueco
+mínimo entre coches un poco más grande y **(b)** que al ir bloqueado la IA **iguale** la velocidad del de delante
+**en vez de reducirla** ("si no, terminan oscilando"). (a) → dos diales con nombre: `PARADA_ABSOLUTA_M` 5→**7 m**
+(suelo duro) y `MIN_GAP_FLOOR_M` 5→**8 m** (suelo de la distancia de seguridad cuando el time-gap se queda corto:
+marcha lenta y colas). El time-gap a velocidad (2 s) no se toca. (b) **obligaba a cambiar la FORMA de la ley, no
+un número**: si la banda de seguimiento iguala, la vieja zona roja (que salta a 0 de golpe) queda debajo como un
+**acantilado** y la IA volvería a oscilar ahí. Así que la rampa de frenado **baja a una franja de EMERGENCIA**
+(por debajo de `critical`, que es donde reducir sí es legítimo) y la banda de seguimiento pasa a ser **igualación
+pura**. La ley queda **CONTINUA en los tres bordes** (los escalones son justo lo que excita la oscilación).
+**Verificado en lazo cerrado** con el ACC real (offline): siguiendo a 10/20 km/h y detrás de un coche parado
+converge a un **punto fijo** — iguala exactamente la velocidad y el hueco se estabiliza (8 m en marcha lenta,
+11,1 m a 20 km/h = time-gap). La caracterización del ACC (S19/S21) se **reescribió** a la ley nueva: es un cambio
+de comportamiento **deliberado**. ⏳ Pendiente de validar en LFS.
+
+**Incidencia (y su reparación, commit `cb9c3b3`).** Un `Get-Content | Set-Content -Encoding utf8` en PowerShell
+5.1 leyó `test_traffic.py` como ANSI y lo reescribió **doble-codificado**: todos los acentos de los comentarios
+quedaron en mojibake, y se coló en dos commits. Reparado y **verificado contra la última versión limpia** (el diff
+de todo lo preexistente vuelve a ser cero). **Regla para el futuro: no usar `Get-Content | Set-Content` sobre
+fuentes; editar con las herramientas de edición.**
+
+**Rendimiento (falsa alarma que casi acaba mal).** La suite pasó de 43 s a 100 s → sospecha de regresión en el
+hot-loop. Antes de matar los procesos "huérfanos" se comprobó qué eran: **eran el InSim del propio usuario**
+(`lfs-insim run ai_control`, quemando un núcleo mientras probaba en LFS). No había regresión. **Además aparecían
+DOS instancias** — si de verdad son dos clientes conectados, ambos mandarían órdenes a los mismos coches; avisado
+al usuario.
+
+**Cierre.** Suite **773/773**; ruff limpio; rama en sync. El usuario probó las **intersecciones**: *"funcionan,
+pero son difíciles de crear y su funcionamiento es regular"*, y trae un **diseño propio** para rehacerlas →
+**Fase 8 (nueva)** con la semilla de diseño y las preguntas abiertas. Se decidió **cerrar aquí** y arrancar el
+rediseño en sesión nueva (falta que explique la parte de UI, toca el modelo de datos, y conviene hacerlo con el
+feedback de LFS del ACC ya en la mano). Commits: `d6785a4`, `87a1142`, `cb9c3b3`, `35870bb` + docs.
+
+---
+
 ## S34 — 2026-07-13 — Fase 7: fix (3) el radar pierde coches en la transición road↔roadlink → **FASE 7 COMPLETA (código)**
 
 **Arranque:** protocolo de inicio. Ya en `refactor/estabilizacion`, árbol limpio (nada de mapas que proteger);
