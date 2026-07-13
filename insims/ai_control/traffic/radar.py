@@ -1,8 +1,9 @@
 """Radar de tráfico: barrido de vehículos en el carril propio, en el carril
 objetivo de un adelantamiento y en el hueco de regreso.
 
-Es el punto caliente del módulo (O(N) por IA → O(N²) global): aquí aterrizará
-el índice espacial de vehículos (PLAN § Fase 6 · W3)."""
+Es el punto caliente del módulo: los 3 barridos consultan la rejilla espacial de
+vehículos (`_build_vehicle_grid`, S28) en vez de recorrer los N → O(vecindario)
+por consulta en vez de O(N) (O(N²) global)."""
 
 from __future__ import annotations
 
@@ -12,6 +13,7 @@ from collections.abc import Iterator
 from typing import TYPE_CHECKING
 
 from insims.ai_control.base import _MixinBase
+from insims.ai_control.nav_modes.freeroam.graph import RoadLink
 from insims.ai_control.nav_modes.freeroam.mode import FreeroamMode
 from insims.ai_control.nav_modes.freeroam.spatial_grid import SpatialHashGrid
 from lfs_insim.utils import calc_dist_3d
@@ -26,6 +28,67 @@ if TYPE_CHECKING:
 # el sondeo de celdas vacías; por encima, más candidatos por celda al agruparse
 # las IAs); 50 m es el centro de la meseta. Ajustable.
 _VEHICLE_GRID_CELL_M = 50.0
+
+# Ventana de transición de un RoadLink (m), medida desde su nodo de ENTRADA. Dentro
+# de ella el radar ensancha "mi carril" a la vía contigua de la cadena (ver
+# `_lane_chain_ids`); fuera vuelve al match estricto. Cubre la zona en la que el
+# enlace y la vía todavía no se han separado físicamente: la IA conmuta al enlace a
+# `TRIGGER_DIST_M` (3.5 m) de él, mucho antes de divergir de verdad. Ajustable.
+_LINK_TRANSITION_WINDOW_M = 25.0
+
+
+def _is_near_link_entry(
+    link: RoadLink, my_x: float, my_y: float, window_m: float
+) -> bool:
+    """¿Estoy a menos de `window_m` del nodo de ENTRADA del enlace (2D)?"""
+    if not link.nodes:
+        return False
+    entry = link.nodes[0]
+    return math.hypot(entry.x_m - my_x, entry.y_m - my_y) <= window_m
+
+
+def _lane_chain_ids(
+    mode: FreeroamMode,
+    current_link: RoadLink | None,
+    next_link: RoadLink | None,
+    my_x: float,
+    my_y: float,
+    window_m: float = _LINK_TRANSITION_WINDOW_M,
+) -> set[str]:
+    """Ids de vía que, SIN ser `mode.current_id`, cuentan como "mi carril, delante".
+
+    Fase 7 · fix (3). El radar acotaba los candidatos a la geometría de `current_id`,
+    pero la topología de la IA cambia ANTES que su posición: `navigation.py` la mete
+    en el RoadLink en cuanto está a `TRIGGER_DIST_M` (3.5 m) de él. Resultado: al
+    entrar en un enlace dejaba de ver al coche lento que aún tenía delante en la vía
+    que deja, y no veía a los que ya circulaban en la de destino. Esto devuelve la
+    cadena `from_road → link → to_road` alrededor del cruce:
+
+      - En un **Road** con RoadLink planificado: el enlace SIEMPRE (evita el pileup en
+        su entrada) y, solo dentro de la ventana, la vía de **destino** del enlace (así
+        frena a tiempo por una cola al otro lado, no al meterse ya en el cruce).
+      - Dentro de un **RoadLink**: la vía de **destino** siempre (estamos comprometidos:
+        es nuestro carril) y, solo dentro de la ventana, la vía que **dejamos** (donde
+        el coche de delante puede seguir de frente sin tomar el enlace).
+
+    La ventana acota el ensanchado a las inmediaciones del cruce: lejos de él el match
+    vuelve a ser estricto, así el tráfico de una transversal no provoca frenado
+    fantasma. Quien llame filtra luego por producto escalar (que estén DELANTE).
+    """
+    ids: set[str] = set()
+
+    if mode.current_type == "Road":
+        if mode.next_link_id and mode.next_link_type == "RoadLink":
+            ids.add(mode.next_link_id)
+            if next_link and _is_near_link_entry(next_link, my_x, my_y, window_m):
+                ids.add(next_link.to_road_id)
+
+    elif mode.current_type == "RoadLink" and current_link:
+        ids.add(current_link.to_road_id)
+        if _is_near_link_entry(current_link, my_x, my_y, window_m):
+            ids.add(current_link.from_road_id)
+
+    return ids
 
 
 class _RadarMixin(_MixinBase):
@@ -146,6 +209,21 @@ class _RadarMixin(_MixinBase):
             target_node.x_m - my_coords.x_m, target_node.y_m - my_coords.y_m
         )
 
+        # C. Cadena topológica del cruce (from_road → link → to_road): las vías que,
+        # sin ser la mía, cuentan como "mi carril, delante" cerca de un enlace. Se
+        # resuelve UNA vez, fuera del bucle (ver `_lane_chain_ids`).
+        chain_ids = _lane_chain_ids(
+            mode,
+            self.map_recorder.road_links.get(mode.current_id)
+            if mode.current_type == "RoadLink"
+            else None,
+            self.map_recorder.road_links.get(mode.next_link_id)
+            if mode.next_link_type == "RoadLink" and mode.next_link_id
+            else None,
+            my_coords.x_m,
+            my_coords.y_m,
+        )
+
         # =========================================================
         # 2. ESCANEO Y DETECCIÓN (Bucle Caliente)
         # Los candidatos vienen del vecindario (rejilla espacial) en vez de los N
@@ -227,17 +305,13 @@ class _RadarMixin(_MixinBase):
 
             same_segment = other_road_id == mode.current_id
 
-            # Si estamos en un Road y el otro ya está en nuestro próximo RoadLink,
-            # lo tratamos como obstáculo adelante (evita pileup en la entrada del link)
-            in_our_next_link = (
-                not same_segment
-                and mode.current_type == "Road"
-                and mode.next_link_id
-                and mode.next_link_type == "RoadLink"
-                and other_road_id == mode.next_link_id
-            )
+            # El otro no va en mi geometría, pero sí en una vía contigua de la cadena
+            # del cruce (nuestro próximo enlace, la vía de destino o la que dejamos):
+            # cuenta como obstáculo adelante. Evita el pileup en la entrada del enlace
+            # y los choques de la transición road↔roadlink (Fase 7 · fix (3)).
+            in_lane_chain = not same_segment and other_road_id in chain_ids
 
-            if not same_segment and not in_our_next_link:
+            if not same_segment and not in_lane_chain:
                 continue
 
             if same_segment:
@@ -269,8 +343,9 @@ class _RadarMixin(_MixinBase):
                     vec_y = other_coords.y_m - my_coords.y_m
                     if (dir_x * vec_x) + (dir_y * vec_y) <= 0:
                         continue
-            # in_our_next_link: el otro ya está en el RoadLink que vamos a entrar.
-            # Solo necesitamos verificar que está delante (dot product positivo).
+            # in_lane_chain: el otro va por una vía contigua del cruce, donde el
+            # node_index no es comparable con el nuestro (geometrías distintas). El
+            # único criterio es que esté delante (producto escalar positivo).
             else:
                 vec_x = other_coords.x_m - my_coords.x_m
                 vec_y = other_coords.y_m - my_coords.y_m

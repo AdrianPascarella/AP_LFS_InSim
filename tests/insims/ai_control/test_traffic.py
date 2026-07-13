@@ -33,6 +33,7 @@ import pytest
 from insims.ai_control.nav_modes.freeroam.enums import AIManeuverState, TrafficRule
 from insims.ai_control.nav_modes.freeroam.graph import IntersectionZone
 from insims.ai_control.nav_modes.freeroam.mode import FreeroamMode
+from insims.ai_control.traffic.radar import _is_near_link_entry, _lane_chain_ids
 from lfs_insim.insim_enums import CSVAL
 
 LEFT = CSVAL.INDICATORS.LEFT
@@ -833,6 +834,289 @@ class TestScanLaneAhead:
         assert [(round(d, 3), p) for d, _, p in got] == [(20.0, 2)]
 
 
+# ─── Fase 7 · fix (3): la cadena topológica from_road → link → to_road ────────
+#
+# El radar solo aceptaba coches en `mode.current_id` (+ el próximo RoadLink yendo
+# por un Road). Al entrar en un RoadLink, la IA conmuta su topología ANTES de
+# separarse físicamente de la vía vieja (navigation.py: `dist_to_link < TRIGGER_DIST_M`,
+# 3.5 m) → dejaba de ver (a) al coche lento que aún tenía delante en la vía que deja
+# y (b) a los que ya circulaban dentro de la vía destino. `_lane_chain_ids` ensancha
+# el match a esa cadena, acotado por una VENTANA de transición medida al nodo de
+# entrada del enlace: lejos del cruce el filtro vuelve a ser estricto (sin frenado
+# fantasma por coches de una transversal).
+
+# Grafo de los tests de cadena: R1 recta en +Y (0..200); el enlace R1->R2 arranca en
+# (0,100) y sigue recto hasta (0,140); R2 continúa de (0,140) a (0,220). R1 sigue
+# existiendo más allá del cruce (un coche puede seguir de frente sin tomar el enlace).
+_CHAIN_LINK_NODES = [
+    (0.0, 100.0),
+    (0.0, 110.0),
+    (0.0, 120.0),
+    (0.0, 130.0),
+    (0.0, 140.0),
+]
+
+
+def _chain_graph(ai_control, populate_graph, make_road, make_road_link):
+    populate_graph(
+        ai_control.map_recorder,
+        roads=[
+            make_road("R1", _pts_y(y1=200.0)),
+            make_road("R2", _pts_y(y0=140.0, y1=220.0)),
+        ],
+        road_links=[make_road_link("R1", "R2", _CHAIN_LINK_NODES)],
+    )
+
+
+class TestLaneChainIds:
+    """Unitarios de los helpers puros de la cadena (sin radar de por medio)."""
+
+    @staticmethod
+    def _link(make_road_link):
+        return make_road_link("R1", "R2", _CHAIN_LINK_NODES)
+
+    def test_sin_nodos_nunca_esta_en_la_ventana(self, make_road_link):
+        link = make_road_link("R1", "R2", [])
+        assert _is_near_link_entry(link, 0.0, 100.0, 25.0) is False
+
+    def test_ventana_se_mide_al_nodo_de_entrada(self, make_road_link):
+        link = self._link(make_road_link)  # entrada en (0,100)
+        assert _is_near_link_entry(link, 0.0, 90.0, 25.0) is True  # a 10 m
+        assert _is_near_link_entry(link, 0.0, 70.0, 25.0) is False  # a 30 m
+
+    def test_en_road_sin_next_link_la_cadena_esta_vacia(self):
+        mode = FreeroamMode(current_type="Road", current_id="R1")
+        assert _lane_chain_ids(mode, None, None, 0.0, 90.0, 25.0) == set()
+
+    def test_en_road_un_next_latlink_no_entra_en_la_cadena(self, make_road_link):
+        # Solo los RoadLink cuentan: un LatLink es un cambio de carril, no un cruce.
+        mode = FreeroamMode(
+            current_type="Road",
+            current_id="R1",
+            next_link_id="R1<<>>R3",
+            next_link_type="LatLink",
+        )
+        link = self._link(make_road_link)
+        assert _lane_chain_ids(mode, None, link, 0.0, 90.0, 25.0) == set()
+
+    def test_en_road_lejos_del_enlace_solo_el_enlace(self, make_road_link):
+        # Comportamiento de ANTES (`in_our_next_link`): el enlace sí, su destino no.
+        mode = FreeroamMode(
+            current_type="Road",
+            current_id="R1",
+            next_link_id="R1->R2",
+            next_link_type="RoadLink",
+        )
+        link = self._link(make_road_link)
+        assert _lane_chain_ids(mode, None, link, 0.0, 50.0, 25.0) == {"R1->R2"}
+
+    def test_en_road_dentro_de_la_ventana_entra_la_via_destino(self, make_road_link):
+        mode = FreeroamMode(
+            current_type="Road",
+            current_id="R1",
+            next_link_id="R1->R2",
+            next_link_type="RoadLink",
+        )
+        link = self._link(make_road_link)
+        assert _lane_chain_ids(mode, None, link, 0.0, 90.0, 25.0) == {"R1->R2", "R2"}
+
+    def test_en_roadlink_la_via_destino_siempre_cuenta(self, make_road_link):
+        # Ya comprometidos con el enlace: to_road es nuestro carril → siempre.
+        mode = FreeroamMode(current_type="RoadLink", current_id="R1->R2")
+        link = self._link(make_road_link)
+        assert _lane_chain_ids(mode, link, None, 0.0, 135.0, 25.0) == {"R2"}
+
+    def test_en_roadlink_dentro_de_la_ventana_entra_la_via_que_deja(
+        self, make_road_link
+    ):
+        mode = FreeroamMode(current_type="RoadLink", current_id="R1->R2")
+        link = self._link(make_road_link)
+        assert _lane_chain_ids(mode, link, None, 0.0, 105.0, 25.0) == {"R2", "R1"}
+
+    def test_enlace_no_encontrado_no_revienta(self):
+        mode = FreeroamMode(current_type="RoadLink", current_id="FANTASMA")
+        assert _lane_chain_ids(mode, None, None, 0.0, 105.0, 25.0) == set()
+
+
+class TestScanLaneAheadChain:
+    """El radar, ya con la cadena: los dos choques que reportó el usuario."""
+
+    @staticmethod
+    def _scanner_in_link(make_ai, y_m, node_index):
+        scanner = make_ai(plid=1, x_m=0, y_m=y_m, speed_kmh=0)
+        mode = FreeroamMode(
+            current_type="RoadLink",
+            current_id="R1->R2",
+            current_road_id="R1",
+            node_index=node_index,
+        )
+        return scanner, mode
+
+    def test_en_roadlink_ve_al_lento_que_sigue_en_la_via_que_deja(
+        self,
+        ai_control,
+        populate_graph,
+        make_road,
+        make_road_link,
+        make_ai,
+        make_behavior,
+    ):
+        # BUG A: acabamos de entrar al enlace (a 5 m de su entrada) y el coche lento
+        # que veníamos siguiendo sigue de frente por R1 → antes desaparecía del radar.
+        _chain_graph(ai_control, populate_graph, make_road, make_road_link)
+        scanner, mode = self._scanner_in_link(make_ai, y_m=105.0, node_index=1)
+        other = _place_ai(
+            make_ai,
+            make_behavior,
+            2,
+            0,
+            115,
+            speed_kmh=10,
+            mode_fields={"current_type": "Road", "current_id": "R1", "node_index": 11},
+        )
+        _set_ais(ai_control, scanner, other)
+        got = ai_control._scan_lane_ahead(scanner, mode, 30.0)
+        assert [(round(d, 3), p) for d, _, p in got] == [(10.0, 2)]
+
+    def test_en_roadlink_ve_a_los_que_ya_circulan_en_la_via_destino(
+        self,
+        ai_control,
+        populate_graph,
+        make_road,
+        make_road_link,
+        make_ai,
+        make_behavior,
+    ):
+        # BUG B: vamos por el enlace y en R2 (nuestra vía destino) ya circula alguien
+        # delante → antes no existía para el radar y se le echaba encima.
+        _chain_graph(ai_control, populate_graph, make_road, make_road_link)
+        scanner, mode = self._scanner_in_link(make_ai, y_m=130.0, node_index=3)
+        other = _place_ai(
+            make_ai,
+            make_behavior,
+            2,
+            0,
+            145,
+            speed_kmh=10,
+            mode_fields={"current_type": "Road", "current_id": "R2", "node_index": 0},
+        )
+        _set_ais(ai_control, scanner, other)
+        got = ai_control._scan_lane_ahead(scanner, mode, 30.0)
+        assert [(round(d, 3), p) for d, _, p in got] == [(15.0, 2)]
+
+    def test_en_roadlink_ignora_al_de_la_via_que_deja_si_va_detras(
+        self,
+        ai_control,
+        populate_graph,
+        make_road,
+        make_road_link,
+        make_ai,
+        make_behavior,
+    ):
+        # Mismo tramo, pero DETRÁS (producto escalar ≤ 0) → no es obstáculo.
+        _chain_graph(ai_control, populate_graph, make_road, make_road_link)
+        scanner, mode = self._scanner_in_link(make_ai, y_m=105.0, node_index=1)
+        other = _place_ai(
+            make_ai,
+            make_behavior,
+            2,
+            0,
+            95,
+            mode_fields={"current_type": "Road", "current_id": "R1", "node_index": 9},
+        )
+        _set_ais(ai_control, scanner, other)
+        assert ai_control._scan_lane_ahead(scanner, mode, 30.0) == []
+
+    def test_pasada_la_ventana_la_via_que_deja_deja_de_mirarse(
+        self,
+        ai_control,
+        populate_graph,
+        make_road,
+        make_road_link,
+        make_ai,
+        make_behavior,
+    ):
+        # Ya metidos en el enlace (a 30 m de su entrada > ventana): físicamente hemos
+        # dejado R1 → un coche suyo "delante" ya no está en nuestra trayectoria.
+        _chain_graph(ai_control, populate_graph, make_road, make_road_link)
+        scanner, mode = self._scanner_in_link(make_ai, y_m=130.0, node_index=3)
+        other = _place_ai(
+            make_ai,
+            make_behavior,
+            2,
+            0,
+            140,
+            mode_fields={"current_type": "Road", "current_id": "R1", "node_index": 14},
+        )
+        _set_ais(ai_control, scanner, other)
+        assert ai_control._scan_lane_ahead(scanner, mode, 30.0) == []
+
+    def test_en_road_cerca_del_cruce_ya_ve_la_via_destino(
+        self,
+        ai_control,
+        populate_graph,
+        make_road,
+        make_road_link,
+        make_ai,
+        make_behavior,
+    ):
+        # Aproximación: a 10 m de la entrada del enlace, un coche parado en R2 (justo
+        # al otro lado del cruce) ya cuenta → frena a tiempo en vez de al entrar.
+        _chain_graph(ai_control, populate_graph, make_road, make_road_link)
+        scanner = make_ai(plid=1, x_m=0, y_m=90, speed_kmh=0)
+        mode = FreeroamMode(
+            current_type="Road",
+            current_id="R1",
+            current_road_id="R1",
+            node_index=9,
+            next_link_id="R1->R2",
+            next_link_type="RoadLink",
+        )
+        other = _place_ai(
+            make_ai,
+            make_behavior,
+            2,
+            0,
+            145,
+            mode_fields={"current_type": "Road", "current_id": "R2", "node_index": 0},
+        )
+        _set_ais(ai_control, scanner, other)
+        got = ai_control._scan_lane_ahead(scanner, mode, 60.0)
+        assert [(round(d, 3), p) for d, _, p in got] == [(55.0, 2)]
+
+    def test_en_road_lejos_del_cruce_no_frena_por_la_via_destino(
+        self,
+        ai_control,
+        populate_graph,
+        make_road,
+        make_road_link,
+        make_ai,
+        make_behavior,
+    ):
+        # A 50 m de la entrada (fuera de la ventana): el coche de R2 NO cuenta. Es lo
+        # que evita el frenado fantasma por tráfico de una vía transversal lejana.
+        _chain_graph(ai_control, populate_graph, make_road, make_road_link)
+        scanner = make_ai(plid=1, x_m=0, y_m=50, speed_kmh=0)
+        mode = FreeroamMode(
+            current_type="Road",
+            current_id="R1",
+            current_road_id="R1",
+            node_index=5,
+            next_link_id="R1->R2",
+            next_link_type="RoadLink",
+        )
+        other = _place_ai(
+            make_ai,
+            make_behavior,
+            2,
+            0,
+            145,
+            mode_fields={"current_type": "Road", "current_id": "R2", "node_index": 0},
+        )
+        _set_ais(ai_control, scanner, other)
+        assert ai_control._scan_lane_ahead(scanner, mode, 100.0) == []
+
+
 class TestScanTargetLane:
     @staticmethod
     def _scanner_and_mode(ai_control, populate_graph, make_road, make_ai):
@@ -1064,6 +1348,57 @@ class TestRadarSpatialGridEquivalence:
             assert got == ref, f"seed={seed} max_dist={max_dist}"
             non_empty += bool(ref)
         assert non_empty >= 5  # el fuzz ejercita de verdad casos con detecciones
+
+    def test_scan_lane_ahead_en_roadlink_equivale_al_barrido_lineal(
+        self,
+        ai_control,
+        populate_graph,
+        make_road,
+        make_road_link,
+        make_ai,
+        make_behavior,
+        make_player,
+        make_telemetry,
+    ):
+        # Fase 7 · fix (3): con el escáner DENTRO de un RoadLink, la cadena topológica
+        # (from_road/to_road) admite muchos más vehículos que antes → hay que volver a
+        # demostrar que la rejilla no pierde ninguno respecto al barrido lineal. El
+        # escáner recorre el enlace (dentro y fuera de la ventana de transición).
+        populate_graph(
+            ai_control.map_recorder,
+            roads=[
+                make_road("R1", _pts_y(y1=400.0)),
+                make_road("R2", _pts_y(y0=140.0, y1=400.0)),
+            ],
+            road_links=[make_road_link("R1", "R2", _CHAIN_LINK_NODES)],
+        )
+        non_empty = 0
+        for seed in range(40):
+            rng = random.Random(seed)
+            y = rng.choice([102.0, 112.0, 130.0, 138.0])  # dentro y fuera de la ventana
+            scanner = make_ai(plid=1, x_m=0.0, y_m=y, speed_kmh=rng.uniform(10, 40))
+            self._spread(
+                rng,
+                ai_control,
+                scanner,
+                make_ai,
+                make_behavior,
+                make_player,
+                make_telemetry,
+            )
+            mode = FreeroamMode(
+                current_type="RoadLink",
+                current_id="R1->R2",
+                current_road_id="R1",
+                node_index=int((y - 100.0) // 10.0),
+            )
+            max_dist = rng.choice([15.0, 25.0, 40.0])
+            ref, got = self._run_both(
+                ai_control, lambda: ai_control._scan_lane_ahead(scanner, mode, max_dist)
+            )
+            assert got == ref, f"seed={seed} y={y} max_dist={max_dist}"
+            non_empty += bool(ref)
+        assert non_empty >= 5  # la cadena detecta de verdad en un buen puñado de casos
 
     def test_scan_target_lane_equivale_al_barrido_lineal(
         self,
