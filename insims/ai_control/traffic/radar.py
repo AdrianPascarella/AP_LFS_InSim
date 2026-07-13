@@ -13,7 +13,7 @@ from collections.abc import Iterator
 from typing import TYPE_CHECKING
 
 from insims.ai_control.base import _MixinBase
-from insims.ai_control.nav_modes.freeroam.graph import RoadLink
+from insims.ai_control.nav_modes.freeroam.graph import LocationContext, RoadLink
 from insims.ai_control.nav_modes.freeroam.mode import FreeroamMode
 from insims.ai_control.nav_modes.freeroam.spatial_grid import SpatialHashGrid
 from lfs_insim.utils import calc_dist_3d
@@ -35,6 +35,31 @@ _VEHICLE_GRID_CELL_M = 50.0
 # enlace y la vía todavía no se han separado físicamente: la IA conmuta al enlace a
 # `TRIGGER_DIST_M` (3.5 m) de él, mucho antes de divergir de verdad. Ajustable.
 _LINK_TRANSITION_WINDOW_M = 25.0
+
+
+def _human_road_id(ctx: LocationContext) -> str | None:
+    """Por qué vía va un humano (no publica topología: hay que deducirla).
+
+    Gana la vía más cercana, y solo un **RoadLink** puede desbancarla (es un tramo real
+    de paso: el giro de un cruce). Un **LatLink** NUNCA: es la tira que une dos carriles,
+    nadie circula por ella — si estás encima, sigues yendo por uno de los dos carriles.
+
+    El radar no hacía esa distinción y aceptaba cualquier enlace más cercano. Como los
+    laterales de adelantamiento se graban conduciendo pegado al carril, corren casi
+    paralelos a él: medido sobre south_city, a **1 m del eje** (o sea, conduciendo
+    normal dentro de tu carril) el **4,9%** de los puntos ya cae más cerca de un lateral
+    que de la propia vía → al humano se le asignaba el LatLink, dejaba de coincidir con
+    la vía de la IA y **desaparecía del radar** (el 0,5% que queda con esta regla es
+    ambigüedad física real: ir a caballo entre dos carriles). Con la regla correcta, la
+    IA de detrás deja de perderte al no ir clavado sobre la línea grabada.
+
+    Es exactamente la regla que `navigation.py` ya usa para localizar a la PROPIA IA
+    (`ctx.link_dist < ctx.road_dist and ctx.link_type == "RoadLink"`); las dos copias
+    del radar se habían dejado la comprobación del tipo.
+    """
+    if ctx.link_id and ctx.link_type == "RoadLink" and ctx.link_dist < ctx.road_dist:
+        return ctx.link_id
+    return ctx.road_id
 
 
 def _is_near_link_entry(
@@ -302,11 +327,7 @@ class _RadarMixin(_MixinBase):
                     ctx = self.map_recorder.get_location_context(
                         other_coords.x_m, other_coords.y_m, other_coords.z_m
                     )
-                    calc_road_id = (
-                        ctx.link_id
-                        if (ctx.link_id and ctx.link_dist < ctx.road_dist)
-                        else ctx.road_id
-                    )
+                    calc_road_id = _human_road_id(ctx)
                     # Solo se cachea la VÍA (no depende de quién escanea). El índice de
                     # nodo NO se cachea: se mide contra la geometría del escáner, y la
                     # caché es compartida por todas las IAs → una IA en otra vía dejaba
@@ -476,11 +497,7 @@ class _RadarMixin(_MixinBase):
                     ctx = self.map_recorder.get_location_context(
                         other_coords.x_m, other_coords.y_m, other_coords.z_m
                     )
-                    calc_road_id = (
-                        ctx.link_id
-                        if (ctx.link_id and ctx.link_dist < ctx.road_dist)
-                        else ctx.road_id
-                    )
+                    calc_road_id = _human_road_id(ctx)
 
                     self._target_lane_human_cache[other_player.plid] = (
                         current_time,

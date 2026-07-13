@@ -1218,6 +1218,90 @@ class TestScanLaneAheadHumano:
             f"(y_ia, node_index): {fallos[:12]}..."
         )
 
+    @staticmethod
+    def _carril_con_lateral(
+        populate_graph, map_recorder, make_road, make_lateral_link, lat_x
+    ):
+        """R1 (eje x=0) y su carril vecino R2 (eje x=6), unidos por un LatLink que corre
+        PARALELO a ellos a `lat_x` — como los laterales de adelantamiento reales, que se
+        graban conduciendo pegado al carril (medido en south_city: a 1 m del eje, el 5%
+        de los puntos ya cae más cerca de un lateral que de su propia vía)."""
+        populate_graph(
+            map_recorder,
+            roads=[
+                make_road("R1", _pts_y(y1=200.0)),
+                make_road("R2", _pts_y(x=6.0, y1=200.0)),
+            ],
+            lateral_links=[make_lateral_link("R1", "R2", _pts_y(x=lat_x, y1=200.0))],
+        )
+
+    def test_humano_descentrado_en_su_carril_sigue_viendose(
+        self,
+        ai_control,
+        populate_graph,
+        make_road,
+        make_lateral_link,
+        make_ai,
+        make_player,
+        make_telemetry,
+    ):
+        # El radar asignaba al humano la geometría más cercana AUNQUE fuera un LatLink
+        # (una tira paralela por la que nadie circula) → dejaba de coincidir con la vía
+        # de la IA → invisible. `navigation.py:361` ya exige `link_type == "RoadLink"`
+        # para localizar a la propia IA; el radar se había dejado esa comprobación.
+        # Lateral a 1,5 m de R1: el humano a 1 m del eje queda a 0,5 m del lateral.
+        self._carril_con_lateral(
+            populate_graph, ai_control.map_recorder, make_road, make_lateral_link, 1.5
+        )
+        scanner = make_ai(plid=1, x_m=0, y_m=50, speed_kmh=30)
+        mode = FreeroamMode(
+            current_type="Road", current_id="R1", current_road_id="R1", node_index=5
+        )
+        ai_control.user_manager.ais = {1: scanner}
+        ai_control.user_manager.players = {
+            2: make_player(  # 1 m descentrado: sigue en SU carril, pero pegado al lateral
+                plid=2, ucid=2, telemetry=make_telemetry(x_m=1.0, y_m=60, speed_kmh=10)
+            )
+        }
+        ai_control._radar_human_cache.clear()
+
+        visto = [p for _, _, p in ai_control._scan_lane_ahead(scanner, mode, 40.0)]
+        assert 2 in visto, "un humano 1 m descentrado en su carril desaparece del radar"
+
+    def test_humano_descentrado_en_el_carril_objetivo_sigue_viendose(
+        self,
+        ai_control,
+        populate_graph,
+        make_road,
+        make_lateral_link,
+        make_ai,
+        make_player,
+        make_telemetry,
+    ):
+        # El mismo agujero en `_scan_target_lane` es PEOR: es el escáner que decide si
+        # el carril de adelantamiento está libre. Un humano descentrado en el carril
+        # objetivo se volvía invisible → la IA se le echaba encima al adelantar.
+        # Lateral a 4,5 m: pegado al carril objetivo R2 (x=6), como al grabar el cambio.
+        self._carril_con_lateral(
+            populate_graph, ai_control.map_recorder, make_road, make_lateral_link, 4.5
+        )
+        scanner = make_ai(plid=1, x_m=0, y_m=50, speed_kmh=30)
+        mode = FreeroamMode(
+            current_type="Road", current_id="R1", current_road_id="R1", node_index=5
+        )
+        ai_control.user_manager.ais = {1: scanner}
+        ai_control.user_manager.players = {
+            2: make_player(  # en R2 (carril objetivo), 1 m descentrado hacia el lateral
+                plid=2, ucid=2, telemetry=make_telemetry(x_m=5.0, y_m=60, speed_kmh=10)
+            )
+        }
+        ai_control._target_lane_human_cache.clear()
+
+        visto = [
+            p for _, _, p in ai_control._scan_target_lane(scanner, mode, "R2", 40.0)
+        ]
+        assert 2 in visto, "un humano descentrado en el carril objetivo no se ve"
+
     def test_otra_ia_escaneando_desde_otra_via_no_ciega_el_radar(
         self,
         ai_control,
