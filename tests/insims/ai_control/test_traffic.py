@@ -8,9 +8,9 @@ tocar nada (red de seguridad, MODUS_OPERANDI §3). Cubre, de menor a mayor setup
     ACC de 3 zonas), `_estimate_overtake_distance`, `_get_relative_dist_to_cover`,
     `_calc_path_length`, `_get_lookahead_point`.
 
-El gran orquestador `_update_traffic_behavior` NO se cubre a propósito: usa
-`time.time()` y muta muchísimo estado del `mode` (mismo criterio que los métodos
-gordos de navigation.py `_update_freeroam_navigation` / `_get_radar_speed_limit`).
+El gran orquestador `_update_traffic_behavior` tiene su red aparte: el gatillo
+del adelantamiento aquí (TestOvertakeTriggerGuard, S34) y el marco + la conducta
+de cesión (Fase 8) en test_orchestrator.py.
 
 Sobre el "PARCHE DE SEGURIDAD MATEMÁTICO" del ACC: los 2 tests que lo congelaban se
 reescribieron en S21, cuando el parche se ELIMINÓ (ver DIAGNOSTICO § P25). Hoy estos
@@ -35,7 +35,6 @@ from insims.ai_control.nav_modes.freeroam.geometry import (
     apply_antilag_window,
     evaluate_dynamic_capture,
 )
-from insims.ai_control.nav_modes.freeroam.graph import IntersectionZone
 from insims.ai_control.nav_modes.freeroam.mode import FreeroamMode
 from insims.ai_control.traffic.radar import _is_near_link_entry, _lane_chain_ids
 from insims.users_management.main import Coordinates
@@ -54,11 +53,6 @@ def _coords_xy(x_m: float, y_m: float) -> Coordinates:
 
 LEFT = CSVAL.INDICATORS.LEFT
 RIGHT = CSVAL.INDICATORS.RIGHT
-
-# Heading en unidades LFS (0..65536 = una vuelta): 0 = mirando a +Y (Norte),
-# 32768 = mirando a -Y (Sur). Mismos ejes que test_navigation (+Y Norte, +X Oeste).
-HEADING_NORTH = 0
-HEADING_SOUTH = 32768
 
 
 # ─── _apply_adaptive_cruise_control: ley de seguimiento (S35: sin reducir al seguir) ──
@@ -299,119 +293,6 @@ class TestGetLookaheadPoint:
         nodes = [make_coords(0, 0), make_coords(0, 10), make_coords(0, 20)]
         x, y = ai_control._get_lookahead_point(0.0, 20.0, 2, nodes, 100.0, reverse=True)
         assert (x, y) == pytest.approx((0.0, 0.0))
-
-
-# ─── Geometría de zonas de intersección (círculo / cápsula / polígono) ────────
-#
-# _is_point_in_zone / _get_dist_to_zone_edge / _get_zone_centroid interpretan los
-# nodos de la IntersectionZone según cuántos haya: 0 (vacía), 1 (círculo de radio
-# radius_m), 2 (cápsula = segmento con grosor radius_m), 3+ (polígono, radius
-# ignorado para la pertenencia).
-
-
-def _zone(zone_id, points, radius_m=10.0, make_coords=None):
-    """IntersectionZone con nodos en metros (helper local; no hay factoría aún)."""
-    nodes = [make_coords(*p) for p in points]
-    return IntersectionZone(zone_id=zone_id, nodes=nodes, radius_m=radius_m)
-
-
-class TestGetZoneCentroid:
-    def test_zona_vacia_es_el_origen(self, ai_control):
-        assert ai_control._get_zone_centroid(IntersectionZone(zone_id="Z")) == (
-            0.0,
-            0.0,
-        )
-
-    def test_un_nodo_es_ese_nodo(self, ai_control, make_coords):
-        zone = _zone("Z", [(3, 7)], make_coords=make_coords)
-        assert ai_control._get_zone_centroid(zone) == pytest.approx((3.0, 7.0))
-
-    def test_varios_nodos_es_la_media(self, ai_control, make_coords):
-        zone = _zone("Z", [(0, 0), (10, 0), (10, 10), (0, 10)], make_coords=make_coords)
-        assert ai_control._get_zone_centroid(zone) == pytest.approx((5.0, 5.0))
-
-
-class TestIsPointInZone:
-    def test_zona_vacia_nunca_contiene(self, ai_control):
-        assert (
-            ai_control._is_point_in_zone(0, 0, IntersectionZone(zone_id="Z")) is False
-        )
-
-    def test_circulo_dentro_borde_y_fuera(self, ai_control, make_coords):
-        z = _zone("Z", [(0, 50)], radius_m=10.0, make_coords=make_coords)
-        assert ai_control._is_point_in_zone(0, 55, z) is True  # a 5 m del centro
-        assert (
-            ai_control._is_point_in_zone(0, 60, z) is True
-        )  # justo en el radio (10 m)
-        assert ai_control._is_point_in_zone(0, 65, z) is False  # a 15 m
-
-    def test_capsula_mide_distancia_al_segmento(self, ai_control, make_coords):
-        # Segmento (0,0)-(0,20) con grosor 5: 3 m de lado entra, 8 m no.
-        z = _zone("Z", [(0, 0), (0, 20)], radius_m=5.0, make_coords=make_coords)
-        assert ai_control._is_point_in_zone(3, 10, z) is True
-        assert ai_control._is_point_in_zone(8, 10, z) is False
-
-    def test_poligono_usa_ray_casting(self, ai_control, make_coords):
-        z = _zone("Z", [(0, 0), (10, 0), (10, 10), (0, 10)], make_coords=make_coords)
-        assert ai_control._is_point_in_zone(5, 5, z) is True
-        assert ai_control._is_point_in_zone(20, 5, z) is False
-
-
-class TestGetDistToZoneEdge:
-    def test_zona_vacia_es_infinito(self, ai_control):
-        z = IntersectionZone(zone_id="Z")
-        assert ai_control._get_dist_to_zone_edge(0, 0, z) == float("inf")
-
-    def test_circulo_resta_el_radio_y_no_baja_de_cero(self, ai_control, make_coords):
-        z = _zone("Z", [(0, 50)], radius_m=10.0, make_coords=make_coords)
-        # Fuera: hypot(50) - 10 = 40.
-        assert ai_control._get_dist_to_zone_edge(0, 0, z) == pytest.approx(40.0)
-        # Dentro: distancia negativa recortada a 0.
-        assert ai_control._get_dist_to_zone_edge(0, 55, z) == 0.0
-
-    def test_capsula_resta_el_radio(self, ai_control, make_coords):
-        z = _zone("Z", [(0, 0), (0, 20)], radius_m=5.0, make_coords=make_coords)
-        assert ai_control._get_dist_to_zone_edge(8, 10, z) == pytest.approx(3.0)
-
-    def test_poligono_dentro_es_cero_fuera_mide_al_borde(self, ai_control, make_coords):
-        z = _zone("Z", [(0, 0), (10, 0), (10, 10), (0, 10)], make_coords=make_coords)
-        assert ai_control._get_dist_to_zone_edge(5, 5, z) == 0.0
-        # (20,5): el borde más cercano es la arista x=10 → 10 m.
-        assert ai_control._get_dist_to_zone_edge(20, 5, z) == pytest.approx(10.0)
-
-
-class TestIsPriorityVehicleActiveAtZone:
-    def test_dentro_de_la_zona_siempre_activo(self, ai_control, make_coords):
-        # Dentro del círculo → True aunque vaya despacio y mire hacia otro lado.
-        z = _zone("Z", [(0, 50)], radius_m=10.0, make_coords=make_coords)
-        got = ai_control._is_priority_vehicle_active_at_zone(
-            make_coords(0, 52), 5.0, HEADING_SOUTH, z, approach_time_s=4.0
-        )
-        assert got is True
-
-    def test_lejos_para_su_velocidad_no_esta_activo(self, ai_control, make_coords):
-        # Borde a 40 m, 18 km/h (5 m/s) → 8 s > 4 s de anticipación → False.
-        z = _zone("Z", [(0, 50)], radius_m=10.0, make_coords=make_coords)
-        got = ai_control._is_priority_vehicle_active_at_zone(
-            make_coords(0, 0), 18.0, HEADING_NORTH, z, approach_time_s=4.0
-        )
-        assert got is False
-
-    def test_cerca_y_apuntando_a_la_zona_esta_activo(self, ai_control, make_coords):
-        # Borde a 10 m, 36 km/h (10 m/s) → 1 s ≤ 4 s, y mira a +Y (hacia la zona) → True.
-        z = _zone("Z", [(0, 50)], radius_m=10.0, make_coords=make_coords)
-        got = ai_control._is_priority_vehicle_active_at_zone(
-            make_coords(0, 30), 36.0, HEADING_NORTH, z, approach_time_s=4.0
-        )
-        assert got is True
-
-    def test_cerca_pero_alejandose_no_esta_activo(self, ai_control, make_coords):
-        # Mismo caso pero mirando a -Y (se aleja de la zona) → producto escalar ≤ 0 → False.
-        z = _zone("Z", [(0, 50)], radius_m=10.0, make_coords=make_coords)
-        got = ai_control._is_priority_vehicle_active_at_zone(
-            make_coords(0, 30), 36.0, HEADING_SOUTH, z, approach_time_s=4.0
-        )
-        assert got is False
 
 
 # ─── _should_keep_yielding: histéresis anti-parpadeo del ceda-el-paso ─────────

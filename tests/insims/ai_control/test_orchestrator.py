@@ -640,9 +640,7 @@ class TestVigiladosDeLaCesion:
             ai_control, populate_graph, make_road, make_road_link, make_coords, make_ai
         )
         # En (30,100), nodo 8 > punto de unión (nodo 6): ya pasó — se aleja.
-        _set_ais(
-            ai_control, scanner, _amenaza_en_r2(make_ai, make_behavior, x_m=30.0)
-        )
+        _set_ais(ai_control, scanner, _amenaza_en_r2(make_ai, make_behavior, x_m=30.0))
 
         assert ai_control._yield_threat_detected(scanner, link) is False
 
