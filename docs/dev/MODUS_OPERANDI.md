@@ -20,17 +20,19 @@ Antes de tocar nada:
    perderse nunca**. Este commit+push está autorizado de forma permanente, sin preguntar.
 3. **`git pull`** para traer cambios hechos desde otro dispositivo (los `.md` o el código pueden haber cambiado).
 4. Leer `ESTADO_ACTUAL.md` (dónde quedé, próximo paso).
-5. Leer la última entrada de `HISTORIAL.md`.
-6. Leer la fase activa en `PLAN.md`.
-7. Verificar con `git status` y `git log --oneline -5` que el repo coincide con lo escrito.
-8. Resumir al usuario en 2-3 líneas dónde estamos y qué propongo. Luego actuar.
+5. Leer `ACCIONES_USUARIO.md`: cuántas hay pendientes y cuál bloquea (§8).
+6. Leer la última entrada de `HISTORIAL.md`.
+7. Leer la fase activa en `PLAN.md`.
+8. Verificar con `git status` y `git log --oneline -5` que el repo coincide con lo escrito.
+9. Resumir al usuario en 2-3 líneas dónde estamos y qué propongo — **y decirle cuántas acciones
+   suyas hay pendientes y cuál bloquea el próximo paso**. Luego actuar.
 
-### Presupuesto de lectura del arranque (S37)
+### Presupuesto de lectura del arranque (S37, ampliado en S40)
 
 Qué se lee al arrancar — y, tan importante, qué NO:
 
-- **Entero:** `ESTADO_ACTUAL.md` (≤120 líneas, tope verificado por `close_check.py`) y este
-  `MODUS_OPERANDI.md`.
+- **Entero:** `ESTADO_ACTUAL.md` (≤120 líneas, tope verificado por `close_check.py`),
+  `ACCIONES_USUARIO.md` (corto por construcción) y este `MODUS_OPERANDI.md`.
 - **En parte:** `HISTORIAL.md` → **solo la última entrada**; `PLAN.md` → **solo la fase activa /
   próximo paso** (localizar por headings con grep, no leerlo entero).
 - **NO se lee al arrancar** (solo bajo demanda, cuando la tarea lo pida): el resto de `HISTORIAL.md`
@@ -40,17 +42,23 @@ Qué se lee al arrancar — y, tan importante, qué NO:
 ## 2. Protocolo de CIERRE de sesión (o de hito)
 
 Antes de terminar, SIEMPRE:
-1. Actualizar `ESTADO_ACTUAL.md`: estado, fase, próximo paso concreto, qué quedó a medias y la
-   **cola de validación en LFS** (casillas que **solo cierra el usuario**). **Tope duro: 120
+1. Actualizar `ESTADO_ACTUAL.md`: estado, fase, próximo paso concreto, qué quedó a medias y el
+   **puntero a `ACCIONES_USUARIO.md`** (cuántas pendientes, cuál bloquea). **Tope duro: 120
    líneas** — lo que sobre se vuelca a `HISTORIAL.md`, no se acumula.
-2. Añadir entrada a `HISTORIAL.md` (fecha, qué se hizo, decisiones tomadas, commits si los hubo).
-3. Marcar en `PLAN.md` lo completado; reflejar tareas nuevas descubiertas.
-4. Si hubo una decisión de diseño relevante, dejarla registrada con su porqué.
-5. **Commit + `git push`** a `origin/refactor/estabilizacion`: no terminar nunca con trabajo
+2. **Todo lo que le haya pedido al usuario esta sesión tiene que existir como ficha `U<n>` en
+   `ACCIONES_USUARIO.md`** — escrita antes de cerrar, no prometida (§8). Actualizar los contadores
+   de su cabecera.
+3. Añadir entrada a `HISTORIAL.md` (fecha, qué se hizo, decisiones tomadas, commits si los hubo, y
+   los veredictos que el usuario haya dado sobre alguna `U<n>`).
+4. Marcar en `PLAN.md` lo completado; reflejar tareas nuevas descubiertas.
+5. Si hubo una decisión de diseño relevante, dejarla registrada con su porqué.
+6. **Commit + `git push`** a `origin/refactor/estabilizacion`: no terminar nunca con trabajo
    local sin subir (permite continuar desde otro dispositivo).
-6. **Último paso, tras el push: `.venv\Scripts\python.exe scripts\close_check.py`** y pegar su
-   salida. Debe dar **PASS** (árbol limpio, todo pusheado, tope del handoff, próximo paso y cola
-   presentes); si da FAIL, arreglar y repetir. Convierte este protocolo en algo comprobable.
+7. **Último paso, tras el push: `.venv\Scripts\python.exe scripts\close_check.py`** y pegar su
+   salida. Debe dar **PASS** (árbol limpio, todo pusheado, tope del handoff, próximo paso, puntero
+   a las acciones, contadores cuadrados y ninguna ficha sin pasos); si da FAIL, arreglar y repetir.
+   Convierte este protocolo en algo comprobable.
+8. **Terminar el informe con "lo que te toca a ti"**: las fichas pendientes, en el orden recomendado.
 
 > Si el usuario cierra de golpe, hacer este cierre en cuanto se detecte un buen punto de parada.
 
@@ -66,8 +74,10 @@ Antes de terminar, SIEMPRE:
 
 ## 4. Limitaciones conocidas
 
-- **No puedo ejecutar LFS.** La verificación funcional en vivo (ver a la IA conducir)
-  la hace el usuario. Yo entrego cambios con tests + una nota de "qué probar en el juego".
+- **No puedo ejecutar LFS.** La verificación funcional en vivo (ver a la IA conducir) la hace el
+  usuario. Yo entrego cambios con tests + una **ficha `U<n>` en `ACCIONES_USUARIO.md`** con los
+  pasos exactos, el resultado esperado y las señales de fallo (§8). Nunca doy por "hecho" algo que
+  toque la conducta en el juego: queda **pendiente de validación**.
 - Los tests que dependan de red/sockets deben aislarse con mocks (no conectar a LFS real).
 - El entorno del sistema (Python 3.14) no tiene el paquete ni pytest instalados: trabajar
   siempre dentro del venv del proyecto (`.venv`).
@@ -131,3 +141,48 @@ Antes de terminar, SIEMPRE:
 - **Requiere permiso explícito del usuario:** mergear a `main` (y cualquier push a `main`).
   El merge se hace solo cuando el proyecto esté estable: `pytest` verde **+** el usuario ha
   validado el comportamiento en LFS.
+
+## 8. Acciones del usuario y bloqueo blando (S40)
+
+Todo lo que necesita al usuario —**validar** en LFS (el punto ciego), **hacer** algo que yo no puedo
+hacer, **decidir** lo que solo él decide, **aportar** un dato que no puedo obtener— vive en
+**`ACCIONES_USUARIO.md`**, una ficha por acción con ID estable `U<n>`.
+
+**Nada de lo que le pida puede vivir solo en el chat.** Si lo pido en conversación y no lo dejo
+escrito, no existe: la sesión termina y se pierde — y el usuario se queda debiendo cosas que ni
+siquiera puede enumerar. Ese fue exactamente el fallo que motivó esta sección.
+
+**La ficha** lleva: tipo, tiempo estimado, **por qué** (qué depende de ella), **pasos** concretos y
+copiables, **resultado esperado**, **señales de fallo** y **qué contarme si falla** (los diales, el
+archivo, el síntoma). **Un campo que no sé se declara, no se omite** ("Resultado esperado: no lo sé,
+dime qué observas"): un "no lo sé" explícito es información; un campo ausente parece un olvido.
+La cabecera responde de un vistazo *cuántas hay, cuál bloquea y en qué orden hacerlas*.
+
+**`ESTADO_ACTUAL.md` lleva un puntero, nunca una copia** (contenido duplicado diverge).
+**Las fichas no las cierro yo**: cuando el usuario da su veredicto, lo registro en `HISTORIAL.md`,
+colapso la ficha a una línea en la sección ✅ del archivo, y se lo digo.
+
+### Bloqueo blando: parar y preguntar, nunca negarse
+
+- **El bloqueo se declara en la ficha** (`bloquea: ...`), no se improvisa. Un bloqueo inventado
+  sobre la marcha es un bloqueo que también se me olvidará sobre la marcha.
+- **Una tarea que toca el mismo subsistema que una ficha pendiente de validar está bloqueada por
+  defecto**, aunque la ficha no bloquee nada. *Por qué:* apilar un cambio sobre otro sin validar
+  destruye el único oráculo que hay — si luego falla en el juego, ya hay dos sospechosos y el
+  veredicto del usuario deja de significar nada.
+- **Al chocar con un bloqueo: parar ANTES de escribir código.** Nombrar la ficha, decir qué bloquea
+  y por qué, recomendar el orden, y ofrecer qué se puede hacer mientras tanto sin contaminarla.
+- **El usuario siempre puede saltárselo.** Entonces se hace, sin discutir — pero **se registra el
+  override** en la ficha (`⚠️ saltada en S<n> a petición del usuario: se trabaja sobre código sin
+  validar`) y en `HISTORIAL.md`, y **no se vuelve a sacar el tema**. Dicho una vez con su motivo es
+  guía; repetido cada turno es ruido, y el ruido enseña a ignorarme.
+
+### Recordatorios: en cuatro momentos y en ninguno más
+
+Al **arrancar** la sesión (§1, en el resumen), cuando una tarea que voy a empezar **choca** con una
+ficha, cuando la cola pasa de **~4 pendientes** (entonces recomiendo una ronda de validación en vez
+de seguir apilando) y al **cerrar** la sesión (§2, última línea del informe).
+
+`close_check.py` lo verifica: que el archivo exista, que los contadores de la cabecera cuadren con
+las fichas reales, que ninguna pendiente se quede sin pasos ni campos, y que `ESTADO_ACTUAL.md`
+apunte al archivo. Avisa (WARN) si hay fichas bloqueantes abiertas o si la cola se alarga.

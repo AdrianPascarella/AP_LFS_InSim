@@ -12,16 +12,23 @@ sesión de chat, y se **sincroniza por GitHub** para poder continuar desde otro 
    (puede haber cambios subidos desde otro dispositivo).
 2. Lee `docs/dev/` en este orden:
    1. `docs/dev/ESTADO_ACTUAL.md` — dónde se quedó el trabajo y cuál es el próximo paso. **Empieza aquí.**
-   2. `docs/dev/HISTORIAL.md` — última entrada (contexto reciente).
-   3. `docs/dev/PLAN.md` — fase activa y su checklist.
-   4. `docs/dev/MODUS_OPERANDI.md` — reglas de trabajo de obligado cumplimiento.
-   5. `docs/dev/DIAGNOSTICO.md` — problemas conocidos (consultar según haga falta).
+   2. `docs/dev/ACCIONES_USUARIO.md` — lo que le toca al usuario: cuántas acciones tiene pendientes
+      y **cuál bloquea** el próximo paso. Dilo en el resumen de arranque (MODUS §8).
+   3. `docs/dev/HISTORIAL.md` — última entrada (contexto reciente).
+   4. `docs/dev/PLAN.md` — fase activa y su checklist.
+   5. `docs/dev/MODUS_OPERANDI.md` — reglas de trabajo de obligado cumplimiento.
+   6. `docs/dev/DIAGNOSTICO.md` — problemas conocidos (consultar según haga falta).
 
 Punto de entrada e índice: `docs/dev/00_INDEX.md`.
 
-**Al terminar la sesión o alcanzar un hito:** actualiza `ESTADO_ACTUAL.md`, añade una entrada
-a `HISTORIAL.md`, marca lo completado en `PLAN.md`, y **haz commit + `git push`** para
-sincronizar (no dejes trabajo local sin subir). Protocolo completo en `MODUS_OPERANDI.md`.
+**Todo lo que le pidas al usuario** (validar en LFS, hacer algo a mano, decidir, aportar un dato)
+**va como ficha `U<n>` en `ACCIONES_USUARIO.md`, nunca solo en el chat** — con pasos, resultado
+esperado y señales de fallo. Si una ficha abierta bloquea lo que vas a hacer (o tu tarea toca el
+mismo subsistema que algo sin validar): **para y pregunta antes de escribir código** (MODUS §8).
+
+**Al terminar la sesión o alcanzar un hito:** actualiza `ESTADO_ACTUAL.md` y `ACCIONES_USUARIO.md`,
+añade una entrada a `HISTORIAL.md`, marca lo completado en `PLAN.md`, y **haz commit + `git push`**
+para sincronizar (no dejes trabajo local sin subir). Protocolo completo en `MODUS_OPERANDI.md`.
 
 ## Commands
 

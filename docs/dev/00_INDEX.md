@@ -16,14 +16,16 @@ versión corta como *"arranca la sesión según tu protocolo de inicio"* funcion
 ## Orden de lectura al empezar una sesión
 
 1. **[ESTADO_ACTUAL.md](ESTADO_ACTUAL.md)** — dónde quedé y cuál es el próximo paso. **Empieza siempre aquí.**
-2. **[HISTORIAL.md](HISTORIAL.md)** — última entrada, para el contexto reciente.
-3. **[PLAN.md](PLAN.md)** — la fase activa y su checklist.
-4. **[DIAGNOSTICO.md](DIAGNOSTICO.md)** — referencia de problemas conocidos (consultar según haga falta).
-5. **[MODUS_OPERANDI.md](MODUS_OPERANDI.md)** — cómo se trabaja aquí (reglas de obligado cumplimiento).
+2. **[ACCIONES_USUARIO.md](ACCIONES_USUARIO.md)** — lo que te toca a ti: qué probar, hacer, decidir o aportar.
+3. **[HISTORIAL.md](HISTORIAL.md)** — última entrada, para el contexto reciente.
+4. **[PLAN.md](PLAN.md)** — la fase activa y su checklist.
+5. **[DIAGNOSTICO.md](DIAGNOSTICO.md)** — referencia de problemas conocidos (consultar según haga falta).
+6. **[MODUS_OPERANDI.md](MODUS_OPERANDI.md)** — cómo se trabaja aquí (reglas de obligado cumplimiento).
 
-> **Presupuesto de lectura (S37):** no todo se lee, ni entero — ver `MODUS_OPERANDI.md §1`
-> (entero: handoff y MODUS; en parte: última entrada del HISTORIAL y fase activa del PLAN;
-> NO al arrancar: resto del HISTORIAL y su Anexo, DIAGNOSTICO, auditorías, guías, `.meta/`).
+> **Presupuesto de lectura (S37, ampliado en S40):** no todo se lee, ni entero — ver
+> `MODUS_OPERANDI.md §1` (entero: handoff, acciones del usuario y MODUS; en parte: última entrada
+> del HISTORIAL y fase activa del PLAN; NO al arrancar: resto del HISTORIAL y su Anexo, DIAGNOSTICO,
+> auditorías, guías, `.meta/`).
 > El cierre de sesión se verifica con **`scripts/close_check.py`** (MODUS §2, debe dar PASS).
 
 ## Los archivos
@@ -31,6 +33,7 @@ versión corta como *"arranca la sesión según tu protocolo de inicio"* funcion
 | Archivo | Qué es | Cuándo se actualiza |
 |---|---|---|
 | `ESTADO_ACTUAL.md` | Handoff entre sesiones: estado, fase, próximo paso concreto | Al final de cada sesión y en cada hito |
+| `ACCIONES_USUARIO.md` | Lo que necesita tus manos o tu criterio: ficha por acción (`U<n>`) con pasos, resultado esperado y qué bloquea | Cuando Claude te necesita, y cuando das un veredicto |
 | `HISTORIAL.md` | Bitácora append-only, una entrada por sesión | Al final de cada sesión |
 | `PLAN.md` | Plan por fases con checklists y criterios de aceptación | Al completar tareas o replanificar |
 | `DIAGNOSTICO.md` | Escaneo del proyecto y problemas detectados | Cuando se descubre algo nuevo |

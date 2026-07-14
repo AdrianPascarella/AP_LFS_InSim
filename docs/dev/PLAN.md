@@ -547,11 +547,44 @@ Su prueba de fuego: el repo tenía justo los dos fallos que el protocolo dice cu
       y enganchado como **paso 6 del cierre** en `MODUS_OPERANDI §2`.
 - [x] **(S37) Presupuesto de lectura por sesión** — en `MODUS_OPERANDI §1` + puntero en
       `00_INDEX.md` (qué se lee entero, qué en parte y qué NO se lee al arrancar).
+### ✅ Primera cicatriz del uso real (S40) — `ACCIONES_USUARIO.md`
+
+El usuario, usando el protocolo: *"cuando tengo que hacer algo a mano, aunque quede apuntado no me
+queda claro dónde mirarlo ni cuántas cosas tengo que hacer"*. La cola de validación (§7) era una
+lista de una línea por ítem, dentro del handoff, y **solo cubría el punto ciego** — lo demás que se
+le pedía (mapear, correr algo, decidir) moría en el chat. Además competía por el tope de 120 líneas,
+que era justo lo que impedía dar detalle.
+
+- [x] **(S40) Archivo propio `USER_ACTIONS.md` / `ACCIONES_USUARIO.md`** — ficha por acción con ID
+      estable **`U<n>`** (cuarta familia, junto a `P`/`W`/`S`): tipo, por qué, **pasos**, resultado
+      esperado, señales de fallo y qué contar si falla. Un campo desconocido **se declara**, no se
+      omite. Cabecera con contadores (cuántas, cuál bloquea, en qué orden). Alcance ampliado:
+      **validar / hacer / decidir / aportar**, no solo el punto ciego.
+- [x] **(S40) La cola sale del handoff** — `ESTADO_ACTUAL.md` deja solo un **puntero** (§6: contenido
+      duplicado diverge). Liberó 16 líneas del tope (91 → 75).
+- [x] **(S40) Bloqueo blando + recordatorios** — el bloqueo se **declara en la ficha**, nunca se
+      improvisa; **una tarea que toca el mismo subsistema que una ficha sin validar está bloqueada por
+      defecto** (apilar cambios sin validar deja dos sospechosos y destruye el oráculo); se **para
+      antes de escribir código**, se recomienda el orden y se ofrece alternativa; el usuario puede
+      saltárselo y **el override se registra** (ficha + historial) sin volver a sacar el tema.
+      Recordatorios en 4 momentos (arranque, choque, cola >4, cierre) y en ninguno más.
+- [x] **(S40) `close_check.py` lo verifica** — existe el archivo, los contadores cuadran con las
+      fichas reales, ninguna pendiente sin pasos ni campos, y el handoff apunta al archivo. WARN si
+      hay fichas bloqueantes o la cola pasa de 4. Marcadores independientes del idioma (`### U<n>`,
+      `🚧`, `- [x] U<n>`), que es lo que permite comprobarlo en cualquier proyecto.
+- [x] **(S40) Las tres capas, en paridad** — maestro portable + skill (§2/§3/§4/§7/§15 y plantillas)
+      + este proyecto (`MODUS_OPERANDI §8`, `00_INDEX`, enganche de `CLAUDE.md`). `parity_check.py`
+      verde. **Bug encontrado de paso:** la skill instalada en `~/.claude/skills/` tenía las **reglas
+      viejas** en la raíz y una copia anidada al día — el `Copy-Item` del README anidaba en vez de
+      sobrescribir cuando el destino ya existía. Reinstalada y comando corregido.
+
 - [ ] **Después de usarlo (no antes): revisión adversarial del protocolo en sesión fresca.** Un
       lector que **no sepa lo que quisimos decir** recorre el ciclo de vida completo (instalación →
       sesión 1 → sesión 5 → norma permanente → defecto nuevo → cierre → otra máquina) y nombra lo
       que el documento NO dice. Antes de aplicarlo solo podría imaginarlo; después tendrá las
       cicatrices del uso real. Es la regla `§6` del propio protocolo aplicada a sí mismo.
+      **S40 es la primera cicatriz, y confirma que la regla funciona:** el hueco lo encontró el uso,
+      no una relectura.
 
 ---
 

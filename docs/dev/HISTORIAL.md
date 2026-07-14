@@ -5,6 +5,66 @@
 
 ---
 
+## S40 — 2026-07-14 — Protocolo: `ACCIONES_USUARIO.md` + bloqueo blando (meta; no toca el proyecto)
+
+**Contexto:** primera cicatriz del uso real del protocolo. El usuario: *"cuando tengo que hacer algo
+a mano, aunque quede apuntado no me queda del todo claro dónde mirarlo ni cuántas cosas tengo que
+hacer"*. **Fase 8 aparcada** durante la sesión (§12: petición no planificada, legítima); se retoma en
+el 8.4.
+
+**Diagnóstico (el hueco era mayor que el síntoma):** la cola de validación tenía tres defectos.
+(1) Era **una línea por ítem**: decía qué se había tocado, no qué tenía que hacer el usuario, ni
+cómo, ni con qué mapa, ni qué contar si fallaba. (2) **Solo cubría el punto ciego** (validar en LFS):
+lo demás que se le pedía —mapear, correr un comando, decidir un dial, aportar un dato— no tenía sitio
+y moría en el chat. (3) **Competía por el tope de 120 líneas** del handoff (ocupaba ~35 de 120), que
+era precisamente lo que impedía dar detalle. El síntoma del usuario era el efecto de (3) sobre (1).
+
+**Hecho — las tres capas, en paridad:**
+- **`ACCIONES_USUARIO.md`** (canónico: `USER_ACTIONS.md`): ficha por acción con ID estable **`U<n>`**
+  —cuarta familia junto a `P`/`W`/`S`— con tipo, por qué, **pasos copiables**, resultado esperado,
+  señales de fallo y qué contar si falla. Cabecera con contadores. Migrada la cola actual: **7 fichas
+  (U1–U7)**; las cerradas históricas quedan como una línea en la sección ✅.
+- **El handoff deja un puntero, no una copia** (§6: contenido duplicado diverge). 91 → 75 líneas.
+- **Bloqueo blando** (§7 reescrito): el bloqueo **se declara en la ficha**; una tarea que toca el
+  **mismo subsistema** que una ficha sin validar está bloqueada por defecto; se para **antes** de
+  escribir código; el usuario puede saltárselo y el **override se registra** sin volver a sacarlo.
+  Recordatorios en 4 momentos (arranque, choque, cola >4, cierre).
+- **`close_check.py` reescrito**: verifica existencia, contadores = fichas reales, ninguna pendiente
+  sin pasos ni campos, y que el handoff apunte al archivo. WARN si hay bloqueantes o la cola pasa de 4.
+- **Proyecto**: `MODUS_OPERANDI §8` (mecanismo completo) + §1/§2/§4 tocados, `00_INDEX`, enganche de
+  `CLAUDE.md`. **Portable + skill**: §2/§3/§4/§7/§15 + plantillas; `parity_check.py` verde.
+
+**Decisiones (con su porqué):**
+- **Un solo archivo, sin historial aparte.** El registro completo de un veredicto ya vive en este
+  `HISTORIAL.md`; un tercer sitio con lo mismo se desincroniza (§6). Las cerradas se colapsan a una
+  línea con tope. *Rechazado:* `ACCIONES_LOG.md` separado.
+- **Bloqueo blando, no duro.** Un bloqueo que me auto-impongo y que se quita con una frase acaba
+  siendo una frase que el usuario dice siempre, y el mecanismo muere. Parar-y-preguntar **una vez**,
+  con el motivo, se respeta; insistir cada turno es ruido que enseña a ignorarme.
+- **Regla del mismo subsistema.** Es el único caso donde seguir sin validar no es subóptimo sino que
+  **destruye información**: apilar un cambio sobre otro sin validar deja dos sospechosos y el
+  veredicto del usuario deja de ser interpretable. Aplicada ya: **U1/U2 bloquean el 8.4** (vuelve a
+  tocar la pestaña Grabar, con dos cambios de S32 aún sin validar).
+- **Marcadores independientes del idioma** en el formato de ficha (`### U<n>`, `🚧`, `- [x] U<n>`):
+  es lo que permite que `close_check.py` cuente y valide en un proyecto en cualquier idioma.
+
+**Bug encontrado de paso (y arreglado):** la skill instalada en `~/.claude/skills/agentic-protocol/`
+tenía **las reglas viejas en la raíz** (`references/protocol.md`, 11 KB vs 15,7 KB) y una copia
+anidada al día en `agentic-protocol/agentic-protocol/`. Causa: el `Copy-Item -Recurse <carpeta>
+-Destination $dst` del README **anida** en vez de sobrescribir cuando `$dst` ya existe — solo
+funcionaba la primera vez. Claude cargaba la versión equivocada y **nada lo delataba**. Reinstalada
+(hashes verificados contra el repo) y comando del README corregido a `<carpeta>\*` + nota de cicatriz.
+
+**Verificación:** `close_check.py` → PASS (2 WARN, ambos ciertos y deseados: U1/U2 bloqueantes
+abiertas y cola de 7 > 4). `parity_check.py` → IN PARITY. `ruff check` + `ruff format` limpios.
+No se tocó código del framework: `pytest` sigue en 809/809 (S39).
+
+**Commits:** `ea5f027` (protocolo portable + skill) y el commit de esta misma entrada (la
+instantiación en el proyecto: `ACCIONES_USUARIO.md`, `MODUS_OPERANDI §8`, `00_INDEX`, `CLAUDE.md`,
+`scripts/close_check.py`).
+
+---
+
 ## S39 — 2026-07-14 — Fase 8: bloque 8.3 (conducta de cesión) + retirada del modelo viejo de la conducta
 
 **Contexto:** el orquestador casi no tenía red (2 tests, S34), así que el bloque se hizo en el orden

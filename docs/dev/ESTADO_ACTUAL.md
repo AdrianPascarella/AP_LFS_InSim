@@ -1,18 +1,25 @@
 # 📍 Estado actual
 
-> Actualizado: **2026-07-14** — **S39**: **bloque 8.3 (conducta de cesión) hecho en verde
-> (809/809)**: el orquestador frena ante la `yield_line` del RoadLink comprometido (ACC contra un
-> coche fantasma a `PARADA_ABSOLUTA_M` tras la línea → el morro para EN la línea), con punto de
-> compromiso e histéresis del fix (5); `_yield_threat_detected` (zones.py) compone los predicados
-> de `traffic/yielding.py`. **Modelo viejo (zona-área + `priority_rules`) RETIRADO de la
-> conducta** (sus restos de datos/UI caen en 8.6). Red primero: caracterización del marco del
-> orquestador + 21 tests de conducta en rojo (`test_orchestrator.py`).
+> Actualizado: **2026-07-14** — **S40** (meta, no toca el proyecto): el protocolo gana
+> **`ACCIONES_USUARIO.md`** — un archivo propio para todo lo que necesita tus manos o tu criterio,
+> con ficha por acción (pasos, resultado esperado, señales de fallo) y **bloqueo blando**: paro y
+> pregunto antes de trabajar sobre algo que una ficha abierta bloquea. Cambio hecho en las **tres
+> capas** (portable, skill de Claude y este proyecto) y verificado por `close_check.py` +
+> `parity_check.py`. Detalle en `HISTORIAL.md` S40 y en `MODUS_OPERANDI.md §8`.
 >
-> **▶️ PRÓXIMO: bloque 8.4 — UI de mapeo.** Grabador de puntos de la `yield_line` + T + picker de
-> zona en el detalle del link (diseño S38 punto 8: default SIEMPRE manual, TypeIn de T al
-> terminar). **Usar la skill `ai-control-map-ui` ANTES de abrir `map_ui.py`**; tests
-> `test_map_ui_*`. Después: 8.5 render → 8.6 migración (`test1` + retirar editor de
-> `priority_rules`) → 8.7 validación en LFS.
+> **S39**: **bloque 8.3 (conducta de cesión) hecho en verde (809/809)**: el orquestador frena ante
+> la `yield_line` del RoadLink comprometido (ACC contra un coche fantasma a `PARADA_ABSOLUTA_M`
+> tras la línea → el morro para EN la línea), con punto de compromiso e histéresis del fix (5);
+> `_yield_threat_detected` (zones.py) compone los predicados de `traffic/yielding.py`. **Modelo
+> viejo (zona-área + `priority_rules`) RETIRADO de la conducta** (sus restos de datos/UI caen en
+> 8.6).
+>
+> **▶️ PRÓXIMO: bloque 8.4 — UI de mapeo** — pero **U1 y U2 lo bloquean** (validar la pestaña
+> Grabar antes de volver a tocarla: ver "Lo que te toca a ti"). Contenido del 8.4: grabador de
+> puntos de la `yield_line` + T + picker de zona en el detalle del link (diseño S38 punto 8: default
+> SIEMPRE manual, TypeIn de T al terminar). **Usar la skill `ai-control-map-ui` ANTES de abrir
+> `map_ui.py`**; tests `test_map_ui_*`. Después: 8.5 render → 8.6 migración (`test1` + retirar
+> editor de `priority_rules`) → 8.7 validación en LFS.
 >
 > ⚠️ **Desde el 8.3, en el juego NO cede nadie en ningún cruce** hasta que existan `yield_line`
 > en el mapa (8.4) o se migre `test1` (8.6). Es lo esperado, no una regresión.
@@ -33,47 +40,25 @@ del equipo `git-push-gcm-workaround`).
 - **Merge a `main` + publish a PyPI esperan** a Fase 8 validada y a la cola de abajo (criterios en
   `PLAN.md § Merge`). PyPI está **preparado sin publicar** (S17; runbook `PUBLICACION.md`).
 
-## Cola de validación en LFS (solo la cierra el usuario)
+## Lo que te toca a ti
 
-Conducción (Fase 7 + ACC):
+**7 acciones pendientes, 2 de ellas bloquean el 8.4** → **[`ACCIONES_USUARIO.md`](ACCIONES_USUARIO.md)**.
+Empieza por **U1** y **U2** (las dos de la pestaña Grabar, ~8 min en total: probablemente ya las
+usaste al mapear y basta confirmar). Las 5 de conducción (U3–U7) no bloquean nada, pero la cola es
+larga: conviene una ronda de validación en LFS antes de apilar más cambios de tráfico.
 
-- [ ] ⏳ S35 — **Ley nueva de seguimiento del ACC** (`35870bb`) → al ir bloqueado, IGUALA la
-      velocidad del de delante (sin oscilar ni descolgarse); hueco 7 m parado / 8 m en cola.
-      Diales: `PARADA_ABSOLUTA_M` (cruise_control.py), `MIN_GAP_FLOOR_M` (orchestrator.py).
-- [ ] ⏳ S34 — **Fix (3): radar en la transición road↔roadlink** (`3a628c3`) → en cruces:
-      (a) sigue frenando por el lento que se le quedó de frente en la vía que deja; (b) ve a los
-      que ya circulan en la vía de destino; (c) NO frena por fantasmas de una transversal lejos
-      del cruce. Dial: `_LINK_TRANSITION_WINDOW_M` (radar.py, 25 m).
-- [ ] ⏳ S34 — **Guard: no adelantar dentro de un cruce** (`8af862d`) → si resulta demasiado
-      conservador, se revierte SOLO ese commit, sin tocar el radar.
-- [ ] ⏳ S33 — **Fix (4)** (`d968abf`) → ya no adelanta metiéndose por una vía cerrada.
-- [ ] ⏳ S33 — **Fix (1)** (`1a8eaac`) → el intermitente ya no hace flip en salidas RoadLink
-      muy juntas (enlace comprometido pegajoso-si-válido).
-
-Herramientas de mapeo (probablemente ya usadas al mapear — confirmar de pasada):
-
-- [ ] ⏳ S32 — **"Link auto"** (pestaña Grabar) → graba un RoadLink sin teclear origen/destino
-      (confirmación / conflicto de nombre / sobrescribir).
-- [ ] ⏳ S32 — **Ajustes de Grabar** → toggle "Trafico" movido a Grabar, campo "Vel. grabar
-      (km/h)", "Auto" pegajoso (cancelar un road ya no lo desmarca).
-
-Cerradas (referencia):
-
-- [x] ♻️ S33 — **Fix (5): histéresis del ceda-el-paso** (`73bbae7`) → OBSOLETA como estaba
-      escrita: el modelo viejo ya no existe en la conducta (8.3). La histéresis en sí se
-      REUTILIZA en la cesión nueva y se valida con ella en 8.7.
-- [x] ♻️ S33 — **Editor de `priority_rules` de zonas** → obsoleto: `priority_rules` ya no rige
-      la conducta (8.3); el editor se retira en 8.4/8.6.
-- [x] ❌ **W4 ceda-el-paso** — probado S35: *"funciona, pero regular"* → **NO superado**; motiva la
-      Fase 8. No perder tiempo afinando el modelo viejo.
-- [x] ✅ Ya validados: 3 bugs del radar con humanos (S35, "desaparecieron todos los tirones"),
-      "Apunta" (S31), fin de vía → espectadores (S29→S30), reconexión de `ai_control` (S20).
+Las fichas llevan pasos, resultado esperado y qué contarme si falla. No se cierran solas: las cierro
+yo cuando me das tu veredicto (`MODUS_OPERANDI.md §8`).
 
 ## Bloqueos / restricciones ahora mismo
 
-- Nada bloquea el 8.4 (UI): el diseño S38 ya fija cómo debe ser el grabador de la línea.
-- Lo que necesita al usuario es la **validación en LFS** (cola de arriba + 8.7 cuando llegue).
-- El **merge** espera a: Fase 8 hecha y validada + cola de arriba despejada + pytest y CI verdes.
+- **El 8.4 (UI de mapeo) está bloqueado en blando por U1 y U2**: el 8.4 vuelve a tocar la pestaña
+  Grabar, y esos dos cambios de S32 siguen sin validar. Si se apila el 8.4 encima, un fallo posterior
+  tendrá dos sospechosos y tu veredicto dejará de distinguirlos. Se puede saltar el bloqueo si lo
+  pides — se registra en la ficha y en el historial.
+- El **diseño** del 8.4 no está bloqueado por nada: S38 ya fija cómo debe ser el grabador de la línea.
+- El **merge** espera a: Fase 8 hecha y validada + cola de `ACCIONES_USUARIO.md` despejada + pytest
+  y CI verdes.
 - Pendiente del protocolo (PLAN § Tooling): **revisión adversarial en sesión fresca**, DESPUÉS de
   haberlo usado unas sesiones (regla §6 del propio protocolo).
 
