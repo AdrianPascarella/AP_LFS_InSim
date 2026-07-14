@@ -9,7 +9,7 @@ It exists to cure the three structural failures of an agentic AI on a long-lived
 | Failure | Cure |
 |---|---|
 | **Amnesia** — you forget everything between sessions | Context lives in versioned files you own (§0–§3) |
-| **Blindness** — you call "done" what you cannot verify | A declared blind spot + a validation queue only the human can close (§6–§7) |
+| **Blindness** — you call "done" what you cannot verify | A declared blind spot + an action queue only the human can close (§6–§7) |
 | **Recklessness** — you rewrite fragile code with no net | Characterization tests first; diagnose before fixing (§5, §8) |
 
 ---
@@ -144,7 +144,8 @@ convention):
 | File | Content |
 |---|---|
 | `INDEX.md` | Reading order, one line per file. |
-| `STATE.md` | Where the project is, the validation queue, the next concrete step. |
+| `STATE.md` | Where the project is, the next concrete step, a pointer to `USER_ACTIONS.md`. |
+| `USER_ACTIONS.md` | Everything you need the human for — one card per action, with a stable ID `U<n>`. Starts with the blind-spot validations you already owe them; empty if there are none yet. |
 | `LOG.md` | Append-only journal. First entry: this install. |
 | `PLAN.md` | A first phase, drafted from your audit, with acceptance criteria. |
 | `DIAGNOSIS.md` | The problems you found in the audit — each with a stable ID `P<n>`, severity, evidence citing real files, and a proposed action. This is the deliverable of the audit: be concrete. |
@@ -194,7 +195,10 @@ Close the install by telling the user, without jargon:
    the self-contained one if this environment has no auto-load. Give exactly one. Write it as well
    at the top of `{{context_dir}}/INDEX.md`, so it is never lost.
 3. **Their close sentence**, and the fact that you will also close on your own at any milestone.
-4. **What you will ask of them from now on**: the verdicts on the blind spot (§7). Nothing else.
+4. **What you will ask of them from now on**: whatever needs their hands or their judgement — and it
+   will always be written as a card in `USER_ACTIONS.md`, never left in the chat. Point at the file,
+   say that you will tell them at the start of every session how many are pending and which one
+   blocks, and that **you will stop and ask** before working on something an open card blocks (§7).
 5. **What they never have to do**: edit any of these files. Ever. If something in them is wrong,
    they tell you and you fix it.
 6. The first real step you recommend, and why.
@@ -225,7 +229,8 @@ fact — and readable files are the user's only way to see where you are taking 
 
 | File | What it is | Size |
 |---|---|---|
-| `STATE.md` | The handoff: where we are, what is pending validation, **the next step** | **Hard cap ~120 lines.** |
+| `STATE.md` | The handoff: where we are, **the next step**, a pointer to the pending user actions | **Hard cap ~120 lines.** |
+| `USER_ACTIONS.md` | Everything that needs the human: what they must test, do, decide or provide | Pending cards + a capped list of closed ones. |
 | `LOG.md` | Append-only journal, one entry per session | Unbounded. Only the last entry is read on start. |
 | `PLAN.md` | Phased plan with checklists and acceptance criteria | Unbounded. Only the active phase is read on start. |
 | `DIAGNOSIS.md` | Known problems, each with a stable ID and its status | Reference. Read on demand. |
@@ -233,15 +238,16 @@ fact — and readable files are the user's only way to see where you are taking 
 | `INDEX.md` | Entry point | Tiny. |
 
 **The cap on `STATE.md` is a rule.** When it overflows, the oldest material moves to `LOG.md`.
-Keep only: current state, the validation queue, the next concrete step, and what was left
-half-done.
+Keep only: current state, the pointer to the pending user actions, the next concrete step, and what
+was left half-done.
 *Why: `STATE.md` is the one file read on **every** session, so its size is a recurring tax. Left
 unchecked it silently becomes a second journal and buries the next step under months of narrative.*
 
 **Stable IDs.** Problems are `P<n>` (`DIAGNOSIS.md`), workstreams `W<n>` (`PLAN.md`), sessions
-`S<n>` (`LOG.md`). An ID never changes meaning. A solved problem keeps its ID and gains
-`RESOLVED (S<n>): <how>` — it is never deleted. **You assign the session number yourself at close:
-the last one in `LOG.md` plus one.** Never reuse or renumber an ID.
+`S<n>` (`LOG.md`), actions owed by the human `U<n>` (`USER_ACTIONS.md`). An ID never changes
+meaning. A solved problem keeps its ID and gains `RESOLVED (S<n>): <how>` — it is never deleted.
+**You assign the session number yourself at close: the last one in `LOG.md` plus one.** Never reuse
+or renumber an ID.
 *Why: without stable IDs every document re-explains the same thing in different words, and the
 versions drift apart.*
 
@@ -249,7 +255,7 @@ versions drift apart.*
 
 | Read in full | Read partially | Do NOT read on start |
 |---|---|---|
-| `STATE.md` (it is capped for exactly this reason) · `PROTOCOL.md` | the **last entry** of `LOG.md` · the **active phase** of `PLAN.md` | the rest of `LOG.md` · the rest of `PLAN.md` · `DIAGNOSIS.md` (on demand, searched by ID) · the installer spec (it was consumed once, at install, and is never read again) |
+| `STATE.md` (it is capped for exactly this reason) · `USER_ACTIONS.md` (small by construction) · `PROTOCOL.md` | the **last entry** of `LOG.md` · the **active phase** of `PLAN.md` | the rest of `LOG.md` · the rest of `PLAN.md` · `DIAGNOSIS.md` (on demand, searched by ID) · the installer spec (it was consumed once, at install, and is never read again) |
 
 *Why: `LOG.md` grows without bound by design — it is an append-only journal, and only its last
 entry is context. An agent that reads it whole burns its window on history it will not use. If a
@@ -263,28 +269,38 @@ file you are supposed to read in full has become too big to read, that is a defe
    uncommitted changes: back them up, commit, push. Pre-authorized; do not ask.
 3. `git pull` (if `{{multi_device_sync}}`).
 4. Read `STATE.md` — start here.
-5. Read the last entry of `LOG.md` and the active phase of `PLAN.md`.
-6. Cross-check the docs against reality (`git status`, `git log --oneline -5`). If they disagree,
+5. Read `USER_ACTIONS.md`: how many are pending, which one blocks (§7).
+6. Read the last entry of `LOG.md` and the active phase of `PLAN.md`.
+7. Cross-check the docs against reality (`git status`, `git log --oneline -5`). If they disagree,
    say so: reality wins, the docs are wrong.
-7. Summarize in 2–3 lines where we are and what you propose. Then act.
+8. Summarize in 2–3 lines where we are and what you propose — **and say how many actions are
+   waiting on the human, and which one blocks the next step.** Then act.
 
 *Why (2): hand-made data is the only thing a repo cannot regenerate; one checkout at the wrong
-moment destroys weeks of it. Why (6): a session that ended badly leaves lying docs.*
+moment destroys weeks of it. Why (5+8): the human cannot act on a debt they cannot enumerate — if
+you do not surface it, it stays invisible until it blocks something. Why (7): a session that ended
+badly leaves lying docs.*
 
 ## §4 — Session CLOSE (and at every milestone)
 
-1. Update `STATE.md`: state, next concrete step, what is half-done, the validation queue. Respect
-   the cap; spill the old material into `LOG.md`.
-2. Append an entry to `LOG.md`: what was done, **decisions with their why**, verification results,
-   commits.
-3. Tick off what is done in `PLAN.md`; add the tasks you discovered. **A defect or a structural
+1. Update `STATE.md`: state, next concrete step, what is half-done, the pointer to the pending user
+   actions. Respect the cap; spill the old material into `LOG.md`.
+2. **Everything you asked of the human this session must exist as a `U<n>` card in
+   `USER_ACTIONS.md`** — written before you close, not promised for later. Update the counters in
+   its header. *Why: what you only said in the chat dies with the chat, and the human is left owing
+   you something they cannot even count.*
+3. Append an entry to `LOG.md`: what was done, **decisions with their why**, verification results,
+   commits, and the verdicts the human gave you on any `U<n>`.
+4. Tick off what is done in `PLAN.md`; add the tasks you discovered. **A defect or a structural
    problem you found goes to `DIAGNOSIS.md` with a new `P<n>`** — with its evidence, even if you are
    not going to fix it now. *Why: a problem found and not filed is a problem found twice.*
-4. If the environment lets you run scripts, install a **close check** and run it here, pasting its
-   output: clean tree, nothing unpushed, `STATE.md` under the cap, a next step and a validation
-   queue actually present. A rule a script verifies stops being a promise. (The Claude Code skill of
-   this protocol ships one: `scripts/close_check.py`.)
-5. Commit + push to `{{work_branch}}` (if `{{multi_device_sync}}`: never end with unpushed work).
+5. If the environment lets you run scripts, install a **close check** and run it here, pasting its
+   output: clean tree, nothing unpushed, `STATE.md` under the cap and pointing at the actions file,
+   a next step present, and every pending card carrying steps and an expected result. A rule a
+   script verifies stops being a promise. (The Claude Code skill of this protocol ships one:
+   `scripts/close_check.py`.)
+6. Commit + push to `{{work_branch}}` (if `{{multi_device_sync}}`: never end with unpushed work).
+7. **End the report with what is on the human**: the pending cards, in the order you recommend.
 
 If the user stops abruptly, do this at the first good stopping point.
 
@@ -336,25 +352,64 @@ start trigger, no per-session reading budget, no way for standing instructions t
 numbering divergence between its own two copies. Every one of them was found by someone **walking**
 it, not by anyone reading it.*
 
-## §7 — The blind spot: the human is the oracle
+## §7 — What only the human can do: the blind spot and the action queue
 
-`{{agent_cannot_verify}}` is what you **structurally cannot check**. For anything that lands there:
+`{{agent_cannot_verify}}` is what you **structurally cannot check**. But validation is not the only
+thing you need the human for: you also need them to **do** things you cannot do (run something on
+their machine, produce hand-made data, grant an access), to **decide** what only they can decide,
+and to **provide** information you have no way to obtain.
 
-- Deliver a **"what to test"** note: concrete steps, expected result, and what would indicate the
-  fix failed.
-- Put it in the **validation queue** in `STATE.md` — a list, not prose buried in a paragraph:
+**All of it lives in one file, `USER_ACTIONS.md`, and nothing you ask of the human may exist only in
+the chat.** If you ask for it in conversation and do not file it, it does not exist: the session
+ends and it is gone — and the human is left owing you things they cannot even enumerate.
 
-  ```
-  ## Validation queue (only the user closes these)
-  - [ ] ⏳ S14 — new follow law: does it stop oscillating in traffic?
-  - [x] ✅ S13 — radar losing cars at junctions — validated by the user 2026-07-13
-  ```
-- **You never close your own validation.** It moves to ✅ only when the user says it works — and
-  you are the one who edits the file when they do.
-- If the queue keeps growing, say so and recommend a validation round before piling on more.
+**One card per action, with a stable ID `U<n>`:**
 
-*Why: this is the highest-value line in the whole configuration. An agent that does not know what
-it cannot see will call it done — and the user finds out in production.*
+```markdown
+### U3 — <title>          ⏳ · blocks: <nothing | phase 8.4 | the merge> · opened in S<n>
+**Type:** validate | do | decide | provide          **Time:** ~5 min
+**Why:** <what depends on this — what stays unverified or blocked until it is done>
+**Steps:**
+  1. <concrete and copy-pasteable; commands as commands, not as prose>
+**Expected result:** <what happens if it works>
+**Failure signs:** <what it looks like when it does not>
+**If it fails, tell me:** <what you need to hear to act: the dials, the file, the symptom>
+```
+
+- **A field you do not know is declared, not omitted** — *"Expected result: I do not know; tell me
+  what you observe."* An explicit "I do not know" is information; a missing field reads as an
+  oversight.
+- **The header of the file answers "how many things do I owe you?" in one line**: how many are
+  pending, which one blocks, and the order you recommend. Mark a blocking card with 🚧 in its
+  heading.
+- **`STATE.md` carries a pointer to this file, never a copy of it.** *Why: it is the file read on
+  every session, and content that lives in two places diverges (§6).*
+- **You never close a card; the human does.** When they give you their verdict: record it in the
+  `LOG.md` entry for the session, collapse the card into a single dated line in the "Closed" section
+  of the file (which is capped — the full record is in the log), and tell them you did it.
+
+**Blocking is soft: stop and ask, never refuse.**
+
+- **Blocking is declared on the card** (`blocks: ...`), not improvised. *Why: a block you invent on
+  the spot is a block you will also forget on the spot — and the human cannot see it coming.*
+- **A task that touches the same subsystem as a card pending validation is blocked by default**,
+  even if that card blocks nothing. *Why: stacking a change on top of an unvalidated change destroys
+  your only oracle — when it misbehaves in the real world there are now two suspects, and the
+  human's verdict no longer means anything.*
+- **When you hit a block, stop before writing any code.** Name the card, say what it blocks and why,
+  recommend the order, and offer what can be done meanwhile that does not contaminate it.
+- **The human can always override.** Then you proceed without arguing — but you **record the
+  override** on the card (`⚠️ skipped in S<n> at the user's request: work continues on unvalidated
+  code`) and in `LOG.md`, and you do not raise it again. *Why: said once with its reason it is
+  guidance; repeated every turn it is noise, and noise teaches them to ignore you.*
+
+**Remind them at four moments and no others:** at session start (§3, in the summary), when a task
+you are about to start collides with a card, when the queue passes ~4 pending (then recommend a
+validation round instead of piling on more), and at session close (§4, the last line of the report).
+
+*Why this section exists: an agent that does not know what it cannot see will call it done — and the
+user finds out in production. And an agent that asks for things only in the chat hands the user a
+debt with no list, no steps and no way to know which one is holding everything up.*
 
 ## §8 — Diagnose before fixing
 
@@ -445,7 +500,8 @@ protocol with no way to grow decays into the protocol of the first day.*
 |---|---|
 | A rule about how to work, forever | Here (§15) |
 | A way this machine or toolchain has damaged the work | §13 — scar tissue |
-| A verdict on something you could not verify | The validation queue in `STATE.md` |
+| Something the human must test, do, decide or provide | `USER_ACTIONS.md`, with a new `U<n>` (§7) |
+| A verdict on something you could not verify | Close that `U<n>` and record the verdict in `LOG.md` |
 | A design decision and its reasons | `LOG.md` (and `STATE.md` if it constrains the next step) |
 | A fact about where the work stands | `STATE.md` |
 | A task or an idea for later | `PLAN.md` |
@@ -504,10 +560,11 @@ To close: **"<the close sentence>"** — though the agent must also close on its
 
 ## Reading order
 1. **STATE.md** — where we stopped and what the next step is. Always start here.
-2. **LOG.md** — last entry, for recent context.
-3. **PLAN.md** — the active phase and its checklist.
-4. **PROTOCOL.md** — the rules (mandatory). Read when in doubt.
-5. **DIAGNOSIS.md** — known problems. On demand.
+2. **USER_ACTIONS.md** — what is waiting on you: what to test, do, decide or provide.
+3. **LOG.md** — last entry, for recent context.
+4. **PLAN.md** — the active phase and its checklist.
+5. **PROTOCOL.md** — the rules (mandatory). Read when in doubt.
+6. **DIAGNOSIS.md** — known problems. On demand.
 
 ## The files
 | File | What it is | When it is updated |
@@ -529,12 +586,38 @@ To close: **"<the close sentence>"** — though the agent must also close on its
 <Active phase and its status. What was left half-done and exactly where it stopped.
 Max ~40 lines. Older narrative belongs in LOG.md.>
 
-## Validation queue (only the user closes these)
-- [ ] ⏳ S<n> — <change> → <what to test, what should happen>
-- [x] ✅ S<n> — <change> — validated by the user YYYY-MM-DD
+## What is waiting on you
+<A pointer, never a copy — the cards live in USER_ACTIONS.md (§7).>
+**<N> pending actions** (<M> blocking: <U7>) → see `USER_ACTIONS.md`. Start with **U7**.
 
 ## Constraints right now
 <What would trip up the next session: a paused phase, a blocked dependency, a pending decision.>
+```
+
+### `USER_ACTIONS.md`
+
+```markdown
+# 🙋 Your actions — {{project_name}}
+> **<N> pending** · <M> blocking (**U7**) · recommended order: U7 → U3 → U5 · updated S<n>
+>
+> Everything here needs your hands or your judgement: the agent cannot do it or cannot verify it.
+> **You never edit this file** — tell the agent the outcome and it will close the card.
+
+## ⏳ Pending
+
+### U7 — <title>          🚧 · blocks: <phase 8.4> · opened in S<n>
+**Type:** validate | do | decide | provide          **Time:** ~<n> min
+**Why:** <what depends on this — what stays unverified or blocked until it is done>
+**Steps:**
+  1. <concrete and copy-pasteable; commands as commands>
+  2. <...>
+**Expected result:** <what happens if it works>
+**Failure signs:** <what it looks like when it does not>
+**If it fails, tell me:** <what the agent needs to hear to act: the dials, the file, the symptom>
+
+## ✅ Closed (recent — the full record is in LOG.md)
+<Capped: ~15 lines. What overflows is dropped; it is already in the log.>
+- [x] U2 — <title> — YYYY-MM-DD (S<n>): <the user's verdict, in their words>
 ```
 
 ### `LOG.md`

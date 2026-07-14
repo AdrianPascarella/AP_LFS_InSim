@@ -1,6 +1,6 @@
 ---
 name: agentic-protocol
-description: Install the Agentic Work Protocol in a project — a file-based context system (STATE / LOG / PLAN / DIAGNOSIS / PROTOCOL) that survives across sessions, machines and models, plus a declared blind spot with a human validation queue and a safety-net policy for fragile code. Use it when the user asks to install/set up the agentic protocol, to make sessions resume where the last one stopped, to stop re-explaining the project every session, or to set up a session handoff / context system. Runs an interview, audits the repo, and writes every file itself.
+description: Install the Agentic Work Protocol in a project — a file-based context system (STATE / USER_ACTIONS / LOG / PLAN / DIAGNOSIS / PROTOCOL) that survives across sessions, machines and models, plus a declared blind spot, a queue of the things only the human can test, do or decide, and a safety-net policy for fragile code. Use it when the user asks to install/set up the agentic protocol, to make sessions resume where the last one stopped, to stop re-explaining the project every session, or to set up a session handoff / context system. Runs an interview, audits the repo, and writes every file itself.
 ---
 
 # Agentic Work Protocol — installer
@@ -101,7 +101,8 @@ future sessions depend on them:
 | File | Content |
 |---|---|
 | `INDEX.md` | Reading order, the user's start sentence (Step 7), one line per file. |
-| `STATE.md` | Where we are, the validation queue, the next concrete step. **Hard cap ~120 lines.** |
+| `STATE.md` | Where we are, the next concrete step, a pointer to `USER_ACTIONS.md`. **Hard cap ~120 lines.** |
+| `USER_ACTIONS.md` | Everything you will need the user for — one card per action, stable ID `U<n>`, with steps, expected result and what blocks (§7). Seed it with the blind-spot validations you already owe them; leave it empty (heading + counters at zero) if there are none yet. |
 | `LOG.md` | Append-only journal. First entry: this install. |
 | `PLAN.md` | A first phase drafted from your audit, with acceptance criteria. |
 | `DIAGNOSIS.md` | The problems found in the audit — stable ID `P<n>`, severity, evidence citing real files, proposed action. This is the audit's deliverable: be concrete. |
@@ -109,6 +110,9 @@ future sessions depend on them:
 
 Copy `scripts/close_check.py` into the project (`scripts/close_check.py`, or wherever the project
 keeps its scripts) and reference it from `PROTOCOL.md` §4 as the last step of every session close.
+If you renamed the context files into the working language (only do that if the project already had
+that convention), pass the names with `--state` / `--actions` and write the exact command into
+`PROTOCOL.md`, so the check keeps working.
 
 **If the project has no way to verify itself** — no tests, no runnable check — that *is* the headline
 finding. Record it as `P1` and make "establish a verification command" the first phase of `PLAN.md`.
@@ -151,7 +155,10 @@ Close the install by telling the user, without jargon:
    Write it as well at the top of `INDEX.md` so it can never be lost.
 3. **Their close sentence** (*"Close the session following the protocol"*) — and that you will also
    close on your own at any milestone, without being asked.
-4. **What you will ask of them from now on**: the verdicts on the blind spot. Nothing else.
+4. **What you will ask of them from now on**: whatever needs their hands or their judgement — always
+   written as a card in `USER_ACTIONS.md`, never left in the chat. Point at the file, and tell them
+   that at the start of every session you will say how many are pending and which one blocks, and
+   that you will **stop and ask** before working on something an open card blocks (§7).
 5. **What they never have to do**: edit any of these files. Ever. If something is wrong, they tell
    you and you fix it.
 6. The first real step you recommend, and why.
