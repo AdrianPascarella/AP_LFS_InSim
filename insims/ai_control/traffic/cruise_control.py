@@ -8,6 +8,12 @@ from __future__ import annotations
 
 from insims.ai_control.base import _MixinBase
 
+# Hueco mínimo entre coches (m) en parado: por debajo se pide 0 en seco. Es el
+# suelo duro de la ley ACC y también el offset con el que la cesión (Fase 8)
+# coloca su "coche parado" fantasma tras la línea de detención, para que el
+# morro acabe EN la línea. Ajustable (dial del hueco junto a MIN_GAP_FLOOR_M).
+PARADA_ABSOLUTA_M = 7.0
+
 
 class _CruiseControlMixin(_MixinBase):
     def _apply_adaptive_cruise_control(
@@ -42,7 +48,7 @@ class _CruiseControlMixin(_MixinBase):
         # ==========================================
         # CONSTANTES DE LA LEY DE CONTROL
         # ==========================================
-        PARADA_ABSOLUTA_M = 7.0  # hueco mínimo entre coches (en parado). Ajustable.
+        # (PARADA_ABSOLUTA_M vive a nivel de módulo: la cesión también la usa.)
         CRITICAL_FRACTION = 0.5  # la emergencia empieza a la mitad del min de seguridad
         ANTICREEP_KMH = 2.0  # por debajo de esto, parar en seco (no arrastrarse)
         EPSILON = 1e-6  # blinda los denominadores contra el 0

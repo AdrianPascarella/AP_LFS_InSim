@@ -47,8 +47,8 @@ class FreeroamMode(AINavModeState):
     # Extra
     extra_inputs_to_send: List = field(default_factory=list)
 
-    # 6. Estado de Ceda el Paso
-    yield_zone_id: Optional[str] = None
+    # 6. Estado de Ceda el Paso (Fase 8: la cesión cuelga del RoadLink)
+    yield_link_id: Optional[str] = None
     yield_active: bool = False
 
     # 7. Reglas Especiales activas

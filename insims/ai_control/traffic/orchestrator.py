@@ -1,10 +1,11 @@
 """Orquestador del comportamiento de tráfico: se llama una vez por IA y por
-paquete MCI, y coordina radar, ACC, zonas de intersección y FSM de
-adelantamiento.
+paquete MCI, y coordina radar, ACC, cesión de paso (por RoadLink, Fase 8) y
+FSM de adelantamiento.
 
 Auto-regula el radar con una compuerta (`_radar_interval`, ~7-10 Hz por IA con
-jitter para desincronizar las IAs). NO tiene red de tests de caracterización:
-usa `time.time()` y muta mucho estado del `mode` (ver AUDITORIA_HOTLOOP.md)."""
+jitter para desincronizar las IAs). Red de tests: el marco (asignación final,
+compuerta, reglas especiales) y la conducta de cesión en test_orchestrator.py;
+el gatillo del adelantamiento en test_traffic.py (S34)."""
 
 from __future__ import annotations
 
@@ -16,6 +17,8 @@ from insims.ai_control.base import _MixinBase
 from insims.ai_control.behavior import AIBehavior
 from insims.ai_control.nav_modes.freeroam.enums import AIManeuverState, TrafficRule
 from insims.ai_control.nav_modes.freeroam.mode import FreeroamMode
+from insims.ai_control.traffic.cruise_control import PARADA_ABSOLUTA_M
+from insims.ai_control.traffic.yielding import has_crossed_line
 
 if TYPE_CHECKING:
     from insims.users_management.main import AI
@@ -317,163 +320,71 @@ class _OrchestratorMixin(_MixinBase):
             mode._last_radar_time = current_time
 
             # =========================================================
-            # CONTROL DE INTERSECCIONES (Ceda el Paso)
+            # CONTROL DE INTERSECCIONES (cesión por RoadLink, Fase 8)
             # =========================================================
-            YIELD_LOOK_AHEAD_s = (
-                5.0  # Anticipación: cuántos segundos adelante miramos el cruce
-            )
-            PRIORITY_APPROACH_s = (
-                4.0  # Ventana para detectar coche prioritario aproximándose
+            # La cesión cuelga del giro: un RoadLink con `yield_line` obliga a
+            # frenar ANTES de la línea si `_yield_threat_detected` ve tráfico
+            # vigilado a menos de T segundos (diseño S38). Cruzada la línea, la
+            # maniobra está comprometida y NO se frena en mitad del cruce.
+            YIELD_LOOK_AHEAD_S = (
+                5.0  # Anticipación: a cuántos segundos por delante se mira la línea
             )
             YIELD_HOLD_S = 1.0  # Histéresis: se sigue cediendo este tiempo tras la última detección
 
-            if hasattr(self.map_recorder, "zones") and self.map_recorder.zones:
-                yielding_to_zone = False
+            if mode.current_type == "RoadLink":
+                candidato = self.map_recorder.road_links.get(mode.current_id)
+            elif mode.current_type == "Road" and mode.next_link_type == "RoadLink":
+                candidato = self.map_recorder.road_links.get(mode.next_link_id)
+            else:
+                candidato = None
 
-                for zone_id, zone in self.map_recorder.zones.items():
-                    # 1. ¿Somos la vía no-prioritaria en este cruce?
-                    vias_prioritarias_a_vigilar = []
-                    for prio_id, no_prio_id in zone.priority_rules:
-                        if mode.current_road_id == no_prio_id:
-                            vias_prioritarias_a_vigilar.append(prio_id)
+            cediendo = False
+            if candidato is not None and candidato.has_yield and candidato.nodes:
+                punto_union = candidato.nodes[-1]
+                comprometida = has_crossed_line(
+                    my_coords.x_m,
+                    my_coords.y_m,
+                    candidato.yield_line,
+                    punto_union.x_m,
+                    punto_union.y_m,
+                )
+                dist_linea_m = self._dist_to_yield_line_m(
+                    my_coords.x_m, my_coords.y_m, candidato.yield_line
+                )
+                yield_range_m = max(15.0, my_speed_ms * YIELD_LOOK_AHEAD_S)
 
-                    if not vias_prioritarias_a_vigilar:
-                        continue
-
-                    # 2. ¿Nos estamos acercando a la zona? (tiempo-based, más amplio que el ACC)
-                    dist_al_borde = self._get_dist_to_zone_edge(
-                        my_coords.x_m, my_coords.y_m, zone
-                    )
-                    yield_range_m = max(15.0, my_speed_ms * YIELD_LOOK_AHEAD_s)
-
-                    if dist_al_borde > yield_range_m:
-                        continue
-
-                    # Si no estamos ya dentro de la zona, verificamos que vamos hacia ella
-                    if dist_al_borde > 0.1:
-                        zone_cx, zone_cy = self._get_zone_centroid(zone)
-                        my_heading_rad = (
-                            ai.player.telemetry.heading.angle_lfs
-                            * 2.0
-                            * math.pi
-                            / 65536.0
-                        )
-                        my_fwd_x = -math.sin(my_heading_rad)
-                        my_fwd_y = math.cos(my_heading_rad)
-                        vec_x = zone_cx - my_coords.x_m
-                        vec_y = zone_cy - my_coords.y_m
-                        if my_fwd_x * vec_x + my_fwd_y * vec_y <= 0.0:
-                            continue  # Nos alejamos: ignorar
-
-                    # 3. Pre-filtro esférico usando el centroide real de la zona
-                    zone_cx, zone_cy = self._get_zone_centroid(zone)
-                    radio_filtro = zone.radius_m + max(
-                        20.0, my_speed_ms * PRIORITY_APPROACH_s * 1.5
-                    )
-
-                    # 4. Escanear vehículos prioritarios (dentro O aproximándose con dirección correcta)
-                    coche_prioritario_detectado = False
-
-                    # 4.A IAs
-                    for a in self.user_manager.ais.values():
-                        if a.player.plid == ai.player.plid or not a.player.telemetry:
-                            continue
-
-                        other_coords = a.player.telemetry.coordinates
-                        if (
-                            math.hypot(
-                                zone_cx - other_coords.x_m, zone_cy - other_coords.y_m
-                            )
-                            > radio_filtro
-                        ):
-                            continue
-
-                        other_road_id = None
-                        if a.extra.get("aic") and a.extra["aic"].active_mode:
-                            other_road_id = a.extra["aic"].active_mode.current_road_id
-
-                        if other_road_id in vias_prioritarias_a_vigilar:
-                            other_heading_lfs = a.player.telemetry.heading.angle_lfs
-                            other_speed_kmh = a.player.telemetry.speed.speed_kmh
-                            if self._is_priority_vehicle_active_at_zone(
-                                other_coords,
-                                other_speed_kmh,
-                                other_heading_lfs,
-                                zone,
-                                PRIORITY_APPROACH_s,
-                            ):
-                                coche_prioritario_detectado = True
-                                break
-
-                    # 4.B Jugadores reales
-                    if not coche_prioritario_detectado:
-                        for p in self.user_manager.players.values():
-                            if p.plid == ai.player.plid or not p.telemetry:
-                                continue
-
-                            other_coords = p.telemetry.coordinates
-                            if (
-                                math.hypot(
-                                    zone_cx - other_coords.x_m,
-                                    zone_cy - other_coords.y_m,
-                                )
-                                > radio_filtro
-                            ):
-                                continue
-
-                            ctx = self.map_recorder.get_location_context(
-                                other_coords.x_m,
-                                other_coords.y_m,
-                                other_coords.z_m,
-                                find_links=False,
-                                find_zones=False,
-                            )
-
-                            if ctx.road_id in vias_prioritarias_a_vigilar:
-                                other_heading_lfs = p.telemetry.heading.angle_lfs
-                                other_speed_kmh = p.telemetry.speed.speed_kmh
-                                if self._is_priority_vehicle_active_at_zone(
-                                    other_coords,
-                                    other_speed_kmh,
-                                    other_heading_lfs,
-                                    zone,
-                                    PRIORITY_APPROACH_s,
-                                ):
-                                    coche_prioritario_detectado = True
-                                    break
-
-                    # 5. Aplicar freno o limpiar estado (con histéresis anti-parpadeo:
-                    #    detectar renueva el hold; sin detección se cede hasta que expira).
+                if not comprometida and dist_linea_m <= yield_range_m:
                     now = time.time()
-                    if coche_prioritario_detectado:
+                    detectado = self._yield_threat_detected(ai, candidato)
+                    # Histéresis anti-parpadeo (fix (5), S33): detectar renueva
+                    # el hold; sin detección se cede hasta que expira.
+                    if detectado:
                         mode._yield_hold_until = now + YIELD_HOLD_S
-                        mode.yield_zone_id = zone_id
+                        mode.yield_link_id = candidato.link_id
                     hold_until = (
-                        mode._yield_hold_until if mode.yield_zone_id == zone_id else 0.0
+                        mode._yield_hold_until
+                        if mode.yield_link_id == candidato.link_id
+                        else 0.0
                     )
-                    if self._should_keep_yielding(
-                        coche_prioritario_detectado, hold_until, now
-                    ):
-                        mode.yield_zone_id = zone_id
+                    if self._should_keep_yielding(detectado, hold_until, now):
+                        cediendo = True
                         mode.yield_active = True
-                        yielding_to_zone = True
-
-                        dist_acc = max(0.1, dist_al_borde)
-                        velocidad_interseccion = self._apply_adaptive_cruise_control(
+                        mode.yield_link_id = candidato.link_id
+                        # Freno: ACC contra un "coche parado" fantasma colocado
+                        # PARADA_ABSOLUTA_M más allá de la línea → el morro se
+                        # detiene EN la línea, no un radio arbitrario antes.
+                        velocidad_cesion = self._apply_adaptive_cruise_control(
                             base_speed_kmh=velocidad_base,
                             closest_speed_kmh=0.0,
-                            closest_dist_m=dist_acc,
+                            closest_dist_m=dist_linea_m + PARADA_ABSOLUTA_M,
                             min_dist_m=min_dist_m,
                             max_dist_m=yield_range_m,
                         )
-                        velocidad_segura = min(velocidad_segura, velocidad_interseccion)
-                    elif mode.yield_zone_id == zone_id:
-                        mode.yield_zone_id = None
-                        mode.yield_active = False
+                        velocidad_segura = min(velocidad_segura, velocidad_cesion)
 
-                if not yielding_to_zone and mode.yield_active:
-                    mode.yield_active = False
-                    mode.yield_zone_id = None
+            if not cediendo and mode.yield_active:
+                mode.yield_active = False
+                mode.yield_link_id = None
 
             # =========================================================
             # CONTROL DE REGLAS ESPECIALES (Activación/Desactivación)
