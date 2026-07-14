@@ -5,6 +5,55 @@
 
 ---
 
+## S39 — 2026-07-14 — Fase 8: bloque 8.3 (conducta de cesión) + retirada del modelo viejo de la conducta
+
+**Contexto:** el orquestador casi no tenía red (2 tests, S34), así que el bloque se hizo en el orden
+del MODUS §3: caracterizar → red en rojo → implementar → retirar.
+
+**Hecho (código):**
+- **Caracterización del marco** (`test_orchestrator.py`, 8 tests EN VERDE antes de tocar): asignación
+  final (`speed_request = min(velocidad_segura, base)`, `point_request` también en el camino de caché),
+  compuerta del radar (`_cached_target_speed`, sin rescaneo dentro del intervalo), reglas especiales
+  (el override rige en el SIGUIENTE scan: la base se calcula al principio de la pasada y la
+  activación/desactivación ocurre al final — asimetría congelada a propósito). El modelo viejo de
+  cesión NO se caracterizó: esta misma sesión lo retiraba.
+- **8.3 Conducta** (21 tests verificados EN ROJO primero): el orquestador detecta el link con cesión
+  (el `RoadLink` actual o el `next_link_id` comprometido, si `has_yield`), y si la línea está a menos
+  de `max(15, v·5s)` y `_yield_threat_detected` ve tráfico, frena con el ACC contra un **coche parado
+  fantasma colocado `PARADA_ABSOLUTA_M` más allá de la línea** (el morro para EN la línea, no un radio
+  arbitrario antes; la constante se promocionó a nivel de módulo en `cruise_control.py`). **Punto de
+  compromiso:** `has_crossed_line` ⇒ no se frena dentro del cruce. Histéresis del fix (5) reutilizada
+  tal cual (`_should_keep_yielding` + `_yield_hold_until`).
+- **`_yield_threat_detected`** (en `zones.py`, reescrito): compone los predicados de `yielding.py`.
+  Vigila (1) el `to_road` hacia el punto de unión — arco hacia delante por la vía / velocidad; parado
+  ⇒ ∞; pasado el punto (arco `None`) o a contramano (`is_heading_towards`) excluidos — y (2) la zona
+  referenciada (punto de conflicto + T) **excluyendo a los que van detrás de la IA** (si contaran, tus
+  seguidores te dejarían clavado en la línea). T: `yield_time_s` del link/zona, `None` ⇒ config
+  `yield_time_s` (default `DEFAULT_YIELD_TIME_S` = 4 s).
+- **Decisiones de detalle:** el nodo de los vehículos vigilados se recalcula por posición
+  (`_get_closest_node_index`), NO se usa su `node_index` — es el nodo objetivo (va uno por delante,
+  lección S35) y cerca del punto de unión ese sesgo diría "ya pasó" justo al llegar; los humanos se
+  localizan con `get_location_context(find_links=False)` como en el modelo viejo; se itera sobre todos
+  los vehículos sin rejilla (solo corre acercándose a un link con cesión, a cadencia de radar).
+- **Retirada:** el bloque viejo del orquestador (zona-área + `priority_rules`) sustituido; los 4
+  helpers de `zones.py` (`_is_point_in_zone`, `_get_dist_to_zone_edge`, `_get_zone_centroid`,
+  `_is_priority_vehicle_active_at_zone`) y sus 15 tests eliminados; contrato de `base.py` actualizado;
+  `mode.yield_zone_id` → `yield_link_id` (map_ui solo lee `yield_active`, intacto).
+
+**⚠️ Consecuencia en el juego:** hasta que exista UI (8.4) o migración (8.6), NINGÚN cruce cede: los
+mapas no tienen `yield_line` y la zona `test1` quedó inerte en conducta. Dos ítems de la cola de
+validación (S33: temblor del fix (5) y editor de `priority_rules`) pasan a "cerradas" por obsoletos —
+la histéresis se valida con la cesión nueva en 8.7 y el editor se retira en 8.4/8.6.
+
+**Verificación:** red nueva verificada EN ROJO (19 fallos por piezas ausentes) antes de implementar;
+suite **809/809** (824 tras implementar − 15 del modelo viejo); ruff check + format limpios;
+`lfs-insim list` carga los 4 insims.
+
+**Commits:** `feat(ai_control)` conducta de cesión (red primero) · `refactor(ai_control)` retirada del
+modelo viejo · `docs(dev)` cierre.
+
+---
+
 ## S38 — 2026-07-13 — Fase 8: diseño cerrado con el usuario + bloques 8.1 (modelo de datos) y 8.2 (predicados puros)
 
 **Contexto:** la sesión de DISEÑO que pedía el PLAN. Novedad de método: el usuario pidió que las preguntas

@@ -711,9 +711,12 @@ conductor*, no el borde de un círculo, y regala el **punto de compromiso**.
       test de que South City carga intacto (round-trip). ✅ S38 (`test_map_persistencia.py`).
 - [x] **8.2 Predicados puros** — tiempo-al-punto, "¿cruzó la línea?", selección de vigilados
       (acercándose / ya pasó / detrás). ✅ S38 (`traffic/yielding.py` + `test_yielding.py`).
-- [ ] **8.3 Conducta** — integrar en `traffic/` (orquestador + `zones.py`): frenar antes de la
+- [x] **8.3 Conducta** — integrar en `traffic/` (orquestador + `zones.py`): frenar antes de la
       línea (reusar la histéresis del fix (5)), punto de compromiso; **retirar** el código de
-      zona-área + `priority_rules`.
+      zona-área + `priority_rules`. ✅ S39 (caracterización del marco + 21 tests de conducta en
+      rojo primero → `test_orchestrator.py`; freno = ACC contra coche fantasma a
+      `PARADA_ABSOLUTA_M` tras la línea; helpers viejos de `zones.py` fuera). ⚠️ Hasta 8.4/8.6
+      ningún cruce cede en el juego (no hay `yield_line` en los mapas; `test1` inerte).
 - [ ] **8.4 UI de mapeo** — grabador de puntos + T + picker de zona en el detalle del link
       (skill `ai-control-map-ui`); tests `test_map_ui_*`.
 - [ ] **8.5 Render** — pintar líneas de detención y puntos de zona (con su T).
