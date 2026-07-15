@@ -5,6 +5,55 @@
 
 ---
 
+## S43 — 2026-07-15 — Validación U3–U7/U8 + re-plan: rediseño de la cesión (diseño pendiente)
+
+**Contexto:** el usuario hizo sus deberes de `ACCIONES_USUARIO` y trajo veredictos + feedback de
+mejora. Sesión de **validación + re-plan, sin código** (a petición suya: opinar, planear y dejar
+el diseño para una sesión nueva).
+
+**Veredictos (fichas cerradas → cola a 0):**
+- **U3** (ley del ACC), **U4** (radar en transición road↔roadlink), **U5** (guard: no adelantar
+  en cruce), **U6** (no adelantar por vía cerrada), **U7** (intermitente sin flip): **todos OK**.
+  → **Fase 7 queda validada y cerrada.**
+- **U8** (UI de mapeo del 8.4): **"funciona, a mejorar"** — el flujo va bien, pero con pegas y
+  peticiones (como fue W4). Se cierra con veredicto; las mejoras pasan al bloque de rediseño.
+
+**Feedback del usuario sobre la cesión (los 4 frentes del rediseño 8.6):**
+1. **`yield_time_s`**: el TypeIn muestra el texto literal `"default (4)"` cuando el valor es
+   `None` — debería ser un float.
+2. **`yield_zone_id`**: no entiende qué es ni para qué sirve. (Hoy: "vigila ADEMÁS el punto de
+   conflicto de esta zona", sin prioridades — `traffic/zones.py`.)
+3. **Auto-`yield_line`**: con tanto mapeo, quiere un botón que cree la línea de detención sola
+   (no perfecta, pero que sirva en la mayoría).
+4. **Zonas con tabla auto + toggle**: en vez de añadir a mano, al crear una zona detectar los
+   roads que la cruzan y ofrecer una matriz *toggle* de prioridades; poder borrar roads (falsos
+   cruces a distinta altura: puentes) sin ignorar del todo la Z (pendientes).
+
+**Análisis de Claude (opinión, no diseño cerrado):**
+- (1) y (3) son cambios acotados y claros. (2) y (4) **reabren el modelo de la Fase 8**: el punto
+  4 **revive parcialmente las `priority_rules`** que S38 retiró (decisiones 2 y 7), pero
+  auto-pobladas — que era donde estaba el dolor real, no en el concepto.
+- Modelo híbrido propuesto (a aprobar): **`yield_line` = DÓNDE paras** (geometría, auto/manual);
+  **tabla de zona = QUIÉN cede a QUIÉN** (auto + toggle); así **`yield_zone_id` cobra sentido**
+  ("qué tabla gobierna este link"). Retos a resolver en el diseño: auto-detección de cruces XY +
+  chequeo de Z; UI de la matriz N×N en botones de LFS; y cómo convive con el "quien tiene
+  `yield_line` cede" actual.
+
+**Decisiones de proceso:**
+- **8.6 pasa a ser "Rediseño de la UX/modelo de cesión"**, con flujo **DISEÑAR → APROBAR →
+  EJECUTAR** (no tocar código hasta aprobar, como S38). Migración y validación se posponen a
+  **8.7/8.8** (antes 8.6/8.7): migrar `test1` con la UI actual, que va a cambiar, sería trabajo
+  tirado. Frentes + recomendaciones capturados en `PLAN.md § Fase 8, bloque 8.6`.
+- **Sesión nueva para el diseño**: esta jornada ya trae arranque + 8.5 completo + validación;
+  el diseño de (4) merece cabeza fresca. Lo siguiente, literal, es **planear → diseñar → aprobar**
+  el rediseño; ejecutar vendría en la sesión posterior si se aprueba.
+
+**Verificación:** sin código → `pytest` sigue en **855/855** (S42). `close_check.py` → PASS.
+
+**Commits:** el commit de docs de esta entrada (veredictos + re-plan; ACCIONES/PLAN/ESTADO/HISTORIAL).
+
+---
+
 ## S42 — 2026-07-15 — Fase 8: bloque 8.5 (render de la cesión) + protección de mapa al arrancar
 
 **Arranque:** `git status` mostraba mapas sin commitear (nuevo mapeo de `south_city`: vías

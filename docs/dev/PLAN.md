@@ -761,10 +761,40 @@ conductor*, no el borde de un círculo, y regala el **punto de compromiso**.
       en color reservado `YIELDLINE_COLOR` (magenta) con su T + T en la etiqueta de zona
       (`map_renderer.py`); 17 tests en `test_map_renderer.py` (10 caracterización + 7 cesión, red
       en rojo primero). La parte "en Elementos" ya la cubre el detalle textual del 8.4. Los PNG
-      actuales no cambian (ningún mapa tiene `yield_line` aún; aparecerán al migrar `test1` en 8.6).
-- [ ] **8.6 Migración** — convertir `test1` al modelo nuevo y retirar `priority_rules` del JSON
-      y del código muerto restante.
-- [ ] **8.7 Validación en LFS (usuario)** → cola de validación del handoff.
+      actuales no cambian (ningún mapa tiene `yield_line` aún; aparecerán al migrar `test1`).
+- [ ] **8.6 Rediseño de la UX/modelo de cesión (S43)** ◀️ **PRÓXIMO** — flujo **DISEÑAR → APROBAR
+      → EJECUTAR** (NO tocar código hasta aprobar el diseño, como en S38). Origen: veredicto de
+      **U8** (*"funciona, a mejorar"*) + ideas del usuario en S43. Cuatro frentes (las recomendaciones
+      de Claude van entre paréntesis, **a discutir/aprobar**, no decididas):
+      1. **`yield_time_s` como float en la UI.** Hoy el TypeIn muestra el texto literal
+         `"default (4)"` cuando el valor es `None`. (Rec: conservar el concepto *`None` = default
+         global de config* —útil: retocar el global reajusta los links no override— pero que el
+         TypeIn muestre SIEMPRE el número efectivo y un botón "usar default" para volver a `None`.)
+      2. **`yield_zone_id` — qué es y si sobrevive.** Hoy = "vigila ADEMÁS el punto de conflicto de
+         esta zona" (junto al tráfico del `to_road`), sin prioridades (`traffic/zones.py`
+         `_yield_threat_detected`). Es confuso. (Rec: redefinirlo como "qué tabla de prioridades de
+         zona gobierna este link", coherente con el punto 4.)
+      3. **Auto-`yield_line`.** Un botón que crea la línea de detención sola (no perfecta, pero
+         cubre la mayoría). (Rec: segmento perpendicular a la tangente del link en su primer nodo
+         —donde deja la `from_road`—, ancho fijo por config; Regrabar a mano si sale mal. Va junto
+         a "+ Grabar línea" en el detalle.)
+      4. **Zonas con tabla auto-poblada + toggle de prioridades.** Al crear una zona, detectar los
+         roads que la cruzan y montar una matriz *toggle* de "quién tiene preferencia sobre quién";
+         poder **borrar** roads (falsos cruces a distinta altura: puentes) **sin ignorar Z** del
+         todo (pendientes ⇒ tolerancia en Z, no corte duro). ⚠️ Esto **revive parcialmente** la
+         idea de `priority_rules` que S38 retiró (decisiones 2 y 7) — pero auto-poblada, que era
+         donde estaba el dolor. (Rec: modelo **híbrido** — `yield_line` = *DÓNDE* paras (geometría,
+         auto/manual); tabla de zona = *QUIÉN* cede a *QUIÉN*. Retos a resolver en el diseño:
+         auto-detección de cruces XY + chequeo de Z; UI de la matriz N×N en botones de LFS —bien
+         para 3-4 vías, pensar el caso de más—; y cómo convive con el "quien tiene `yield_line`
+         cede" actual (¿la tabla lo reemplaza en cruces con zona? ¿coexisten?).)
+      **Salida del bloque:** diseño cerrado (estilo S38) → red de tests primero → implementación →
+      **ficha U nueva** de validación en LFS. La migración y su validación van DESPUÉS (8.7/8.8), ya
+      con la herramienta rediseñada — migrar `test1` ahora sería trabajo tirado.
+- [ ] **8.7 Migración** — (antes 8.6) convertir `test1` al modelo **ya rediseñado** (8.6) y retirar
+      lo que el rediseño deje muerto (`priority_rules` viejo / código inerte). Ojo: el punto 4 del
+      8.6 puede cambiar qué se retira exactamente.
+- [ ] **8.8 Validación en LFS (usuario)** — (antes 8.7) → cola de validación del handoff.
 
 **Criterio de aceptación:** intersecciones **fáciles de crear** (sin teclear ids ni razonar en pares) y conducta
 **validada en LFS**; red primero (predicados puros de tiempo-al-punto y de "línea cruzada"); no toca la API
