@@ -15,16 +15,27 @@ logger = logging.getLogger(__name__)
 
 # ==========================================================================
 # CONVENCIÓN DE COLORES SEMÁNTICOS (reservados — los roads NO deben usarlos):
-#   rojo  → zonas de intersección
-#   gris  → lateral links
-#   cian  → road links
+#   rojo     → zonas de intersección
+#   gris     → lateral links
+#   cian     → road links
+#   magenta  → líneas de cesión (yield_line): dónde para la IA para ceder
 # Los roads se pintan con esta paleta cualitativa, que EXCLUYE a propósito
-# rojo/gris/cian para que un road nunca se confunda con una zona, un lateral
-# link o un road link.
+# esos colores para que un road nunca se confunda con una zona, un lateral
+# link, un road link o una línea de cesión.
 # ==========================================================================
 ZONE_COLOR = "red"
 LATERAL_COLOR = "gray"
 ROADLINK_COLOR = "c"
+YIELDLINE_COLOR = "m"  # magenta: línea de detención de una cesión (Fase 8, 8.5)
+
+
+def _fmt_yield_t(t) -> str:
+    """Etiqueta del tiempo de cesión T: `None` ⇒ 'def' (default global de
+    config); un valor ⇒ '<t>s' (sin ceros de más, p. ej. '4s', '3.5s')."""
+    if t is None:
+        return "def"
+    return f"{t:g}s"
+
 
 ROAD_PALETTE = [
     "#1f77b4",  # azul
@@ -55,23 +66,33 @@ def _scaled_line_widths(span_m: float):
     return road_lw, link_lw
 
 
-def generate_map_image(json_path: str):
+def _road_bounds(data: dict):
     """
-    Reads a map JSON file and generates a PNG image with the exact topology,
-    saving it in the same folder where this script resides.
-    Safe for background threading.
+    Bounding box (xmin, ymin, xmax, ymax) en metros sobre los nodos de los
+    roads. Se usa para escalar los grosores ANTES de dibujar. Devuelve
+    infinitos si no hay roads.
     """
-    # 1. Load the JSON file
-    try:
-        with open(json_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-    except Exception as e:
-        logger.error(f"Error leyendo el JSON del mapa: {e}")
-        return
+    xmin = ymin = math.inf
+    xmax = ymax = -math.inf
+    for road in data.get("roads", {}).values():
+        for n in road["nodes"]:
+            x = n["x"] / 65536.0
+            y = n["y"] / 65536.0
+            xmin = min(xmin, x)
+            xmax = max(xmax, x)
+            ymin = min(ymin, y)
+            ymax = max(ymax, y)
+    return xmin, ymin, xmax, ymax
 
-    # Create a large canvas with good resolution
-    fig, ax = plt.subplots(figsize=(14, 10))
 
+def _draw_elements(ax, data: dict, road_lw: float, link_lw: float):
+    """
+    Dibuja TODOS los elementos del mapa sobre `ax` (roads, zonas, lateral links,
+    road links y líneas de cesión). Dibujo puro: no toca figura, límites,
+    leyenda ni disco — eso es responsabilidad de `generate_map_image`. Devuelve
+    el bounding box (xmin, ymin, xmax, ymax) sobre todo lo dibujado, para que el
+    llamante encuadre el mapa.
+    """
     # Bounds de TODOS los elementos, para encuadrar el mapa al final.
     xmin = ymin = math.inf
     xmax = ymax = -math.inf
@@ -84,16 +105,6 @@ def generate_map_image(json_path: str):
         if ys:
             ymin = min(ymin, min(ys))
             ymax = max(ymax, max(ys))
-
-    # Primera pasada de bounds sobre los roads para conocer la extensión y así
-    # escalar los grosores ANTES de dibujar.
-    for road in data.get("roads", {}).values():
-        _track(
-            [n["x"] / 65536.0 for n in road["nodes"]],
-            [n["y"] / 65536.0 for n in road["nodes"]],
-        )
-    span_m = max(xmax - xmin, ymax - ymin) if xmax > -math.inf else 1.0
-    road_lw, link_lw = _scaled_line_widths(span_m)
 
     # 2. Draw Roads (en orden ALFABÉTICO para que la leyenda quede ordenada y
     #    los carriles paralelos "X_a"/"X_b" queden contiguos y con color distinto)
@@ -127,9 +138,11 @@ def generate_map_image(json_path: str):
         for z_idx, (zone_id, zone) in enumerate(data["zones"].items()):
             nodes = zone["nodes"]
             radius = zone.get("radius_m", 10.0)
+            # Etiqueta del punto: id + T (nuevo modelo punto+T, Fase 8).
+            zone_label = f"{zone_id}\nT={_fmt_yield_t(zone.get('yield_time_s'))}"
 
             # Only add the legend label to the first zone to avoid duplicates
-            label_zone = "Zonas (radio de influencia)" if z_idx == 0 else ""
+            label_zone = "Zonas de cesión (punto + T)" if z_idx == 0 else ""
 
             if len(nodes) == 1:
                 # It's a point -> Draw a circle
@@ -139,7 +152,7 @@ def generate_map_image(json_path: str):
                     (cx, cy), radius, color=ZONE_COLOR, alpha=0.2, label=label_zone
                 )
                 ax.add_patch(circle)
-                ax.text(cx, cy, zone_id, fontsize=8, ha="center", color="darkred")
+                ax.text(cx, cy, zone_label, fontsize=8, ha="center", color="darkred")
                 _track([cx - radius, cx + radius], [cy - radius, cy + radius])
 
             elif len(nodes) >= 3:
@@ -158,7 +171,7 @@ def generate_map_image(json_path: str):
                     sum(xs) / len(xs),
                     sum(ys) / len(ys),
                 )  # Approximate centroid for the text
-                ax.text(cx, cy, zone_id, fontsize=8, ha="center", color="darkred")
+                ax.text(cx, cy, zone_label, fontsize=8, ha="center", color="darkred")
                 _track(xs, ys)
 
     # 4. Draw Lateral Links (línea gris fina DISCONTINUA)
@@ -202,6 +215,78 @@ def generate_map_image(json_path: str):
                 label=label_road,
             )
             _track(xs, ys)
+
+    # 5b. Yield lines (Fase 8, 8.5): línea de detención de un RoadLink con
+    #     cesión — DÓNDE para la IA para ceder el paso. Magenta sólido y grueso
+    #     con marcadores en los extremos (se ven aunque sean cortas), rotulada
+    #     con su T. Los links sin cesión (`yield_line` vacía) no pintan nada.
+    yield_lw = max(road_lw * 1.6, 1.2)
+    first_yield = True
+    if "road_links" in data:
+        for link in data["road_links"].values():
+            yl = link.get("yield_line") or []
+            if len(yl) < 2:
+                continue
+            xs = [n["x"] / 65536.0 for n in yl]
+            ys = [n["y"] / 65536.0 for n in yl]
+            label_yield = "Línea de cesión (stop)" if first_yield else ""
+            first_yield = False
+
+            ax.plot(
+                xs,
+                ys,
+                marker="o",
+                markersize=max(2.0, yield_lw),
+                linestyle="-",
+                linewidth=yield_lw,
+                color=YIELDLINE_COLOR,
+                alpha=0.95,
+                zorder=5,  # por encima de roads/links
+                label=label_yield,
+            )
+            # T en el centro de la línea de detención.
+            cx = sum(xs) / len(xs)
+            cy = sum(ys) / len(ys)
+            ax.text(
+                cx,
+                cy,
+                f"T={_fmt_yield_t(link.get('yield_time_s'))}",
+                fontsize=7,
+                ha="center",
+                va="bottom",
+                color="darkmagenta",
+                zorder=6,
+            )
+            _track(xs, ys)
+
+    return xmin, ymin, xmax, ymax
+
+
+def generate_map_image(json_path: str):
+    """
+    Reads a map JSON file and generates a PNG image with the exact topology,
+    saving it in the same folder where this script resides.
+    Safe for background threading.
+    """
+    # 1. Load the JSON file
+    try:
+        with open(json_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception as e:
+        logger.error(f"Error leyendo el JSON del mapa: {e}")
+        return
+
+    # Create a large canvas with good resolution
+    fig, ax = plt.subplots(figsize=(14, 10))
+
+    # Primera pasada de bounds sobre los roads para conocer la extensión y así
+    # escalar los grosores ANTES de dibujar.
+    rxmin, rymin, rxmax, rymax = _road_bounds(data)
+    span_m = max(rxmax - rxmin, rymax - rymin) if rxmax > -math.inf else 1.0
+    road_lw, link_lw = _scaled_line_widths(span_m)
+
+    # Dibujo de todos los elementos; devuelve los bounds para encuadrar.
+    xmin, ymin, xmax, ymax = _draw_elements(ax, data, road_lw, link_lw)
 
     # 6. Visual chart configuration (Orientado a objetos para Thread-Safety)
     #    adjustable="box": el eje se ajusta a la proporción de los datos (el mapa
