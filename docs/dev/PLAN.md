@@ -756,7 +756,12 @@ conductor*, no el borde de un círculo, y regala el **punto de compromiso**.
       + TypeIn de T al Terminar + picker de zonas; rama `yield_line` en `_cmd_rec_end` y
       `yield_time_s`/`yield_zone_id` en `_cmd_set`; 29 tests en `test_map_ui_link_yield.py`,
       red en rojo primero). Validación del usuario → ficha **U8**.
-- [ ] **8.5 Render** — pintar líneas de detención y puntos de zona (con su T).
+- [x] **8.5 Render** — pintar líneas de detención y puntos de zona (con su T). ✅ S42:
+      seam puro `_draw_elements` (extraído y verificado byte-idéntico) + dibujo de la `yield_line`
+      en color reservado `YIELDLINE_COLOR` (magenta) con su T + T en la etiqueta de zona
+      (`map_renderer.py`); 17 tests en `test_map_renderer.py` (10 caracterización + 7 cesión, red
+      en rojo primero). La parte "en Elementos" ya la cubre el detalle textual del 8.4. Los PNG
+      actuales no cambian (ningún mapa tiene `yield_line` aún; aparecerán al migrar `test1` en 8.6).
 - [ ] **8.6 Migración** — convertir `test1` al modelo nuevo y retirar `priority_rules` del JSON
       y del código muerto restante.
 - [ ] **8.7 Validación en LFS (usuario)** → cola de validación del handoff.

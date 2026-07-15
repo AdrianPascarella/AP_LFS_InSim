@@ -5,6 +5,60 @@
 
 ---
 
+## S42 — 2026-07-15 — Fase 8: bloque 8.5 (render de la cesión) + protección de mapa al arrancar
+
+**Arranque:** `git status` mostraba mapas sin commitear (nuevo mapeo de `south_city`: vías
+`COMMERCIAL_LANE_S22…` + su render). Protegidos según protocolo (MODUS §1.2): backup fuera del
+repo → commit `4cfc95e` → **rebase** sobre los 3 commits de S41 subidos desde el otro equipo
+(no tocaban el mapa: cero conflictos) → push. Los `.md` en disco eran S40; tras el pull se
+trabajó sobre S41.
+
+**Hecho (código) — bloque 8.5, en el orden del MODUS §3 (estructura → comportamiento):**
+- **Seam puro y testeable**: se extrajo `_draw_elements(ax, data, road_lw, link_lw)` (dibuja
+  roads/zonas/lateral/road_links/cesión sobre un axes y devuelve los bounds; sin figura, límites,
+  leyenda ni IO) y `_road_bounds(data)` (pre-pase de span). `generate_map_image` queda como
+  orquestador (carga → span → seam → límites/leyenda/guardado). **Verificado byte-idéntico**:
+  md5 del render de `south_city` idéntico antes y después de la extracción, y también idéntico al
+  PNG commiteado (misma versión de matplotlib en los dos equipos).
+- **Dibujo de la cesión** (red en rojo primero): color reservado nuevo `YIELDLINE_COLOR = "m"`
+  (magenta) añadido a la convención; cada `yield_line` no vacía de un RoadLink se pinta como
+  línea de detención (magenta grueso + marcadores en los extremos, `zorder` alto) rotulada con su
+  **T** en el centro; las **zonas** rotulan su T en la etiqueta (`_fmt_yield_t`: `None`⇒`def`,
+  valor⇒`<n>s`). Los links sin cesión y las zonas no dibujables no pintan nada.
+- **17 tests nuevos** (`test_map_renderer.py`): 10 de caracterización del dibujo actual (verdes
+  antes de tocar) + 7 de cesión (nacidos en rojo). Afirman sobre los artistas de matplotlib
+  (`ax.lines`/`ax.patches`/`ax.texts`) sin generar PNGs. Verificado visualmente además con un
+  render de demostración de datos sintéticos (magenta legible, T y zona correctas).
+- **`test_map_persistencia.py`**: re-basados los conteos de `south_city` (222/328/28 → **223/374/40**)
+  como consecuencia del nuevo mapeo del arranque. Es una caracterización sobre datos vivos: se
+  re-basa cuando el usuario amplía el mapa.
+
+**Decisiones (con su porqué):**
+- **Seam extraído ANTES de añadir comportamiento** (MODUS §3): permite caracterizar el render
+  actual con tests y probar byte-identidad; el dibujo de cesión se apila encima sobre terreno
+  verde. *Rechazado:* testear `generate_map_image` de una pieza (escribe un PNG a ruta fija junto
+  al módulo; solo se podría afirmar "existe el fichero").
+- **Magenta reservado, no un color de la paleta**: la `yield_line` es semántica (dónde paras para
+  ceder), como zona/lateral/roadlink; debe tener color propio y los roads deben excluirlo.
+- **La parte "en Elementos" del diseño (decisión 9) NO añade lienzo nuevo**: el overlay whereami
+  es texto (road/link/zona más cercanos), no geometría; el detalle del RoadLink ya muestra la
+  cesión textualmente desde el 8.4. El 8.5 es el render PNG.
+- **No se regeneran los 3 PNG commiteados**: ningún mapa actual tiene `yield_line` ni zona
+  dibujable, así que el código nuevo dibuja idéntico al viejo (comprobado). Regenerar solo metería
+  ruido binario. Las líneas de cesión aparecerán en el render cuando el 8.6 migre `test1`.
+
+**Verificación:** `test_map_renderer.py` 10 verdes (caracterización) + 7 rojos (cesión) →
+implementación → **17/17**; suite completa **855/855**. `ruff check` + `ruff format` limpios.
+
+**Pendiente de validación:** ninguna ficha nueva (el 8.5 es offline y testeado; su resultado
+visible se verá cuando existan `yield_line`, es decir con el 8.6). Sigue abierta **U8** (UI del
+8.4), que ahora **bloquea el 8.6** (el próximo paso).
+
+**Commits:** `4cfc95e` (protección del mapa) · re-base de conteos (`test_map_persistencia`) ·
+`feat(ai_control): 8.5 render de la cesión` · el commit de docs de esta entrada.
+
+---
+
 ## S41 — 2026-07-15 — Fase 8: bloque 8.4 (UI de mapeo de la cesión) + veredictos U1/U2
 
 **Contexto:** el 8.4 estaba bloqueado en blando por U1/U2 (pestaña Grabar sin validar desde S32).
