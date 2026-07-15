@@ -113,9 +113,9 @@ intermitente no parpadea alternando lados.
 
 <!-- Tope ~15 líneas: lo que rebose se cae, ya está en el historial. -->
 
-- [x] **U1 — "Link auto" en la pestaña Grabar** — S41: *"validado, funciona perfectamente"*.
+- [x] U1 — **"Link auto" en la pestaña Grabar** — S41: *"validado, funciona perfectamente"*.
       Desbloqueó el 8.4.
-- [x] **U2 — Ajustes de la pestaña Grabar** — S41: *"funciona todo perfectamente"* (toggle
+- [x] U2 — **Ajustes de la pestaña Grabar** — S41: *"funciona todo perfectamente"* (toggle
       Tráfico, Vel. grabar, Auto pegajoso). Desbloqueó el 8.4.
 
 <!-- Las de abajo se cerraron ANTES de que existieran las fichas, por eso no llevan ID. -->
