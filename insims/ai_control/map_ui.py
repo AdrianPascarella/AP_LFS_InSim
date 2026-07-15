@@ -9,6 +9,7 @@ from typing import Optional
 from insims.ai_control.base import _MixinBase
 from insims.ai_control.nav_modes.freeroam.geometry import find_road_pointed_at
 from insims.ai_control.nav_modes.freeroam.mode import FreeroamMode
+from insims.ai_control.traffic.yielding import DEFAULT_YIELD_TIME_S
 from lfs_insim.insim_enums import BFN, ISB_STYLE, TYPEIN_FLAGS
 from lfs_insim.packets import ISP_BTC, ISP_BTT, ISP_MSO
 from lfs_insim.utils import TextColors as c
@@ -119,6 +120,25 @@ class _MapUIMixin(_MixinBase):
     # 128/129/132, seleccionados 110/112, Confirmar 116, Cancelar 117. Las vías
     # elegidas viven en _UI_CID_TI1 (prioritaria) y _UI_CID_TI2 (cede).
 
+    # Sección de CESIÓN del detalle de un RoadLink (Fase 8, bloque 8.4).
+    # CIDs 152-159, dentro del área de contenido (108-165), tras las filas de
+    # campos (111-126) y sin pisar el editor de prioridad de Zonas (140-151).
+    _LINK_YIELD_TITLE = 152
+    _LINK_YIELD_STATUS = 153  # label de estado ("no cede" / "N puntos")
+    _LINK_YIELD_REC = 154  # "+ Grabar linea" / "Regrabar" (abre el grabador)
+    _LINK_YIELD_CLEAR = 155  # "Quitar" la cesión (solo si hay línea)
+    _LINK_YIELD_T_LBL = 156
+    _LINK_YIELD_T_VAL = 157  # TypeIn de T (s) en el propio detalle
+    _LINK_YIELD_ZONE_LBL = 158
+    _LINK_YIELD_ZONE_VAL = 159  # abre el picker de zonas
+    # Las sub-pantallas del grabador REUTILIZAN la semántica de la pestaña
+    # Grabar: 112 añadir punto, 113 auto, 114 terminar, 115 cancelar; la de
+    # "pedir T" usa TI1 (130) + 116 Guardar + 117 Volver; el picker de zonas
+    # usa la mecánica del picker de vías (items 122-127, pág. 128/129/132,
+    # 116 Ninguna, 117 Cancelar). El estado del grabador vive en
+    # map_recorder.current_recording (type="yield_line", auto_phase) para
+    # sobrevivir a cerrar/reabrir el menú, como "Link auto".
+
     # Overlay whereami "pineado" — CIDs FUERA del rango de contenido (108-165)
     # para sobrevivir a cambios de pestaña y al cierre del menú. Anclado a la
     # mitad-derecha de la pantalla; solo se quita deseleccionándolo en Info.
@@ -145,6 +165,7 @@ class _MapUIMixin(_MixinBase):
         self._ui_detail_field_map: dict = {}  # {ClickID: (field_name, field_type)}
         self._ui_zone_prio_map: dict = {}  # {ClickID quitar: (via_a, via_b)}
         self._ui_zone_prio_adding: bool = False  # sub-pantalla de alta de regla
+        self._ui_link_zone_picking: bool = False  # picker de zona de un RoadLink
         self._ui_info_stats: bool = False
         self._ui_info_check: bool = False
         self._ui_check_filter: str = "all"  # "all" | "error" | "warn"
@@ -283,7 +304,10 @@ class _MapUIMixin(_MixinBase):
             or rec.get("rule_id", "?")
         )
         n = len(rec.get("nodes", []))
-        auto = " AUTO" if self.map_recorder.auto_recording_enabled else ""
+        auto_flag = self.map_recorder.auto_recording_enabled
+        if rec.get("type") == "yield_line":
+            auto_flag = auto_flag and rec.get("auto_phase") == "recording"
+        auto = " AUTO" if auto_flag else ""
         return f"REC: {rec_type} '{obj_id}' ({n}pts{auto})"
 
     # ──────────────────────────────────────────────────────────────────────────
@@ -1099,6 +1123,9 @@ class _MapUIMixin(_MixinBase):
             Text="+ Anadir punto",
         )
         auto_on = self.map_recorder.auto_recording_enabled
+        if rec.get("type") == "yield_line":
+            # La línea de cesión solo captura en fase "recording" (nace manual).
+            auto_on = auto_on and rec.get("auto_phase") == "recording"
         auto_style = (
             ISB_STYLE.OK | ISB_STYLE.CLICK
             if auto_on
@@ -2432,6 +2459,20 @@ class _MapUIMixin(_MixinBase):
             self._map_ui_draw_zone_prio_picker(obj, u)
             return
 
+        # Sub-pantallas de la cesión de un RoadLink (grabador de la línea /
+        # pedir T / picker de zona): también a pantalla completa.
+        if obj_type == "roadlink":
+            rec = self.map_recorder.current_recording
+            if rec and rec.get("type") == "yield_line" and rec.get("link_id") == obj_id:
+                if rec.get("auto_phase") == "ask_t":
+                    self._map_ui_draw_link_yield_ask_t(obj, u, rec)
+                else:
+                    self._map_ui_draw_link_yield_recorder(obj, u, rec)
+                return
+            if self._ui_link_zone_picking:
+                self._map_ui_draw_link_zone_picker(obj, u)
+                return
+
         fields_def = _ELEM_FIELDS.get(obj_type, [])
 
         # Header de detalle
@@ -2579,6 +2620,10 @@ class _MapUIMixin(_MixinBase):
         # Editor de reglas de prioridad (solo Zonas, tras sus campos estándar)
         if obj_type == "zone":
             self._map_ui_draw_zone_priority(obj, u)
+
+        # Sección de cesión (solo RoadLinks, tras sus campos estándar)
+        if obj_type == "roadlink":
+            self._map_ui_draw_link_yield(obj, u)
 
     def _map_ui_draw_zone_priority(self, zone, u):
         """Editor de `priority_rules` de una Zona: botón de alta (abre el picker
@@ -2887,6 +2932,548 @@ class _MapUIMixin(_MixinBase):
         self._map_ui_redraw_content()
 
     # ──────────────────────────────────────────────────────────────────────────
+    # Elementos — Cesión de un RoadLink (Fase 8, bloque 8.4)
+    #
+    # La cesión cuelga del propio giro (diseño S38): una `yield_line` grabada
+    # con el coche, un tiempo T (None ⇒ default global) y, opcionalmente, la
+    # zona a vigilar. El grabador nace SIEMPRE en manual (aunque el toggle
+    # "Auto" general esté activo) y al Terminar pide T (TypeIn con default).
+    # ──────────────────────────────────────────────────────────────────────────
+
+    def _map_ui_yield_default_t(self) -> float:
+        """Default global de T (s) — el mismo que consume la conducta (zones.py)."""
+        return self.config.get("yield_time_s", DEFAULT_YIELD_TIME_S)
+
+    def _map_ui_draw_link_yield(self, link, u):
+        """Sección "Cesion" del detalle de un RoadLink, tras sus campos."""
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=self._LINK_YIELD_TITLE,
+            BStyle=ISB_STYLE.TITLE | ISB_STYLE.LEFT,
+            L=2,
+            T=86,
+            W=180,
+            H=6,
+            Text="Cesion (ceda el paso)",
+        )
+        if not link.yield_line:
+            self.send_ISP_BTN(
+                ReqI=1,
+                UCID=u,
+                ClickID=self._LINK_YIELD_STATUS,
+                BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
+                L=2,
+                T=93,
+                W=108,
+                H=6,
+                Text="Este giro no cede.",
+            )
+            self.send_ISP_BTN(
+                ReqI=1,
+                UCID=u,
+                ClickID=self._LINK_YIELD_REC,
+                BStyle=ISB_STYLE.OK | ISB_STYLE.CLICK,
+                L=112,
+                T=93,
+                W=54,
+                H=6,
+                Text="+ Grabar linea",
+            )
+            return
+
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=self._LINK_YIELD_STATUS,
+            BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
+            L=2,
+            T=93,
+            W=68,
+            H=6,
+            Text=f"Linea: {len(link.yield_line)} puntos",
+        )
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=self._LINK_YIELD_REC,
+            BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
+            L=72,
+            T=93,
+            W=54,
+            H=6,
+            Text="Regrabar",
+        )
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=self._LINK_YIELD_CLEAR,
+            BStyle=ISB_STYLE.CANCEL | ISB_STYLE.CLICK,
+            L=144,
+            T=93,
+            W=22,
+            H=6,
+            Text="Quitar",
+        )
+        # Fila de T: TypeIn editable en el propio detalle.
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=self._LINK_YIELD_T_LBL,
+            BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
+            L=2,
+            T=100,
+            W=68,
+            H=6,
+            Text="yield_time_s:",
+        )
+        t_txt = (
+            str(link.yield_time_s)
+            if link.yield_time_s is not None
+            else f"default ({self._map_ui_yield_default_t():g})"
+        )
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=self._LINK_YIELD_T_VAL,
+            BStyle=ISB_STYLE.LIGHT | ISB_STYLE.CLICK,
+            TypeIn=TYPEIN_FLAGS.INIT_WITH_TEXT | 12,
+            L=72,
+            T=100,
+            W=108,
+            H=6,
+            Text=t_txt,
+        )
+        self._ui_detail_field_map[self._LINK_YIELD_T_VAL] = ("yield_time_s", "yield_t")
+        # Fila de la zona a vigilar: abre el picker.
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=self._LINK_YIELD_ZONE_LBL,
+            BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
+            L=2,
+            T=107,
+            W=68,
+            H=6,
+            Text="yield_zone_id:",
+        )
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=self._LINK_YIELD_ZONE_VAL,
+            BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
+            L=72,
+            T=107,
+            W=108,
+            H=6,
+            Text=link.yield_zone_id or "(ninguna)",
+        )
+
+    def _map_ui_draw_link_yield_recorder(self, link, u, rec: dict):
+        """Grabador de la línea de detención (pantalla completa del contenido)."""
+        n = len(rec.get("nodes", []))
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=109,
+            BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
+            L=2,
+            T=21,
+            W=182,
+            H=6,
+            Text=f"Linea de detencion: {rec.get('link_id', '?')}",
+        )
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=110,
+            BStyle=ISB_STYLE.DARK | ISB_STYLE.LEFT,
+            L=2,
+            T=28,
+            W=182,
+            H=6,
+            Text="Para el morro DONDE debe detenerse la IA y anade 2+ puntos a lo ancho del carril.",
+        )
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=111,
+            BStyle=ISB_STYLE.DARK | ISB_STYLE.LEFT,
+            L=2,
+            T=35,
+            W=60,
+            H=6,
+            Text=f"● {n} puntos",
+        )
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=112,
+            BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
+            L=2,
+            T=44,
+            W=60,
+            H=8,
+            Text="+ Anadir punto",
+        )
+        auto_on = (
+            rec.get("auto_phase") == "recording"
+            and self.map_recorder.auto_recording_enabled
+        )
+        auto_style = (
+            ISB_STYLE.OK | ISB_STYLE.CLICK
+            if auto_on
+            else ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK
+        )
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=113,
+            BStyle=auto_style,
+            L=64,
+            T=44,
+            W=40,
+            H=8,
+            Text="Auto: ON" if auto_on else "Auto: OFF",
+        )
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=114,
+            BStyle=ISB_STYLE.OK | ISB_STYLE.CLICK,
+            L=2,
+            T=55,
+            W=60,
+            H=9,
+            Text="Terminar",
+        )
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=115,
+            BStyle=ISB_STYLE.CANCEL | ISB_STYLE.CLICK,
+            L=64,
+            T=55,
+            W=60,
+            H=9,
+            Text="Cancelar",
+        )
+
+    def _map_ui_draw_link_yield_ask_t(self, link, u, rec: dict):
+        """Al Terminar la línea se pide T automáticamente (TypeIn con default)."""
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=109,
+            BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
+            L=2,
+            T=21,
+            W=182,
+            H=6,
+            Text=f"Tiempo T de la cesion: {rec.get('link_id', '?')}",
+        )
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=110,
+            BStyle=ISB_STYLE.DARK | ISB_STYLE.LEFT,
+            L=2,
+            T=28,
+            W=182,
+            H=6,
+            Text="La IA cede si el trafico vigilado llega en menos de T segundos.",
+        )
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=111,
+            BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
+            L=2,
+            T=37,
+            W=30,
+            H=7,
+            Text="T (s):",
+        )
+        t_txt = (
+            str(link.yield_time_s)
+            if link.yield_time_s is not None
+            else f"default ({self._map_ui_yield_default_t():g})"
+        )
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=self._UI_CID_TI1,
+            BStyle=ISB_STYLE.LIGHT | ISB_STYLE.CLICK,
+            TypeIn=TYPEIN_FLAGS.INIT_WITH_TEXT | 12,
+            L=34,
+            T=37,
+            W=60,
+            H=7,
+            Text=t_txt,
+        )
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=116,
+            BStyle=ISB_STYLE.OK | ISB_STYLE.CLICK,
+            L=2,
+            T=48,
+            W=60,
+            H=9,
+            Text="Guardar",
+        )
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=117,
+            BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
+            L=64,
+            T=48,
+            W=60,
+            H=9,
+            Text="< Volver",
+        )
+
+    def _map_ui_draw_link_zone_picker(self, link, u):
+        """Picker de la zona a vigilar (misma UX que el picker de vías)."""
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=109,
+            BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
+            L=2,
+            T=21,
+            W=182,
+            H=6,
+            Text=f"Zona a vigilar: {self._ui_elem_detail_id}",
+        )
+        all_zones = sorted(self.map_recorder.zones.keys())
+        per_page = self._UI_ROAD_PICKER_ITEMS
+        max_page = max(0, (len(all_zones) - 1) // per_page) if all_zones else 0
+        page = min(self._ui_road_picker_page, max_page)
+        self._ui_road_picker_page = page
+        items = all_zones[page * per_page : (page + 1) * per_page]
+        if not all_zones:
+            self.send_ISP_BTN(
+                ReqI=1,
+                UCID=u,
+                ClickID=122,
+                BStyle=ISB_STYLE.DARK | ISB_STYLE.LEFT,
+                L=2,
+                T=35,
+                W=68,
+                H=6,
+                Text="Sin zonas en el mapa",
+            )
+        else:
+            for i, zone_id in enumerate(items):
+                self.send_ISP_BTN(
+                    ReqI=1,
+                    UCID=u,
+                    ClickID=122 + i,
+                    BStyle=ISB_STYLE.DARK
+                    | ISB_STYLE.SELECTED
+                    | ISB_STYLE.CLICK
+                    | ISB_STYLE.LEFT,
+                    L=2,
+                    T=35 + i * 7,
+                    W=68,
+                    H=6,
+                    Text=zone_id,
+                )
+        # Paginación (solo tiene efecto con >6 zonas)
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=128,
+            BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
+            L=2,
+            T=77,
+            W=20,
+            H=6,
+            Text="<",
+        )
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=129,
+            BStyle=ISB_STYLE.DARK | ISB_STYLE.LEFT,
+            L=24,
+            T=77,
+            W=24,
+            H=6,
+            Text=f"{page + 1}/{max_page + 1}",
+        )
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=132,
+            BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
+            L=50,
+            T=77,
+            W=20,
+            H=6,
+            Text=">",
+        )
+        # Columna derecha: actual + acciones
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=110,
+            BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
+            L=72,
+            T=28,
+            W=112,
+            H=6,
+            Text=f"Actual: {link.yield_zone_id or '-'}",
+        )
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=116,
+            BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
+            L=72,
+            T=55,
+            W=54,
+            H=8,
+            Text="Ninguna",
+        )
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=117,
+            BStyle=ISB_STYLE.CANCEL | ISB_STYLE.CLICK,
+            L=130,
+            T=55,
+            W=54,
+            H=8,
+            Text="Cancelar",
+        )
+
+    def _map_ui_click_link_yield_recorder(self, cid: int):
+        """Clicks del grabador de la línea de detención."""
+        mr = self.map_recorder
+        rec = mr.current_recording
+        if cid == 112:  # añadir punto manual (coche del usuario que clica)
+            coords = mr.get_coords_fn(self._ui_ucid)
+            if coords:
+                rec["nodes"].append(copy.deepcopy(coords))
+                self.send_ISP_MSL(
+                    Msg=f"{c.GREEN}Punto #{len(rec['nodes'])} de la linea añadido."
+                )
+                self._map_ui_redraw_content()
+                self._map_ui_update_header()
+            else:
+                self.send_ISP_MSL(
+                    Msg=f"{c.RED}No se pudo leer tu telemetria (en pista?)."
+                )
+        elif cid == 113:  # toggle Auto (el grabador nace SIEMPRE manual)
+            self._map_ui_yield_toggle_auto()
+        elif cid == 114:  # Terminar → pedir T
+            if len(rec.get("nodes", [])) < 2:
+                self.send_ISP_MSL(
+                    Msg=f"{c.YELLOW}La linea necesita al menos 2 puntos "
+                    f"(lleva {len(rec.get('nodes', []))})."
+                )
+                return
+            rec["auto_phase"] = "ask_t"  # congela la captura mientras se pide T
+            self._ui_input_buffer.pop(self._UI_CID_TI1, None)
+            self._map_ui_redraw_content()
+            self._map_ui_update_header()
+        elif cid == 115:  # Cancelar: descarta sin tocar el link
+            mr._cmd_rec_cancel()
+            self._map_ui_redraw_content()
+            self._map_ui_update_header()
+
+    def _map_ui_yield_toggle_auto(self):
+        """Enciende/apaga la captura automática del grabador de la línea.
+
+        ON exige un coche que grabar: si no hay `recording_plid`, se toma el
+        del usuario que clica. La fase y la preferencia global van en lockstep
+        a partir del primer toggle (al nacer, la fase es manual sin tocar la
+        preferencia global — diseño S38: default SIEMPRE manual)."""
+        mr = self.map_recorder
+        rec = mr.current_recording
+        effective = rec.get("auto_phase") == "recording" and mr.auto_recording_enabled
+        if effective:
+            rec["auto_phase"] = "manual"
+            mr.auto_recording_enabled = False
+        else:
+            if mr.recording_plid is None:
+                user = self.user_manager.users.get(self._ui_ucid)
+                plid = user.plid if user else None
+                if plid is None:
+                    self.send_ISP_MSL(
+                        Msg=f"{c.RED}No tienes coche en pista para la captura automatica."
+                    )
+                    return
+                mr.recording_plid = plid
+            mr.auto_recording_enabled = True
+            rec["auto_phase"] = "recording"
+        self._map_ui_redraw_content()
+        self._map_ui_update_header()
+
+    def _map_ui_click_link_yield_ask_t(self, cid: int):
+        """Clicks de la pantalla de T (tras Terminar la línea)."""
+        mr = self.map_recorder
+        rec = mr.current_recording
+        if cid == 116:  # Guardar: comete la línea y fija T
+            raw = (self._ui_input_buffer.get(self._UI_CID_TI1) or "").strip().lower()
+            if raw in ("", "none") or raw.startswith("default"):
+                t_str = "none"  # None ⇒ default global de config
+            else:
+                try:
+                    if float(raw) <= 0:
+                        raise ValueError
+                    t_str = raw
+                except ValueError:
+                    self.send_ISP_MSL(
+                        Msg=f"{c.RED}T invalido: numero de segundos positivo o 'default'."
+                    )
+                    return
+            link_id = rec["link_id"]
+            mr._cmd_rec_end()  # rama yield_line: comete link.yield_line
+            self._map_ui_silent_set(link_id, "yield_time_s", t_str)
+            self._ui_input_buffer.pop(self._UI_CID_TI1, None)
+            self._map_ui_redraw_content()
+            self._map_ui_update_header()
+        elif cid == 117:  # Volver al grabador (en manual), sin perder puntos
+            rec["auto_phase"] = "manual"
+            self._map_ui_redraw_content()
+
+    def _map_ui_click_link_zone_picker(self, cid: int):
+        """Clicks del picker de la zona a vigilar."""
+        all_zones = sorted(self.map_recorder.zones.keys())
+        per_page = self._UI_ROAD_PICKER_ITEMS
+        if 122 <= cid <= 127:  # elegir zona
+            idx = self._ui_road_picker_page * per_page + (cid - 122)
+            if idx < len(all_zones):
+                self._map_ui_silent_set(
+                    self._ui_elem_detail_id, "yield_zone_id", all_zones[idx]
+                )
+                self._map_ui_link_zone_exit_picker()
+        elif cid == 128:  # página anterior
+            if self._ui_road_picker_page > 0:
+                self._ui_road_picker_page -= 1
+                self._map_ui_redraw_content()
+        elif cid == 132:  # página siguiente
+            max_page = max(0, (len(all_zones) - 1) // per_page)
+            if self._ui_road_picker_page < max_page:
+                self._ui_road_picker_page += 1
+                self._map_ui_redraw_content()
+        elif cid == 116:  # Ninguna
+            self._map_ui_silent_set(self._ui_elem_detail_id, "yield_zone_id", "none")
+            self._map_ui_link_zone_exit_picker()
+        elif cid == 117:  # Cancelar
+            self._map_ui_link_zone_exit_picker()
+
+    def _map_ui_link_zone_exit_picker(self):
+        """Sale del picker de zonas y vuelve al detalle del link."""
+        self._ui_link_zone_picking = False
+        self._ui_road_picker_page = 0
+        self._map_ui_redraw_content()
+
+    # ──────────────────────────────────────────────────────────────────────────
     # Helpers del tab Elementos
     # ──────────────────────────────────────────────────────────────────────────
 
@@ -3104,7 +3691,19 @@ class _MapUIMixin(_MixinBase):
         ):
             fname, ftype = self._ui_detail_field_map[packet.ClickID]
             if ftype not in ("bool", "enum_traffic", "enum_indicators") and text:
-                if ftype == "float":
+                if ftype == "yield_t":
+                    # T de la cesión: número positivo, o "default"/"none" ⇒ None.
+                    low = text.lower()
+                    if low == "none" or low.startswith("default"):
+                        text = "none"
+                    else:
+                        try:
+                            if float(text) <= 0:
+                                raise ValueError
+                        except ValueError:
+                            self._map_ui_redraw_content()  # restaura el valor real
+                            return
+                elif ftype == "float":
                     try:
                         float(text)
                     except ValueError:
@@ -3221,6 +3820,11 @@ class _MapUIMixin(_MixinBase):
                         Msg=f"{c.RED}Error: No se pudo obtener telemetria (en pista?)."
                     )
             elif cid == 113:
+                if rec.get("type") == "yield_line":
+                    # La captura de la línea se congela por fase: el toggle
+                    # debe mover fase y preferencia global a la vez.
+                    self._map_ui_yield_toggle_auto()
+                    return
                 new = not self.map_recorder.auto_recording_enabled
                 self.map_recorder._cmd_rec_auto("true" if new else "false")
                 self._map_ui_redraw_content()
@@ -3852,6 +4456,20 @@ class _MapUIMixin(_MixinBase):
     def _map_ui_click_elementos(self, cid: int):
         # ── Vista detalle ──────────────────────────────────────────────────
         if self._ui_elem_detail_id is not None:
+            rec = self.map_recorder.current_recording
+            if (  # grabador de la línea de cesión de ESTE link
+                rec
+                and rec.get("type") == "yield_line"
+                and rec.get("link_id") == self._ui_elem_detail_id
+            ):
+                if rec.get("auto_phase") == "ask_t":
+                    self._map_ui_click_link_yield_ask_t(cid)
+                else:
+                    self._map_ui_click_link_yield_recorder(cid)
+                return
+            if self._ui_link_zone_picking:  # picker de zona a vigilar
+                self._map_ui_click_link_zone_picker(cid)
+                return
             if self._ui_zone_prio_adding:  # sub-pantalla de alta de regla
                 self._map_ui_click_zone_prio_picker(cid)
                 return
@@ -3907,6 +4525,35 @@ class _MapUIMixin(_MixinBase):
                     self._ui_elem_detail_id, "priority_rules", f"del;{via_a},{via_b}"
                 )
                 self._map_ui_redraw_content()
+            elif cid == self._LINK_YIELD_REC:  # abre el grabador de la línea
+                if self.map_recorder.current_recording:
+                    self.send_ISP_MSL(
+                        Msg=f"{c.YELLOW}Ya hay una grabacion en curso: "
+                        "terminala o cancelala primero."
+                    )
+                    return
+                self.map_recorder.current_recording = {
+                    "type": "yield_line",
+                    "link_id": self._ui_elem_detail_id,
+                    "nodes": [],
+                    # Nace SIEMPRE manual, aunque el Auto general esté activo
+                    # (diseño S38); update_recording congela toda fase que no
+                    # sea "recording".
+                    "auto_phase": "manual",
+                }
+                self._map_ui_redraw_content()
+                self._map_ui_update_header()
+            elif cid == self._LINK_YIELD_CLEAR:  # retira la cesión del giro
+                obj = self._map_ui_elem_get_obj(self._ui_elem_detail_id)
+                if obj is not None:
+                    obj.yield_line = []
+                    obj.yield_time_s = None
+                    obj.yield_zone_id = None
+                    self._map_ui_redraw_content()
+            elif cid == self._LINK_YIELD_ZONE_VAL:  # abre el picker de zonas
+                self._ui_link_zone_picking = True
+                self._ui_road_picker_page = 0
+                self._map_ui_redraw_content()
             return
 
         # ── Vista lista ────────────────────────────────────────────────────
@@ -3928,6 +4575,7 @@ class _MapUIMixin(_MixinBase):
             if idx < len(items):
                 self._ui_elem_detail_id = items[idx]
                 self._ui_zone_prio_adding = False
+                self._ui_link_zone_picking = False
                 self._map_ui_redraw_content()
         elif cid == 120:  # Página anterior
             if self._ui_elem_page > 0:

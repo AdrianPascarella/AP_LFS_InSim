@@ -105,3 +105,10 @@ estable** y la **receta**; NO números de línea (envejecen). Para el detalle re
   con origen/destino auto-detectados, con pantallas de confirmación y de conflicto. Grep
   `_map_ui_draw_auto_link` / `_map_ui_start_auto_link`. Tests en `test_map_ui_auto_link.py`.
   Buen patrón de "estado del flujo en `current_recording`" y de reutilizar `_cmd_rec_end`.
+- **Cesión de un RoadLink (Fase 8)** — sección extra en el detalle de Elementos
+  (CIDs 152-159) con tres sub-pantallas a contenido completo: grabador de la
+  `yield_line` (fases en `current_recording["auto_phase"]`: "manual" congela la
+  captura auto, "recording" captura, "ask_t" pide el TypeIn de T), y picker de
+  zonas calcado del de vías. Grep `_map_ui_draw_link_yield`. Tests en
+  `test_map_ui_link_yield.py`. Buen patrón de sección-por-tipo en el detalle y
+  de sub-pantalla con fase que sobrevive a cerrar el menú.

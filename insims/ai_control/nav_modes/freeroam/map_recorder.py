@@ -1481,6 +1481,31 @@ class MapRecorder(PacketSenderMixin):
                 msg_tipo = "Zona"
 
             # ==========================================
+            # GUARDADO DE LINEA DE CESION (Fase 8: yield_line de un RoadLink)
+            # ==========================================
+            elif rec_type == "yield_line":
+                obj_id = self.current_recording["link_id"]
+                link = self.road_links.get(obj_id)
+                if link is None:
+                    self.send(
+                        ISP_MSL(
+                            Msg=f"{TextColors.RED}Error: El link '{obj_id}' ya no existe. Linea descartada.",
+                            Sound=SND.INVALIDKEY,
+                        )
+                    )
+                    return
+                if len(nodes) < 2:
+                    self.send(
+                        ISP_MSL(
+                            Msg=f"{TextColors.RED}Error: La linea de cesion requiere al menos 2 puntos. Grabados: {len(nodes)}.",
+                            Sound=SND.INVALIDKEY,
+                        )
+                    )
+                    return
+                link.yield_line = nodes
+                msg_tipo = "Linea de cesion"
+
+            # ==========================================
             # GUARDADO DE REGLA ESPECIAL
             # ==========================================
             elif rec_type == "special_rule":
@@ -2126,6 +2151,14 @@ class MapRecorder(PacketSenderMixin):
             )
             return
 
+        if prop == "yield_line":
+            self.send(
+                ISP_MSL(
+                    Msg=f"{TextColors.RED}La linea de cesion se graba con el coche, no se edita a mano. Usa el detalle del link en .map ui (Elementos)."
+                )
+            )
+            return
+
         special_rule_shortcuts = ["speed_limit", "no_lane_change"]
         if not hasattr(obj, prop) and not (
             obj_type == "SpecialRule" and prop in special_rule_shortcuts
@@ -2329,6 +2362,55 @@ class MapRecorder(PacketSenderMixin):
                     self.send(
                         ISP_MSL(
                             Msg=f"{TextColors.RED}Clave desconocida '{clave}'. Usa: speed_limit | no_lane_change | clear"
+                        )
+                    )
+                return
+
+            # --- CASO C4: Cesion de paso (Fase 8) — RoadLink y Zone ---
+            if prop == "yield_time_s":
+                modo = val_str.lower().strip()
+                if modo in ("none", "default", ""):
+                    obj.yield_time_s = None
+                    self.send(
+                        ISP_MSL(
+                            Msg=f"{TextColors.GREEN}yield_time_s = default global en {obj_id}."
+                        )
+                    )
+                    return
+                t = float(val_str)
+                if t <= 0:
+                    self.send(
+                        ISP_MSL(
+                            Msg=f"{TextColors.RED}Error: T debe ser positivo (segundos)."
+                        )
+                    )
+                    return
+                obj.yield_time_s = t
+                self.send(
+                    ISP_MSL(Msg=f"{TextColors.GREEN}yield_time_s = {t} s en {obj_id}.")
+                )
+                return
+
+            if prop == "yield_zone_id":
+                zona = val_str.strip()
+                if zona.lower() in ("none", ""):
+                    obj.yield_zone_id = None
+                    self.send(
+                        ISP_MSL(
+                            Msg=f"{TextColors.GREEN}yield_zone_id retirado en {obj_id}."
+                        )
+                    )
+                    return
+                obj.yield_zone_id = zona
+                self.send(
+                    ISP_MSL(
+                        Msg=f"{TextColors.GREEN}yield_zone_id = '{zona}' en {obj_id}."
+                    )
+                )
+                if zona not in self.zones:
+                    self.send(
+                        ISP_MSL(
+                            Msg=f"{TextColors.YELLOW}Aviso: La zona '{zona}' aun no existe en el mapa."
                         )
                     )
                 return
