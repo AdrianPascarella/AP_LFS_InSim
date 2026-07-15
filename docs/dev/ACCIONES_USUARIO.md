@@ -1,7 +1,8 @@
 # 🙋 Tus acciones — AP_LFS_InSim
 
-> **7 pendientes** · 2 bloquean el bloque 8.4 (**U1**, **U2**) · orden recomendado:
-> U1 → U2 → ronda de conducción (U3 → U4 → U5 → U6 → U7) · actualizado en S40
+> **6 pendientes** · ninguna bloquea el próximo paso (el 8.5 no toca la pestaña Grabar ni la
+> conducción) · orden recomendado: U8 → ronda de conducción (U3 → U4 → U5 → U6 → U7) —
+> U8 primero porque el 8.6 mapeará `test1` con esa herramienta · actualizado en S41
 >
 > Todo lo que hay aquí necesita tus manos o tu criterio: Claude no puede hacerlo, o no puede
 > comprobarlo (no puede ejecutar LFS). **Tú nunca editas este archivo**: me dices cómo ha ido y
@@ -9,35 +10,33 @@
 
 ## ⏳ Pendientes
 
-### U1 — "Link auto" en la pestaña Grabar   🚧 · bloquea: bloque 8.4 · abierta en S32
+### U8 — UI de mapeo de la cesión (bloque 8.4)   ⏳ · bloquea: el 8.6 en blando (migrar `test1` usa esta herramienta) · abierta en S41
 
-**Tipo:** validar en LFS · **Tiempo:** ~5 min (probablemente ya la usaste al mapear)
-**Por qué:** el 8.4 añade el grabador de la `yield_line` **en esa misma pestaña**. Si toco Grabar
-sin que lo de S32 esté validado y luego algo falla, hay dos sospechosos y tu veredicto ya no
-distingue cuál. Por eso bloquea: es barato cerrarla antes y trabajar sobre terreno firme.
+**Tipo:** validar en LFS · **Tiempo:** ~10 min
+**Por qué:** es la herramienta con la que se van a mapear TODAS las `yield_line` (8.6 migra
+`test1` con ella, y el 8.7 valida la conducta sobre líneas grabadas así). Si graba mal, todo lo
+de después queda contaminado.
 **Pasos:**
-  1. `.venv\Scripts\lfs-insim.exe run ai_control` y entra en LFS.
-  2. Abre `.map ui` → pestaña **Grabar**.
-  3. Graba un RoadLink con **"Link auto"** (sin teclear origen ni destino a mano).
-  4. Repite con un nombre que ya exista, para ver el conflicto.
-**Resultado esperado:** el link se graba solo, pide confirmación, y ante un nombre repetido avisa
-del conflicto y te deja sobrescribir.
-**Señales de fallo:** te obliga a teclear origen/destino igualmente, no detecta el conflicto, o
-sobrescribe sin preguntar.
-**Si falla, dime:** en qué paso exacto se rompe y qué muestra el chat de LFS.
-
-### U2 — Ajustes de la pestaña Grabar   🚧 · bloquea: bloque 8.4 · abierta en S32
-
-**Tipo:** validar en LFS · **Tiempo:** ~3 min (misma sesión de juego que U1)
-**Por qué:** mismo motivo que U1 — el 8.4 vuelve a tocar esta pestaña. Cerrar esto primero
-mantiene interpretable cualquier fallo posterior.
-**Pasos:**
-  1. En `.map ui` → **Grabar**, comprueba que el toggle **"Trafico"** está aquí (antes estaba en otra pestaña).
-  2. Escribe una velocidad en **"Vel. grabar (km/h)"** y graba un road: debe respetarla.
-  3. Con **"Auto"** activado, **cancela** un road a medias: "Auto" debe seguir activado (es pegajoso).
-**Resultado esperado:** los tres se comportan como se describe.
-**Señales de fallo:** el toggle no aparece, la velocidad se ignora, o cancelar un road desmarca "Auto".
-**Si falla, dime:** cuál de los tres y qué hizo en su lugar.
+  1. `.venv\Scripts\lfs-insim.exe run ai_control`, entra en LFS y carga un mapa (`.map ui` → Mapa).
+  2. Pestaña **Elementos** → filtro **RoadLinks** → clica un link. Abajo debe verse la sección
+     **"Cesion (ceda el paso)"** con "Este giro no cede." y el botón **"+ Grabar linea"**.
+  3. Activa el **Auto general** en Grabar (para probar el default manual) y vuelve al detalle.
+  4. Pulsa **"+ Grabar linea"**: el grabador debe abrirse con **"Auto: OFF"** (SIEMPRE nace
+     manual). Coloca el morro DONDE debe parar la IA y pulsa **"+ Anadir punto"** en 2+
+     posiciones a lo ancho del carril.
+  5. Pulsa **"Terminar"**: debe pedirte **T** (campo con "default (4)"). Escribe un valor o
+     déjalo y pulsa **"Guardar"**.
+  6. De vuelta en el detalle: "Linea: N puntos", la fila de T y la de zona. Prueba el campo
+     **yield_zone_id** (picker con las zonas del mapa, "Ninguna", "Cancelar") y **"Quitar"**.
+  7. Extra: en el grabador, prueba el toggle **"Auto"** conduciendo (debe capturar puntos solo
+     con él en ON) y **"Cancelar"** (no debe tocar el link).
+**Resultado esperado:** el flujo completo sin teclear ningún id; la línea queda grabada donde
+paraste el coche; T y zona editables desde el detalle; "Quitar" limpia los tres campos.
+**Señales de fallo:** el grabador nace con Auto ON, "Terminar" no pide T, los puntos no se
+añaden (mensaje de telemetría), el picker no lista las zonas, o "Quitar" deja restos.
+**Si falla, dime:** en qué paso y qué muestra el chat de LFS. La lógica está en
+`map_ui.py` (grep `_map_ui_draw_link_yield`) y la rama `yield_line` de `_cmd_rec_end`
+(`map_recorder.py`).
 
 ### U3 — Ley nueva de seguimiento del ACC (`35870bb`)   ⏳ · bloquea: nada · abierta en S35
 
@@ -113,6 +112,12 @@ intermitente no parpadea alternando lados.
 ## ✅ Cerradas (recientes — el registro completo está en `HISTORIAL.md`)
 
 <!-- Tope ~15 líneas: lo que rebose se cae, ya está en el historial. -->
+
+- [x] **U1 — "Link auto" en la pestaña Grabar** — S41: *"validado, funciona perfectamente"*.
+      Desbloqueó el 8.4.
+- [x] **U2 — Ajustes de la pestaña Grabar** — S41: *"funciona todo perfectamente"* (toggle
+      Tráfico, Vel. grabar, Auto pegajoso). Desbloqueó el 8.4.
+
 <!-- Las de abajo se cerraron ANTES de que existieran las fichas, por eso no llevan ID. -->
 
 - [x] **W4 ceda-el-paso (modelo viejo)** — S35: *"funciona, pero regular"* → **NO superado**. Motivó

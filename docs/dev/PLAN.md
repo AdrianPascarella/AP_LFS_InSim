@@ -750,8 +750,12 @@ conductor*, no el borde de un círculo, y regala el **punto de compromiso**.
       rojo primero → `test_orchestrator.py`; freno = ACC contra coche fantasma a
       `PARADA_ABSOLUTA_M` tras la línea; helpers viejos de `zones.py` fuera). ⚠️ Hasta 8.4/8.6
       ningún cruce cede en el juego (no hay `yield_line` en los mapas; `test1` inerte).
-- [ ] **8.4 UI de mapeo** — grabador de puntos + T + picker de zona en el detalle del link
-      (skill `ai-control-map-ui`); tests `test_map_ui_*`.
+- [x] **8.4 UI de mapeo** — grabador de puntos + T + picker de zona en el detalle del link
+      (skill `ai-control-map-ui`); tests `test_map_ui_*`. ✅ S41 (sección "Cesion" en el
+      detalle del RoadLink + grabador con fases en `current_recording` — nace SIEMPRE manual —
+      + TypeIn de T al Terminar + picker de zonas; rama `yield_line` en `_cmd_rec_end` y
+      `yield_time_s`/`yield_zone_id` en `_cmd_set`; 29 tests en `test_map_ui_link_yield.py`,
+      red en rojo primero). Validación del usuario → ficha **U8**.
 - [ ] **8.5 Render** — pintar líneas de detención y puntos de zona (con su T).
 - [ ] **8.6 Migración** — convertir `test1` al modelo nuevo y retirar `priority_rules` del JSON
       y del código muerto restante.

@@ -5,6 +5,69 @@
 
 ---
 
+## S41 — 2026-07-15 — Fase 8: bloque 8.4 (UI de mapeo de la cesión) + veredictos U1/U2
+
+**Contexto:** el 8.4 estaba bloqueado en blando por U1/U2 (pestaña Grabar sin validar desde S32).
+Se aplicó el mecanismo de S40 tal cual: parar antes de escribir código y preguntar con el
+selector. **El usuario validó en el momento** → el bloqueo se levantó y el 8.4 se hizo entero.
+
+**Veredictos del usuario (fichas cerradas):**
+- **U1 ("Link auto")** — *"Validado, funciona perfectamente."* ✅
+- **U2 (ajustes de la pestaña Grabar)** — *"Funciona todo perfectamente."* ✅ (toggle Tráfico,
+  Vel. grabar respetada, Auto pegajoso al cancelar.)
+
+**Hecho (código) — bloque 8.4, red en rojo primero (29 tests, `test_map_ui_link_yield.py`):**
+- **Sección "Cesion (ceda el paso)"** en el detalle de un RoadLink (Elementos, CIDs 152-159):
+  sin línea → "Este giro no cede." + `+ Grabar linea`; con línea → nº de puntos, `Regrabar`,
+  `Quitar` (limpia línea+T+zona), TypeIn de `yield_time_s` en el propio detalle (acepta número
+  positivo o `default`/`none` ⇒ None; inválido revierte) y fila de `yield_zone_id` que abre el
+  **picker de zonas** (misma mecánica que el picker de vías: lista paginada + `Ninguna` +
+  `Cancelar`).
+- **Grabador de la línea de detención**: sub-pantalla a contenido completo. El estado vive en
+  `map_recorder.current_recording` (`type="yield_line"`, `link_id`, `auto_phase`) — el patrón de
+  "Link auto": sobrevive a cerrar/reabrir el menú y reutiliza el freeze de `update_recording`
+  (solo captura en fase `"recording"`). **Nace SIEMPRE en manual** aunque el toggle Auto general
+  esté activo (diseño S38 punto 8, congelado en test). El toggle Auto del grabador exige coche
+  (si no hay `recording_plid` toma el del usuario que clica) y va en lockstep con la preferencia
+  global a partir del primer toggle. `Terminar` exige ≥2 puntos y pasa a fase `"ask_t"`: pide
+  **T** con TypeIn (default visible) y `Guardar` comete línea (+T) vía `_cmd_rec_end`; `< Volver`
+  regresa al grabador sin perder puntos; `Cancelar` descarta sin tocar el link.
+- **Backend (`map_recorder.py`)**: rama `yield_line` en `_cmd_rec_end` (exige ≥2 puntos y que el
+  link siga existiendo); `_cmd_set` gana `yield_time_s` (float > 0 o `none`/`default` ⇒ None) y
+  `yield_zone_id` (con aviso si la zona no existe); `yield_line` **bloqueada** a la edición
+  manual (se graba, como `nodes`). La pestaña Grabar tolera la grabación `yield_line` activa
+  (su `Finalizar`/`Cancelar` funcionan; su indicador Auto y el del header muestran el estado
+  EFECTIVO — fase+global — no solo el flag global).
+- **Skill `ai-control-map-ui` actualizada** con el ejemplo nuevo (sección por tipo en el detalle
+  + sub-pantallas con fase en `current_recording`).
+
+**Decisiones (con su porqué):**
+- **El estado del grabador vive en `current_recording`, no en la UI**: es lo que ya hace "Link
+  auto" y regala gratis el freeze de la captura, la supervivencia al cierre del menú y la
+  visibilidad en el header/pestaña Grabar. *Rechazado:* estado paralelo en `_ui_*` (habría
+  duplicado la máquina de captura).
+- **"Nace manual" se implementa con la fase, no apagando el toggle global**: la preferencia
+  pegajosa del usuario (U2) no se toca al abrir el grabador; solo el primer toggle explícito
+  la mueve (lockstep a partir de ahí).
+- **`Guardar` comete por `_cmd_rec_end` + `_cmd_set`** (un único punto de materialización y la
+  validación de T reutilizada), no asignando a pelo desde la UI.
+- La retirada del editor de `priority_rules` de zonas **se queda en el 8.6** como estaba
+  planificado (hoy sigue operativo pero inerte para la conducta desde el 8.3).
+
+**Verificación:** red del 8.4 en rojo primero (28 de 29 fallando; 1 pasó de rebote porque el
+descarte por tipo desconocido ya limpiaba la grabación) → **29/29 en verde** → suite completa
+**838/838**. `ruff check` + `ruff format --check` limpios. `lfs_insim.cli list` carga los 4
+insims.
+
+**Pendiente de validación:** ficha **U8** (flujo completo de la UI en LFS, ~10 min). El **8.6
+queda bloqueado en blando por U8** (migrar `test1` usa esta herramienta); el **8.5 (render) no
+está bloqueado** y es el próximo paso.
+
+**Commits:** `feat(ai_control): 8.4 - UI de mapeo de la cesion (...)` + el commit de docs de esta
+entrada.
+
+---
+
 ## S40 — 2026-07-14 — Protocolo: `ACCIONES_USUARIO.md` + bloqueo blando (meta; no toca el proyecto)
 
 **Contexto:** primera cicatriz del uso real del protocolo. El usuario: *"cuando tengo que hacer algo
