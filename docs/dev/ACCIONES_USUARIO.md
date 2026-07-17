@@ -1,28 +1,72 @@
 # 🙋 Tus acciones — AP_LFS_InSim
 
-> **0 pendientes** · nada te bloquea ahora mismo · actualizado en S45
+> **1 pendiente** (**U9**, no bloquea nada aún) · actualizado en S46
 >
 > Todo lo que hay aquí necesita tus manos o tu criterio: Claude no puede hacerlo, o no puede
 > comprobarlo (no puede ejecutar LFS). **Tú nunca editas este archivo**: me dices cómo ha ido y
 > yo cierro la ficha. Reglas del mecanismo: `MODUS_OPERANDI.md §8`.
 
+> ✅ **Ya puedes volver a mapear en LFS.** La restricción de S45 se levanta: el 8.6.5 dejó la UI y
+> el recorder en el modelo nuevo, y el `AttributeError` que acechaba en `!map whereami` está
+> arreglado **y con test** (no lo tenía: por eso se coló).
+
 ## ⏳ Pendientes
 
-*(Ninguna.)* La cola de validación (Fase 7 + UI del 8.4) quedó despejada en S43 y sigue a 0.
+### U9 — Validar en LFS la herramienta de cesión rediseñada (8.6.5)
 
-El **rediseño de la cesión** (diseño cerrado contigo en S44, `PLAN.md § Fase 8, bloque 8.6`) se
-está implementando: S45 dejó hechos el modelo, la geometría y la conducta del link; faltan la UI y
-el render. Es trabajo mío y no te necesita. Lo que **sí** te tocará, cuando llegue:
+- **Tipo:** validar en el juego · **Tiempo estimado:** ~20-30 min
+- **Bloquea:** nada todavía. El **8.6.6** (render) no te necesita y puedo hacerlo ya. Pero
+  **cuanto antes la hagas, mejor**: es el rediseño entero de lo que en U8 dijiste *"funciona, a
+  mejorar"*, y si algo está mal quiero saberlo **antes** de apilarle encima el render y la
+  conducta de la zona (MODUS §8: apilar sobre lo no validado destruye el oráculo).
+- **Por qué:** no puedo ejecutar LFS. Los 914 tests dicen que la lógica hace lo que pedí, pero
+  **no dicen si la herramienta es usable**, que es justo lo que falló en U8.
 
-- **Al terminar el 8.6 entero** (8.6.8) → ficha U nueva: validar en LFS la herramienta rediseñada.
-- **En el 8.7 (migración)** → ficha U: **regrabar `test1` como polígono** (≥3 puntos). Hoy es una
-  cápsula de 2 nodos con `radius_m`, y esa forma **no se convierte sola**; hay que rehacerla en el
-  juego.
+**Pasos:**
 
-> 🚫 **Mientras tanto, no mapees en LFS** (esto no es una ficha, es una restricción temporal):
-> hasta que el **8.6.5** esté hecho, abrir el detalle de un link o una zona —o usar `!map check` /
-> `!map whereami`— puede petar, porque la UI todavía toca campos que el modelo nuevo ya borró.
-> **Conducir sí es seguro.** El aviso completo está en `ESTADO_ACTUAL.md`.
+1. `lfs-insim run ai_control`, entra al mapa `south_city` y abre `.map ui` → pestaña **Elementos**.
+2. **Detalle de un RoadLink** (elige uno de un cruce de verdad):
+   - Pulsa el toggle `[NONE]` → debe ciclar a `[YIELD]` → `[STOP]` → `[NONE]`.
+   - Con `[YIELD]` y **sin punto**, el estado debe decir *"Sin punto: este giro NO cede"*.
+   - Pulsa **[Auto]** → debe poner el punto **~5 m antes** del primer cruce real y decirte con
+     qué vía cruza. **Mira dónde cae en el juego**: ¿es donde tú pararías?
+   - Pulsa **[Remarcar punto]** con el coche donde quieras → debe MOVER el punto (no acumular).
+   - **[Borrar]** quita el punto y deja el tipo como estaba.
+   - La fila de **T** debe enseñar `4 (default)`, no `None`. Teclea `2.5` → se queda. Aparece
+     **[Usar default]** → púlsalo y vuelve a `4 (default)`.
+3. **Detalle de una Zona** (usa `test1`, aunque su forma sea la vieja):
+   - Debe decir *"NO es poligono (2/3): no gobierna nada"*.
+   - **[+ Grabar poligono]** → ve a la pestaña Grabar, marca **3+ puntos** rodeando un cruce y
+     **Terminar** → al volver al detalle debe verse *"Poligono: N puntos"* y la **tabla de vías
+     auto-poblada** con las que pisan el polígono.
+   - Toggle de una vía → `NONE|YIELD|STOP`. **[X]** la saca. **[Re-detectar]** la devuelve
+     conservando los tipos que hayas puesto en las demás.
+4. `!map check` → debe hablar del modelo nuevo (polígono, tabla de vías, tipo-sin-punto) y **no**
+   petar ni nombrar `radius_m` / `priority_rules`.
+5. `!map whereami zone` (y el overlay "Apunta"/zona de la pestaña Info) → **DENTRO** solo si estás
+   dentro del polígono; fuera, metros al borde. **No debe petar.**
+
+**Resultado esperado:** todo el flujo va sin errores y **crear una cesión es notablemente más
+rápido que en el 8.4** (era el criterio de aceptación de la Fase 8: *"fáciles de crear, sin
+teclear ids ni razonar en pares"*).
+
+**Señales de fallo:** cualquier `AttributeError` en la consola · el punto de `[Auto]` cae dentro
+del carril que cruzas (⇒ subir `yield_auto_setback_m`) o demasiado atrás (⇒ bajarlo) · la tabla de
+la zona no se puebla o se puebla con vías que no pisan el cruce · un botón no responde.
+
+**Qué contarme si falla:** qué pantalla, qué botón, el texto exacto del error de consola, y —para
+lo de `[Auto]`— **a qué distancia del cruce te gustaría que parase** (es un dial: se cambia solo).
+
+> ⚠️ **No conduzcas para probar la CESIÓN todavía**: el punto ya se graba, pero el render (8.6.6)
+> y la conducta de la zona (8.6.7) no están. Esta ficha valida **la herramienta**, no la conducta.
+> La conducta del link sí está migrada, así que si quieres probarla, adelante — pero su validación
+> formal viene en el 8.6.8.
+
+## 🔜 Lo que te tocará después (aún no es ficha)
+
+- **En el 8.7 (migración)** → **regrabar `test1` como polígono** (≥3 puntos). Hoy es una cápsula de
+  2 nodos, y esa forma **no se convierte sola**; hay que rehacerla en el juego. (Si en U9 ya
+  regrabas `test1` como polígono, esta se queda medio hecha.)
 
 ## ✅ Cerradas (recientes — el registro completo está en `HISTORIAL.md`)
 

@@ -50,6 +50,12 @@ DEFAULT_YIELD_STOP_HOLD_S = 1.0
 # cruce sino un puente / paso inferior, y no se cede a quien pasa por debajo.
 DEFAULT_YIELD_Z_TOLERANCE_M = 3.0
 
+# Cuánto retrocede el botón [Auto] de la UI desde el primer punto de conflicto
+# al colocar el `yield_point` (m). El conflicto cae en el EJE de la road que
+# cruzas, así que parar ahí mete el morro en el carril: se retrocede medio
+# carril y algo de margen.
+DEFAULT_YIELD_AUTO_SETBACK_M = 5.0
+
 
 class ConflictPoint(NamedTuple):
     """Un sitio donde el trazado de un link se cruza con una road.
@@ -257,6 +263,97 @@ def derive_yield_line(
         extremo.z_m = yield_point.z_m
         extremos.append(extremo)
     return extremos
+
+
+def _project_on_segment_2d(
+    px: float, py: float, ax: float, ay: float, bx: float, by: float
+) -> float:
+    """Parámetro [0, 1] del punto de `ab` más cercano a `p` (proyección 2D)."""
+    dx, dy = bx - ax, by - ay
+    mag_sq = dx * dx + dy * dy
+    if mag_sq == 0.0:
+        return 0.0
+    t = ((px - ax) * dx + (py - ay) * dy) / mag_sq
+    return max(0.0, min(1.0, t))
+
+
+def _point_at_arc_2d(
+    nodes: List["Coordinates"], arc_m: float
+) -> Optional["Coordinates"]:
+    """El punto de la polilínea a `arc_m` metros de su inicio (Z interpolada).
+
+    Antes del inicio ⇒ primer nodo; pasado el final ⇒ último. Las longitudes se
+    miden en 2D (la Z solo se interpola), como el resto del módulo.
+    """
+    if not nodes:
+        return None
+    if arc_m <= 0.0:
+        return _copy_coords(nodes[0])
+
+    acc = 0.0
+    for i in range(len(nodes) - 1):
+        a, b = nodes[i], nodes[i + 1]
+        seg_m = math.hypot(b.x_m - a.x_m, b.y_m - a.y_m)
+        if seg_m > 0.0 and acc + seg_m >= arc_m:
+            frac = (arc_m - acc) / seg_m
+            punto = Coordinates(x=0, y=0, z=0)
+            punto.x_m = a.x_m + frac * (b.x_m - a.x_m)
+            punto.y_m = a.y_m + frac * (b.y_m - a.y_m)
+            punto.z_m = a.z_m + frac * (b.z_m - a.z_m)
+            return punto
+        acc += seg_m
+    return _copy_coords(nodes[-1])
+
+
+def _copy_coords(node: "Coordinates") -> "Coordinates":
+    copia = Coordinates(x=0, y=0, z=0)
+    copia.x_m, copia.y_m, copia.z_m = node.x_m, node.y_m, node.z_m
+    return copia
+
+
+def auto_yield_point(
+    link_nodes: List["Coordinates"],
+    conflict_x: float,
+    conflict_y: float,
+    setback_m: float = DEFAULT_YIELD_AUTO_SETBACK_M,
+) -> Optional["Coordinates"]:
+    """El `yield_point` que coloca el botón [Auto] de la UI (S44, bloque 8.6.5).
+
+    "Justo antes del primer cruce real": el punto de conflicto cae en el EJE de
+    la road que cruzas, así que pararse ahí deja el morro dentro de su carril.
+    Se retrocede `setback_m` **por el trazado del link** — no en línea recta:
+    en un link en L el retroceso dobla la esquina y el punto sigue sobre el
+    trazado, que es donde la conducta lo espera.
+
+    El cruce se **proyecta** sobre el trazado antes de medir (viene del eje de
+    otra road, así que no tiene por qué caer exacto sobre el link).
+
+    Link más corto que el retroceso ⇒ el primer nodo (se para al empezar la
+    maniobra: no hay más sitio). Sin trazado utilizable ⇒ None.
+    """
+    if len(link_nodes) < 2:
+        return None
+
+    # Tramo del link al que pertenece el cruce = el que pasa más cerca de él.
+    best_i, best_dist = 0, math.inf
+    for i in range(len(link_nodes) - 1):
+        a, b = link_nodes[i], link_nodes[i + 1]
+        dist = calc_dist_point_to_segment_2d(
+            conflict_x, conflict_y, a.x_m, a.y_m, b.x_m, b.y_m
+        )
+        if dist < best_dist:
+            best_i, best_dist = i, dist
+
+    # Arco recorrido hasta el cruce = tramos previos + proyección en el suyo.
+    arc = 0.0
+    for i in range(best_i):
+        a, b = link_nodes[i], link_nodes[i + 1]
+        arc += math.hypot(b.x_m - a.x_m, b.y_m - a.y_m)
+    a, b = link_nodes[best_i], link_nodes[best_i + 1]
+    t = _project_on_segment_2d(conflict_x, conflict_y, a.x_m, a.y_m, b.x_m, b.y_m)
+    arc += t * math.hypot(b.x_m - a.x_m, b.y_m - a.y_m)
+
+    return _point_at_arc_2d(link_nodes, arc - setback_m)
 
 
 def roads_touching_polygon(

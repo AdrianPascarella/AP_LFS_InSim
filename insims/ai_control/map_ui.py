@@ -7,9 +7,15 @@ import time
 from typing import Optional
 
 from insims.ai_control.base import _MixinBase
+from insims.ai_control.nav_modes.freeroam.enums import YieldType
 from insims.ai_control.nav_modes.freeroam.geometry import find_road_pointed_at
 from insims.ai_control.nav_modes.freeroam.mode import FreeroamMode
-from insims.ai_control.traffic.yielding import DEFAULT_YIELD_TIME_S
+from insims.ai_control.traffic.yielding import (
+    DEFAULT_YIELD_AUTO_SETBACK_M,
+    DEFAULT_YIELD_TIME_S,
+    DEFAULT_YIELD_Z_TOLERANCE_M,
+    auto_yield_point,
+)
 from lfs_insim.insim_enums import BFN, ISB_STYLE, TYPEIN_FLAGS
 from lfs_insim.packets import ISP_BTC, ISP_BTT, ISP_MSO
 from lfs_insim.utils import TextColors as c
@@ -56,10 +62,12 @@ _ELEM_FIELDS: dict[str, list[tuple[str, str]]] = {
         ("is_circular", "bool"),
         ("made_to_overtake", "bool"),
     ],
+    # La zona (S44) es polígono + T + tabla de vías: nada de eso es un campo
+    # suelto editable, así que su sección propia lo lleva entero (radius_m y
+    # priority_rules murieron con el rediseño).
     "zone": [
         ("zone_id", "readonly"),
         ("nodes", "readonly"),
-        ("radius_m", "float"),
     ],
     "rule": [
         ("rule_id", "readonly"),
@@ -108,36 +116,42 @@ class _MapUIMixin(_MixinBase):
     _UI_CID_TI3 = 132  # TypeIn terciario
     _UI_CID_LBL_CONF = 133  # Label de confirmación
 
-    # Editor de reglas de prioridad de Zonas (solo en el detalle de una zona,
-    # tras sus campos estándar). CIDs 140-151, dentro del área de contenido
-    # (108-165) que se limpia en cada redibujado.
-    _ZONE_PRIO_TITLE = 140
-    _ZONE_PRIO_ADD = 141  # botón "+ Anadir regla" (abre el picker de vías)
-    _ZONE_PRIO_ROW_BASE = 142  # regla i: label 142+i*2, quitar 143+i*2
-    _ZONE_PRIO_MAX_ROWS = 5
-    # La sub-pantalla de alta (picker de vías) REUTILIZA los CIDs y la mecánica
-    # del picker de RoadLink/LatLink: slots 120/121, lista 122-127, paginación
-    # 128/129/132, seleccionados 110/112, Confirmar 116, Cancelar 117. Las vías
-    # elegidas viven en _UI_CID_TI1 (prioritaria) y _UI_CID_TI2 (cede).
-
-    # Sección de CESIÓN del detalle de un RoadLink (Fase 8, bloque 8.4).
-    # CIDs 152-159, dentro del área de contenido (108-165), tras las filas de
-    # campos (111-126) y sin pisar el editor de prioridad de Zonas (140-151).
+    # ── Secciones de CESIÓN del detalle de Elementos (Fase 8, bloque 8.6.5) ──
+    #
+    # Los DOS mecanismos del diseño S44 son ortogonales y se editan por separado:
+    # la sección de zona solo se dibuja en el detalle de una zona y la del link
+    # solo en el de un RoadLink, así que sus rangos no se pisan jamás. Todo cae
+    # dentro del área de contenido (108-165), que se limpia en cada redibujado.
+    #
+    # Zona (el que cruza de RECTO): polígono + T + tabla de vías. CIDs 134-151.
+    # 134-139 son de la pestaña Info: se reutilizan aquí porque el contenido se
+    # borra al cambiar de pestaña (convención del módulo).
+    _ZONE_YIELD_TITLE = 134
+    _ZONE_YIELD_POLY = 135  # label de estado del polígono
+    _ZONE_YIELD_REC = 136  # "+ Grabar poligono" / "Regrabar"
+    _ZONE_YIELD_T_LBL = 137
+    _ZONE_YIELD_T_VAL = 138  # TypeIn de T (s)
+    _ZONE_YIELD_T_DEF = 139  # "Usar default" (solo si T es propio)
+    _ZONE_ROADS_TITLE = 140
+    _ZONE_ROADS_REDETECT = 141  # re-escanea la tabla contra el polígono
+    _ZONE_ROADS_ROW_BASE = 142  # vía i: toggle 142+i*2, quitar 143+i*2
+    _ZONE_ROADS_MAX_ROWS = 5  # 142..151
+    #
+    # RoadLink (el que hace la MANIOBRA): tipo + un punto + T. CIDs 152-160.
     _LINK_YIELD_TITLE = 152
-    _LINK_YIELD_STATUS = 153  # label de estado ("no cede" / "N puntos")
-    _LINK_YIELD_REC = 154  # "+ Grabar linea" / "Regrabar" (abre el grabador)
-    _LINK_YIELD_CLEAR = 155  # "Quitar" la cesión (solo si hay línea)
-    _LINK_YIELD_T_LBL = 156
-    _LINK_YIELD_T_VAL = 157  # TypeIn de T (s) en el propio detalle
-    _LINK_YIELD_ZONE_LBL = 158
-    _LINK_YIELD_ZONE_VAL = 159  # abre el picker de zonas
-    # Las sub-pantallas del grabador REUTILIZAN la semántica de la pestaña
-    # Grabar: 112 añadir punto, 113 auto, 114 terminar, 115 cancelar; la de
-    # "pedir T" usa TI1 (130) + 116 Guardar + 117 Volver; el picker de zonas
-    # usa la mecánica del picker de vías (items 122-127, pág. 128/129/132,
-    # 116 Ninguna, 117 Cancelar). El estado del grabador vive en
-    # map_recorder.current_recording (type="yield_line", auto_phase) para
-    # sobrevivir a cerrar/reabrir el menú, como "Link auto".
+    _LINK_YIELD_STATUS = 153  # label de estado ("no cede" / "sin punto" / ok)
+    _LINK_YIELD_TYPE = 154  # toggle NONE -> YIELD -> STOP -> NONE
+    _LINK_YIELD_MARK = 155  # "+ Marcar punto" (el coche del que clica)
+    _LINK_YIELD_AUTO = 156  # "Auto": justo antes del primer cruce real
+    _LINK_YIELD_CLEAR = 157  # "Borrar" el punto (no toca el tipo)
+    _LINK_YIELD_T_LBL = 158
+    _LINK_YIELD_T_VAL = 159  # TypeIn de T (s)
+    _LINK_YIELD_T_DEF = 160  # "Usar default" (solo si T es propio)
+    #
+    # El 8.6 mató el grabador por fases del 8.4 (`current_recording` con
+    # type="yield_line" y `auto_phase`): el punto del link es UNO, se marca de
+    # un clic y no hay nada que grabar. La zona sí usa el grabador normal
+    # (type="zone"), el mismo de la pestaña Grabar.
 
     # Overlay whereami "pineado" — CIDs FUERA del rango de contenido (108-165)
     # para sobrevivir a cambios de pestaña y al cierre del menú. Anclado a la
@@ -163,9 +177,9 @@ class _MapUIMixin(_MixinBase):
         self._ui_elem_search: str = ""
         self._ui_elem_detail_id: Optional[str] = None
         self._ui_detail_field_map: dict = {}  # {ClickID: (field_name, field_type)}
-        self._ui_zone_prio_map: dict = {}  # {ClickID quitar: (via_a, via_b)}
-        self._ui_zone_prio_adding: bool = False  # sub-pantalla de alta de regla
-        self._ui_link_zone_picking: bool = False  # picker de zona de un RoadLink
+        # Tabla de vías de la zona: {ClickID: road_id}, uno por acción (S44).
+        self._ui_zone_roads_toggle: dict = {}
+        self._ui_zone_roads_del: dict = {}
         self._ui_info_stats: bool = False
         self._ui_info_check: bool = False
         self._ui_check_filter: str = "all"  # "all" | "error" | "warn"
@@ -304,10 +318,7 @@ class _MapUIMixin(_MixinBase):
             or rec.get("rule_id", "?")
         )
         n = len(rec.get("nodes", []))
-        auto_flag = self.map_recorder.auto_recording_enabled
-        if rec.get("type") == "yield_line":
-            auto_flag = auto_flag and rec.get("auto_phase") == "recording"
-        auto = " AUTO" if auto_flag else ""
+        auto = " AUTO" if self.map_recorder.auto_recording_enabled else ""
         return f"REC: {rec_type} '{obj_id}' ({n}pts{auto})"
 
     # ──────────────────────────────────────────────────────────────────────────
@@ -1123,9 +1134,6 @@ class _MapUIMixin(_MixinBase):
             Text="+ Anadir punto",
         )
         auto_on = self.map_recorder.auto_recording_enabled
-        if rec.get("type") == "yield_line":
-            # La línea de cesión solo captura en fase "recording" (nace manual).
-            auto_on = auto_on and rec.get("auto_phase") == "recording"
         auto_style = (
             ISB_STYLE.OK | ISB_STYLE.CLICK
             if auto_on
@@ -2171,11 +2179,9 @@ class _MapUIMixin(_MixinBase):
             )
             if ctx.zone_id is None:
                 return "WA Zona: Sin zonas"
-            status = (
-                "DENTRO"
-                if ctx.zone_dist <= ctx.zone_radius
-                else f"{ctx.zone_dist:.1f}m"
-            )
+            # S44: no hay radio. Dentro = dentro del polígono; si no, distancia
+            # a su borde (que es el sitio donde se para).
+            status = "DENTRO" if ctx.zone_inside else f"{ctx.zone_dist:.1f}m"
             return f"WA Zona: {ctx.zone_id} | {status}"
 
         elif target == "rule":
@@ -2453,25 +2459,9 @@ class _MapUIMixin(_MixinBase):
 
         obj_type = self._map_ui_elem_get_type(obj_id)
 
-        # Sub-pantalla de alta de regla de prioridad (picker de vías): ocupa todo
-        # el contenido, como el formulario de RoadLink/LatLink.
-        if obj_type == "zone" and self._ui_zone_prio_adding:
-            self._map_ui_draw_zone_prio_picker(obj, u)
-            return
-
-        # Sub-pantallas de la cesión de un RoadLink (grabador de la línea /
-        # pedir T / picker de zona): también a pantalla completa.
-        if obj_type == "roadlink":
-            rec = self.map_recorder.current_recording
-            if rec and rec.get("type") == "yield_line" and rec.get("link_id") == obj_id:
-                if rec.get("auto_phase") == "ask_t":
-                    self._map_ui_draw_link_yield_ask_t(obj, u, rec)
-                else:
-                    self._map_ui_draw_link_yield_recorder(obj, u, rec)
-                return
-            if self._ui_link_zone_picking:
-                self._map_ui_draw_link_zone_picker(obj, u)
-                return
+        # El 8.6 dejó el detalle SIN sub-pantallas: el punto del link se marca de
+        # un clic y la tabla de la zona se edita en su sitio. El polígono de la
+        # zona sí se graba, pero con el grabador normal (pestaña Grabar).
 
         fields_def = _ELEM_FIELDS.get(obj_type, [])
 
@@ -2512,7 +2502,6 @@ class _MapUIMixin(_MixinBase):
 
         # Filas de campos (máx. 8 filas, spacing=7 para que row7 quede en T=78)
         self._ui_detail_field_map = {}
-        self._ui_zone_prio_map = {}
         for row, (fname, ftype) in enumerate(fields_def[:8]):
             T = 29 + row * 7
             label_cid = 111 + row * 2
@@ -2619,71 +2608,134 @@ class _MapUIMixin(_MixinBase):
 
         # Editor de reglas de prioridad (solo Zonas, tras sus campos estándar)
         if obj_type == "zone":
-            self._map_ui_draw_zone_priority(obj, u)
+            self._map_ui_draw_zone_yield(obj, u)
 
         # Sección de cesión (solo RoadLinks, tras sus campos estándar)
         if obj_type == "roadlink":
             self._map_ui_draw_link_yield(obj, u)
 
-    def _map_ui_draw_zone_priority(self, zone, u):
-        """Editor de `priority_rules` de una Zona: botón de alta (abre el picker
-        de vías) y la lista de reglas existentes con su botón Quitar. Regla
-        `[A, B]`: A tiene prioridad, B cede el paso."""
-        # Título de la sección
+    def _map_ui_draw_zone_yield(self, zone, u):
+        """Detalle de una Zona (Fase 8, rediseño S44 · bloque 8.6.5).
+
+        La zona gobierna al que cruza de RECTO, y es autocontenida: no nombra
+        links jamás. Tres cosas — el polígono (su contorno ES el borde donde se
+        para), T, y la tabla de vías que lo pisan.
+        """
         self.send_ISP_BTN(
             ReqI=1,
             UCID=u,
-            ClickID=self._ZONE_PRIO_TITLE,
+            ClickID=self._ZONE_YIELD_TITLE,
             BStyle=ISB_STYLE.TITLE | ISB_STYLE.LEFT,
             L=2,
             T=50,
             W=180,
             H=6,
-            Text="Prioridad (A>B: A pasa, B cede)",
+            Text="Zona (cruce de vias, sin enlace)",
         )
-        # Botón de alta: abre la sub-pantalla con el picker de vías
+        # Fila 1: el polígono.
+        if zone.has_polygon:
+            estado = f"Poligono: {len(zone.nodes)} puntos."
+        else:
+            estado = f"NO es poligono ({len(zone.nodes)}/3): no gobierna nada."
         self.send_ISP_BTN(
             ReqI=1,
             UCID=u,
-            ClickID=self._ZONE_PRIO_ADD,
-            BStyle=ISB_STYLE.OK | ISB_STYLE.CLICK,
+            ClickID=self._ZONE_YIELD_POLY,
+            BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
             L=2,
             T=57,
-            W=164,
+            W=110,
             H=6,
-            Text="+ Anadir regla",
+            Text=estado,
         )
-        # Reglas existentes (cada una con su Quitar); se registran en el mapa de
-        # clicks para el handler. Se muestran hasta _ZONE_PRIO_MAX_ROWS.
-        self._ui_zone_prio_map = {}
-        rules = [r for r in zone.priority_rules if len(r) == 2]
-        if not rules:
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=self._ZONE_YIELD_REC,
+            BStyle=(ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK)
+            if zone.has_polygon
+            else (ISB_STYLE.OK | ISB_STYLE.CLICK),
+            L=114,
+            T=57,
+            W=52,
+            H=6,
+            Text="Regrabar" if zone.has_polygon else "+ Grabar poligono",
+        )
+        # Fila 2: T.
+        self._map_ui_draw_yield_t_row(
+            zone,
+            u,
+            64,
+            self._ZONE_YIELD_T_LBL,
+            self._ZONE_YIELD_T_VAL,
+            self._ZONE_YIELD_T_DEF,
+        )
+        # Fila 3: la tabla de vías.
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=self._ZONE_ROADS_TITLE,
+            BStyle=ISB_STYLE.TITLE | ISB_STYLE.LEFT,
+            L=2,
+            T=71,
+            W=110,
+            H=6,
+            Text="Vias del cruce (NONE = no cede)",
+        )
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=self._ZONE_ROADS_REDETECT,
+            BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
+            L=114,
+            T=71,
+            W=52,
+            H=6,
+            Text="Re-detectar",
+        )
+        self._map_ui_draw_zone_roads_rows(zone, u)
+
+    def _map_ui_draw_zone_roads_rows(self, zone, u):
+        """Las filas de la tabla: un toggle por vía + su [X].
+
+        OJO: esto NO auto-puebla. La tabla se re-escanea solo al grabar el
+        polígono o con [Re-detectar] (decisión S46): si se repoblara en cada
+        redibujado, los falsos cruces que el usuario borra reaparecerían al
+        salir y volver a entrar, y "borrable" sería mentira.
+        """
+        self._ui_zone_roads_toggle = {}
+        self._ui_zone_roads_del = {}
+        if not zone.roads:
             self.send_ISP_BTN(
                 ReqI=1,
                 UCID=u,
-                ClickID=self._ZONE_PRIO_ROW_BASE,
+                ClickID=self._ZONE_ROADS_ROW_BASE,
                 BStyle=ISB_STYLE.DARK | ISB_STYLE.LEFT,
                 L=2,
-                T=64,
+                T=78,
                 W=164,
                 H=6,
-                Text="Sin reglas: la IA no cede el paso en esta zona.",
+                Text="Sin vias: nadie cede aqui. Graba el poligono o pulsa Re-detectar.",
             )
             return
-        for i, rule in enumerate(rules[: self._ZONE_PRIO_MAX_ROWS]):
-            T = 64 + i * 7
-            lbl_cid = self._ZONE_PRIO_ROW_BASE + i * 2
-            del_cid = self._ZONE_PRIO_ROW_BASE + i * 2 + 1
+        for i, (via, tipo) in enumerate(
+            list(zone.roads.items())[: self._ZONE_ROADS_MAX_ROWS]
+        ):
+            T = 78 + i * 7
+            toggle_cid = self._ZONE_ROADS_ROW_BASE + i * 2
+            del_cid = self._ZONE_ROADS_ROW_BASE + i * 2 + 1
             self.send_ISP_BTN(
                 ReqI=1,
                 UCID=u,
-                ClickID=lbl_cid,
-                BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
+                ClickID=toggle_cid,
+                BStyle=(ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK)
+                if tipo is YieldType.NONE
+                else (ISB_STYLE.OK | ISB_STYLE.CLICK),
                 L=2,
                 T=T,
                 W=140,
                 H=6,
-                Text=f"{rule[0]} > {rule[1]}",
+                Text=f"{via}: [{tipo.value}]",
             )
             self.send_ISP_BTN(
                 ReqI=1,
@@ -2694,255 +2746,183 @@ class _MapUIMixin(_MixinBase):
                 T=T,
                 W=22,
                 H=6,
-                Text="Quitar",
+                Text="X",
             )
-            self._ui_zone_prio_map[del_cid] = (rule[0], rule[1])
-
-    def _map_ui_draw_zone_prio_picker(self, zone, u):
-        """Sub-pantalla de alta de regla: se eligen las dos vías de una lista
-        (misma UX que crear un RoadLink/LatLink), no se teclean. Slot A =
-        prioritaria (_UI_CID_TI1), slot B = la que cede (_UI_CID_TI2)."""
-        buf = self._ui_input_buffer
-        # Título
-        self.send_ISP_BTN(
-            ReqI=1,
-            UCID=u,
-            ClickID=109,
-            BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
-            L=2,
-            T=21,
-            W=182,
-            H=6,
-            Text=f"Nueva regla en {zone.zone_id}",
-        )
-        # ── Columna izquierda: picker de vías ───────────────────────────────
-        slot = self._ui_road_picker_slot
-        style_a = (
-            (ISB_STYLE.OK | ISB_STYLE.CLICK)
-            if slot == "a"
-            else (ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK)
-        )
-        style_b = (
-            (ISB_STYLE.OK | ISB_STYLE.CLICK)
-            if slot == "b"
-            else (ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK)
-        )
-        self.send_ISP_BTN(
-            ReqI=1,
-            UCID=u,
-            ClickID=120,
-            BStyle=style_a,
-            L=2,
-            T=28,
-            W=33,
-            H=6,
-            Text="-> Prio",
-        )
-        self.send_ISP_BTN(
-            ReqI=1,
-            UCID=u,
-            ClickID=121,
-            BStyle=style_b,
-            L=37,
-            T=28,
-            W=33,
-            H=6,
-            Text="-> Cede",
-        )
-        all_roads = sorted(self.map_recorder.roads.keys())
-        per_page = self._UI_ROAD_PICKER_ITEMS
-        max_page = max(0, (len(all_roads) - 1) // per_page) if all_roads else 0
-        page = min(self._ui_road_picker_page, max_page)
-        self._ui_road_picker_page = page
-        items = all_roads[page * per_page : (page + 1) * per_page]
-        if not all_roads:
+            self._ui_zone_roads_toggle[toggle_cid] = via
+            self._ui_zone_roads_del[del_cid] = via
+        sobran = len(zone.roads) - self._ZONE_ROADS_MAX_ROWS
+        if sobran > 0:
             self.send_ISP_BTN(
                 ReqI=1,
                 UCID=u,
-                ClickID=122,
+                ClickID=self._ZONE_ROADS_ROW_BASE + self._ZONE_ROADS_MAX_ROWS * 2,
                 BStyle=ISB_STYLE.DARK | ISB_STYLE.LEFT,
                 L=2,
-                T=35,
-                W=68,
+                T=78 + self._ZONE_ROADS_MAX_ROWS * 7,
+                W=164,
                 H=6,
-                Text="Sin roads",
+                Text=f"(+{sobran} vias mas: usa !map info {zone.zone_id})",
             )
-        else:
-            for i, road_id in enumerate(items):
-                self.send_ISP_BTN(
-                    ReqI=1,
-                    UCID=u,
-                    ClickID=122 + i,
-                    BStyle=ISB_STYLE.DARK
-                    | ISB_STYLE.SELECTED
-                    | ISB_STYLE.CLICK
-                    | ISB_STYLE.LEFT,
-                    L=2,
-                    T=35 + i * 7,
-                    W=68,
-                    H=6,
-                    Text=road_id,
-                )
-            for i in range(len(items), per_page):
-                self.send_ISP_BTN(
-                    ReqI=1,
-                    UCID=u,
-                    ClickID=122 + i,
-                    BStyle=ISB_STYLE.DARK,
-                    L=2,
-                    T=35 + i * 7,
-                    W=68,
-                    H=6,
-                    Text="",
-                )
-        # Paginación
-        self.send_ISP_BTN(
-            ReqI=1,
-            UCID=u,
-            ClickID=128,
-            BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
-            L=2,
-            T=77,
-            W=20,
-            H=6,
-            Text="<",
-        )
-        self.send_ISP_BTN(
-            ReqI=1,
-            UCID=u,
-            ClickID=129,
-            BStyle=ISB_STYLE.DARK | ISB_STYLE.LEFT,
-            L=24,
-            T=77,
-            W=24,
-            H=6,
-            Text=f"{page + 1}/{max_page + 1}",
-        )
-        self.send_ISP_BTN(
-            ReqI=1,
-            UCID=u,
-            ClickID=132,
-            BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
-            L=50,
-            T=77,
-            W=20,
-            H=6,
-            Text=">",
-        )
-        # ── Columna derecha: seleccionados + acciones ───────────────────────
-        prio = buf.get(self._UI_CID_TI1) or "-"
-        cede = buf.get(self._UI_CID_TI2) or "-"
-        self.send_ISP_BTN(
-            ReqI=1,
-            UCID=u,
-            ClickID=110,
-            BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
-            L=72,
-            T=28,
-            W=112,
-            H=6,
-            Text=f"Prioritaria: {prio}",
-        )
-        self.send_ISP_BTN(
-            ReqI=1,
-            UCID=u,
-            ClickID=112,
-            BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
-            L=72,
-            T=39,
-            W=112,
-            H=6,
-            Text=f"Cede: {cede}",
-        )
-        self.send_ISP_BTN(
-            ReqI=1,
-            UCID=u,
-            ClickID=116,
-            BStyle=ISB_STYLE.OK | ISB_STYLE.CLICK,
-            L=72,
-            T=55,
-            W=54,
-            H=8,
-            Text="Confirmar",
-        )
-        self.send_ISP_BTN(
-            ReqI=1,
-            UCID=u,
-            ClickID=117,
-            BStyle=ISB_STYLE.CANCEL | ISB_STYLE.CLICK,
-            L=130,
-            T=55,
-            W=54,
-            H=8,
-            Text="Cancelar",
-        )
 
-    def _map_ui_click_zone_prio_picker(self, cid: int):
-        """Clicks de la sub-pantalla de alta de regla (picker de vías)."""
-        buf = self._ui_input_buffer
-        if cid == 120:  # slot prioritaria
-            self._ui_road_picker_slot = "a"
-            self._map_ui_redraw_content()
-        elif cid == 121:  # slot cede
-            self._ui_road_picker_slot = "b"
-            self._map_ui_redraw_content()
-        elif 122 <= cid <= 127:  # elegir vía del picker
-            all_roads = sorted(self.map_recorder.roads.keys())
-            idx = self._ui_road_picker_page * self._UI_ROAD_PICKER_ITEMS + (cid - 122)
-            if idx < len(all_roads):
-                road_id = all_roads[idx]
-                if self._ui_road_picker_slot == "a":
-                    buf[self._UI_CID_TI1] = road_id
-                    self._ui_road_picker_slot = "b"  # avanza al slot B
-                else:
-                    buf[self._UI_CID_TI2] = road_id
-                self._map_ui_redraw_content()
-        elif cid == 128:  # página anterior
-            if self._ui_road_picker_page > 0:
-                self._ui_road_picker_page -= 1
-                self._map_ui_redraw_content()
-        elif cid == 132:  # página siguiente
-            all_roads = sorted(self.map_recorder.roads.keys())
-            max_page = max(0, (len(all_roads) - 1) // self._UI_ROAD_PICKER_ITEMS)
-            if self._ui_road_picker_page < max_page:
-                self._ui_road_picker_page += 1
-                self._map_ui_redraw_content()
-        elif cid == 116:  # Confirmar
-            a = (buf.get(self._UI_CID_TI1) or "").strip()
-            b = (buf.get(self._UI_CID_TI2) or "").strip()
-            if a and b and a != b:
-                self._map_ui_silent_set(
-                    self._ui_elem_detail_id, "priority_rules", f"add;{a},{b}"
-                )
-                self._map_ui_zone_prio_exit_picker()
-            else:
-                self.send_ISP_MSL(
-                    Msg=f"{c.YELLOW}Elige dos vias distintas (prioritaria y la que cede)."
-                )
-        elif cid == 117:  # Cancelar
-            self._map_ui_zone_prio_exit_picker()
-
-    def _map_ui_zone_prio_exit_picker(self):
-        """Sale del picker de alta y vuelve al detalle de la zona."""
-        self._ui_zone_prio_adding = False
-        self._ui_input_buffer.pop(self._UI_CID_TI1, None)
-        self._ui_input_buffer.pop(self._UI_CID_TI2, None)
-        self._ui_road_picker_page = 0
-        self._ui_road_picker_slot = "a"
+    def _map_ui_zone_roads_cycle(self, via: str):
+        """Toggle NONE -> YIELD -> STOP -> NONE de UNA vía de la zona."""
+        zona = self._map_ui_elem_get_obj(self._ui_elem_detail_id)
+        if zona is None or via not in zona.roads:
+            return
+        siguiente = {
+            YieldType.NONE: "YIELD",
+            YieldType.YIELD: "STOP",
+            YieldType.STOP: "NONE",
+        }[zona.roads[via]]
+        self._map_ui_silent_set(
+            self._ui_elem_detail_id, "roads", f"set;{via},{siguiente}"
+        )
         self._map_ui_redraw_content()
 
+    def _map_ui_zone_roads_redetect(self):
+        """Re-escanea la tabla contra el polígono (conservando los tipos)."""
+        zona = self._map_ui_elem_get_obj(self._ui_elem_detail_id)
+        if zona is None:
+            return
+        if not zona.has_polygon:
+            self.send_ISP_MSL(
+                Msg=f"{c.YELLOW}La zona no es un poligono todavia ({len(zona.nodes)}/3): "
+                "no hay contorno contra el que detectar vias."
+            )
+            return
+        nuevas = self.map_recorder.autodetect_zone_roads(
+            zona, self._map_ui_yield_z_tol()
+        )
+        if nuevas:
+            self.send_ISP_MSL(
+                Msg=f"{c.GREEN}Vias nuevas en la tabla: {c.WHITE}{', '.join(nuevas)}"
+            )
+        else:
+            self.send_ISP_MSL(
+                Msg=f"{c.CYAN}Sin vias nuevas: la tabla ya estaba al dia."
+            )
+        self._map_ui_redraw_content()
+
+    def _map_ui_zone_start_poly_recording(self):
+        """Abre el grabador del polígono (el normal, `type="zone"`)."""
+        mr = self.map_recorder
+        if mr.current_recording:
+            self.send_ISP_MSL(
+                Msg=f"{c.YELLOW}Ya hay una grabacion en curso: terminala o cancelala primero."
+            )
+            return
+        if mr.recording_plid is None:
+            user = self.user_manager.users.get(self._ui_ucid)
+            if user is not None and user.plid is not None:
+                mr.recording_plid = user.plid
+        mr._cmd_rec_zone(self._ui_elem_detail_id)
+        self.send_ISP_MSL(
+            Msg=f"{c.CYAN}Marca los puntos desde la pestana Grabar y pulsa Terminar."
+        )
+        self._map_ui_redraw_content()
+        self._map_ui_update_header()
+
     # ──────────────────────────────────────────────────────────────────────────
-    # Elementos — Cesión de un RoadLink (Fase 8, bloque 8.4)
+    # Elementos — Cesión de un RoadLink (Fase 8, rediseño S44 · bloque 8.6.5)
     #
-    # La cesión cuelga del propio giro (diseño S38): una `yield_line` grabada
-    # con el coche, un tiempo T (None ⇒ default global) y, opcionalmente, la
-    # zona a vigilar. El grabador nace SIEMPRE en manual (aunque el toggle
-    # "Auto" general esté activo) y al Terminar pide T (TypeIn con default).
+    # El mecanismo del que HACE LA MANIOBRA, y es AUTOCONTENIDO: no referencia
+    # zonas jamás. La zona gobierna a los que cruzan de recto — es otra cosa, y
+    # confundir las dos fue justo lo que hundió la UI del 8.4 (veredicto U8).
+    #
+    # Tres datos y ni uno más: el TIPO (NONE|YIELD|STOP), UN punto (la línea de
+    # detención se DERIVA de él, perpendicular a la tangente) y T. Se acabó el
+    # grabador de polilínea por fases del 8.4: marcar el punto es un clic.
     # ──────────────────────────────────────────────────────────────────────────
 
     def _map_ui_yield_default_t(self) -> float:
         """Default global de T (s) — el mismo que consume la conducta (zones.py)."""
         return self.config.get("yield_time_s", DEFAULT_YIELD_TIME_S)
+
+    def _map_ui_yield_setback(self) -> float:
+        """Cuánto retrocede [Auto] desde el primer cruce real (m)."""
+        return self.config.get("yield_auto_setback_m", DEFAULT_YIELD_AUTO_SETBACK_M)
+
+    def _map_ui_yield_z_tol(self) -> float:
+        """Tolerancia en altura al detectar cruces (m): un puente no es un cruce."""
+        return self.config.get("yield_z_tolerance_m", DEFAULT_YIELD_Z_TOLERANCE_M)
+
+    def _map_ui_yield_t_text(self, obj) -> str:
+        """T como FLOAT EFECTIVO, nunca como "None" (feedback de U8).
+
+        Sirve al link y a la zona: los dos tienen `yield_time_s` con la misma
+        semántica (None ⇒ default global de config).
+        """
+        if obj.yield_time_s is not None:
+            return str(obj.yield_time_s)
+        return f"{self._map_ui_yield_default_t():g} (default)"
+
+    def _map_ui_yield_apply_t(self, cid: int):
+        """Aplica el T tecleado en el TypeIn `cid` al objeto del detalle.
+
+        Vale para el link y para la zona. Texto inválido ⇒ no se comete nada y
+        se redibuja, así que el campo vuelve solo al valor real (no se queda
+        enseñando una mentira). "default"/"none"/vacío ⇒ None.
+        """
+        obj_id = self._ui_elem_detail_id
+        if obj_id is None:
+            return
+        raw = (self._ui_input_buffer.get(cid) or "").strip().lower()
+        if raw in ("", "none") or raw.startswith("default"):
+            val = "none"
+        else:
+            try:
+                if float(raw) <= 0:
+                    raise ValueError
+                val = raw
+            except ValueError:
+                self.send_ISP_MSL(
+                    Msg=f"{c.RED}T invalido: segundos positivos, o 'default'."
+                )
+                self._ui_input_buffer.pop(cid, None)
+                self._map_ui_redraw_content()
+                return
+        self._map_ui_silent_set(obj_id, "yield_time_s", val)
+        self._ui_input_buffer.pop(cid, None)
+        self._map_ui_redraw_content()
+
+    def _map_ui_draw_yield_t_row(self, obj, u, T: int, lbl_cid, val_cid, def_cid):
+        """Fila de T compartida por el link y la zona: label + TypeIn + default."""
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=lbl_cid,
+            BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
+            L=2,
+            T=T,
+            W=30,
+            H=6,
+            Text="T (s):",
+        )
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=val_cid,
+            BStyle=ISB_STYLE.LIGHT | ISB_STYLE.CLICK,
+            TypeIn=TYPEIN_FLAGS.INIT_WITH_TEXT | 12,
+            L=34,
+            T=T,
+            W=60,
+            H=6,
+            Text=self._map_ui_yield_t_text(obj),
+        )
+        # "Usar default" solo tiene sentido si HAY un valor propio del que volver.
+        if obj.yield_time_s is not None:
+            self.send_ISP_BTN(
+                ReqI=1,
+                UCID=u,
+                ClickID=def_cid,
+                BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
+                L=96,
+                T=T,
+                W=46,
+                H=6,
+                Text="Usar default",
+            )
 
     def _map_ui_draw_link_yield(self, link, u):
         """Sección "Cesion" del detalle de un RoadLink, tras sus campos."""
@@ -2957,520 +2937,165 @@ class _MapUIMixin(_MixinBase):
             H=6,
             Text="Cesion (ceda el paso)",
         )
-        if not link.yield_line:
-            self.send_ISP_BTN(
-                ReqI=1,
-                UCID=u,
-                ClickID=self._LINK_YIELD_STATUS,
-                BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
-                L=2,
-                T=93,
-                W=108,
-                H=6,
-                Text="Este giro no cede.",
-            )
-            self.send_ISP_BTN(
-                ReqI=1,
-                UCID=u,
-                ClickID=self._LINK_YIELD_REC,
-                BStyle=ISB_STYLE.OK | ISB_STYLE.CLICK,
-                L=112,
-                T=93,
-                W=54,
-                H=6,
-                Text="+ Grabar linea",
-            )
-            return
-
+        # Fila 1: el toggle manda. NONE ⇒ no hay nada más que enseñar.
+        cede = link.yield_type is not YieldType.NONE
+        self.send_ISP_BTN(
+            ReqI=1,
+            UCID=u,
+            ClickID=self._LINK_YIELD_TYPE,
+            BStyle=(ISB_STYLE.OK | ISB_STYLE.CLICK)
+            if cede
+            else (ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK),
+            L=2,
+            T=93,
+            W=40,
+            H=6,
+            Text=f"[{link.yield_type.value}]",
+        )
+        if not cede:
+            estado = "Este giro no cede."
+        elif link.yield_point is None:
+            # has_yield exige tipo Y punto: decirlo, no dejarlo creer.
+            estado = "Sin punto: este giro NO cede."
+        elif link.yield_type is YieldType.STOP:
+            estado = "Para siempre en el punto y evalua."
+        else:
+            estado = "Para en el punto si viene trafico."
         self.send_ISP_BTN(
             ReqI=1,
             UCID=u,
             ClickID=self._LINK_YIELD_STATUS,
             BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
-            L=2,
+            L=44,
             T=93,
-            W=68,
+            W=138,
             H=6,
-            Text=f"Linea: {len(link.yield_line)} puntos",
+            Text=estado,
         )
+        if not cede:
+            return
+
+        # Fila 2: el punto — UNO solo (el punto implica la línea).
+        hay_punto = link.yield_point is not None
         self.send_ISP_BTN(
             ReqI=1,
             UCID=u,
-            ClickID=self._LINK_YIELD_REC,
-            BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
-            L=72,
-            T=93,
+            ClickID=self._LINK_YIELD_MARK,
+            BStyle=(ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK)
+            if hay_punto
+            else (ISB_STYLE.OK | ISB_STYLE.CLICK),
+            L=2,
+            T=100,
             W=54,
             H=6,
-            Text="Regrabar",
+            Text="Remarcar punto" if hay_punto else "+ Marcar punto",
         )
         self.send_ISP_BTN(
             ReqI=1,
             UCID=u,
-            ClickID=self._LINK_YIELD_CLEAR,
-            BStyle=ISB_STYLE.CANCEL | ISB_STYLE.CLICK,
-            L=144,
-            T=93,
-            W=22,
-            H=6,
-            Text="Quitar",
-        )
-        # Fila de T: TypeIn editable en el propio detalle.
-        self.send_ISP_BTN(
-            ReqI=1,
-            UCID=u,
-            ClickID=self._LINK_YIELD_T_LBL,
-            BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
-            L=2,
-            T=100,
-            W=68,
-            H=6,
-            Text="yield_time_s:",
-        )
-        t_txt = (
-            str(link.yield_time_s)
-            if link.yield_time_s is not None
-            else f"default ({self._map_ui_yield_default_t():g})"
-        )
-        self.send_ISP_BTN(
-            ReqI=1,
-            UCID=u,
-            ClickID=self._LINK_YIELD_T_VAL,
-            BStyle=ISB_STYLE.LIGHT | ISB_STYLE.CLICK,
-            TypeIn=TYPEIN_FLAGS.INIT_WITH_TEXT | 12,
-            L=72,
-            T=100,
-            W=108,
-            H=6,
-            Text=t_txt,
-        )
-        self._ui_detail_field_map[self._LINK_YIELD_T_VAL] = ("yield_time_s", "yield_t")
-        # Fila de la zona a vigilar: abre el picker.
-        self.send_ISP_BTN(
-            ReqI=1,
-            UCID=u,
-            ClickID=self._LINK_YIELD_ZONE_LBL,
-            BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
-            L=2,
-            T=107,
-            W=68,
-            H=6,
-            Text="yield_zone_id:",
-        )
-        self.send_ISP_BTN(
-            ReqI=1,
-            UCID=u,
-            ClickID=self._LINK_YIELD_ZONE_VAL,
+            ClickID=self._LINK_YIELD_AUTO,
             BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
-            L=72,
-            T=107,
-            W=108,
-            H=6,
-            Text=link.yield_zone_id or "(ninguna)",
-        )
-
-    def _map_ui_draw_link_yield_recorder(self, link, u, rec: dict):
-        """Grabador de la línea de detención (pantalla completa del contenido)."""
-        n = len(rec.get("nodes", []))
-        self.send_ISP_BTN(
-            ReqI=1,
-            UCID=u,
-            ClickID=109,
-            BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
-            L=2,
-            T=21,
-            W=182,
-            H=6,
-            Text=f"Linea de detencion: {rec.get('link_id', '?')}",
-        )
-        self.send_ISP_BTN(
-            ReqI=1,
-            UCID=u,
-            ClickID=110,
-            BStyle=ISB_STYLE.DARK | ISB_STYLE.LEFT,
-            L=2,
-            T=28,
-            W=182,
-            H=6,
-            Text="Para el morro DONDE debe detenerse la IA y anade 2+ puntos a lo ancho del carril.",
-        )
-        self.send_ISP_BTN(
-            ReqI=1,
-            UCID=u,
-            ClickID=111,
-            BStyle=ISB_STYLE.DARK | ISB_STYLE.LEFT,
-            L=2,
-            T=35,
-            W=60,
-            H=6,
-            Text=f"● {n} puntos",
-        )
-        self.send_ISP_BTN(
-            ReqI=1,
-            UCID=u,
-            ClickID=112,
-            BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
-            L=2,
-            T=44,
-            W=60,
-            H=8,
-            Text="+ Anadir punto",
-        )
-        auto_on = (
-            rec.get("auto_phase") == "recording"
-            and self.map_recorder.auto_recording_enabled
-        )
-        auto_style = (
-            ISB_STYLE.OK | ISB_STYLE.CLICK
-            if auto_on
-            else ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK
-        )
-        self.send_ISP_BTN(
-            ReqI=1,
-            UCID=u,
-            ClickID=113,
-            BStyle=auto_style,
-            L=64,
-            T=44,
-            W=40,
-            H=8,
-            Text="Auto: ON" if auto_on else "Auto: OFF",
-        )
-        self.send_ISP_BTN(
-            ReqI=1,
-            UCID=u,
-            ClickID=114,
-            BStyle=ISB_STYLE.OK | ISB_STYLE.CLICK,
-            L=2,
-            T=55,
-            W=60,
-            H=9,
-            Text="Terminar",
-        )
-        self.send_ISP_BTN(
-            ReqI=1,
-            UCID=u,
-            ClickID=115,
-            BStyle=ISB_STYLE.CANCEL | ISB_STYLE.CLICK,
-            L=64,
-            T=55,
-            W=60,
-            H=9,
-            Text="Cancelar",
-        )
-
-    def _map_ui_draw_link_yield_ask_t(self, link, u, rec: dict):
-        """Al Terminar la línea se pide T automáticamente (TypeIn con default)."""
-        self.send_ISP_BTN(
-            ReqI=1,
-            UCID=u,
-            ClickID=109,
-            BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
-            L=2,
-            T=21,
-            W=182,
-            H=6,
-            Text=f"Tiempo T de la cesion: {rec.get('link_id', '?')}",
-        )
-        self.send_ISP_BTN(
-            ReqI=1,
-            UCID=u,
-            ClickID=110,
-            BStyle=ISB_STYLE.DARK | ISB_STYLE.LEFT,
-            L=2,
-            T=28,
-            W=182,
-            H=6,
-            Text="La IA cede si el trafico vigilado llega en menos de T segundos.",
-        )
-        self.send_ISP_BTN(
-            ReqI=1,
-            UCID=u,
-            ClickID=111,
-            BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
-            L=2,
-            T=37,
+            L=58,
+            T=100,
             W=30,
-            H=7,
-            Text="T (s):",
-        )
-        t_txt = (
-            str(link.yield_time_s)
-            if link.yield_time_s is not None
-            else f"default ({self._map_ui_yield_default_t():g})"
-        )
-        self.send_ISP_BTN(
-            ReqI=1,
-            UCID=u,
-            ClickID=self._UI_CID_TI1,
-            BStyle=ISB_STYLE.LIGHT | ISB_STYLE.CLICK,
-            TypeIn=TYPEIN_FLAGS.INIT_WITH_TEXT | 12,
-            L=34,
-            T=37,
-            W=60,
-            H=7,
-            Text=t_txt,
-        )
-        self.send_ISP_BTN(
-            ReqI=1,
-            UCID=u,
-            ClickID=116,
-            BStyle=ISB_STYLE.OK | ISB_STYLE.CLICK,
-            L=2,
-            T=48,
-            W=60,
-            H=9,
-            Text="Guardar",
-        )
-        self.send_ISP_BTN(
-            ReqI=1,
-            UCID=u,
-            ClickID=117,
-            BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
-            L=64,
-            T=48,
-            W=60,
-            H=9,
-            Text="< Volver",
-        )
-
-    def _map_ui_draw_link_zone_picker(self, link, u):
-        """Picker de la zona a vigilar (misma UX que el picker de vías)."""
-        self.send_ISP_BTN(
-            ReqI=1,
-            UCID=u,
-            ClickID=109,
-            BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
-            L=2,
-            T=21,
-            W=182,
             H=6,
-            Text=f"Zona a vigilar: {self._ui_elem_detail_id}",
+            Text="Auto",
         )
-        all_zones = sorted(self.map_recorder.zones.keys())
-        per_page = self._UI_ROAD_PICKER_ITEMS
-        max_page = max(0, (len(all_zones) - 1) // per_page) if all_zones else 0
-        page = min(self._ui_road_picker_page, max_page)
-        self._ui_road_picker_page = page
-        items = all_zones[page * per_page : (page + 1) * per_page]
-        if not all_zones:
+        if hay_punto:
             self.send_ISP_BTN(
                 ReqI=1,
                 UCID=u,
-                ClickID=122,
-                BStyle=ISB_STYLE.DARK | ISB_STYLE.LEFT,
-                L=2,
-                T=35,
-                W=68,
+                ClickID=self._LINK_YIELD_CLEAR,
+                BStyle=ISB_STYLE.CANCEL | ISB_STYLE.CLICK,
+                L=90,
+                T=100,
+                W=30,
                 H=6,
-                Text="Sin zonas en el mapa",
+                Text="Borrar",
             )
-        else:
-            for i, zone_id in enumerate(items):
-                self.send_ISP_BTN(
-                    ReqI=1,
-                    UCID=u,
-                    ClickID=122 + i,
-                    BStyle=ISB_STYLE.DARK
-                    | ISB_STYLE.SELECTED
-                    | ISB_STYLE.CLICK
-                    | ISB_STYLE.LEFT,
-                    L=2,
-                    T=35 + i * 7,
-                    W=68,
-                    H=6,
-                    Text=zone_id,
-                )
-        # Paginación (solo tiene efecto con >6 zonas)
-        self.send_ISP_BTN(
-            ReqI=1,
-            UCID=u,
-            ClickID=128,
-            BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
-            L=2,
-            T=77,
-            W=20,
-            H=6,
-            Text="<",
-        )
-        self.send_ISP_BTN(
-            ReqI=1,
-            UCID=u,
-            ClickID=129,
-            BStyle=ISB_STYLE.DARK | ISB_STYLE.LEFT,
-            L=24,
-            T=77,
-            W=24,
-            H=6,
-            Text=f"{page + 1}/{max_page + 1}",
-        )
-        self.send_ISP_BTN(
-            ReqI=1,
-            UCID=u,
-            ClickID=132,
-            BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
-            L=50,
-            T=77,
-            W=20,
-            H=6,
-            Text=">",
-        )
-        # Columna derecha: actual + acciones
-        self.send_ISP_BTN(
-            ReqI=1,
-            UCID=u,
-            ClickID=110,
-            BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.LEFT,
-            L=72,
-            T=28,
-            W=112,
-            H=6,
-            Text=f"Actual: {link.yield_zone_id or '-'}",
-        )
-        self.send_ISP_BTN(
-            ReqI=1,
-            UCID=u,
-            ClickID=116,
-            BStyle=ISB_STYLE.DARK | ISB_STYLE.SELECTED | ISB_STYLE.CLICK,
-            L=72,
-            T=55,
-            W=54,
-            H=8,
-            Text="Ninguna",
-        )
-        self.send_ISP_BTN(
-            ReqI=1,
-            UCID=u,
-            ClickID=117,
-            BStyle=ISB_STYLE.CANCEL | ISB_STYLE.CLICK,
-            L=130,
-            T=55,
-            W=54,
-            H=8,
-            Text="Cancelar",
+
+        # Fila 3: T.
+        self._map_ui_draw_yield_t_row(
+            link,
+            u,
+            107,
+            self._LINK_YIELD_T_LBL,
+            self._LINK_YIELD_T_VAL,
+            self._LINK_YIELD_T_DEF,
         )
 
-    def _map_ui_click_link_yield_recorder(self, cid: int):
-        """Clicks del grabador de la línea de detención."""
-        mr = self.map_recorder
-        rec = mr.current_recording
-        if cid == 112:  # añadir punto manual (coche del usuario que clica)
-            coords = mr.get_coords_fn(self._ui_ucid)
-            if coords:
-                rec["nodes"].append(copy.deepcopy(coords))
-                self.send_ISP_MSL(
-                    Msg=f"{c.GREEN}Punto #{len(rec['nodes'])} de la linea añadido."
-                )
-                self._map_ui_redraw_content()
-                self._map_ui_update_header()
-            else:
-                self.send_ISP_MSL(
-                    Msg=f"{c.RED}No se pudo leer tu telemetria (en pista?)."
-                )
-        elif cid == 113:  # toggle Auto (el grabador nace SIEMPRE manual)
-            self._map_ui_yield_toggle_auto()
-        elif cid == 114:  # Terminar → pedir T
-            if len(rec.get("nodes", [])) < 2:
-                self.send_ISP_MSL(
-                    Msg=f"{c.YELLOW}La linea necesita al menos 2 puntos "
-                    f"(lleva {len(rec.get('nodes', []))})."
-                )
-                return
-            rec["auto_phase"] = "ask_t"  # congela la captura mientras se pide T
-            self._ui_input_buffer.pop(self._UI_CID_TI1, None)
-            self._map_ui_redraw_content()
-            self._map_ui_update_header()
-        elif cid == 115:  # Cancelar: descarta sin tocar el link
-            mr._cmd_rec_cancel()
-            self._map_ui_redraw_content()
-            self._map_ui_update_header()
+    def _map_ui_yield_cycle_type(self, obj_id):
+        """Toggle NONE -> YIELD -> STOP -> NONE del link del detalle.
 
-    def _map_ui_yield_toggle_auto(self):
-        """Enciende/apaga la captura automática del grabador de la línea.
-
-        ON exige un coche que grabar: si no hay `recording_plid`, se toma el
-        del usuario que clica. La fase y la preferencia global van en lockstep
-        a partir del primer toggle (al nacer, la fase es manual sin tocar la
-        preferencia global — diseño S38: default SIEMPRE manual)."""
-        mr = self.map_recorder
-        rec = mr.current_recording
-        effective = rec.get("auto_phase") == "recording" and mr.auto_recording_enabled
-        if effective:
-            rec["auto_phase"] = "manual"
-            mr.auto_recording_enabled = False
-        else:
-            if mr.recording_plid is None:
-                user = self.user_manager.users.get(self._ui_ucid)
-                plid = user.plid if user else None
-                if plid is None:
-                    self.send_ISP_MSL(
-                        Msg=f"{c.RED}No tienes coche en pista para la captura automatica."
-                    )
-                    return
-                mr.recording_plid = plid
-            mr.auto_recording_enabled = True
-            rec["auto_phase"] = "recording"
+        Apagar la cesión NO borra el punto: si vuelves a encenderla, el trabajo
+        sigue ahí (y con NONE el punto se ignora, así que no estorba).
+        """
+        obj = self._map_ui_elem_get_obj(obj_id)
+        if obj is None:
+            return
+        siguiente = {
+            YieldType.NONE: "yield",
+            YieldType.YIELD: "stop",
+            YieldType.STOP: "none",
+        }[obj.yield_type]
+        self._map_ui_silent_set(obj_id, "yield_type", siguiente)
         self._map_ui_redraw_content()
-        self._map_ui_update_header()
 
-    def _map_ui_click_link_yield_ask_t(self, cid: int):
-        """Clicks de la pantalla de T (tras Terminar la línea)."""
-        mr = self.map_recorder
-        rec = mr.current_recording
-        if cid == 116:  # Guardar: comete la línea y fija T
-            raw = (self._ui_input_buffer.get(self._UI_CID_TI1) or "").strip().lower()
-            if raw in ("", "none") or raw.startswith("default"):
-                t_str = "none"  # None ⇒ default global de config
-            else:
-                try:
-                    if float(raw) <= 0:
-                        raise ValueError
-                    t_str = raw
-                except ValueError:
-                    self.send_ISP_MSL(
-                        Msg=f"{c.RED}T invalido: numero de segundos positivo o 'default'."
-                    )
-                    return
-            link_id = rec["link_id"]
-            mr._cmd_rec_end()  # rama yield_line: comete link.yield_line
-            self._map_ui_silent_set(link_id, "yield_time_s", t_str)
-            self._ui_input_buffer.pop(self._UI_CID_TI1, None)
-            self._map_ui_redraw_content()
-            self._map_ui_update_header()
-        elif cid == 117:  # Volver al grabador (en manual), sin perder puntos
-            rec["auto_phase"] = "manual"
-            self._map_ui_redraw_content()
+    def _map_ui_yield_mark_point(self, obj_id):
+        """Marca el `yield_point` donde está el coche del que clica.
 
-    def _map_ui_click_link_zone_picker(self, cid: int):
-        """Clicks del picker de la zona a vigilar."""
-        all_zones = sorted(self.map_recorder.zones.keys())
-        per_page = self._UI_ROAD_PICKER_ITEMS
-        if 122 <= cid <= 127:  # elegir zona
-            idx = self._ui_road_picker_page * per_page + (cid - 122)
-            if idx < len(all_zones):
-                self._map_ui_silent_set(
-                    self._ui_elem_detail_id, "yield_zone_id", all_zones[idx]
-                )
-                self._map_ui_link_zone_exit_picker()
-        elif cid == 128:  # página anterior
-            if self._ui_road_picker_page > 0:
-                self._ui_road_picker_page -= 1
-                self._map_ui_redraw_content()
-        elif cid == 132:  # página siguiente
-            max_page = max(0, (len(all_zones) - 1) // per_page)
-            if self._ui_road_picker_page < max_page:
-                self._ui_road_picker_page += 1
-                self._map_ui_redraw_content()
-        elif cid == 116:  # Ninguna
-            self._map_ui_silent_set(self._ui_elem_detail_id, "yield_zone_id", "none")
-            self._map_ui_link_zone_exit_picker()
-        elif cid == 117:  # Cancelar
-            self._map_ui_link_zone_exit_picker()
+        Es UN punto: volver a marcar lo MUEVE, no acumula (el 8.4 acumulaba
+        porque grababa una polilínea; eso murió con el rediseño).
+        """
+        link = self._map_ui_elem_get_obj(obj_id)
+        if link is None:
+            return
+        coords = self.map_recorder.get_coords_fn(self._ui_ucid)
+        if not coords:
+            self.send_ISP_MSL(Msg=f"{c.RED}No se pudo leer tu telemetria (en pista?).")
+            return
+        link.yield_point = copy.deepcopy(coords)
+        self.send_ISP_MSL(
+            Msg=f"{c.GREEN}Punto de cesion marcado en "
+            f"({link.yield_point.x_m:.1f}, {link.yield_point.y_m:.1f})."
+        )
+        self._map_ui_redraw_content()
 
-    def _map_ui_link_zone_exit_picker(self):
-        """Sale del picker de zonas y vuelve al detalle del link."""
-        self._ui_link_zone_picking = False
-        self._ui_road_picker_page = 0
+    def _map_ui_yield_auto_point(self, obj_id):
+        """Coloca el `yield_point` justo antes del primer cruce real (S44).
+
+        Geometría pura: NO necesita coche en pista. Reusa la detección de "qué
+        roads piso" de la conducta (la `from_road` no cuenta: de la vía que
+        dejas atrás no se cede) y retrocede `yield_auto_setback_m` por el
+        trazado, porque el cruce cae en el EJE de la road que cruzas.
+        """
+        link = self._map_ui_elem_get_obj(obj_id)
+        if link is None:
+            return
+        puntos = self.map_recorder.get_link_conflict_points(
+            link, self._map_ui_yield_z_tol()
+        )
+        if not puntos:
+            self.send_ISP_MSL(
+                Msg=f"{c.YELLOW}Este link no cruza ninguna otra via: no hay cruce "
+                "donde ceder. Marca el punto a mano si hace falta."
+            )
+            return
+        primero = puntos[0]
+        punto = auto_yield_point(
+            link.nodes, primero.x_m, primero.y_m, self._map_ui_yield_setback()
+        )
+        if punto is None:
+            self.send_ISP_MSL(
+                Msg=f"{c.RED}El trazado del link no da para colocar el punto."
+            )
+            return
+        link.yield_point = punto
+        self.send_ISP_MSL(
+            Msg=f"{c.GREEN}Punto puesto a {self._map_ui_yield_setback():g}m del cruce "
+            f"con {c.WHITE}{primero.road_id}{c.GREEN}: "
+            f"({punto.x_m:.1f}, {punto.y_m:.1f})."
+        )
         self._map_ui_redraw_content()
 
     # ──────────────────────────────────────────────────────────────────────────
@@ -3683,6 +3308,14 @@ class _MapUIMixin(_MixinBase):
                 )
             return
 
+        # T de la cesión (link o zona): mismo TypeIn, misma semántica.
+        if self._ui_tab == "elementos" and packet.ClickID in (
+            self._LINK_YIELD_T_VAL,
+            self._ZONE_YIELD_T_VAL,
+        ):
+            self._map_ui_yield_apply_t(packet.ClickID)
+            return
+
         # En la vista detalle de Elementos, aplicar cambio inmediatamente
         if (
             self._ui_tab == "elementos"
@@ -3691,19 +3324,7 @@ class _MapUIMixin(_MixinBase):
         ):
             fname, ftype = self._ui_detail_field_map[packet.ClickID]
             if ftype not in ("bool", "enum_traffic", "enum_indicators") and text:
-                if ftype == "yield_t":
-                    # T de la cesión: número positivo, o "default"/"none" ⇒ None.
-                    low = text.lower()
-                    if low == "none" or low.startswith("default"):
-                        text = "none"
-                    else:
-                        try:
-                            if float(text) <= 0:
-                                raise ValueError
-                        except ValueError:
-                            self._map_ui_redraw_content()  # restaura el valor real
-                            return
-                elif ftype == "float":
+                if ftype == "float":
                     try:
                         float(text)
                     except ValueError:
@@ -3739,7 +3360,6 @@ class _MapUIMixin(_MixinBase):
             self._ui_input_buffer = {}
             self._ui_elem_detail_id = None
             self._ui_detail_field_map = {}
-            self._ui_zone_prio_adding = False
             self._map_ui_draw_tabs()
             self._map_ui_redraw_content()
             return
@@ -3820,11 +3440,6 @@ class _MapUIMixin(_MixinBase):
                         Msg=f"{c.RED}Error: No se pudo obtener telemetria (en pista?)."
                     )
             elif cid == 113:
-                if rec.get("type") == "yield_line":
-                    # La captura de la línea se congela por fase: el toggle
-                    # debe mover fase y preferencia global a la vez.
-                    self._map_ui_yield_toggle_auto()
-                    return
                 new = not self.map_recorder.auto_recording_enabled
                 self.map_recorder._cmd_rec_auto("true" if new else "false")
                 self._map_ui_redraw_content()
@@ -4456,23 +4071,6 @@ class _MapUIMixin(_MixinBase):
     def _map_ui_click_elementos(self, cid: int):
         # ── Vista detalle ──────────────────────────────────────────────────
         if self._ui_elem_detail_id is not None:
-            rec = self.map_recorder.current_recording
-            if (  # grabador de la línea de cesión de ESTE link
-                rec
-                and rec.get("type") == "yield_line"
-                and rec.get("link_id") == self._ui_elem_detail_id
-            ):
-                if rec.get("auto_phase") == "ask_t":
-                    self._map_ui_click_link_yield_ask_t(cid)
-                else:
-                    self._map_ui_click_link_yield_recorder(cid)
-                return
-            if self._ui_link_zone_picking:  # picker de zona a vigilar
-                self._map_ui_click_link_zone_picker(cid)
-                return
-            if self._ui_zone_prio_adding:  # sub-pantalla de alta de regla
-                self._map_ui_click_zone_prio_picker(cid)
-                return
             if cid == 108:  # Volver
                 self._ui_elem_detail_id = None
                 self._map_ui_redraw_content()
@@ -4512,47 +4110,36 @@ class _MapUIMixin(_MixinBase):
                         new_val = cycle.get(cur, "off")
                         self._map_ui_silent_set(self._ui_elem_detail_id, fname, new_val)
                         self._map_ui_redraw_content()
-            elif cid == self._ZONE_PRIO_ADD:  # abre el picker de vías
-                self._ui_zone_prio_adding = True
-                self._ui_road_picker_page = 0
-                self._ui_road_picker_slot = "a"
-                self._ui_input_buffer.pop(self._UI_CID_TI1, None)
-                self._ui_input_buffer.pop(self._UI_CID_TI2, None)
+            # ── Zona (S44): polígono + T + tabla de vías ────────────────────
+            elif cid == self._ZONE_YIELD_REC:
+                self._map_ui_zone_start_poly_recording()
+            elif cid == self._ZONE_YIELD_T_DEF:
+                self._map_ui_silent_set(self._ui_elem_detail_id, "yield_time_s", "none")
                 self._map_ui_redraw_content()
-            elif cid in self._ui_zone_prio_map:  # Quitar una regla
-                via_a, via_b = self._ui_zone_prio_map[cid]
-                self._map_ui_silent_set(
-                    self._ui_elem_detail_id, "priority_rules", f"del;{via_a},{via_b}"
-                )
+            elif cid == self._ZONE_ROADS_REDETECT:
+                self._map_ui_zone_roads_redetect()
+            elif cid in self._ui_zone_roads_toggle:
+                self._map_ui_zone_roads_cycle(self._ui_zone_roads_toggle[cid])
+            elif cid in self._ui_zone_roads_del:
+                via = self._ui_zone_roads_del[cid]
+                self._map_ui_silent_set(self._ui_elem_detail_id, "roads", f"del;{via}")
                 self._map_ui_redraw_content()
-            elif cid == self._LINK_YIELD_REC:  # abre el grabador de la línea
-                if self.map_recorder.current_recording:
-                    self.send_ISP_MSL(
-                        Msg=f"{c.YELLOW}Ya hay una grabacion en curso: "
-                        "terminala o cancelala primero."
-                    )
-                    return
-                self.map_recorder.current_recording = {
-                    "type": "yield_line",
-                    "link_id": self._ui_elem_detail_id,
-                    "nodes": [],
-                    # Nace SIEMPRE manual, aunque el Auto general esté activo
-                    # (diseño S38); update_recording congela toda fase que no
-                    # sea "recording".
-                    "auto_phase": "manual",
-                }
-                self._map_ui_redraw_content()
-                self._map_ui_update_header()
-            elif cid == self._LINK_YIELD_CLEAR:  # retira la cesión del giro
+
+            # ── Cesión del RoadLink (S44): tipo + un punto + T ──────────────
+            elif cid == self._LINK_YIELD_TYPE:
+                self._map_ui_yield_cycle_type(self._ui_elem_detail_id)
+            elif cid == self._LINK_YIELD_MARK:
+                self._map_ui_yield_mark_point(self._ui_elem_detail_id)
+            elif cid == self._LINK_YIELD_AUTO:
+                self._map_ui_yield_auto_point(self._ui_elem_detail_id)
+            elif cid == self._LINK_YIELD_CLEAR:  # borra el punto, NO el tipo
                 obj = self._map_ui_elem_get_obj(self._ui_elem_detail_id)
                 if obj is not None:
-                    obj.yield_line = []
-                    obj.yield_time_s = None
-                    obj.yield_zone_id = None
+                    obj.yield_point = None
+                    self.send_ISP_MSL(Msg=f"{c.YELLOW}Punto de cesion borrado.")
                     self._map_ui_redraw_content()
-            elif cid == self._LINK_YIELD_ZONE_VAL:  # abre el picker de zonas
-                self._ui_link_zone_picking = True
-                self._ui_road_picker_page = 0
+            elif cid == self._LINK_YIELD_T_DEF:
+                self._map_ui_silent_set(self._ui_elem_detail_id, "yield_time_s", "none")
                 self._map_ui_redraw_content()
             return
 
@@ -4574,8 +4161,6 @@ class _MapUIMixin(_MixinBase):
             idx = self._ui_elem_page * _ITEMS_PER_PAGE + (cid - 114)
             if idx < len(items):
                 self._ui_elem_detail_id = items[idx]
-                self._ui_zone_prio_adding = False
-                self._ui_link_zone_picking = False
                 self._map_ui_redraw_content()
         elif cid == 120:  # Página anterior
             if self._ui_elem_page > 0:

@@ -781,12 +781,16 @@ conductor*, no el borde de un círculo, y regala el **punto de compromiso**.
         `yield_stop_hold_s` → evalúa como `YIELD`); caché perezosa
         `map_recorder.get_link_conflict_points()` por `(link_id, tol. Z)` — el hot loop no puede
         cruzar un link contra 223 roads por MCI. 40 tests en `test_orchestrator.py`.
-  - [ ] **8.6.5 UI de mapeo** — ⏳ **PRÓXIMO**. Skill `ai-control-map-ui` ANTES de abrir `map_ui.py`.
-        Ver "C · UI" abajo. **Arregla los 9 tests rojos** (`test_map_ui_link_yield.py`,
-        `test_map_ui_zone_priority.py`) y los restos de `map_recorder.py` que aún tocan campos
-        borrados (`_cmd_set`, detalle, `_cmd_check`, `!map whereami`, `get_location_context`
-        → `zone_radius`). Al terminar, **actualizar la skill**: el grabador por fases del 8.4 muere
-        (el punto del link pasa a ser UN punto).
+  - [x] **8.6.5 UI de mapeo** — ✅ S46. **Detalle del link**: toggle `NONE|YIELD|STOP` +
+        `[+ Marcar punto]` (un punto, un clic) + `[Auto]` + `[Borrar]` + T con float efectivo y
+        `[Usar default]`. **Detalle de la zona**: grabador de polígono (reusa el grabador normal
+        `type="zone"`) + T + tabla auto-poblada con toggle por road, `[X]` y `[Re-detectar]`.
+        **Muertos**: grabador por fases de la `yield_line`, pantalla `ask_t`, picker de zonas del
+        link y editor de `priority_rules`. **Backend**: `_cmd_set` (`yield_type` + tabla `roads`;
+        fuera `yield_line`/`priority_rules`/`yield_zone_id`), `_cmd_rec_end` (zona ⇒ ≥3 puntos +
+        auto-poblado), `_cmd_check`, `!map whereami` y `LocationContext.zone_radius` →
+        `zone_inside`. **Geometría nueva**: `auto_yield_point` + dial `yield_auto_setback_m` (5.0).
+        Los 9 tests rojos heredados caen; **suite 914/914**. Skill `ai-control-map-ui` actualizada.
   - [ ] **8.6.6 Render** — pintar la línea DERIVADA del `yield_point` (con su tipo y su T) y el
         polígono de la zona con su tabla. Adaptar `test_map_renderer.py` (del 8.5).
   - [ ] **8.6.7 Conducta de la zona** (era 8.6.4; movida en S45 DESPUÉS de la UI) — el que cruza de
@@ -842,7 +846,9 @@ conductor*, no el borde de un círculo, y regala el **punto de compromiso**.
 
   **D · Config nuevo:** `yield_line_width_m` (ancho de la línea derivada) · `yield_stop_hold_s`
   (~1.0, la parada del `STOP`) · `yield_z_tolerance_m` (~3.0, tolerancia de altura en la detección
-  de cruces). Se mantiene `yield_time_s` (4.0).
+  de cruces) · **`yield_auto_setback_m`** (5.0, añadido en S46: cuánto retrocede `[Auto]` desde el
+  primer punto de conflicto — el cruce cae en el EJE de la road que cruzas, así que parar ahí mete
+  el morro en el carril). Se mantiene `yield_time_s` (4.0).
 
   **E · Limitación conocida y ACEPTADA:** con dos niveles (`NONE` manda / `YIELD`-`STOP` ceden),
   **dos roads `YIELD` que se cruzan en la misma zona no se ceden entre sí**. Es consecuencia de
@@ -858,6 +864,23 @@ conductor*, no el borde de un círculo, y regala el **punto de compromiso**.
 
   **Salida del bloque:** red de tests primero → implementación → **ficha U nueva** de validación
   en LFS. Migración y validación van DESPUÉS (8.7/8.8), ya con la herramienta rediseñada.
+
+  **Decisiones de implementación (S46), para que no se rediscutan:**
+  - **`[Auto]` retrocede un dial nuevo, `yield_auto_setback_m` (5.0 m)** (elegido por el usuario
+    por selector). El diseño decía "justo antes del primer cruce real" sin decir cuánto; el punto
+    de conflicto cae en el EJE de la road que cruzas ⇒ hay que retroceder **por el trazado**
+    (`auto_yield_point`: en un link en L el retroceso dobla la esquina). Es dial, no constante,
+    para poder afinarlo en LFS sin tocar código.
+  - **La tabla de la zona se repuebla SOLO al grabar el polígono y con `[Re-detectar]`** (elegido
+    por el usuario por selector). "Auto-poblada" y "borrable" se contradicen: si se repoblara al
+    dibujar el detalle, los falsos cruces borrados reaparecerían al salir y entrar.
+    `autodetect_zone_roads` conserva el `YieldType` de las roads que sobreviven al re-escaneo.
+  - **`[Auto]` sirve también al link que no cruza nada**: el punto de unión con la `to_road` es un
+    punto de conflicto más (S45), así que Auto para antes de la **incorporación**. Solo avisa y no
+    hace nada si el link está colgado (su `to_road` no existe).
+  - **Un `rec_end` inválido DESCARTA los puntos** (polígono <3): no es del 8.6, es el contrato de
+    `_cmd_rec_end` para todos los tipos desde siempre (`finally` que limpia `current_recording`).
+    No se tocó — solo se hizo explícito en el mensaje. Si molesta en LFS, es su propio bloque.
 
   **Decisiones de implementación (S45), para que no se rediscutan:**
   - **Los campos muertos se borran en el 8.6, no en el 8.7.** El punto 8.7 heredaba esa frase de

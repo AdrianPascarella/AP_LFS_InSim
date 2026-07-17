@@ -1,45 +1,32 @@
 """
-UI de mapeo de la CESIÓN de un RoadLink (Fase 8, bloque 8.4) en `map_ui.py`.
+UI de mapeo de la CESIÓN de un RoadLink (Fase 8, bloque 8.6.5) en `map_ui.py`.
 
-Diseño S38 punto 8: en el detalle del link (pestaña Elementos) una sección
-"Cesion" muestra el estado (`yield_line` / T / zona) y da acceso a:
+Rediseño S44, mecanismo del que **hace la maniobra**. En el detalle del link
+(pestaña Elementos) la sección "Cesion" ya no gestiona una polilínea grabada ni
+una zona a vigilar —los dos murieron con el rediseño— sino:
 
-  - un GRABADOR de puntos de la línea de detención, que nace SIEMPRE en modo
-    manual (aunque el toggle "Auto" general esté activo) y al Terminar pide T
-    automáticamente (TypeIn con default);
-  - un PICKER de zonas (misma UX que el picker de vías) para `yield_zone_id`;
-  - el TypeIn de T en el propio detalle y el botón "Quitar" para retirar la
-    cesión del giro.
+  - un **toggle** `NONE|YIELD|STOP` (vocabulario único de la cesión);
+  - **[+ Marcar punto]**: UN solo punto, el del coche del que clica (se acabó el
+    grabador por fases del 8.4: el punto implica la línea, que se deriva
+    perpendicular a la tangente);
+  - **[Auto]**: coloca el punto retrocediendo `yield_auto_setback_m` desde el
+    primer punto de conflicto real (reusa la detección de "qué roads piso");
+  - **[Borrar]** el punto;
+  - **T** con el float efectivo + **[Usar default]**.
 
-El estado del grabador vive en `map_recorder.current_recording` (sobrevive a
-cerrar/reabrir el menú, como "Link auto"): `type="yield_line"`, `link_id` y
-`auto_phase` ("manual" | "recording" | "ask_t"; solo "recording" deja capturar
-a `update_recording`). Red primero (MODUS §3) sobre el harness `ai_control`.
+Invariante del modelo (`graph.py::has_yield`): hace falta **tipo Y punto**. Un
+toggle en YIELD sin punto está a medias y NO cede — la UI tiene que decirlo.
+
+Red primero (MODUS §3) sobre el harness `ai_control`.
 """
 
 from __future__ import annotations
 
-import pytest
-
-from insims.ai_control.nav_modes.freeroam.graph import IntersectionZone
+from insims.ai_control.nav_modes.freeroam.enums import YieldType
 from insims.users_management.um_class import User
-from lfs_insim.packets import ISP_BTT
-
-# CIDs del grabador (pantalla completa; misma semántica que la pestaña Grabar).
-_CID_ANADIR_PUNTO = 112
-_CID_AUTO = 113
-_CID_TERMINAR = 114
-_CID_CANCELAR = 115
-# CIDs de la pantalla "ask_t" (pedir T al terminar).
-_CID_GUARDAR_T = 116
-_CID_VOLVER_T = 117
-_TI1 = 130
-# CIDs del picker de zonas (misma mecánica que el picker de vías).
-_CID_ZONA_ITEM0 = 122
-_CID_ZONA_NINGUNA = 116
-_CID_ZONA_CANCELAR = 117
 
 _LINK_ID = "R1->R2"
+_TI1 = 130
 
 
 def _btns(app):
@@ -50,6 +37,12 @@ def _texts(app):
     return [b.Text for b in _btns(app)]
 
 
+def _btn(app, cid):
+    """El último BTN dibujado con ese ClickID (el redibujado pisa al anterior)."""
+    match = [b for b in _btns(app) if b.ClickID == cid]
+    return match[-1] if match else None
+
+
 def _setup_link_detail(
     app,
     make_road,
@@ -57,29 +50,29 @@ def _setup_link_detail(
     populate_graph,
     make_coords,
     *,
-    yield_pts=None,
+    yield_type=YieldType.NONE,
+    yield_point=None,
     yield_t=None,
-    yield_zone=None,
-    zones=(),
 ):
-    """Deja `app` en el detalle del RoadLink R1->R2 (pestaña Elementos)."""
+    """Deja `app` en el detalle del RoadLink R1->R2 (pestaña Elementos).
+
+    Geometría: R1 llega por el eje X y R2 sube en +Y; el link va de (0,0) a
+    (0,20) y en el camino CRUZA R3, una road horizontal por y=10. Ese cruce
+    en (0, 10) es el "primer cruce real" que tiene que encontrar [Auto].
+    """
     populate_graph(
         app.map_recorder,
         roads=[
             make_road("R1", [(-50, 0), (0, 0)]),
             make_road("R2", [(0, 0), (0, 50)]),
+            make_road("R3", [(-20, 10), (20, 10)]),
         ],
-        road_links=[make_road_link("R1", "R2", [(0, 0), (0, 5)])],
+        road_links=[make_road_link("R1", "R2", [(0, 0), (0, 20)])],
     )
     link = app.map_recorder.road_links[_LINK_ID]
-    if yield_pts:
-        link.yield_line = [make_coords(x, y) for x, y in yield_pts]
+    link.yield_type = yield_type
+    link.yield_point = make_coords(*yield_point) if yield_point else None
     link.yield_time_s = yield_t
-    link.yield_zone_id = yield_zone
-    for zone_id in zones:
-        app.map_recorder.zones[zone_id] = IntersectionZone(
-            zone_id=zone_id, nodes=[make_coords(0, 0)]
-        )
     app.map_recorder.active_map_name = "test"
     app.map_recorder.client = app.client
     app._init_ui_state()
@@ -104,34 +97,46 @@ def _user_on_track(app, make_player, make_telemetry, x_m, y_m, ucid=3, plid=5):
     )
 
 
-def _open_recorder(app):
-    """Abre el grabador de la línea desde el detalle del link."""
-    app._map_ui_click_elementos(app._LINK_YIELD_REC)
-    return app.map_recorder.current_recording
-
-
 # ─── Sección "Cesion" del detalle ────────────────────────────────────────────
 
 
 class TestSeccionCesionDetalle:
-    def test_link_sin_cesion_muestra_boton_grabar(
+    def test_link_sin_cesion_muestra_el_toggle_en_none(
         self, ai_control, make_road, make_road_link, populate_graph, make_coords
     ):
         _setup_link_detail(
             ai_control, make_road, make_road_link, populate_graph, make_coords
         )
         ai_control._map_ui_draw_elem_detail(_LINK_ID)
-        btns = _btns(ai_control)
-        texts = [b.Text for b in btns]
-        assert any("Cesion" in t for t in texts)  # título de la sección
-        assert any("no cede" in t for t in texts)  # estado
-        assert any(b.ClickID == ai_control._LINK_YIELD_REC for b in btns)
-        # Sin línea no hay ni Quitar ni fila de T ni fila de zona.
-        assert not any(b.ClickID == ai_control._LINK_YIELD_CLEAR for b in btns)
-        assert not any(b.ClickID == ai_control._LINK_YIELD_T_VAL for b in btns)
-        assert not any(b.ClickID == ai_control._LINK_YIELD_ZONE_VAL for b in btns)
 
-    def test_link_con_cesion_muestra_t_zona_y_quitar(
+        assert any("Cesion" in t for t in _texts(ai_control))  # título
+        toggle = _btn(ai_control, ai_control._LINK_YIELD_TYPE)
+        assert toggle is not None
+        assert "NONE" in toggle.Text
+        # Sin cesión no se pide ni punto ni T: el giro no cede y punto.
+        assert _btn(ai_control, ai_control._LINK_YIELD_T_VAL) is None
+        assert _btn(ai_control, ai_control._LINK_YIELD_MARK) is None
+
+    def test_yield_sin_punto_avisa_de_que_no_cede(
+        self, ai_control, make_road, make_road_link, populate_graph, make_coords
+    ):
+        """`has_yield` exige tipo Y punto: la UI no puede callarse que está a medias."""
+        _setup_link_detail(
+            ai_control,
+            make_road,
+            make_road_link,
+            populate_graph,
+            make_coords,
+            yield_type=YieldType.YIELD,
+        )
+        ai_control._map_ui_draw_elem_detail(_LINK_ID)
+
+        assert _btn(ai_control, ai_control._LINK_YIELD_MARK) is not None
+        assert _btn(ai_control, ai_control._LINK_YIELD_AUTO) is not None
+        estado = _btn(ai_control, ai_control._LINK_YIELD_STATUS)
+        assert "NO cede" in estado.Text or "Sin punto" in estado.Text
+
+    def test_yield_con_punto_muestra_punto_t_y_borrar(
         self, ai_control, make_road, make_road_link, populate_graph, make_coords
     ):
         _setup_link_detail(
@@ -140,24 +145,39 @@ class TestSeccionCesionDetalle:
             make_road_link,
             populate_graph,
             make_coords,
-            yield_pts=[(0, -2), (0, 2)],
+            yield_type=YieldType.YIELD,
+            yield_point=(0, 5),
             yield_t=3.0,
-            yield_zone="CRUCE",
-            zones=("CRUCE",),
         )
         ai_control._map_ui_draw_elem_detail(_LINK_ID)
-        btns = _btns(ai_control)
-        texts = [b.Text for b in btns]
-        assert any("2 puntos" in t for t in texts)
-        t_btn = next(b for b in btns if b.ClickID == ai_control._LINK_YIELD_T_VAL)
-        assert "3.0" in t_btn.Text
-        zone_btn = next(b for b in btns if b.ClickID == ai_control._LINK_YIELD_ZONE_VAL)
-        assert "CRUCE" in zone_btn.Text
-        assert any(b.ClickID == ai_control._LINK_YIELD_CLEAR for b in btns)
-        rec_btn = next(b for b in btns if b.ClickID == ai_control._LINK_YIELD_REC)
-        assert "Regrabar" in rec_btn.Text
 
-    def test_t_sin_fijar_muestra_default(
+        assert _btn(ai_control, ai_control._LINK_YIELD_CLEAR) is not None
+        assert "3.0" in _btn(ai_control, ai_control._LINK_YIELD_T_VAL).Text
+
+    def test_t_sin_valor_muestra_el_float_efectivo_no_un_none(
+        self, ai_control, make_road, make_road_link, populate_graph, make_coords
+    ):
+        """Feedback de U8: el default se enseña como número, no como 'None'."""
+        _setup_link_detail(
+            ai_control,
+            make_road,
+            make_road_link,
+            populate_graph,
+            make_coords,
+            yield_type=YieldType.STOP,
+            yield_point=(0, 5),
+            yield_t=None,
+        )
+        ai_control._map_ui_draw_elem_detail(_LINK_ID)
+
+        t_btn = _btn(ai_control, ai_control._LINK_YIELD_T_VAL)
+        default = ai_control._map_ui_yield_default_t()
+        assert f"{default:g}" in t_btn.Text
+        assert "None" not in t_btn.Text
+        # Con T por defecto no se ofrece "Usar default": ya lo está.
+        assert _btn(ai_control, ai_control._LINK_YIELD_T_DEF) is None
+
+    def test_t_propio_ofrece_volver_al_default(
         self, ai_control, make_road, make_road_link, populate_graph, make_coords
     ):
         _setup_link_detail(
@@ -166,15 +186,82 @@ class TestSeccionCesionDetalle:
             make_road_link,
             populate_graph,
             make_coords,
-            yield_pts=[(0, -2), (0, 2)],
+            yield_type=YieldType.YIELD,
+            yield_point=(0, 5),
+            yield_t=7.5,
         )
         ai_control._map_ui_draw_elem_detail(_LINK_ID)
-        t_btn = next(
-            b for b in _btns(ai_control) if b.ClickID == ai_control._LINK_YIELD_T_VAL
-        )
-        assert "default" in t_btn.Text
 
-    def test_quitar_cesion_limpia_los_tres_campos(
+        assert _btn(ai_control, ai_control._LINK_YIELD_T_DEF) is not None
+
+
+class TestToggleTipo:
+    def test_el_toggle_cicla_none_yield_stop_none(
+        self, ai_control, make_road, make_road_link, populate_graph, make_coords
+    ):
+        link = _setup_link_detail(
+            ai_control, make_road, make_road_link, populate_graph, make_coords
+        )
+        ai_control._map_ui_draw_elem_detail(_LINK_ID)
+
+        ai_control._map_ui_click_elementos(ai_control._LINK_YIELD_TYPE)
+        assert link.yield_type is YieldType.YIELD
+        ai_control._map_ui_click_elementos(ai_control._LINK_YIELD_TYPE)
+        assert link.yield_type is YieldType.STOP
+        ai_control._map_ui_click_elementos(ai_control._LINK_YIELD_TYPE)
+        assert link.yield_type is YieldType.NONE
+
+    def test_pasar_a_none_no_borra_el_punto(
+        self, ai_control, make_road, make_road_link, populate_graph, make_coords
+    ):
+        """Apagar la cesión no tira el trabajo: el punto sigue ahí si vuelves."""
+        link = _setup_link_detail(
+            ai_control,
+            make_road,
+            make_road_link,
+            populate_graph,
+            make_coords,
+            yield_type=YieldType.STOP,
+            yield_point=(0, 5),
+        )
+        ai_control._map_ui_draw_elem_detail(_LINK_ID)
+
+        ai_control._map_ui_click_elementos(ai_control._LINK_YIELD_TYPE)  # STOP -> NONE
+
+        assert link.yield_type is YieldType.NONE
+        assert link.yield_point is not None
+        assert link.has_yield is False  # NONE no cede, tenga punto o no
+
+
+class TestMarcarPunto:
+    def test_marcar_punto_usa_el_coche_del_que_clica(
+        self,
+        ai_control,
+        make_road,
+        make_road_link,
+        populate_graph,
+        make_coords,
+        make_player,
+        make_telemetry,
+    ):
+        link = _setup_link_detail(
+            ai_control,
+            make_road,
+            make_road_link,
+            populate_graph,
+            make_coords,
+            yield_type=YieldType.YIELD,
+        )
+        _user_on_track(ai_control, make_player, make_telemetry, 0.0, 4.0)
+        ai_control._map_ui_draw_elem_detail(_LINK_ID)
+
+        ai_control._map_ui_click_elementos(ai_control._LINK_YIELD_MARK)
+
+        assert link.yield_point is not None
+        assert round(link.yield_point.y_m, 1) == 4.0
+        assert link.has_yield is True  # tipo + punto ⇒ ya cede
+
+    def test_marcar_punto_sin_coche_avisa_y_no_toca_el_link(
         self, ai_control, make_road, make_road_link, populate_graph, make_coords
     ):
         link = _setup_link_detail(
@@ -183,451 +270,307 @@ class TestSeccionCesionDetalle:
             make_road_link,
             populate_graph,
             make_coords,
-            yield_pts=[(0, -2), (0, 2)],
-            yield_t=3.0,
-            yield_zone="CRUCE",
-            zones=("CRUCE",),
+            yield_type=YieldType.YIELD,
         )
+        ai_control._map_ui_draw_elem_detail(_LINK_ID)
+
+        ai_control._map_ui_click_elementos(ai_control._LINK_YIELD_MARK)
+
+        assert link.yield_point is None
+        assert any(
+            "telemetria" in str(getattr(p, "Msg", "")) for p in ai_control.client.sent
+        )
+
+    def test_remarcar_pisa_el_punto_anterior(
+        self,
+        ai_control,
+        make_road,
+        make_road_link,
+        populate_graph,
+        make_coords,
+        make_player,
+        make_telemetry,
+    ):
+        """Es UN punto, no una lista: marcar otra vez lo mueve."""
+        link = _setup_link_detail(
+            ai_control,
+            make_road,
+            make_road_link,
+            populate_graph,
+            make_coords,
+            yield_type=YieldType.YIELD,
+            yield_point=(0, 2),
+        )
+        _user_on_track(ai_control, make_player, make_telemetry, 0.0, 8.0)
+        ai_control._map_ui_draw_elem_detail(_LINK_ID)
+
+        ai_control._map_ui_click_elementos(ai_control._LINK_YIELD_MARK)
+
+        assert round(link.yield_point.y_m, 1) == 8.0
+
+    def test_borrar_quita_el_punto_pero_respeta_el_tipo(
+        self, ai_control, make_road, make_road_link, populate_graph, make_coords
+    ):
+        link = _setup_link_detail(
+            ai_control,
+            make_road,
+            make_road_link,
+            populate_graph,
+            make_coords,
+            yield_type=YieldType.YIELD,
+            yield_point=(0, 5),
+            yield_t=3.0,
+        )
+        ai_control._map_ui_draw_elem_detail(_LINK_ID)
+
         ai_control._map_ui_click_elementos(ai_control._LINK_YIELD_CLEAR)
-        assert link.yield_line == []
-        assert link.yield_time_s is None
-        assert link.yield_zone_id is None
+
+        assert link.yield_point is None
+        assert link.yield_type is YieldType.YIELD  # el toggle no se toca
+        assert link.has_yield is False
 
 
-# ─── Grabador de la línea ────────────────────────────────────────────────────
-
-
-class TestGrabadorLinea:
-    def test_grabar_abre_el_grabador_siempre_en_manual(
+class TestAutoPunto:
+    def test_auto_coloca_el_punto_antes_del_primer_cruce(
         self, ai_control, make_road, make_road_link, populate_graph, make_coords
     ):
-        _setup_link_detail(
-            ai_control, make_road, make_road_link, populate_graph, make_coords
+        """R3 cruza el link en (0, 10): el punto va `setback` metros antes."""
+        link = _setup_link_detail(
+            ai_control,
+            make_road,
+            make_road_link,
+            populate_graph,
+            make_coords,
+            yield_type=YieldType.YIELD,
         )
-        # Aunque el toggle Auto general esté ACTIVO, el grabador nace manual.
-        ai_control.map_recorder.auto_recording_enabled = True
-        rec = _open_recorder(ai_control)
-        assert rec is not None
-        assert rec["type"] == "yield_line"
-        assert rec["link_id"] == _LINK_ID
-        assert rec["auto_phase"] == "manual"
-        texts = _texts(ai_control)
-        assert any("+ Anadir punto" in t for t in texts)
-        assert any(t == "Terminar" for t in texts)
-        assert any(t == "Cancelar" for t in texts)
-        assert any(t == "Auto: OFF" for t in texts)  # manual pese al global ON
-        # Y la captura automática está congelada de verdad.
-        ai_control.map_recorder.update_recording(make_coords(1, 1), 30.0)
-        assert rec["nodes"] == []
+        ai_control._map_ui_draw_elem_detail(_LINK_ID)
 
-    def test_grabar_no_pisa_otra_grabacion_activa(
+        ai_control._map_ui_click_elementos(ai_control._LINK_YIELD_AUTO)
+
+        assert link.yield_point is not None
+        setback = ai_control._map_ui_yield_setback()
+        assert round(link.yield_point.y_m, 1) == round(10.0 - setback, 1)
+        assert round(link.yield_point.x_m, 1) == 0.0
+
+    def test_auto_no_necesita_coche_en_pista(
         self, ai_control, make_road, make_road_link, populate_graph, make_coords
     ):
-        _setup_link_detail(
-            ai_control, make_road, make_road_link, populate_graph, make_coords
+        """Es geometría pura: no lee telemetría (a diferencia de Marcar punto)."""
+        link = _setup_link_detail(
+            ai_control,
+            make_road,
+            make_road_link,
+            populate_graph,
+            make_coords,
+            yield_type=YieldType.YIELD,
         )
-        otra = {"type": "road", "road_id": "X", "nodes": [], "is_new": True}
-        ai_control.map_recorder.current_recording = otra
-        ai_control._map_ui_click_elementos(ai_control._LINK_YIELD_REC)
-        assert ai_control.map_recorder.current_recording is otra
+        ai_control._map_ui_draw_elem_detail(_LINK_ID)
 
-    def test_anadir_punto_manual_usa_el_coche_del_usuario(
-        self,
-        ai_control,
-        make_road,
-        make_road_link,
-        populate_graph,
-        make_coords,
-        make_player,
-        make_telemetry,
-    ):
-        _setup_link_detail(
-            ai_control, make_road, make_road_link, populate_graph, make_coords
-        )
-        _user_on_track(ai_control, make_player, make_telemetry, 10.0, 20.0)
-        rec = _open_recorder(ai_control)
-        ai_control._map_ui_click_elementos(_CID_ANADIR_PUNTO)
-        assert len(rec["nodes"]) == 1
-        assert rec["nodes"][0].x_m == pytest.approx(10.0, abs=0.1)
-        assert rec["nodes"][0].y_m == pytest.approx(20.0, abs=0.1)
+        ai_control._map_ui_click_elementos(ai_control._LINK_YIELD_AUTO)
 
-    def test_anadir_punto_sin_telemetria_no_anade(
+        assert link.yield_point is not None
+
+    def test_auto_sin_cruces_usa_el_punto_de_union(
         self, ai_control, make_road, make_road_link, populate_graph, make_coords
     ):
-        _setup_link_detail(
-            ai_control, make_road, make_road_link, populate_graph, make_coords
+        """Un link que no pisa ninguna road sigue teniendo dónde ceder: la
+        INCORPORACIÓN. El punto de unión con la `to_road` es un punto de
+        conflicto más (decisión S45), así que [Auto] para antes de mezclarse.
+        """
+        populate_graph(
+            ai_control.map_recorder,
+            roads=[
+                make_road("R1", [(-50, 0), (0, 0)]),
+                make_road("R2", [(-20, 20), (20, 20)]),  # se incorpora en (0, 20)
+            ],
+            road_links=[make_road_link("R1", "R2", [(0, 0), (0, 20)])],
         )
-        rec = _open_recorder(ai_control)
-        ai_control._map_ui_click_elementos(_CID_ANADIR_PUNTO)
-        assert rec["nodes"] == []
+        link = ai_control.map_recorder.road_links[_LINK_ID]
+        link.yield_type = YieldType.YIELD
+        ai_control.map_recorder.active_map_name = "test"
+        ai_control.map_recorder.client = ai_control.client
+        ai_control._init_ui_state()
+        ai_control._ui_ucid = 3
+        ai_control._ui_tab = "elementos"
+        ai_control._ui_elem_detail_id = _LINK_ID
+        ai_control._map_ui_draw_elem_detail(_LINK_ID)
 
-    def test_toggle_auto_activa_la_captura_y_vuelve(
-        self,
-        ai_control,
-        make_road,
-        make_road_link,
-        populate_graph,
-        make_coords,
-        make_player,
-        make_telemetry,
-    ):
-        mr = ai_control.map_recorder
-        _setup_link_detail(
-            ai_control, make_road, make_road_link, populate_graph, make_coords
-        )
-        _user_on_track(ai_control, make_player, make_telemetry, 0.0, 0.0, plid=5)
-        rec = _open_recorder(ai_control)
+        ai_control._map_ui_click_elementos(ai_control._LINK_YIELD_AUTO)
 
-        ai_control._map_ui_click_elementos(_CID_AUTO)  # ON
-        assert rec["auto_phase"] == "recording"
-        assert mr.auto_recording_enabled is True
-        assert mr.recording_plid == 5  # se fija al coche del usuario
-        mr.update_recording(make_coords(1, 1), 30.0)
-        assert len(rec["nodes"]) == 1  # ahora sí captura
+        setback = ai_control._map_ui_yield_setback()
+        assert round(link.yield_point.y_m, 1) == round(20.0 - setback, 1)
 
-        ai_control._map_ui_click_elementos(_CID_AUTO)  # OFF
-        assert rec["auto_phase"] == "manual"
-        mr.update_recording(make_coords(50, 50), 30.0)
-        assert len(rec["nodes"]) == 1  # congelado otra vez
-
-    def test_terminar_requiere_dos_puntos(
-        self,
-        ai_control,
-        make_road,
-        make_road_link,
-        populate_graph,
-        make_coords,
-    ):
-        _setup_link_detail(
-            ai_control, make_road, make_road_link, populate_graph, make_coords
-        )
-        rec = _open_recorder(ai_control)
-        rec["nodes"].append(make_coords(0, -2))
-        ai_control._map_ui_click_elementos(_CID_TERMINAR)
-        assert rec["auto_phase"] != "ask_t"  # no avanza
-        assert ai_control.map_recorder.current_recording is rec
-
-    def test_terminar_pide_t_con_typein(
+    def test_auto_sin_destino_avisa_y_no_inventa_punto(
         self, ai_control, make_road, make_road_link, populate_graph, make_coords
     ):
-        _setup_link_detail(
-            ai_control, make_road, make_road_link, populate_graph, make_coords
+        """Link colgado (su `to_road` no existe): no hay ni cruce ni unión."""
+        populate_graph(
+            ai_control.map_recorder,
+            roads=[make_road("R1", [(-50, 0), (0, 0)])],  # R2 no existe
+            road_links=[make_road_link("R1", "R2", [(0, 0), (0, 20)])],
         )
-        rec = _open_recorder(ai_control)
-        rec["nodes"] += [make_coords(0, -2), make_coords(0, 2)]
-        ai_control.client.sent.clear()
-        ai_control._map_ui_click_elementos(_CID_TERMINAR)
-        assert rec["auto_phase"] == "ask_t"
-        btns = _btns(ai_control)
-        assert any(b.ClickID == _TI1 for b in btns)  # TypeIn de T
-        assert any(b.Text == "Guardar" for b in btns)
-        # En ask_t la captura automática queda congelada.
-        ai_control.map_recorder.auto_recording_enabled = True
-        ai_control.map_recorder.update_recording(make_coords(9, 9), 30.0)
-        assert len(rec["nodes"]) == 2
+        link = ai_control.map_recorder.road_links[_LINK_ID]
+        link.yield_type = YieldType.YIELD
+        ai_control.map_recorder.active_map_name = "test"
+        ai_control.map_recorder.client = ai_control.client
+        ai_control._init_ui_state()
+        ai_control._ui_ucid = 3
+        ai_control._ui_tab = "elementos"
+        ai_control._ui_elem_detail_id = _LINK_ID
+        ai_control._map_ui_draw_elem_detail(_LINK_ID)
 
-    def test_guardar_comete_linea_y_t(
+        ai_control._map_ui_click_elementos(ai_control._LINK_YIELD_AUTO)
+
+        assert link.yield_point is None
+        assert any(
+            "cruce" in str(getattr(p, "Msg", "")).lower()
+            for p in ai_control.client.sent
+        )
+
+    def test_auto_ignora_la_from_road(
+        self, ai_control, make_road, make_road_link, populate_graph, make_coords
+    ):
+        """De la vía que dejas atrás no se cede (decisión S45): R1 no cuenta,
+        aunque el link nazca sobre ella. El primer cruce es R3, en (0, 10)."""
+        link = _setup_link_detail(
+            ai_control,
+            make_road,
+            make_road_link,
+            populate_graph,
+            make_coords,
+            yield_type=YieldType.YIELD,
+        )
+        ai_control._map_ui_draw_elem_detail(_LINK_ID)
+
+        ai_control._map_ui_click_elementos(ai_control._LINK_YIELD_AUTO)
+
+        setback = ai_control._map_ui_yield_setback()
+        assert round(link.yield_point.y_m, 1) == round(10.0 - setback, 1)
+
+
+class TestTiempoT:
+    def test_guardar_t_valido(
         self, ai_control, make_road, make_road_link, populate_graph, make_coords
     ):
         link = _setup_link_detail(
-            ai_control, make_road, make_road_link, populate_graph, make_coords
+            ai_control,
+            make_road,
+            make_road_link,
+            populate_graph,
+            make_coords,
+            yield_type=YieldType.YIELD,
+            yield_point=(0, 5),
         )
-        rec = _open_recorder(ai_control)
-        rec["nodes"] += [make_coords(0, -2), make_coords(0, 2)]
-        ai_control._map_ui_click_elementos(_CID_TERMINAR)
-        ai_control._ui_input_buffer[_TI1] = "2.5"
-        ai_control._map_ui_click_elementos(_CID_GUARDAR_T)
-        assert len(link.yield_line) == 2
+        ai_control._map_ui_draw_elem_detail(_LINK_ID)
+
+        ai_control._ui_input_buffer[ai_control._LINK_YIELD_T_VAL] = "2.5"
+        ai_control._map_ui_yield_apply_t(ai_control._LINK_YIELD_T_VAL)
+
         assert link.yield_time_s == 2.5
-        assert ai_control.map_recorder.current_recording is None
 
-    def test_guardar_sin_teclear_deja_t_default(
+    def test_t_invalido_no_comete(
         self, ai_control, make_road, make_road_link, populate_graph, make_coords
     ):
         link = _setup_link_detail(
-            ai_control, make_road, make_road_link, populate_graph, make_coords
-        )
-        rec = _open_recorder(ai_control)
-        rec["nodes"] += [make_coords(0, -2), make_coords(0, 2)]
-        ai_control._map_ui_click_elementos(_CID_TERMINAR)
-        ai_control._map_ui_click_elementos(_CID_GUARDAR_T)  # sin escribir nada
-        assert len(link.yield_line) == 2
-        assert link.yield_time_s is None  # None ⇒ default global
-        assert ai_control.map_recorder.current_recording is None
-
-    def test_guardar_t_invalido_no_comete(
-        self, ai_control, make_road, make_road_link, populate_graph, make_coords
-    ):
-        link = _setup_link_detail(
-            ai_control, make_road, make_road_link, populate_graph, make_coords
-        )
-        rec = _open_recorder(ai_control)
-        rec["nodes"] += [make_coords(0, -2), make_coords(0, 2)]
-        ai_control._map_ui_click_elementos(_CID_TERMINAR)
-        ai_control._ui_input_buffer[_TI1] = "abc"
-        ai_control._map_ui_click_elementos(_CID_GUARDAR_T)
-        assert rec["auto_phase"] == "ask_t"  # sigue pidiendo T
-        assert ai_control.map_recorder.current_recording is rec
-        assert link.yield_line == []
-
-    def test_volver_de_ask_t_conserva_los_puntos(
-        self, ai_control, make_road, make_road_link, populate_graph, make_coords
-    ):
-        _setup_link_detail(
-            ai_control, make_road, make_road_link, populate_graph, make_coords
-        )
-        rec = _open_recorder(ai_control)
-        rec["nodes"] += [make_coords(0, -2), make_coords(0, 2)]
-        ai_control._map_ui_click_elementos(_CID_TERMINAR)
-        ai_control._map_ui_click_elementos(_CID_VOLVER_T)
-        assert rec["auto_phase"] == "manual"
-        assert len(rec["nodes"]) == 2
-
-    def test_cancelar_descarta_sin_tocar_el_link(
-        self, ai_control, make_road, make_road_link, populate_graph, make_coords
-    ):
-        link = _setup_link_detail(
-            ai_control, make_road, make_road_link, populate_graph, make_coords
-        )
-        rec = _open_recorder(ai_control)
-        rec["nodes"] += [make_coords(0, -2), make_coords(0, 2)]
-        ai_control._map_ui_click_elementos(_CID_CANCELAR)
-        assert ai_control.map_recorder.current_recording is None
-        assert link.yield_line == []
-
-
-# ─── Picker de zonas ─────────────────────────────────────────────────────────
-
-
-class TestPickerZona:
-    def _abrir_picker(
-        self, app, make_road, make_road_link, populate_graph, make_coords, **kw
-    ):
-        link = _setup_link_detail(
-            app,
-            make_road,
-            make_road_link,
-            populate_graph,
-            make_coords,
-            yield_pts=[(0, -2), (0, 2)],
-            zones=("CRUCE", "OTRA"),
-            **kw,
-        )
-        app._map_ui_click_elementos(app._LINK_YIELD_ZONE_VAL)
-        return link
-
-    def test_boton_zona_abre_el_picker(
-        self, ai_control, make_road, make_road_link, populate_graph, make_coords
-    ):
-        self._abrir_picker(
-            ai_control, make_road, make_road_link, populate_graph, make_coords
-        )
-        assert ai_control._ui_link_zone_picking is True
-        texts = _texts(ai_control)
-        assert "CRUCE" in texts and "OTRA" in texts
-        assert any(t == "Ninguna" for t in texts)
-        assert any(t == "Cancelar" for t in texts)
-
-    def test_elegir_zona_la_asigna_y_cierra(
-        self, ai_control, make_road, make_road_link, populate_graph, make_coords
-    ):
-        link = self._abrir_picker(
-            ai_control, make_road, make_road_link, populate_graph, make_coords
-        )
-        ai_control._map_ui_click_elementos(_CID_ZONA_ITEM0)  # "CRUCE" (orden alfab.)
-        assert link.yield_zone_id == "CRUCE"
-        assert ai_control._ui_link_zone_picking is False
-
-    def test_ninguna_limpia_la_zona(
-        self, ai_control, make_road, make_road_link, populate_graph, make_coords
-    ):
-        link = self._abrir_picker(
             ai_control,
             make_road,
             make_road_link,
             populate_graph,
             make_coords,
-            yield_zone="CRUCE",
-        )
-        ai_control._map_ui_click_elementos(_CID_ZONA_NINGUNA)
-        assert link.yield_zone_id is None
-        assert ai_control._ui_link_zone_picking is False
-
-    def test_cancelar_no_cambia_nada(
-        self, ai_control, make_road, make_road_link, populate_graph, make_coords
-    ):
-        link = self._abrir_picker(
-            ai_control,
-            make_road,
-            make_road_link,
-            populate_graph,
-            make_coords,
-            yield_zone="CRUCE",
-        )
-        ai_control._map_ui_click_elementos(_CID_ZONA_CANCELAR)
-        assert link.yield_zone_id == "CRUCE"
-        assert ai_control._ui_link_zone_picking is False
-
-
-# ─── TypeIn de T en el detalle (via on_ISP_BTT) ──────────────────────────────
-
-
-class TestTypeInTDetalle:
-    def _detail_con_linea(
-        self, app, make_road, make_road_link, populate_graph, make_coords, yield_t=None
-    ):
-        link = _setup_link_detail(
-            app,
-            make_road,
-            make_road_link,
-            populate_graph,
-            make_coords,
-            yield_pts=[(0, -2), (0, 2)],
-            yield_t=yield_t,
-        )
-        app._map_ui_draw_elem_detail(_LINK_ID)  # puebla _ui_detail_field_map
-        return link
-
-    def test_btt_fija_t(
-        self, ai_control, make_road, make_road_link, populate_graph, make_coords
-    ):
-        link = self._detail_con_linea(
-            ai_control, make_road, make_road_link, populate_graph, make_coords
-        )
-        ai_control.on_ISP_BTT(
-            ISP_BTT(UCID=3, ClickID=ai_control._LINK_YIELD_T_VAL, Text="5")
-        )
-        assert link.yield_time_s == 5.0
-
-    def test_btt_default_vuelve_a_none(
-        self, ai_control, make_road, make_road_link, populate_graph, make_coords
-    ):
-        link = self._detail_con_linea(
-            ai_control,
-            make_road,
-            make_road_link,
-            populate_graph,
-            make_coords,
+            yield_type=YieldType.YIELD,
+            yield_point=(0, 5),
             yield_t=3.0,
         )
-        ai_control.on_ISP_BTT(
-            ISP_BTT(UCID=3, ClickID=ai_control._LINK_YIELD_T_VAL, Text="default")
-        )
-        assert link.yield_time_s is None
+        ai_control._map_ui_draw_elem_detail(_LINK_ID)
 
-    def test_btt_invalido_no_cambia(
+        for basura in ("-1", "0", "hola"):
+            ai_control._ui_input_buffer[ai_control._LINK_YIELD_T_VAL] = basura
+            ai_control._map_ui_yield_apply_t(ai_control._LINK_YIELD_T_VAL)
+            assert link.yield_time_s == 3.0  # intacto
+
+    def test_usar_default_devuelve_t_a_none(
         self, ai_control, make_road, make_road_link, populate_graph, make_coords
     ):
-        link = self._detail_con_linea(
+        link = _setup_link_detail(
             ai_control,
             make_road,
             make_road_link,
             populate_graph,
             make_coords,
-            yield_t=3.0,
+            yield_type=YieldType.YIELD,
+            yield_point=(0, 5),
+            yield_t=9.0,
         )
-        ai_control.on_ISP_BTT(
-            ISP_BTT(UCID=3, ClickID=ai_control._LINK_YIELD_T_VAL, Text="abc")
-        )
-        assert link.yield_time_s == 3.0
+        ai_control._map_ui_draw_elem_detail(_LINK_ID)
 
+        ai_control._map_ui_click_elementos(ai_control._LINK_YIELD_T_DEF)
 
-# ─── Backend en map_recorder (_cmd_set / _cmd_rec_end) ──────────────────────
+        assert link.yield_time_s is None  # None ⇒ default global de config
 
 
 class TestRecorderBackend:
-    def _mr(self, app, make_road, make_road_link, populate_graph, make_coords, **kw):
+    """Lo que la UI delega en `map_recorder` (`_cmd_set`), por el camino real."""
+
+    def test_set_yield_type_acepta_el_vocabulario(
+        self, ai_control, make_road, make_road_link, populate_graph, make_coords
+    ):
         link = _setup_link_detail(
-            app, make_road, make_road_link, populate_graph, make_coords, **kw
-        )
-        return app.map_recorder, link
-
-    def test_cmd_set_yield_time_s_float_y_none(
-        self, ai_control, make_road, make_road_link, populate_graph, make_coords
-    ):
-        mr, link = self._mr(
             ai_control, make_road, make_road_link, populate_graph, make_coords
         )
-        mr._cmd_set(_LINK_ID, "yield_time_s", "2.0")
-        assert link.yield_time_s == 2.0
-        mr._cmd_set(_LINK_ID, "yield_time_s", "none")
-        assert link.yield_time_s is None
+        mr = ai_control.map_recorder
 
-    def test_cmd_set_yield_time_s_invalido_no_cambia(
+        mr._cmd_set(_LINK_ID, "yield_type", "stop")
+        assert link.yield_type is YieldType.STOP
+        mr._cmd_set(_LINK_ID, "yield_type", "YIELD")
+        assert link.yield_type is YieldType.YIELD
+
+    def test_set_yield_type_rechaza_lo_que_no_es_del_vocabulario(
         self, ai_control, make_road, make_road_link, populate_graph, make_coords
     ):
-        mr, link = self._mr(
+        link = _setup_link_detail(
+            ai_control, make_road, make_road_link, populate_graph, make_coords
+        )
+        ai_control.map_recorder._cmd_set(_LINK_ID, "yield_type", "CEDA")
+
+        assert link.yield_type is YieldType.NONE  # intacto
+
+    def test_el_punto_no_se_edita_a_mano(
+        self, ai_control, make_road, make_road_link, populate_graph, make_coords
+    ):
+        link = _setup_link_detail(
+            ai_control, make_road, make_road_link, populate_graph, make_coords
+        )
+        ai_control.map_recorder._cmd_set(_LINK_ID, "yield_point", "0,5")
+
+        assert link.yield_point is None
+
+    def test_check_avisa_del_tipo_sin_punto(
+        self, ai_control, make_road, make_road_link, populate_graph, make_coords
+    ):
+        _setup_link_detail(
             ai_control,
             make_road,
             make_road_link,
             populate_graph,
             make_coords,
-            yield_t=3.0,
+            yield_type=YieldType.YIELD,
         )
-        mr._cmd_set(_LINK_ID, "yield_time_s", "abc")
-        assert link.yield_time_s == 3.0
-        mr._cmd_set(_LINK_ID, "yield_time_s", "-1")
-        assert link.yield_time_s == 3.0  # T debe ser positivo
+        _errores, advertencias = ai_control.map_recorder.collect_check_results()
 
-    def test_cmd_set_yield_zone_id(
+        assert any("NO cede" in a for a in advertencias)
+
+    def test_check_avisa_del_punto_huerfano(
         self, ai_control, make_road, make_road_link, populate_graph, make_coords
     ):
-        mr, link = self._mr(
+        _setup_link_detail(
             ai_control,
             make_road,
             make_road_link,
             populate_graph,
             make_coords,
-            zones=("CRUCE",),
+            yield_type=YieldType.NONE,
+            yield_point=(0, 5),
         )
-        mr._cmd_set(_LINK_ID, "yield_zone_id", "CRUCE")
-        assert link.yield_zone_id == "CRUCE"
-        mr._cmd_set(_LINK_ID, "yield_zone_id", "none")
-        assert link.yield_zone_id is None
+        _errores, advertencias = ai_control.map_recorder.collect_check_results()
 
-    def test_cmd_set_yield_line_esta_bloqueado(
-        self, ai_control, make_road, make_road_link, populate_graph, make_coords
-    ):
-        mr, link = self._mr(
-            ai_control,
-            make_road,
-            make_road_link,
-            populate_graph,
-            make_coords,
-            yield_pts=[(0, -2), (0, 2)],
-        )
-        antes = list(link.yield_line)
-        mr._cmd_set(_LINK_ID, "yield_line", "clear")
-        assert link.yield_line == antes  # se graba, no se edita a mano
-
-    def test_cmd_rec_end_comete_la_linea(
-        self, ai_control, make_road, make_road_link, populate_graph, make_coords
-    ):
-        mr, link = self._mr(
-            ai_control, make_road, make_road_link, populate_graph, make_coords
-        )
-        mr.current_recording = {
-            "type": "yield_line",
-            "link_id": _LINK_ID,
-            "nodes": [make_coords(0, -2), make_coords(0, 2)],
-            "auto_phase": "manual",
-        }
-        mr._cmd_rec_end()
-        assert len(link.yield_line) == 2
-        assert mr.current_recording is None
-
-    def test_cmd_rec_end_con_un_punto_descarta(
-        self, ai_control, make_road, make_road_link, populate_graph, make_coords
-    ):
-        mr, link = self._mr(
-            ai_control, make_road, make_road_link, populate_graph, make_coords
-        )
-        mr.current_recording = {
-            "type": "yield_line",
-            "link_id": _LINK_ID,
-            "nodes": [make_coords(0, -2)],
-            "auto_phase": "manual",
-        }
-        mr._cmd_rec_end()
-        assert link.yield_line == []
-        assert mr.current_recording is None
+        assert any("se ignora" in a for a in advertencias)

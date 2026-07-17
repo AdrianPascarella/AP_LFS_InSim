@@ -5,6 +5,74 @@
 
 ---
 
+## S46 — 2026-07-17 — Fase 8: 8.6.5 (UI de mapeo) hecho; suite verde otra vez (914)
+
+**Arranque limpio:** árbol limpio, ya en la rama, `git pull` sin novedades, 0 fichas U pendientes,
+nada que proteger. Se leyó la skill `ai-control-map-ui` antes de abrir `map_ui.py` (manda el
+handoff) y el contrato entero de `PLAN.md § 8.6`.
+
+**Dos huecos del diseño → dos preguntas por selector, ANTES de escribir código** (el handoff lo
+exigía: "si aparece algo que el diseño no previó, parar y preguntar"). Las dos recomendadas se
+aceptaron:
+
+1. **`[Auto]`: ¿cuánto retrocede?** El diseño decía "justo antes del primer cruce real" sin decir
+   cuánto, y el punto de conflicto cae en el **eje** de la road que cruzas (parar ahí = morro en
+   mitad del carril). → **dial nuevo `yield_auto_setback_m` = 5.0**, no constante, para afinarlo
+   en LFS sin tocar código. El retroceso va **por el trazado** (`auto_yield_point`): en un link en
+   L dobla la esquina; en línea recta el punto se habría salido del link.
+2. **La tabla de la zona: "auto-poblada" Y "borrable" se contradicen.** → se repuebla **solo** al
+   grabar el polígono y con **[Re-detectar]**; `autodetect_zone_roads` conserva el `YieldType` de
+   las que sobreviven. Si se repoblara al dibujar, los falsos cruces borrados volverían al salir
+   y entrar del detalle.
+
+**Lo que se hizo (red primero en cada pieza):**
+
+- **Geometría (7 tests):** `auto_yield_point` + `_point_at_arc_2d` / `_project_on_segment_2d` en
+  `yielding.py`. El cruce se **proyecta** antes de medir (viene del eje de otra road, no cae
+  exacto sobre el link). Link más corto que el retroceso ⇒ primer nodo.
+- **Backend del recorder:** `_cmd_set` (`yield_type` con validación del vocabulario + tabla
+  `roads` con `set;Via,TIPO` / `del;Via` / `clear`; fuera `yield_line`, `priority_rules`,
+  `yield_zone_id`) · `_cmd_rec_end` (zona ⇒ **≥3 puntos** + auto-poblado, con el mensaje diciendo
+  que los puntos se descartan) · `_cmd_check` al modelo nuevo (polígono, tabla, tipo-sin-punto,
+  punto-huérfano, "ninguna vía es NONE") · `!map info` (tabla y punto) · `autodetect_zone_roads`.
+- **UI del link (24 tests):** toggle + `[+ Marcar punto]` + `[Auto]` + `[Borrar]` + T con float
+  efectivo y `[Usar default]`. **Murieron** el grabador por fases (`type="yield_line"`,
+  `auto_phase`), la pantalla `ask_t` y el picker de zonas: −266 líneas netas en ese bloque.
+- **UI de la zona (24 tests):** polígono (reusa el grabador normal `type="zone"`) + T + tabla con
+  toggle por road, `[X]` y `[Re-detectar]`. **Murió** el editor de `priority_rules`: −102 líneas.
+  Fichero de tests renombrado `test_map_ui_zone_priority.py` → `test_map_ui_zone_yield.py`
+  ("priority" es vocabulario muerto).
+- **Reparto de CIDs** documentado y sin solapes: zona **134-151**, link **152-160** (nunca
+  coexisten: un detalle es de un tipo o del otro). 134-139 eran de la pestaña Info y se reutilizan
+  por la convención del módulo (el contenido se borra al cambiar de pestaña).
+
+**El bug que el grep destapó y la suite NO:** `map_ui.py::_map_ui_compute_whereami` seguía leyendo
+`ctx.zone_radius`, borrado del modelo en S45 ⇒ **AttributeError en cuanto pineabas el overlay de
+zona**. Ningún test lo cubría. Se arregló (`zone_inside`, nuevo en `LocationContext`, que solo es
+True dentro de un polígono de verdad) **y se le escribió red**: 4 tests nuevos, incluido
+`!map whereami zone` por su camino real. Esa era exactamente la clase de trampa que el aviso
+"puede petar con AttributeError" del handoff anunciaba.
+
+**Dos tests míos estaban mal, no el código** (se corrigieron los tests, y ambos documentan ahora
+una decisión real): (a) `[Auto]` en un link que no cruza nada **sí** coloca punto — el de unión con
+la `to_road` es un punto de conflicto más (S45), así que para antes de la **incorporación**; el
+caso sin punto es el link colgado (su `to_road` no existe). (b) un `rec_end` inválido **descarta**
+los puntos: es el contrato de `_cmd_rec_end` para todos los tipos desde antes del 8.6 (un `finally`
+limpia `current_recording`; el test viejo se llamaba literalmente `..._descarta`). No se tocó —
+solo se hizo explícito en el mensaje; si molesta en LFS, es su propio bloque.
+
+**Verificación:** `ruff check` + `ruff format` limpios · **pytest 914 pasan / 0 fallan** (los 9
+rojos que S45 dejó a propósito han caído: eran el trabajo a medias, como estaba escrito) ·
+`lfs-insim list` carga los 4 InSims · `close_check.py` → PASS.
+
+**Consecuencia:** se **levanta la restricción de S45**: ya se puede mapear en LFS. Sale la ficha
+**U9** (validar la herramienta rediseñada). No bloquea el 8.6.6 (el render no toca la UI), pero
+conviene hacerla pronto: el 8.6.7 se apoya en poder grabar el polígono.
+
+**Commits:** el de esta sesión (geometría + backend + las dos UIs + skill + docs).
+
+---
+
 ## S45 — 2026-07-17 — Fase 8: 8.6 a medias (modelo + geometría + conducta del link); UI y render fuera
 
 **Arranque limpio:** árbol limpio, ya en la rama, `git pull` sin novedades, 0 fichas U pendientes.

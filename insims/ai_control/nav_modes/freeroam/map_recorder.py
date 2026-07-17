@@ -30,9 +30,11 @@ from insims.ai_control.nav_modes.freeroam.graph import (
 from insims.ai_control.nav_modes.freeroam.map_renderer import generate_map_image
 from insims.ai_control.nav_modes.freeroam.spatial_grid import SpatialHashGrid
 from insims.ai_control.traffic.yielding import (
+    DEFAULT_YIELD_Z_TOLERANCE_M,
     ConflictPoint,
     closest_node_idx_2d,
     link_conflict_points,
+    roads_touching_polygon,
 )
 from insims.users_management.main import Coordinates
 from lfs_insim.insim_enums import CSVAL, SND
@@ -327,6 +329,30 @@ class MapRecorder(PacketSenderMixin):
         self._link_conflicts_cache[key] = puntos
         return puntos
 
+    def autodetect_zone_roads(
+        self,
+        zone: IntersectionZone,
+        z_tolerance_m: float = DEFAULT_YIELD_Z_TOLERANCE_M,
+    ) -> List[str]:
+        """Re-escanea la tabla `roads` de una zona contra su polígono (S44).
+
+        La tabla se auto-puebla con las roads que pisan el polígono (con
+        tolerancia en Z, para que un puente no entre), pero es EDITABLE: por eso
+        esto NO se llama solo. Solo lo dispara el usuario, al grabar el polígono
+        (la forma cambió ⇒ toca re-escanear) o con el botón [Re-detectar]. Entre
+        medias, lo que borre a mano se queda borrado.
+
+        El `YieldType` de las roads que sobreviven al re-escaneo se CONSERVA: no
+        se tira el trabajo hecho. Las nuevas entran como `NONE` (no ceden), que
+        es el default seguro del diseño. Devuelve los ids nuevos.
+        """
+        tocadas = roads_touching_polygon(
+            zone.nodes, self.roads, z_tolerance_m=z_tolerance_m
+        )
+        previas = dict(zone.roads)
+        zone.roads = {rid: previas.get(rid, YieldType.NONE) for rid in tocadas}
+        return [rid for rid in tocadas if rid not in previas]
+
     def _get_road_index(self) -> SpatialHashGrid:
         """Devuelve el índice espacial de roads, reconstruyéndolo si está sucio.
 
@@ -460,13 +486,16 @@ class MapRecorder(PacketSenderMixin):
         if find_zones and self.zones:
             min_dist_to_shape = float("inf")
             closest_zone_id = None
-            closest_zone_obj = None
+            closest_zone_inside = False
 
             for z_id, zone in self.zones.items():
                 nodes = zone.nodes
                 num_nodos = len(nodes)
                 dist_to_shape = float("inf")
+                dentro = False
 
+                # Solo un polígono (>=3) encierra: con menos nodos la zona está
+                # a medias (S44) y se mide la distancia a lo que haya grabado.
                 if num_nodos == 1:
                     dist_to_shape = math.hypot(px - nodes[0].x_m, py - nodes[0].y_m)
                 elif num_nodos == 2:
@@ -476,18 +505,19 @@ class MapRecorder(PacketSenderMixin):
                 elif num_nodos >= 3:
                     if is_point_in_polygon_2d(px, py, nodes):
                         dist_to_shape = 0.0
+                        dentro = True
                     else:
                         dist_to_shape = get_dist_to_polygon_edge_2d(px, py, nodes)
 
                 if dist_to_shape < min_dist_to_shape:
                     min_dist_to_shape = dist_to_shape
                     closest_zone_id = z_id
-                    closest_zone_obj = zone
+                    closest_zone_inside = dentro
 
             if closest_zone_id:
                 ctx.zone_id = closest_zone_id
                 ctx.zone_dist = min_dist_to_shape
-                ctx.zone_radius = closest_zone_obj.radius_m
+                ctx.zone_inside = closest_zone_inside
 
         return ctx
 
@@ -1235,7 +1265,11 @@ class MapRecorder(PacketSenderMixin):
         )
 
     def _cmd_rec_zone(self, zone_id: str):
-        """Inicia la grabación de los nodos que delimitan una zona de intersección (punto, línea o polígono)."""
+        """Inicia la grabación del POLÍGONO que delimita una zona (S44).
+
+        Su contorno ES el borde donde se para: mínimo 3 puntos, sin máximo. No
+        hay radio (murió con el rediseño) — el único umbral es el tiempo.
+        """
         pass  # recording_plid se fija desde la UI antes de iniciar la grabación
         # Escudos básicos
         if not self.active_map_name:
@@ -1283,7 +1317,7 @@ class MapRecorder(PacketSenderMixin):
 
         self.send(
             ISP_MSL(
-                Msg=f"{TextColors.CYAN}Captura: 1 punto (Centro), 2 (Línea) o 3+ (Polígono)."
+                Msg=f"{TextColors.CYAN}Rodea el cruce: marca 3 puntos o más (el contorno ES el borde donde se para)."
             )
         )
         self.send(
@@ -1550,36 +1584,35 @@ class MapRecorder(PacketSenderMixin):
             # ==========================================
             elif rec_type == "zone":
                 obj_id = self.current_recording["zone_id"]
+                # Una zona ES un polígono (S44): su contorno es el borde donde
+                # se para, así que con menos de 3 puntos no encierra nada.
+                if len(nodes) < 3:
+                    self.send(
+                        ISP_MSL(
+                            Msg=f"{TextColors.RED}Error: Una zona es un poligono y requiere al menos 3 puntos. Grabados: {len(nodes)} -> se descartan (la zona anterior queda intacta).",
+                            Sound=SND.INVALIDKEY,
+                        )
+                    )
+                    return
                 if not is_new and obj_id in self.zones:
                     self.zones[obj_id].nodes = nodes
                 else:
                     self.zones[obj_id] = IntersectionZone(zone_id=obj_id, nodes=nodes)
+                # La forma cambió ⇒ toca re-escanear qué roads la pisan.
+                nuevas = self.autodetect_zone_roads(self.zones[obj_id])
+                if nuevas:
+                    self.send(
+                        ISP_MSL(
+                            Msg=f"{TextColors.CYAN}Vias detectadas en la zona: {TextColors.WHITE}{', '.join(nuevas)}{TextColors.CYAN} (todas NONE: revisa cuales ceden)."
+                        )
+                    )
+                else:
+                    self.send(
+                        ISP_MSL(
+                            Msg=f"{TextColors.YELLOW}Ninguna via nueva pisa el poligono: la zona no gobierna a nadie todavia."
+                        )
+                    )
                 msg_tipo = "Zona"
-
-            # ==========================================
-            # GUARDADO DE LINEA DE CESION (Fase 8: yield_line de un RoadLink)
-            # ==========================================
-            elif rec_type == "yield_line":
-                obj_id = self.current_recording["link_id"]
-                link = self.road_links.get(obj_id)
-                if link is None:
-                    self.send(
-                        ISP_MSL(
-                            Msg=f"{TextColors.RED}Error: El link '{obj_id}' ya no existe. Linea descartada.",
-                            Sound=SND.INVALIDKEY,
-                        )
-                    )
-                    return
-                if len(nodes) < 2:
-                    self.send(
-                        ISP_MSL(
-                            Msg=f"{TextColors.RED}Error: La linea de cesion requiere al menos 2 puntos. Grabados: {len(nodes)}.",
-                            Sound=SND.INVALIDKEY,
-                        )
-                    )
-                    return
-                link.yield_line = nodes
-                msg_tipo = "Linea de cesion"
 
             # ==========================================
             # GUARDADO DE REGLA ESPECIAL
@@ -1815,15 +1848,24 @@ class MapRecorder(PacketSenderMixin):
                 display_val = f"{len(val)} nodos" if val else "Sin nodos"
                 editable_tag = f"{TextColors.GREEN}[EDIT: {rec_cmd}]"
 
-            # Caso C: Reglas de prioridad de Zonas
-            elif prop_name == "priority_rules":
+            # Caso C: Tabla de vías de una Zona (S44) — quién cede al cruzar de recto
+            elif prop_name == "roads":
                 if not val:
-                    display_val = "Sin reglas"
+                    display_val = "Sin vias (nadie cede aqui)"
                 else:
                     display_val = " | ".join(
-                        [f"[{r[0]}>{r[1]}]" for r in val if len(r) == 2]
+                        f"[{via}={tipo.value}]" for via, tipo in val.items()
                     )
-                editable_tag = f"{TextColors.GREEN}[EDIT: !map set {obj_id} {prop_name} add/del/clear;V1,V2]"
+                editable_tag = f"{TextColors.GREEN}[EDIT: !map set {obj_id} {prop_name} set;Via,NONE|YIELD|STOP]"
+
+            # Caso C2: Punto de cesión de un RoadLink — se marca con el coche
+            elif prop_name == "yield_point":
+                display_val = (
+                    f"({val.x_m:.1f}, {val.y_m:.1f})"
+                    if val is not None
+                    else "Sin punto"
+                )
+                # Se queda con [NO EDITABLE]: se marca desde .map ui (Elementos)
 
             # Caso D: Enums (TrafficRule, IndicatorType...)
             elif hasattr(val, "name") and not isinstance(val, type):
@@ -1979,18 +2021,12 @@ class MapRecorder(PacketSenderMixin):
 
         if search_by in ["zone", "all"]:
             if ctx.zone_id:
-                if ctx.zone_dist <= ctx.zone_radius:
+                if ctx.zone_inside:
                     self.send(
                         ISP_MSL(
-                            Msg=f"{TextColors.GREEN}DENTRO del área de zona: {TextColors.WHITE}{ctx.zone_id} {TextColors.GREEN}(Radio: {ctx.zone_radius}m)"
+                            Msg=f"{TextColors.GREEN}DENTRO del polígono de la zona: {TextColors.WHITE}{ctx.zone_id}"
                         )
                     )
-                    if ctx.zone_dist <= 1.5:
-                        self.send(
-                            ISP_MSL(
-                                Msg=f"{TextColors.CYAN}¡Estás SOBRE la geometría de la zona!"
-                            )
-                        )
                 else:
                     self.send(
                         ISP_MSL(
@@ -2050,27 +2086,41 @@ class MapRecorder(PacketSenderMixin):
                     f"[LatLink {ll_id}] 'road_b' ({llink.road_b}) no existe."
                 )
 
+        # Zonas (S44): polígono + tabla de vías. Sin radio ni pares de prioridad.
         for z_id, zone in self.zones.items():
-            if not zone.nodes:
-                errores.append(f"[Zona {z_id}] No tiene nodos de delimitacion.")
-            if zone.radius_m is None or zone.radius_m <= 0:
-                errores.append(f"[Zona {z_id}] 'radius_m' invalido ({zone.radius_m}).")
-            if not zone.priority_rules:
-                advertencias.append(f"[Zona {z_id}] 'priority_rules' esta vacio.")
+            if not zone.has_polygon:
+                errores.append(
+                    f"[Zona {z_id}] No es un poligono ({len(zone.nodes)} nodos, minimo 3): no gobierna nada."
+                )
+            if not zone.roads:
+                advertencias.append(
+                    f"[Zona {z_id}] Tabla de vias vacia: nadie cede en esta zona."
+                )
             else:
-                for rule in zone.priority_rules:
-                    if len(rule) != 2:
-                        errores.append(f"[Zona {z_id}] Regla mal formada.")
-                        continue
-                    via_pref, via_cede = rule
-                    if via_pref not in self.roads:
+                for via, tipo in zone.roads.items():
+                    if via not in self.roads:
                         advertencias.append(
-                            f"[Zona {z_id}] Regla usa via preferente fantasma '{via_pref}'."
+                            f"[Zona {z_id}] La tabla nombra una via fantasma '{via}'."
                         )
-                    if via_cede not in self.roads:
-                        advertencias.append(
-                            f"[Zona {z_id}] Regla obliga a ceder a via fantasma '{via_cede}'."
-                        )
+                if all(tipo is YieldType.NONE for tipo in zone.roads.values()):
+                    advertencias.append(
+                        f"[Zona {z_id}] Todas las vias son NONE: nadie cede en esta zona."
+                    )
+                if not any(tipo is YieldType.NONE for tipo in zone.roads.values()):
+                    advertencias.append(
+                        f"[Zona {z_id}] Ninguna via es NONE: todas ceden y nadie tiene prioridad."
+                    )
+
+        # Cesión de los links (S44): el tipo y el punto van juntos o no cede.
+        for rl_id, link in self.road_links.items():
+            if link.yield_type is not YieldType.NONE and link.yield_point is None:
+                advertencias.append(
+                    f"[RoadLink {rl_id}] yield_type={link.yield_type.value} sin punto marcado: este giro NO cede."
+                )
+            if link.yield_type is YieldType.NONE and link.yield_point is not None:
+                advertencias.append(
+                    f"[RoadLink {rl_id}] Tiene punto de cesion pero yield_type=NONE: el punto se ignora."
+                )
 
         for r_id, road in self.roads.items():
             if road.speed_limit_kmh is None or road.speed_limit_kmh <= 0:
@@ -2227,10 +2277,10 @@ class MapRecorder(PacketSenderMixin):
             )
             return
 
-        if prop == "yield_line":
+        if prop == "yield_point":
             self.send(
                 ISP_MSL(
-                    Msg=f"{TextColors.RED}La linea de cesion se graba con el coche, no se edita a mano. Usa el detalle del link en .map ui (Elementos)."
+                    Msg=f"{TextColors.RED}El punto de cesion se marca con el coche, no se edita a mano. Usa el detalle del link en .map ui (Elementos)."
                 )
             )
             return
@@ -2252,65 +2302,77 @@ class MapRecorder(PacketSenderMixin):
         current_val = getattr(obj, prop)
 
         try:
-            # --- CASO A: Sintaxis Especial priority_rules (IntersectionZone) ---
-            if prop == "priority_rules" and obj_type == "Zone":
+            # --- CASO A: Tabla `roads` de una zona (S44) ---
+            # Quién cede AL CRUZAR DE RECTO por esta zona. Se auto-puebla al
+            # grabar el polígono (o con [Re-detectar]); aquí se ajusta a mano.
+            if prop == "roads" and obj_type == "Zone":
                 partes = val_str.split(";")
                 operacion = partes[0].lower().strip()
 
                 if operacion == "clear":
-                    obj.priority_rules.clear()
+                    obj.roads.clear()
                     self.send(
                         ISP_MSL(
-                            Msg=f"{TextColors.GREEN}Todas las reglas de prioridad borradas en {obj_id}."
+                            Msg=f"{TextColors.GREEN}Tabla de vias vaciada en {obj_id}."
                         )
                     )
                     return
 
-                elif operacion in ["add", "del"] and len(partes) == 2:
-                    vias = [x.strip() for x in partes[1].split(",")]
-                    if len(vias) != 2:
+                if operacion == "set" and len(partes) == 2:
+                    campos = [x.strip() for x in partes[1].split(",")]
+                    if len(campos) != 2:
                         self.send(
                             ISP_MSL(
-                                Msg=f"{TextColors.RED}Formato invalido. Usa: {operacion};ViaA,ViaB"
+                                Msg=f"{TextColors.RED}Formato invalido. Usa: set;Via,NONE|YIELD|STOP"
                             )
                         )
                         return
-
-                    if operacion == "add":
-                        if vias not in obj.priority_rules:
-                            obj.priority_rules.append(vias)
-                            self.send(
-                                ISP_MSL(
-                                    Msg=f"{TextColors.GREEN}Regla anadida: {vias[0]} tiene prioridad sobre {vias[1]}"
-                                )
+                    via, tipo_str = campos[0], campos[1].upper()
+                    try:
+                        tipo = YieldType(tipo_str)
+                    except ValueError:
+                        self.send(
+                            ISP_MSL(
+                                Msg=f"{TextColors.RED}Tipo invalido '{tipo_str}'. Usa: NONE | YIELD | STOP"
                             )
-                        else:
-                            self.send(
-                                ISP_MSL(
-                                    Msg=f"{TextColors.YELLOW}Esa regla ya existe en la zona."
-                                )
-                            )
-
-                    elif operacion == "del":
-                        if vias in obj.priority_rules:
-                            obj.priority_rules.remove(vias)
-                            self.send(
-                                ISP_MSL(
-                                    Msg=f"{TextColors.GREEN}Regla eliminada: {vias[0]} > {vias[1]}"
-                                )
-                            )
-                        else:
-                            self.send(
-                                ISP_MSL(
-                                    Msg=f"{TextColors.RED}La regla no existe en esta zona."
-                                )
-                            )
-                else:
+                        )
+                        return
+                    obj.roads[via] = tipo
                     self.send(
                         ISP_MSL(
-                            Msg=f"{TextColors.RED}Uso: clear | add;ViaA,ViaB | del;ViaA,ViaB"
+                            Msg=f"{TextColors.GREEN}{via} = {tipo.value} en la zona {obj_id}."
                         )
                     )
+                    if via not in self.roads:
+                        self.send(
+                            ISP_MSL(
+                                Msg=f"{TextColors.YELLOW}Aviso: la via '{via}' no existe en el mapa."
+                            )
+                        )
+                    return
+
+                if operacion == "del" and len(partes) == 2:
+                    via = partes[1].strip()
+                    if via in obj.roads:
+                        del obj.roads[via]
+                        self.send(
+                            ISP_MSL(
+                                Msg=f"{TextColors.GREEN}{via} fuera de la tabla de {obj_id}."
+                            )
+                        )
+                    else:
+                        self.send(
+                            ISP_MSL(
+                                Msg=f"{TextColors.RED}La via '{via}' no esta en la tabla de esta zona."
+                            )
+                        )
+                    return
+
+                self.send(
+                    ISP_MSL(
+                        Msg=f"{TextColors.RED}Uso: clear | set;Via,NONE|YIELD|STOP | del;Via"
+                    )
+                )
                 return
 
             # --- CASO B: Mapeo de Intermitentes (CSVAL.INDICATORS) ---
@@ -2467,26 +2529,33 @@ class MapRecorder(PacketSenderMixin):
                 )
                 return
 
-            if prop == "yield_zone_id":
-                zona = val_str.strip()
-                if zona.lower() in ("none", ""):
-                    obj.yield_zone_id = None
+            if prop == "yield_type":
+                tipo_str = val_str.strip().upper()
+                try:
+                    tipo = YieldType(tipo_str)
+                except ValueError:
                     self.send(
                         ISP_MSL(
-                            Msg=f"{TextColors.GREEN}yield_zone_id retirado en {obj_id}."
+                            Msg=f"{TextColors.RED}Tipo invalido '{tipo_str}'. Usa: NONE | YIELD | STOP"
                         )
                     )
                     return
-                obj.yield_zone_id = zona
+                obj.yield_type = tipo
                 self.send(
                     ISP_MSL(
-                        Msg=f"{TextColors.GREEN}yield_zone_id = '{zona}' en {obj_id}."
+                        Msg=f"{TextColors.GREEN}yield_type = {tipo.value} en {obj_id}."
                     )
                 )
-                if zona not in self.zones:
+                # Un tipo sin punto está a medias: no hay línea que derivar, así
+                # que el giro NO cede (graph.py::has_yield). Mejor decirlo aquí
+                # que dejar al usuario creyendo que ya cede.
+                if (
+                    tipo is not YieldType.NONE
+                    and getattr(obj, "yield_point", None) is None
+                ):
                     self.send(
                         ISP_MSL(
-                            Msg=f"{TextColors.YELLOW}Aviso: La zona '{zona}' aun no existe en el mapa."
+                            Msg=f"{TextColors.YELLOW}Aviso: sin punto marcado este giro NO cede. Marca el punto en el detalle del link."
                         )
                     )
                 return

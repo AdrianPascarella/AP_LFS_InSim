@@ -183,5 +183,8 @@ class LocationContext:
 
     # Datos de Zona
     zone_id: Optional[str] = None
-    zone_dist: float = float("inf")
-    zone_radius: float = 0.0
+    zone_dist: float = float("inf")  # 0.0 si se está dentro del polígono
+    # ¿Dentro del polígono de la zona? (S44: no hay radio — el contorno ES el
+    # borde). Solo puede ser True con un polígono de verdad: una zona a medias
+    # (<3 nodos) no encierra nada.
+    zone_inside: bool = False

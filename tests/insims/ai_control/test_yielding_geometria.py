@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from insims.ai_control.nav_modes.freeroam.geometry import segment_intersection_2d
 from insims.ai_control.traffic.yielding import (
+    auto_yield_point,
     derive_yield_line,
     link_conflict_points,
     roads_touching_polygon,
@@ -197,6 +198,82 @@ class TestDeriveYieldLine:
     def test_sin_punto_o_sin_trazado_no_hay_linea(self, make_coords):
         assert derive_yield_line([], make_coords(1.0, 1.0), width_m=4.0) == []
         assert derive_yield_line([make_coords(0.0, 0.0)], None, width_m=4.0) == []
+
+
+class TestAutoYieldPoint:
+    """El punto que coloca el botón [Auto] (8.6.5).
+
+    "Justo antes del primer cruce real": el punto de conflicto cae en el EJE de
+    la road que cruzas, así que se retrocede por el TRAZADO del link.
+    """
+
+    def test_retrocede_el_setback_desde_el_cruce(self, make_coords):
+        link_nodes = [make_coords(0.0, 0.0), make_coords(20.0, 0.0)]
+
+        punto = auto_yield_point(link_nodes, 10.0, 0.0, setback_m=5.0)
+
+        assert punto is not None
+        assert round(punto.x_m, 3) == 5.0  # 5 m ANTES del cruce
+        assert round(punto.y_m, 3) == 0.0
+
+    def test_el_retroceso_dobla_la_esquina(self, make_coords):
+        """Link en L: se retrocede por el trazado, no en línea recta.
+
+        Trazado (0,0)→(10,0)→(10,10); el cruce en (10,5) está a 15 m de arco.
+        Con 8 m de retroceso el punto cae a 7 m de arco: (7, 0), en el PRIMER
+        tramo. En línea recta habría caído en (10, -3), fuera del link.
+        """
+        link_nodes = [
+            make_coords(0.0, 0.0),
+            make_coords(10.0, 0.0),
+            make_coords(10.0, 10.0),
+        ]
+
+        punto = auto_yield_point(link_nodes, 10.0, 5.0, setback_m=8.0)
+
+        assert punto is not None
+        assert (round(punto.x_m, 3), round(punto.y_m, 3)) == (7.0, 0.0)
+
+    def test_link_mas_corto_que_el_setback_da_el_primer_nodo(self, make_coords):
+        """No hay sitio para retroceder: se para al empezar la maniobra."""
+        link_nodes = [make_coords(0.0, 0.0), make_coords(10.0, 0.0)]
+
+        punto = auto_yield_point(link_nodes, 3.0, 0.0, setback_m=5.0)
+
+        assert punto is not None
+        assert (round(punto.x_m, 3), round(punto.y_m, 3)) == (0.0, 0.0)
+
+    def test_sin_retroceso_es_el_propio_cruce(self, make_coords):
+        link_nodes = [make_coords(0.0, 0.0), make_coords(20.0, 0.0)]
+
+        punto = auto_yield_point(link_nodes, 12.0, 0.0, setback_m=0.0)
+
+        assert punto is not None
+        assert round(punto.x_m, 3) == 12.0
+
+    def test_la_z_se_interpola_del_trazado(self, make_coords):
+        """El punto vive SOBRE el link: su altura sale del trazado, no del cruce."""
+        link_nodes = [make_coords(0.0, 0.0, 0.0), make_coords(20.0, 0.0, 20.0)]
+
+        punto = auto_yield_point(link_nodes, 10.0, 0.0, setback_m=5.0)
+
+        assert punto is not None
+        assert round(punto.z_m, 3) == 5.0  # a 5 m de arco, la rampa va por z=5
+
+    def test_cruce_fuera_del_trazado_se_proyecta(self, make_coords):
+        """El cruce viene del eje de otra road: puede no caer exacto en el link."""
+        link_nodes = [make_coords(0.0, 0.0), make_coords(20.0, 0.0)]
+
+        punto = auto_yield_point(link_nodes, 10.0, 3.0, setback_m=4.0)
+
+        assert punto is not None
+        assert (round(punto.x_m, 3), round(punto.y_m, 3)) == (6.0, 0.0)
+
+    def test_sin_trazado_utilizable_no_hay_punto(self, make_coords):
+        assert auto_yield_point([], 1.0, 1.0, setback_m=5.0) is None
+        assert (
+            auto_yield_point([make_coords(0.0, 0.0)], 1.0, 1.0, setback_m=5.0) is None
+        )
 
 
 class TestRoadsTouchingPolygon:

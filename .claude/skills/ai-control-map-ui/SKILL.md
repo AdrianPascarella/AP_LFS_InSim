@@ -45,6 +45,9 @@ estable** y la **receta**; NO números de línea (envejecen). Para el detalle re
   cada pantalla. Los CIDs se **reutilizan** entre pestañas (se borran al cambiar).
   - 130–133 son los TypeIn/label designados: `_UI_CID_TI1=130`, `_UI_CID_TI2=131`,
     `_UI_CID_TI3=132`, `_UI_CID_LBL_CONF=133`.
+  - En el **detalle de Elementos** el área está repartida así: filas de campos
+    estándar 111–126, sección de **zona** 134–151 y sección de **link** 152–160.
+    Las dos últimas nunca coexisten (un detalle es de un tipo o de otro).
 - **166+**: **overlays que PERSISTEN** al cambiar de pestaña y al cerrar el menú
   (no los borra el clear de contenido). Ej.: overlay "whereami" pineado (166–171).
   Usa este rango solo si el elemento debe sobrevivir fuera de la sesión de menú.
@@ -105,10 +108,33 @@ estable** y la **receta**; NO números de línea (envejecen). Para el detalle re
   con origen/destino auto-detectados, con pantallas de confirmación y de conflicto. Grep
   `_map_ui_draw_auto_link` / `_map_ui_start_auto_link`. Tests en `test_map_ui_auto_link.py`.
   Buen patrón de "estado del flujo en `current_recording`" y de reutilizar `_cmd_rec_end`.
-- **Cesión de un RoadLink (Fase 8)** — sección extra en el detalle de Elementos
-  (CIDs 152-159) con tres sub-pantallas a contenido completo: grabador de la
-  `yield_line` (fases en `current_recording["auto_phase"]`: "manual" congela la
-  captura auto, "recording" captura, "ask_t" pide el TypeIn de T), y picker de
-  zonas calcado del de vías. Grep `_map_ui_draw_link_yield`. Tests en
-  `test_map_ui_link_yield.py`. Buen patrón de sección-por-tipo en el detalle y
-  de sub-pantalla con fase que sobrevive a cerrar el menú.
+- **Cesión, los DOS mecanismos (Fase 8, rediseño S44 · bloque 8.6.5)** — dos
+  secciones extra en el detalle de Elementos, **sin ninguna sub-pantalla**: cada
+  una se dibuja solo para su tipo, así que sus rangos de CID no se pisan.
+  - **RoadLink** (el que hace la maniobra), CIDs **152-160**: toggle
+    `NONE|YIELD|STOP` + `[+ Marcar punto]` (UN punto, un clic, del coche del que
+    clica) + `[Auto]` (geometría pura: retrocede `yield_auto_setback_m` desde el
+    primer punto de conflicto — no necesita coche en pista) + `[Borrar]` + T.
+    Grep `_map_ui_draw_link_yield`. Tests en `test_map_ui_link_yield.py`.
+  - **Zona** (el que cruza de recto), CIDs **134-151**: grabador del polígono
+    (reusa el grabador normal `type="zone"`, el de la pestaña Grabar) + T +
+    tabla de vías auto-poblada con un toggle por road, su `[X]` y
+    `[Re-detectar]`. Grep `_map_ui_draw_zone_yield`. Tests en
+    `test_map_ui_zone_yield.py`.
+  - **Los dos son ORTOGONALES: no se referencian jamás.** El link no nombra
+    zonas y la zona no nombra links. Confundirlos fue lo que hundió la UI del
+    8.4 (veredicto U8) — si vas a "conectarlos", para y relee `PLAN.md § 8.6`.
+  - **Patrón de la fila de T** (`_map_ui_draw_yield_t_row`, compartida): enseña
+    el **float efectivo**, nunca `None`, y ofrece `[Usar default]` solo si hay
+    valor propio del que volver. `_map_ui_yield_apply_t` valida el TypeIn.
+  - **Patrón de la tabla auto-poblada**: `_map_ui_draw_zone_roads_rows` **NO**
+    puebla — solo pinta. Se repuebla al grabar el polígono y con
+    `[Re-detectar]` (`map_recorder.autodetect_zone_roads`, que conserva los
+    tipos ya puestos). Si poblaras al dibujar, lo que el usuario borra
+    reaparecería al salir y entrar.
+
+  > ⚠️ **Muerto en el 8.6.5, no lo resucites:** el grabador por fases de la
+  > `yield_line` (`current_recording` con `type="yield_line"` y `auto_phase`
+  > manual/recording/ask_t), el picker de zonas del link (`yield_zone_id`) y el
+  > editor de pares `priority_rules` de la zona. El punto del link es **uno** y
+  > la línea se **deriva** de él (`derive_yield_line`).
