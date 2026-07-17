@@ -44,11 +44,14 @@ class TestCargaSouthCity:
     """Caracterización: el mapa real carga entero."""
 
     def test_south_city_carga_intacto(self, ai_control):
+        # Conteos de CARACTERIZACIÓN: se re-basan cuando el usuario amplía el
+        # mapa en el juego (S42, S44, S46). Que fallen tras un remapeo es lo
+        # normal; lo que vigilan es que el mapa real siga cargando entero.
         mr = ai_control.map_recorder
         assert mr._load_map_from_disk("south_city") is True
-        assert len(mr.roads) == 223
-        assert len(mr.road_links) == 374
-        assert len(mr.lateral_links) == 43
+        assert len(mr.roads) == 226
+        assert len(mr.road_links) == 387
+        assert len(mr.lateral_links) == 50
         assert "test1" in mr.zones
 
     def test_zona_vieja_carga_con_lo_que_sobrevive(self, ai_control):
