@@ -14,7 +14,16 @@
 
 ### U9 — Validar en LFS la herramienta de cesión rediseñada (8.6.5)
 
-- **Tipo:** validar en el juego · **Tiempo estimado:** ~20-30 min
+> 🔎 **Ya la empezaste** (se ve en el mapa que commiteó S46): grabaste la road `Erase_test` y el
+> link `Erase_test->PitLane`, que es **el único del mapa con `yield_type=YIELD` y punto marcado**.
+> O sea que el toggle, el marcado del punto y el guardado **funcionan**. Falta tu **veredicto**:
+> las fichas no las cierro yo (MODUS §8). Cuéntame cómo fue y la cierro.
+>
+> ❓ **Y de paso:** ¿`Erase_test` (37 nodos + su link) es basura de la prueba o la quieres? Está
+> commiteada tal cual — **no la borro por mi cuenta**, es trabajo tuyo grabado en el juego. Si es
+> basura, se quita en 1 minuto la próxima sesión.
+
+- **Tipo:** validar en el juego · **Tiempo estimado:** ~20-30 min (menos: ya la empezaste)
 - **Bloquea:** nada todavía. El **8.6.6** (render) no te necesita y puedo hacerlo ya. Pero
   **cuanto antes la hagas, mejor**: es el rediseño entero de lo que en U8 dijiste *"funciona, a
   mejorar"*, y si algo está mal quiero saberlo **antes** de apilarle encima el render y la

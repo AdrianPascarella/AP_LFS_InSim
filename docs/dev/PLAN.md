@@ -894,12 +894,24 @@ conductor*, no el borde de un círculo, y regala el **punto de compromiso**.
     contara, tus propios seguidores te dejarían clavado en la línea) y **el punto de unión con la
     `to_road` se añade a mano**: el trazado ACABA ahí, así que su "cruce" es degenerado y la
     geometría no lo garantiza. El diseño ya decía que el punto de unión es "uno más".
-- [ ] **8.7 Migración** — (antes 8.6) convertir `test1` al modelo **ya rediseñado** (8.6) y retirar
-      lo que el rediseño deje muerto. Con el diseño S44 eso es: `priority_rules`, `radius_m`,
-      `yield_zone_id` y la rama de zona de `traffic/zones.py::_yield_threat_detected`.
-      ⚠️ `test1` es hoy un **círculo** (`radius_m` 10) con 2 `priority_rules`: sus reglas dan
-      directamente el reparto `NONE`/`YIELD`, pero **la forma no se convierte sola** — hay que
-      **regrabar el polígono** (≥3 puntos) en el juego. Eso lo hace el usuario ⇒ **ficha U**.
+- [ ] **8.7 Migración de `test1`** — lo muerto ya se retiró en el 8.6 (decisión S45), así que aquí
+      solo queda lo que **necesita al usuario**: **regrabar `test1` como polígono** (≥3 puntos) en
+      el juego, porque su forma no se convierte sola ⇒ **ficha U**.
+      ⚠️ **Dato rescatado en S46 — no lo busques en el historial de git.** Al mapear con el código
+      del 8.6 el JSON se re-guardó y `test1` **perdió en disco** su `radius_m` (10.0) y sus
+      `priority_rules`; hoy es una cápsula de 2 nodos con `roads: {}`. Las reglas que tenía, y el
+      reparto que implican en el modelo nuevo, eran:
+
+      | Vía | Regla vieja | Modelo nuevo |
+      |---|---|---|
+      | `HAVEN_LANE_S22_a` | preferente | `NONE` |
+      | `HAVEN_LANE_S22_b` | preferente | `NONE` |
+      | `SOUTH_CITY_STATION_s2` | cede ante las dos | `YIELD` |
+
+      Al regrabar el polígono, la tabla se auto-puebla sola con las vías que lo pisen: basta con
+      poner `SOUTH_CITY_STATION_s2` en `YIELD` y dejar las `HAVEN_LANE` en `NONE`. (El radio de
+      10 m es solo una referencia del tamaño que tenía; el polígono se graba a ojo rodeando el
+      cruce.)
 - [ ] **8.8 Validación en LFS (usuario)** — (antes 8.7) → cola de validación del handoff.
 
 **Criterio de aceptación:** intersecciones **fáciles de crear** (sin teclear ids ni razonar en pares) y conducta

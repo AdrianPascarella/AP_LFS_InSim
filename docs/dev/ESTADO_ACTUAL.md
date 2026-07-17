@@ -10,9 +10,15 @@
 > está arreglado **y con red** (no tenía ninguna: por eso se coló hasta aquí).
 >
 > **▶️ PRÓXIMO: 8.6.6 (render)** → 8.6.7 (conducta de la zona) → 8.6.8 (cierre del bloque).
-> **Tienes 1 ficha pendiente: [U9](ACCIONES_USUARIO.md)** — validar la herramienta en LFS. **No
-> bloquea** el 8.6.6 (el render no toca la UI), pero cuanto antes la hagas, menos se apila sobre
-> algo sin validar. Contrato: `PLAN.md § Fase 8, bloque 8.6`.
+> **Tienes 1 ficha pendiente: [U9](ACCIONES_USUARIO.md)** — validar la herramienta en LFS. **Ya la
+> empezaste** (el mapa trae `Erase_test->PitLane` con `yield_type=YIELD` y punto marcado ⇒ la
+> herramienta graba bien): **falta tu veredicto**. **No bloquea** el 8.6.6 (el render no toca la
+> UI). Contrato: `PLAN.md § Fase 8, bloque 8.6`.
+>
+> 🗺️ **El mapa creció en S46** (roads **226**, road_links **387**, lateral_links **50**) y el JSON
+> quedó **migrado al modelo del 8.6** en el primer guardado: los 374 links cambiaron de esquema sin
+> cambiar de valores. `test1` perdió en disco `radius_m` y `priority_rules` — **rescatadas a
+> `PLAN.md § 8.7`** antes de que solo vivieran en el historial de git.
 
 **Rama de trabajo: `refactor/estabilizacion`** (`main` intacta hasta el merge). Sync por GitHub:
 `git pull` al arrancar, commit + `git push` al cerrar (si el push se cuelga: MODUS §7 y la memoria
@@ -73,17 +79,18 @@ del equipo `git-push-gcm-workaround`).
 
 ## Lo que te toca a ti
 
-**1 acción pendiente: [U9](ACCIONES_USUARIO.md)** — validar en LFS la herramienta de cesión
-rediseñada (~20-30 min). No bloquea el próximo paso, pero es el rediseño entero de lo que en U8
-dijiste *"funciona, a mejorar"*: cuanto antes se sepa si sirve, menos se apila encima.
+**1 acción pendiente: [U9](ACCIONES_USUARIO.md)** — **ya la empezaste en el juego**; lo que falta
+es tu **veredicto** (las fichas no las cierro yo). De paso, dime si `Erase_test` (37 nodos + su
+link) es basura de la prueba o la quieres: está commiteada y **no la borro por mi cuenta**.
 
-Después traerá otra: **regrabar `test1` como polígono** (8.7; su forma vieja no se convierte sola).
+Después traerá otra: **regrabar `test1` como polígono** (8.7; su forma vieja no se convierte sola,
+pero sus reglas ya están rescatadas en `PLAN.md § 8.7`).
 
 ## Notas operativas
 
 - Tests: `.venv\Scripts\python.exe -m pytest -q` (**914 pasan / 0 fallan**). El conteo de
   `south_city` en `test_map_persistencia.py` es de **caracterización**: se re-basa cuando el
-  usuario amplía el mapa (S42, S44) — que falle tras un remapeo es normal.
+  usuario amplía el mapa (S42, S44, **S46 → 226/387/50**) — que falle tras un remapeo es normal.
   Python 3.9 se verifica vía CI: `gh run list --branch refactor/estabilizacion` (**verde**).
 - Cierre de sesión: MODUS §2 — el último paso es `.venv\Scripts\python.exe scripts\close_check.py`
   (debe dar PASS) y pegar su salida.

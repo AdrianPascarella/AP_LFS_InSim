@@ -69,7 +69,31 @@ rojos que S45 dejó a propósito han caído: eran el trabajo a medias, como esta
 **U9** (validar la herramienta rediseñada). No bloquea el 8.6.6 (el render no toca la UI), pero
 conviene hacerla pronto: el 8.6.7 se apoya en poder grabar el polígono.
 
-**Commits:** el de esta sesión (geometría + backend + las dos UIs + skill + docs).
+**Cierre — el usuario fue a mapear con la herramienta recién hecha y trajo mapas tocados**
+(protegidos según MODUS §1.2 sin preguntar: respaldo en
+`~/backups/AP_LFS_InSim_maps/2026-07-17_S46/` → JSON validado → commit `c0c7a9a` → push):
+
+- **Mapeo nuevo:** roads 223 → **226**, road_links 374 → **387** (+13: A13/London Road, Kenton
+  Way, High Street, Commercial/Arcade S22, PitLane), lateral_links 43 → **50** (+7). Conteos de
+  caracterización re-basados (práctica de S42/S44). Suite **914/914**.
+- **El diff asustaba y no era nada:** los **374 links** salían "modificados". Se comprobó antes de
+  commitear: cambian de **esquema sin cambiar de valores** (`yield_line`/`yield_zone_id` fuera,
+  `yield_type`/`yield_point` dentro). Es la migración del 8.6 aterrizando en disco en el primer
+  guardado, exactamente lo que S45 predijo ("el loader filtra claves desconocidas ⇒ al re-guardar
+  quedan fuera"). Mirarlo costó un minuto y evitó commitear a ciegas 374 objetos.
+- **Rescate:** ese mismo guardado le quitó a `test1` sus `radius_m` y `priority_rules` **en disco**
+  (sigue siendo cápsula de 2 nodos con `roads: {}`). El 8.7 las necesitaba como entrada, así que
+  se extrajeron de `HEAD` y se escribieron en **`PLAN.md § 8.7`** como tabla
+  (`HAVEN_LANE_S22_a/b` = `NONE`, `SOUTH_CITY_STATION_s2` = `YIELD`): el dato ya no depende de
+  saber arqueología de git.
+- **U9 empezada, sin veredicto:** el usuario grabó `Erase_test` + `Erase_test->PitLane`, **el único
+  link del mapa con `yield_type=YIELD` y `yield_point` marcado** ⇒ el toggle, el marcado y el
+  guardado funcionan de verdad en LFS. La ficha **sigue abierta**: falta su veredicto (§8, las
+  fichas no las cierra Claude). Queda preguntado si `Erase_test` (37 nodos) es basura de la prueba;
+  **no se borró** — es trabajo suyo grabado en el juego.
+
+**Commits:** `ee44624` (geometría + backend + las dos UIs + skill + docs) · `c0c7a9a` (mapeo S46 +
+migración del JSON + re-baseo de conteos).
 
 ---
 
