@@ -1,18 +1,31 @@
-"""Predicados PUROS de la cesión de paso (Fase 8, S38).
+"""Predicados PUROS de la cesión de paso (Fase 8, S38; ampliado en el 8.6/S44).
 
-Sin estado y sin LFS: la conducta (bloque 8.3) los compone desde el
-orquestador de tráfico. Un solo concepto — tiempo-al-punto — con dos formas
-de "qué vigilo": el punto de unión del RoadLink (tráfico del `to_road`) y el
-punto de conflicto de una `IntersectionZone` referenciada (tráfico cruzado).
+Sin estado y sin LFS: la conducta los compone desde el orquestador de tráfico.
+Un solo concepto — tiempo-al-punto — que sirve a los DOS mecanismos ortogonales
+del diseño S44, sin que ninguno se refiera al otro:
+
+- el **link** (el que hace la maniobra) vigila los puntos de conflicto que su
+  trazado se encuentra: `link_conflict_points`;
+- la **zona** (el que cruza de recto) vigila el borde de su polígono, con las
+  roads que lo pisan: `roads_touching_polygon`.
+
+Aquí vive además la geometría propia de la cesión: los puntos de conflicto, la
+línea de detención derivada del `yield_point` y el auto-poblado de la tabla de
+la zona. La matemática genérica (cruce de segmentos, punto-en-polígono) está en
+`nav_modes/freeroam/geometry.py`.
 """
 
 from __future__ import annotations
 
 import math
-from typing import TYPE_CHECKING, List, Optional
+from typing import Dict, Iterable, List, NamedTuple, Optional
 
-if TYPE_CHECKING:
-    from insims.users_management.um_class import Coordinates
+from insims.ai_control.nav_modes.freeroam.geometry import (
+    calc_dist_point_to_segment_2d,
+    is_point_in_polygon_2d,
+    segment_intersection_2d,
+)
+from insims.users_management.um_class import Coordinates
 
 # Ventana por defecto de la cesión (s): se cede si el vigilado llega en menos
 # de este tiempo. Heredada del modelo viejo (_is_priority_vehicle_active_at_zone
@@ -23,6 +36,32 @@ DEFAULT_YIELD_TIME_S = 4.0
 # amenaza (tiempo-al-punto = inf). Cambio deliberado respecto al modelo viejo,
 # que usaba este mismo valor como SUELO de velocidad (y contaba a los parados).
 STOPPED_SPEED_MS = 0.5
+
+# ─── Diales del rediseño S44 (config: `yield_*`) ────────────────────────────
+
+# Ancho (m) de la línea de detención que se DERIVA del `yield_point`. Cubre el
+# carril de lado a lado: es la cuerda contra la que se mide el compromiso.
+DEFAULT_YIELD_LINE_WIDTH_M = 6.0
+
+# Cuánto aguanta parado un `STOP` antes de volver a evaluar como `YIELD` (s).
+DEFAULT_YIELD_STOP_HOLD_S = 1.0
+
+# Tolerancia en altura (m) al detectar cruces: por encima de esto no es un
+# cruce sino un puente / paso inferior, y no se cede a quien pasa por debajo.
+DEFAULT_YIELD_Z_TOLERANCE_M = 3.0
+
+
+class ConflictPoint(NamedTuple):
+    """Un sitio donde el trazado de un link se cruza con una road.
+
+    `node_idx` es el nodo de ESA road más cercano al cruce: con él se mide el
+    arco que le falta a un coche de esa road para llegar al conflicto.
+    """
+
+    road_id: str
+    x_m: float
+    y_m: float
+    node_idx: int
 
 
 def time_to_point_s(dist_m: float, speed_ms: float) -> float:
@@ -99,6 +138,182 @@ def has_crossed_line(
     if side_pos == 0.0 or side_ref == 0.0:
         return False
     return (side_pos > 0.0) == (side_ref > 0.0)
+
+
+def closest_node_idx_2d(x_m: float, y_m: float, nodes: List["Coordinates"]) -> int:
+    """Índice del nodo (2D) más cercano a (x_m, y_m). Lista vacía ⇒ 0."""
+    best_idx, best_dist = 0, math.inf
+    for i, node in enumerate(nodes):
+        dist = math.hypot(node.x_m - x_m, node.y_m - y_m)
+        if dist < best_dist:
+            best_idx, best_dist = i, dist
+    return best_idx
+
+
+def link_conflict_points(
+    link_nodes: List["Coordinates"],
+    roads: Dict[str, object],
+    z_tolerance_m: float = DEFAULT_YIELD_Z_TOLERANCE_M,
+    exclude_ids: Iterable[str] = (),
+) -> List[ConflictPoint]:
+    """Los puntos de conflicto que el trazado de un link se encuentra (S44).
+
+    Ya NO se vigila solo la `to_road`: se cruza el trazado del link contra la
+    geometría de TODAS las roads y cada cruce aporta un punto (el de unión
+    sobre la `to_road` sale de aquí como uno más). Un cruce con más de
+    `z_tolerance_m` de desnivel es un puente, no un cruce, y no cuenta.
+
+    `exclude_ids` deja fuera roads concretas — en producción, la `from_road`:
+    de la vía que dejas atrás no se cede, y el "primer cruce real" del diseño
+    es con otra vía.
+
+    Una road pisada varias veces aporta solo su cruce MÁS TEMPRANO (el primero
+    que te encuentras siguiendo el trazado): es el que manda al conducir.
+    """
+    if len(link_nodes) < 2:
+        return []
+
+    excluded = set(exclude_ids)
+    # {road_id: (orden_del_cruce_a_lo_largo_del_link, ConflictPoint)}
+    best: Dict[str, tuple] = {}
+
+    for seg_i in range(len(link_nodes) - 1):
+        a, b = link_nodes[seg_i], link_nodes[seg_i + 1]
+        for road_id, road in roads.items():
+            if road_id in excluded:
+                continue
+            nodes = getattr(road, "nodes", [])
+            for j in range(len(nodes) - 1):
+                c, d = nodes[j], nodes[j + 1]
+                hit = segment_intersection_2d(
+                    a.x_m, a.y_m, b.x_m, b.y_m, c.x_m, c.y_m, d.x_m, d.y_m
+                )
+                if hit is None:
+                    continue
+                px, py, t_ab, t_cd = hit
+
+                # Z interpolada en el cruce, a cada lado: ¿misma altura?
+                z_link = a.z_m + t_ab * (b.z_m - a.z_m)
+                z_road = c.z_m + t_cd * (d.z_m - c.z_m)
+                if abs(z_link - z_road) > z_tolerance_m:
+                    continue
+
+                orden = seg_i + t_ab
+                if road_id not in best or orden < best[road_id][0]:
+                    best[road_id] = (
+                        orden,
+                        ConflictPoint(
+                            road_id=road_id,
+                            x_m=px,
+                            y_m=py,
+                            node_idx=closest_node_idx_2d(px, py, nodes),
+                        ),
+                    )
+
+    return [punto for _, punto in sorted(best.values(), key=lambda item: item[0])]
+
+
+def derive_yield_line(
+    link_nodes: List["Coordinates"],
+    yield_point: Optional["Coordinates"],
+    width_m: float = DEFAULT_YIELD_LINE_WIDTH_M,
+) -> List["Coordinates"]:
+    """La línea de detención de un link, DERIVADA de su punto (S44).
+
+    Ya no se graba punto a punto: el punto implica la línea. Devuelve los dos
+    extremos de un segmento de `width_m` centrado en `yield_point` y
+    perpendicular a la tangente del link ahí (la del tramo más cercano al
+    punto, no la del link entero: en un link en L cada tramo tiene la suya).
+
+    Sin punto o sin trazado utilizable ⇒ `[]` (no hay línea que derivar).
+    """
+    if yield_point is None or len(link_nodes) < 2:
+        return []
+
+    px, py = yield_point.x_m, yield_point.y_m
+
+    # Tramo del link al que pertenece el punto = el que pasa más cerca de él.
+    best_i, best_dist = 0, math.inf
+    for i in range(len(link_nodes) - 1):
+        a, b = link_nodes[i], link_nodes[i + 1]
+        dist = calc_dist_point_to_segment_2d(px, py, a.x_m, a.y_m, b.x_m, b.y_m)
+        if dist < best_dist:
+            best_i, best_dist = i, dist
+
+    a, b = link_nodes[best_i], link_nodes[best_i + 1]
+    tan_x, tan_y = b.x_m - a.x_m, b.y_m - a.y_m
+    mag = math.hypot(tan_x, tan_y)
+    if mag == 0.0:
+        return []
+    # Perpendicular unitaria a la tangente, media anchura a cada lado.
+    half = width_m / 2.0
+    off_x, off_y = -tan_y / mag * half, tan_x / mag * half
+
+    extremos = []
+    for sign in (-1.0, 1.0):
+        extremo = Coordinates(x=0, y=0, z=0)
+        extremo.x_m = px + sign * off_x
+        extremo.y_m = py + sign * off_y
+        extremo.z_m = yield_point.z_m
+        extremos.append(extremo)
+    return extremos
+
+
+def roads_touching_polygon(
+    polygon_nodes: List["Coordinates"],
+    roads: Dict[str, object],
+    z_tolerance_m: float = DEFAULT_YIELD_Z_TOLERANCE_M,
+) -> List[str]:
+    """Las roads que pisan el polígono de una zona (S44): auto-poblado de su tabla.
+
+    Pisa el que mete algún nodo DENTRO del polígono o cuyo trazado CRUZA el
+    contorno. El filtro en Z (contra la altura media del polígono) deja fuera
+    los falsos cruces por altura: un puente que sobrevuela el cruce no entra en
+    la tabla.
+
+    Polígono inválido (menos de 3 puntos) ⇒ `[]`: no hay contorno que pisar.
+    Devuelve ids ordenados y sin repetir (la tabla de la UI es estable).
+    """
+    if len(polygon_nodes) < 3:
+        return []
+
+    z_ref = sum(node.z_m for node in polygon_nodes) / len(polygon_nodes)
+    tocadas = set()
+
+    for road_id, road in roads.items():
+        nodes = getattr(road, "nodes", [])
+        if not nodes:
+            continue
+
+        for i, node in enumerate(nodes):
+            if abs(node.z_m - z_ref) > z_tolerance_m:
+                continue
+            if is_point_in_polygon_2d(node.x_m, node.y_m, polygon_nodes):
+                tocadas.add(road_id)
+                break
+
+            if road_id in tocadas or i >= len(nodes) - 1:
+                continue
+            # ¿El tramo cruza alguna arista del polígono?
+            nxt = nodes[i + 1]
+            for j in range(len(polygon_nodes)):
+                p, q = polygon_nodes[j], polygon_nodes[(j + 1) % len(polygon_nodes)]
+                if segment_intersection_2d(
+                    node.x_m,
+                    node.y_m,
+                    nxt.x_m,
+                    nxt.y_m,
+                    p.x_m,
+                    p.y_m,
+                    q.x_m,
+                    q.y_m,
+                ):
+                    tocadas.add(road_id)
+                    break
+            if road_id in tocadas:
+                break
+
+    return sorted(tocadas)
 
 
 def is_heading_towards(

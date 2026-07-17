@@ -5,6 +5,67 @@
 
 ---
 
+## S45 — 2026-07-17 — Fase 8: 8.6 a medias (modelo + geometría + conducta del link); UI y render fuera
+
+**Arranque limpio:** árbol limpio, ya en la rama, `git pull` sin novedades, 0 fichas U pendientes.
+Nada que proteger (ningún mapa sin commitear, por una vez).
+
+**Se implementó el diseño S44 de abajo arriba, red de tests primero en cada sub-bloque:**
+
+1. **8.6.1 Modelo** — `YieldType` (`NONE|YIELD|STOP`) como **str-enum** (para que el JSON del mapa
+   se lea a ojo: `"YIELD"`, no un `2`). `RoadLink` = `yield_type` + `yield_point` (un punto) +
+   `yield_time_s`. `IntersectionZone` = polígono + `yield_time_s` + `roads: Dict[str, YieldType]`.
+   **Borrados** `yield_line`, `yield_zone_id`, `radius_m`, `priority_rules`. 13 tests
+   (`test_map_persistencia.py`, rehecho).
+2. **8.6.2 Geometría** — `segment_intersection_2d` en `geometry.py` (genérica) y, en
+   `traffic/yielding.py`, `link_conflict_points` + `derive_yield_line` + `roads_touching_polygon`.
+   27 tests nuevos (`test_yielding_geometria.py`).
+3. **8.6.3 Conducta del link** — `_yield_threat_detected` reescrito contra los puntos de conflicto;
+   **la rama de zona murió**. `_stop_pending` (orquestador) implementa el `STOP`. 40 tests.
+
+**Decisiones tomadas (con su porqué):**
+
+- **Los campos muertos se borran YA (8.6), no en el 8.7.** El PLAN se contradecía: el diseño S44
+  dice "mueren" y el punto 8.7 —escrito en S43, antes del diseño— reclamaba su retirada. Se
+  resolvió a favor del 8.6: el end state es idéntico, la convivencia ya se descartó en S38, el
+  loader filtra claves desconocidas (así que `south_city.json` carga igual) y `test1` ya estaba
+  inerte ⇒ no se pierde nada en el juego. **No se paró a preguntar** porque no es una variante del
+  diseño, solo el orden de los estados intermedios.
+- **`has_yield` exige tipo Y punto** (un toggle sin punto no tiene línea que derivar ⇒ no cede).
+- **La `from_road` no aporta punto de conflicto** y **el punto de unión con la `to_road` se añade a
+  mano**: el trazado ACABA en la `to_road`, no la atraviesa, así que su cruce es un caso degenerado
+  que la intersección de segmentos no garantiza. El diseño ya lo llamaba "uno más".
+- **Caché de puntos de conflicto** (`get_link_conflict_points`, perezosa, clave
+  `(link_id, tol. Z)`): cruzar un link contra 223 roads no cabe en el hot loop (AUDITORIA_HOTLOOP).
+  La invalidan `_invalidate_road_index()` y `_invalidate_link_conflicts()` (nueva, en el rec_end de
+  links).
+- **El 8.6.4 (conducta de la zona) se mueve DESPUÉS de la UI y pasa a 8.6.7**: sin grabador de
+  polígonos no hay forma de probarla en LFS (`test1` es una cápsula de 2 nodos, inerte).
+- **Cierre a medias, pactado con el usuario por selector** (opción "cerrar y abrir sesión nueva"):
+  quedaba UI + render, `map_ui.py` es grande y tiene skill propia, y el contexto de la sesión ya
+  iba largo. Se prefirió handoff limpio a arriesgar context-rot justo en la parte que ya fue
+  "funciona, a mejorar" (U8).
+
+**La prueba de que el rediseño hace lo que promete:** la clase `TestVigiladosDeLaZona` (que
+verificaba que una zona referenciada AMPLIABA la vigilancia a un tercer ramal, R3) se convirtió en
+`TestVigiladosPorGeometria`: **el mismo escenario pasa sin zona ninguna**, porque el trazado del
+link cruza R3 en ~(5, 97.3) y la geometría lo detecta sola. Es exactamente la promesa del diseño
+("esto es lo que hace innecesaria la zona"), ahora en un test. Se añadió también el caso del puente
+(R3 elevada 10 m ⇒ no se vigila, por la tolerancia en Z).
+
+**Verificación:** `ruff check` limpio; **pytest 888 pasan / 9 fallan**. Los 9 son de la UI vieja
+(`test_map_ui_link_yield.py`, `test_map_ui_zone_priority.py`), que edita campos ya borrados: es el
+trabajo a medias, no una regresión, y caen con el 8.6.5. **CI rojo esperado** en esta rama hasta
+entonces. `close_check.py` → PASS.
+
+**Consecuencia asumida y avisada:** hasta el 8.6.5, **mapear en LFS puede petar** (`map_ui.py` y
+restos de `map_recorder.py` tocan campos borrados). Conducir es seguro: la conducta está migrada
+entera.
+
+**Commits:** el de esta sesión (modelo + geometría + conducta + docs).
+
+---
+
 ## S44 — 2026-07-17 — Diseño del 8.6 CERRADO Y APROBADO (sin código) + protección del remapeo S22
 
 **Arranque:** `git status` traía otra vez mapas sin commitear (remapeo de la zona S22, tocado esa

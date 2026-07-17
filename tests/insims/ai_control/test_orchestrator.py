@@ -31,7 +31,8 @@ import time
 
 import pytest
 
-from insims.ai_control.nav_modes.freeroam.graph import IntersectionZone, SpecialRule
+from insims.ai_control.nav_modes.freeroam.enums import YieldType
+from insims.ai_control.nav_modes.freeroam.graph import SpecialRule
 from insims.ai_control.nav_modes.freeroam.mode import FreeroamMode
 from insims.ai_control.traffic.cruise_control import PARADA_ABSOLUTA_M
 
@@ -292,7 +293,7 @@ def _cruce(
     make_coords,
     con_linea=True,
     yield_time_s=None,
-    yield_zone_id=None,
+    yield_type=YieldType.YIELD,
     con_r3=False,
 ):
     """Construye el cruce de arriba y devuelve el RoadLink R1->R2."""
@@ -302,11 +303,13 @@ def _cruce(
     ]
     if con_r3:
         roads.append(make_road("R3", [(5.0, y) for y in range(140, 59, -10)]))
-    link = make_road_link("R1", "R2", [(0, 90), (2, 94), (6, 98), (10, 100)])
+    # El primer tramo del link sube recto en +Y: así la línea DERIVADA del
+    # yield_point (perpendicular a la tangente) sale horizontal, en y=93.
+    link = make_road_link("R1", "R2", [(0, 90), (0, 94), (6, 98), (10, 100)])
     if con_linea:
-        link.yield_line = [make_coords(-2, 93), make_coords(2, 93)]
+        link.yield_type = yield_type
+        link.yield_point = make_coords(0, 93)
     link.yield_time_s = yield_time_s
-    link.yield_zone_id = yield_zone_id
     populate_graph(ai_control.map_recorder, roads=roads, road_links=[link])
     return link
 
@@ -727,10 +730,15 @@ class TestVigiladosDeLaCesion:
         assert ai_control._yield_threat_detected(scanner, link) is False
 
 
-class TestVigiladosDeLaZona:
-    """La zona referenciada (punto de conflicto + T) AMPLÍA qué se vigila."""
+class TestVigiladosPorGeometria:
+    """El link vigila TODA road que su trazado pisa, sin zona de por medio (S44).
 
-    def _setup_con_zona(
+    Es la promesa central del rediseño: lo que antes exigía apuntar a una zona
+    con `yield_zone_id` ahora sale solo de la geometría. R3 (vertical por x=5)
+    la cruza el trazado del link en ~(5, 97.3) sin ser la `to_road`.
+    """
+
+    def _setup(
         self,
         ai_control,
         populate_graph,
@@ -738,7 +746,7 @@ class TestVigiladosDeLaZona:
         make_road_link,
         make_coords,
         make_ai,
-        zone_time_s=None,
+        yield_time_s=None,
     ):
         link = _cruce(
             ai_control,
@@ -746,19 +754,14 @@ class TestVigiladosDeLaZona:
             make_road,
             make_road_link,
             make_coords,
-            yield_zone_id="Z",
+            yield_time_s=yield_time_s,
             con_r3=True,
         )
-        ai_control.map_recorder.zones = {
-            "Z": IntersectionZone(
-                zone_id="Z", nodes=[make_coords(5, 100)], yield_time_s=zone_time_s
-            )
-        }
         scanner, _ = _scanner_hacia_cruce(make_ai)
         return link, scanner
 
     def _cruzado_por_r3(self, make_ai, make_behavior, y_m=130.0, speed_kmh=40.0):
-        """Coche bajando por R3 hacia el punto de conflicto (5,100)."""
+        """Coche bajando por R3 hacia el punto de conflicto (~5, 97)."""
         return _place_ai(
             make_ai,
             make_behavior,
@@ -770,7 +773,7 @@ class TestVigiladosDeLaZona:
             mode_fields={"current_id": "R3", "node_index": 1},
         )
 
-    def test_la_zona_amplia_la_vigilancia_a_otro_ramal(
+    def test_el_trazado_cruza_r3_asi_que_r3_se_vigila(
         self,
         ai_control,
         populate_graph,
@@ -780,20 +783,16 @@ class TestVigiladosDeLaZona:
         make_ai,
         make_behavior,
     ):
-        link, scanner = self._setup_con_zona(
+        link, scanner = self._setup(
             ai_control, populate_graph, make_road, make_road_link, make_coords, make_ai
         )
-        # A 30 m del punto a 40 km/h → t = 2.7 s < 4: amenaza VÍA ZONA (va por
-        # R3, que no es el to_road: sin zona el link no lo vería).
+        # A 30 m del punto a 40 km/h → t = 2.7 s < 4: amenaza. Va por R3, que
+        # NO es el to_road — con el modelo viejo hacía falta una zona.
         _set_ais(ai_control, scanner, self._cruzado_por_r3(make_ai, make_behavior))
 
         assert ai_control._yield_threat_detected(scanner, link) is True
 
-        # Control: el MISMO tráfico sin referencia a zona no es amenaza.
-        link.yield_zone_id = None
-        assert ai_control._yield_threat_detected(scanner, link) is False
-
-    def test_zona_el_que_va_detras_de_la_ia_se_excluye(
+    def test_una_road_que_el_trazado_no_pisa_no_se_vigila(
         self,
         ai_control,
         populate_graph,
@@ -803,27 +802,46 @@ class TestVigiladosDeLaZona:
         make_ai,
         make_behavior,
     ):
-        link, scanner = self._setup_con_zona(
+        """Control: sin R3 en el mapa, el mismo coche deja de contar."""
+        link, scanner = self._setup(
             ai_control, populate_graph, make_road, make_road_link, make_coords, make_ai
         )
-        # Va hacia el punto de conflicto (t = 3.6 s < 4) pero está DETRÁS de
-        # la IA (y=40 < 60): excluido — si no, tus propios seguidores te
-        # dejarían clavado en la línea para siempre.
+        del ai_control.map_recorder.roads["R3"]
+        ai_control.map_recorder._invalidate_road_index()
+        _set_ais(ai_control, scanner, self._cruzado_por_r3(make_ai, make_behavior))
+
+        assert ai_control._yield_threat_detected(scanner, link) is False
+
+    def test_el_que_va_por_la_from_road_se_excluye(
+        self,
+        ai_control,
+        populate_graph,
+        make_road,
+        make_road_link,
+        make_coords,
+        make_ai,
+        make_behavior,
+    ):
+        # Viene por R1 (la vía que la IA deja atrás): de esa no se cede — si
+        # contara, tus propios seguidores te dejarían clavado en la línea.
+        link, scanner = self._setup(
+            ai_control, populate_graph, make_road, make_road_link, make_coords, make_ai
+        )
         seguidor = _place_ai(
             make_ai,
             make_behavior,
             3,
-            5,
+            0,
             40,
             speed_kmh=60,
-            heading_deg=0.0,  # +Y, hacia la zona
+            heading_deg=0.0,  # +Y, hacia el cruce
             mode_fields={"current_id": "R1", "node_index": 5},
         )
         _set_ais(ai_control, scanner, seguidor)
 
         assert ai_control._yield_threat_detected(scanner, link) is False
 
-    def test_zona_parado_tampoco_es_amenaza(
+    def test_parado_en_r3_no_es_amenaza(
         self,
         ai_control,
         populate_graph,
@@ -833,7 +851,7 @@ class TestVigiladosDeLaZona:
         make_ai,
         make_behavior,
     ):
-        link, scanner = self._setup_con_zona(
+        link, scanner = self._setup(
             ai_control, populate_graph, make_road, make_road_link, make_coords, make_ai
         )
         _set_ais(
@@ -844,7 +862,7 @@ class TestVigiladosDeLaZona:
 
         assert ai_control._yield_threat_detected(scanner, link) is False
 
-    def test_el_t_de_la_zona_hace_override_del_default(
+    def test_el_t_del_link_manda_tambien_en_el_cruce_geometrico(
         self,
         ai_control,
         populate_graph,
@@ -854,19 +872,258 @@ class TestVigiladosDeLaZona:
         make_ai,
         make_behavior,
     ):
-        # Con T de zona = 2 s, el cruzado a t = 2.7 s deja de ser amenaza.
-        link, scanner = self._setup_con_zona(
+        # Con T = 2 s, el cruzado a t = 2.7 s deja de ser amenaza.
+        link, scanner = self._setup(
             ai_control,
             populate_graph,
             make_road,
             make_road_link,
             make_coords,
             make_ai,
-            zone_time_s=2.0,
+            yield_time_s=2.0,
         )
         _set_ais(ai_control, scanner, self._cruzado_por_r3(make_ai, make_behavior))
 
         assert ai_control._yield_threat_detected(scanner, link) is False
+
+    def test_un_puente_sobre_el_cruce_no_se_vigila(
+        self,
+        ai_control,
+        populate_graph,
+        make_road,
+        make_road_link,
+        make_coords,
+        make_ai,
+        make_behavior,
+    ):
+        """R3 elevada 10 m: pasa POR ENCIMA, no es un cruce (tolerancia en Z)."""
+        link, scanner = self._setup(
+            ai_control, populate_graph, make_road, make_road_link, make_coords, make_ai
+        )
+        for node in ai_control.map_recorder.roads["R3"].nodes:
+            node.z_m = 10.0
+        ai_control.map_recorder._invalidate_road_index()
+        _set_ais(ai_control, scanner, self._cruzado_por_r3(make_ai, make_behavior))
+
+        assert ai_control._yield_threat_detected(scanner, link) is False
+
+
+class TestStop:
+    """`STOP` (S44): para SIEMPRE, aguanta ~1 s y luego evalúa como `YIELD`."""
+
+    def _stop(self, ai_control, populate_graph, make_road, make_road_link, make_coords):
+        return _cruce(
+            ai_control,
+            populate_graph,
+            make_road,
+            make_road_link,
+            make_coords,
+            yield_type=YieldType.STOP,
+        )
+
+    def test_para_aunque_no_venga_nadie(
+        self,
+        ai_control,
+        populate_graph,
+        make_road,
+        make_road_link,
+        make_coords,
+        make_ai,
+    ):
+        """La diferencia con YIELD: sin tráfico, un YIELD ni levanta el pie."""
+        self._stop(ai_control, populate_graph, make_road, make_road_link, make_coords)
+        scanner, mode = _scanner_hacia_cruce(make_ai)
+        _set_ais(ai_control, scanner)
+
+        ai_control._update_traffic_behavior(scanner)
+
+        assert mode.yield_active is True
+        assert scanner.extra["aic"].speed_request < BASE_KMH
+
+    def test_yield_sin_trafico_no_frena_pero_stop_si(
+        self,
+        ai_control,
+        populate_graph,
+        make_road,
+        make_road_link,
+        make_coords,
+        make_ai,
+    ):
+        """El contraste que define el toggle, en un solo test."""
+        _cruce(
+            ai_control,
+            populate_graph,
+            make_road,
+            make_road_link,
+            make_coords,
+            yield_type=YieldType.YIELD,
+        )
+        scanner, mode = _scanner_hacia_cruce(make_ai)
+        _set_ais(ai_control, scanner)
+        ai_control._update_traffic_behavior(scanner)
+        assert mode.yield_active is False
+
+        ai_control.map_recorder.road_links["R1->R2"].yield_type = YieldType.STOP
+        mode._last_radar_time = 0.0
+        ai_control._update_traffic_behavior(scanner)
+        assert mode.yield_active is True
+
+    def test_none_no_cede_aunque_haya_amenaza(
+        self,
+        ai_control,
+        populate_graph,
+        make_road,
+        make_road_link,
+        make_coords,
+        make_ai,
+        make_behavior,
+    ):
+        _cruce(
+            ai_control,
+            populate_graph,
+            make_road,
+            make_road_link,
+            make_coords,
+            yield_type=YieldType.NONE,
+        )
+        scanner, mode = _scanner_hacia_cruce(make_ai)
+        _set_ais(ai_control, scanner, _amenaza_en_r2(make_ai, make_behavior))
+
+        ai_control._update_traffic_behavior(scanner)
+
+        assert mode.yield_active is False
+        assert scanner.extra["aic"].speed_request == pytest.approx(BASE_KMH)
+
+    def test_rodando_no_arranca_el_reloj_de_la_parada(
+        self,
+        ai_control,
+        populate_graph,
+        make_road,
+        make_road_link,
+        make_coords,
+        make_ai,
+    ):
+        link = self._stop(
+            ai_control, populate_graph, make_road, make_road_link, make_coords
+        )
+        _, mode = _scanner_en_link(make_ai, 0.0, 91.5, speed_kmh=10.0)
+        now = time.time()
+
+        # Primer tick ante el STOP: se apunta el link y se frena.
+        assert ai_control._stop_pending(mode, link, 10.0 / 3.6, now) is True
+        assert mode.yield_stop_link_id == "R1->R2"
+        # Sigue rodando: la cuenta no empieza.
+        assert ai_control._stop_pending(mode, link, 10.0 / 3.6, now) is True
+        assert mode._yield_stopped_since == 0.0
+
+    def test_al_detenerse_arranca_el_reloj_y_aguanta(
+        self,
+        ai_control,
+        populate_graph,
+        make_road,
+        make_road_link,
+        make_coords,
+        make_ai,
+    ):
+        link = self._stop(
+            ai_control, populate_graph, make_road, make_road_link, make_coords
+        )
+        _, mode = _scanner_en_link(make_ai, 0.0, 91.5, speed_kmh=0.0)
+        now = time.time()
+
+        ai_control._stop_pending(mode, link, 0.0, now)  # apunta el link
+        assert ai_control._stop_pending(mode, link, 0.0, now) is True
+        assert mode._yield_stopped_since == pytest.approx(now)
+        # Dentro del aguante (1 s por defecto) se sigue parado.
+        assert ai_control._stop_pending(mode, link, 0.0, now + 0.5) is True
+        assert mode.yield_stop_done_link_id is None
+
+    def test_cumplido_el_aguante_deja_de_estar_pendiente(
+        self,
+        ai_control,
+        populate_graph,
+        make_road,
+        make_road_link,
+        make_coords,
+        make_ai,
+    ):
+        link = self._stop(
+            ai_control, populate_graph, make_road, make_road_link, make_coords
+        )
+        _, mode = _scanner_en_link(make_ai, 0.0, 91.5, speed_kmh=0.0)
+        now = time.time()
+
+        ai_control._stop_pending(mode, link, 0.0, now)
+        ai_control._stop_pending(mode, link, 0.0, now)
+
+        assert ai_control._stop_pending(mode, link, 0.0, now + 1.5) is False
+        assert mode.yield_stop_done_link_id == "R1->R2"
+        # Y ya no vuelve a exigir parada en ESTE link (evalúa como YIELD).
+        assert ai_control._stop_pending(mode, link, 0.0, now + 99.0) is False
+
+    def test_el_aguante_sale_de_config(
+        self,
+        ai_control,
+        populate_graph,
+        make_road,
+        make_road_link,
+        make_coords,
+        make_ai,
+    ):
+        link = self._stop(
+            ai_control, populate_graph, make_road, make_road_link, make_coords
+        )
+        _, mode = _scanner_en_link(make_ai, 0.0, 91.5, speed_kmh=0.0)
+        ai_control.config["yield_stop_hold_s"] = 5.0
+        now = time.time()
+
+        ai_control._stop_pending(mode, link, 0.0, now)
+        ai_control._stop_pending(mode, link, 0.0, now)
+
+        assert ai_control._stop_pending(mode, link, 0.0, now + 1.5) is True
+        assert ai_control._stop_pending(mode, link, 0.0, now + 5.5) is False
+
+    def test_cumplida_la_parada_el_stop_evalua_como_yield(
+        self,
+        ai_control,
+        populate_graph,
+        make_road,
+        make_road_link,
+        make_coords,
+        make_ai,
+        make_behavior,
+    ):
+        self._stop(ai_control, populate_graph, make_road, make_road_link, make_coords)
+        scanner, mode = _scanner_hacia_cruce(make_ai)
+        mode.yield_stop_done_link_id = "R1->R2"  # ya cumplió su parada
+
+        # Sin tráfico: como un YIELD, no cede.
+        _set_ais(ai_control, scanner)
+        ai_control._update_traffic_behavior(scanner)
+        assert mode.yield_active is False
+
+        # Con tráfico vigilado: cede, ahora sí por la amenaza.
+        _set_ais(ai_control, scanner, _amenaza_en_r2(make_ai, make_behavior))
+        mode._last_radar_time = 0.0
+        ai_control._update_traffic_behavior(scanner)
+        assert mode.yield_active is True
+
+    def test_otro_link_exige_parar_otra_vez(
+        self,
+        ai_control,
+        populate_graph,
+        make_road,
+        make_road_link,
+        make_coords,
+        make_ai,
+    ):
+        link = self._stop(
+            ai_control, populate_graph, make_road, make_road_link, make_coords
+        )
+        _, mode = _scanner_en_link(make_ai, 0.0, 91.5, speed_kmh=0.0)
+        mode.yield_stop_done_link_id = "OTRO->LINK"
+
+        assert ai_control._stop_pending(mode, link, 0.0, time.time()) is True
 
 
 class TestDistanciaALaLinea:

@@ -11,7 +11,7 @@ from dataclasses import asdict, fields
 from enum import Enum
 from typing import Callable, Dict, List, Optional
 
-from insims.ai_control.nav_modes.freeroam.enums import TrafficRule
+from insims.ai_control.nav_modes.freeroam.enums import TrafficRule, YieldType
 from insims.ai_control.nav_modes.freeroam.geometry import (
     calc_deviation_angle,
     calc_dist_point_to_segment_2d,
@@ -29,6 +29,11 @@ from insims.ai_control.nav_modes.freeroam.graph import (
 )
 from insims.ai_control.nav_modes.freeroam.map_renderer import generate_map_image
 from insims.ai_control.nav_modes.freeroam.spatial_grid import SpatialHashGrid
+from insims.ai_control.traffic.yielding import (
+    ConflictPoint,
+    closest_node_idx_2d,
+    link_conflict_points,
+)
 from insims.users_management.main import Coordinates
 from lfs_insim.insim_enums import CSVAL, SND
 from lfs_insim.packet_sender_mixin import PacketSenderMixin
@@ -59,21 +64,29 @@ def _json_map_default(obj):
 def _graph_item_from_json(dataclass_type, item_data: dict):
     """Reconstruye una entidad del grafo desde su dict del JSON.
 
-    Convierte los campos de coordenadas (`nodes`, `yield_line`) a Coordinates,
-    castea los Enums, y filtra claves desconocidas: los campos retirados del
-    modelo se descartan y los que falten toman el default del dataclass (así
-    los mapas viejos cargan intactos — compatibilidad de la Fase 8).
+    Convierte los campos de coordenadas (lista `nodes`, punto suelto
+    `yield_point`) a Coordinates, castea los Enums, y filtra claves
+    desconocidas: los campos retirados del modelo se descartan y los que falten
+    toman el default del dataclass (así los mapas viejos cargan intactos —
+    compatibilidad de la Fase 8; los muertos del 8.6 caen aquí).
     """
     item_data = dict(item_data)
 
-    for coords_key in ("nodes", "yield_line"):
-        if item_data.get(coords_key):
-            item_data[coords_key] = [Coordinates(**n) for n in item_data[coords_key]]
+    if item_data.get("nodes"):
+        item_data["nodes"] = [Coordinates(**n) for n in item_data["nodes"]]
+    if item_data.get("yield_point"):
+        item_data["yield_point"] = Coordinates(**item_data["yield_point"])
 
     if item_data.get("traffic_rule") is not None:
         item_data["traffic_rule"] = TrafficRule(item_data["traffic_rule"])
     if item_data.get("indicators") is not None:
         item_data["indicators"] = CSVAL.INDICATORS(item_data["indicators"])
+    if item_data.get("yield_type") is not None:
+        item_data["yield_type"] = YieldType(item_data["yield_type"])
+    if item_data.get("roads"):
+        item_data["roads"] = {
+            road_id: YieldType(value) for road_id, value in item_data["roads"].items()
+        }
 
     valid_fields = {f.name for f in fields(dataclass_type)}
     return dataclass_type(**{k: v for k, v in item_data.items() if k in valid_fields})
@@ -99,6 +112,12 @@ class MapRecorder(PacketSenderMixin):
         # self.roads —ver _invalidate_road_index()— y se reconstruye en la
         # siguiente consulta de conducción.
         self._road_index: Optional[SpatialHashGrid] = None
+
+        # Caché de los puntos de conflicto por link (Fase 8, 8.6). Cruzar el
+        # trazado de un link contra TODAS las roads es caro y el resultado solo
+        # cambia al editar el mapa, así que se calcula una vez y se guarda.
+        # Clave: (link_id, tolerancia en Z). Ver _invalidate_link_conflicts().
+        self._link_conflicts_cache: Dict[tuple, List[ConflictPoint]] = {}
 
         # Estado de grabación actual (¿Estamos grabando una vía o un enlace?)
         self.current_recording: Optional[
@@ -245,12 +264,68 @@ class MapRecorder(PacketSenderMixin):
     # ÍNDICE ESPACIAL DE ROADS (búsqueda del road más cercano en O(vecindario))
     # ==========================================
     def _invalidate_road_index(self) -> None:
-        """Marca el índice espacial como obsoleto. LLAMAR tras CUALQUIER mutación
-        de la geometría de `self.roads` (añadir/editar/borrar road o nodos,
-        clear, carga de mapa). El toggle de `is_closed` NO cambia geometría, así
-        que no necesita invalidar (la consulta filtra las cerradas en caliente).
+        """Marca como obsoletas las cachés derivadas de la geometría de las roads.
+        LLAMAR tras CUALQUIER mutación de `self.roads` (añadir/editar/borrar road
+        o nodos, clear, carga de mapa). El toggle de `is_closed` NO cambia
+        geometría, así que no necesita invalidar (la consulta filtra las cerradas
+        en caliente).
+
+        Tumba también los puntos de conflicto: se calculan cruzando los links
+        contra las roads, así que mover una road los cambia.
         """
         self._road_index = None
+        self._invalidate_link_conflicts()
+
+    def _invalidate_link_conflicts(self) -> None:
+        """Marca los puntos de conflicto como obsoletos. LLAMAR tras mutar la
+        geometría de un link (los de las roads ya los tumba
+        `_invalidate_road_index`)."""
+        self._link_conflicts_cache.clear()
+
+    def get_link_conflict_points(
+        self, link: RoadLink, z_tolerance_m: float
+    ) -> List[ConflictPoint]:
+        """Qué vigila este link al ceder (Fase 8, diseño S44): los sitios donde
+        su trazado se cruza con otra road, más el punto de unión con la `to_road`.
+
+        Perezoso y cacheado por link: la geometría no cambia mientras se conduce.
+
+        Dos fuentes, y las dos hacen falta:
+          - **Geometría**: todas las roads que el trazado pisa (con tolerancia en
+            Z, para que un puente no cuente). La `from_road` queda fuera: de la
+            vía que dejas atrás no se cede.
+          - **El punto de unión**: el trazado ACABA en la `to_road`, no la
+            atraviesa, así que su cruce es un caso degenerado que la geometría no
+            garantiza. Se añade siempre a mano — es el sitio donde te incorporas.
+        """
+        key = (link.link_id, z_tolerance_m)
+        cached = self._link_conflicts_cache.get(key)
+        if cached is not None:
+            return cached
+
+        puntos = link_conflict_points(
+            link.nodes,
+            self.roads,
+            z_tolerance_m=z_tolerance_m,
+            exclude_ids=(link.from_road_id,),
+        )
+
+        to_road = self.roads.get(link.to_road_id)
+        ya_vigilada = any(p.road_id == link.to_road_id for p in puntos)
+        if link.nodes and to_road is not None and to_road.nodes and not ya_vigilada:
+            junction = link.nodes[-1]
+            idx = closest_node_idx_2d(junction.x_m, junction.y_m, to_road.nodes)
+            puntos = puntos + [
+                ConflictPoint(
+                    road_id=link.to_road_id,
+                    x_m=junction.x_m,
+                    y_m=junction.y_m,
+                    node_idx=idx,
+                )
+            ]
+
+        self._link_conflicts_cache[key] = puntos
+        return puntos
 
     def _get_road_index(self) -> SpatialHashGrid:
         """Devuelve el índice espacial de roads, reconstruyéndolo si está sucio.
@@ -1420,6 +1495,7 @@ class MapRecorder(PacketSenderMixin):
                         to_suffix=self.current_recording.get("to_suffix", ""),
                         nodes=nodes,
                     )
+                self._invalidate_link_conflicts()  # cambió el trazado del link
                 msg_tipo = "Enlace longitudinal"
 
             # ==========================================
@@ -2519,14 +2595,9 @@ class MapRecorder(PacketSenderMixin):
                 del self.lateral_links[ll_id]
                 l_links_del += 1
 
-            # Cascada C: Limpiar reglas de prioridad en Zonas
+            # Cascada C: sacar la vía de la tabla de las zonas que la listaban
             for zone in self.zones.values():
-                original_len = len(zone.priority_rules)
-                # Filtramos dejando solo las reglas que NO contengan el obj_id
-                zone.priority_rules = [
-                    rule for rule in zone.priority_rules if obj_id not in rule
-                ]
-                if len(zone.priority_rules) != original_len:
+                if zone.roads.pop(obj_id, None) is not None:
                     zonas_mod += 1
 
             # Finalmente, borrar la via principal

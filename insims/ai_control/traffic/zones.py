@@ -1,23 +1,29 @@
-"""Vigilancia de la cesión de paso (Fase 8): distancia a la línea de detención
-y detección de amenazas de un RoadLink con cesión — tráfico del `to_road`
-acercándose al punto de unión y, si el link referencia una zona, tráfico a
-menos de T segundos de su punto de conflicto.
+"""Vigilancia de la cesión de paso del LINK (Fase 8; rediseñado en el 8.6/S44).
+
+El link gobierna al que HACE LA MANIOBRA: distancia a su línea de detención
+—que ya no se graba, se deriva del `yield_point`— y detección de amenazas en
+los puntos de conflicto que su trazado se encuentra (todas las roads que pisa,
+no solo la `to_road`).
 
 Compone los predicados puros de `yielding.py`; el orquestador decide con esto
-si frenar ante la línea. El modelo viejo (zona-área + `priority_rules`) se
-retiró de la conducta en el 8.3; sus restos de datos/UI caen en el 8.6."""
+si frenar ante la línea. La zona (el que cruza de recto) es un mecanismo
+ORTOGONAL y no se toca desde aquí: ni este módulo la mira, ni ella mira links.
+"""
 
 from __future__ import annotations
 
 import math
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List
 
 from insims.ai_control.base import _MixinBase
 from insims.ai_control.nav_modes.freeroam.geometry import (
     calc_dist_point_to_segment_2d,
 )
 from insims.ai_control.traffic.yielding import (
+    DEFAULT_YIELD_LINE_WIDTH_M,
     DEFAULT_YIELD_TIME_S,
+    DEFAULT_YIELD_Z_TOLERANCE_M,
+    derive_yield_line,
     forward_arc_dist_m,
     is_heading_towards,
     time_to_point_s,
@@ -29,10 +35,20 @@ if TYPE_CHECKING:
 
 
 class _ZonesMixin(_MixinBase):
+    def _yield_line_of(self, link: RoadLink) -> List:
+        """La línea de detención de un link, derivada de su `yield_point` (S44).
+
+        Sin punto marcado ⇒ `[]`: no hay línea, y sin línea no se cede."""
+        return derive_yield_line(
+            link.nodes,
+            link.yield_point,
+            width_m=self.config.get("yield_line_width_m", DEFAULT_YIELD_LINE_WIDTH_M),
+        )
+
     def _dist_to_yield_line_m(self, px: float, py: float, line: list) -> float:
-        """Distancia 2D mínima desde (px, py) a la polilínea de la línea de
-        detención. Sin línea utilizable (menos de 2 puntos) ⇒ inf (nunca se
-        está "cerca" de una línea que no existe)."""
+        """Distancia 2D mínima desde (px, py) a la línea de detención. Sin línea
+        utilizable (menos de 2 puntos) ⇒ inf (nunca se está "cerca" de una línea
+        que no existe)."""
         if len(line) < 2:
             return math.inf
         return min(
@@ -41,80 +57,60 @@ class _ZonesMixin(_MixinBase):
         )
 
     def _yield_threat_detected(self, ai: AI, link: RoadLink) -> bool:
-        """¿Hay tráfico por el que el link con cesión debe frenar? (diseño S38)
+        """¿Hay tráfico por el que este link debe frenar? (rediseño S44)
 
-        Vigilados:
-          1. Los del `to_road` acercándose al punto de unión (último nodo del
-             link): t = distancia hacia delante a lo largo de la vía / su
-             velocidad. Parado ⇒ ∞ ⇒ se ignora; el que ya pasó el punto o va
-             a contramano (no apunta hacia él) se excluye.
-          2. Si el link referencia una zona: cualquiera a menos de T segundos
-             del punto de conflicto apuntando hacia él — salvo los que van
-             DETRÁS de la IA (si contaran, tus propios seguidores te dejarían
-             clavado en la línea para siempre).
+        Se vigila CADA punto de conflicto del link —los sitios donde su trazado
+        pisa otra road, más el punto de unión con la `to_road`— y para cada uno
+        solo el tráfico DE ESA road: t = distancia hacia delante a lo largo de
+        la vía / su velocidad. Parado ⇒ ∞ ⇒ se ignora; el que ya pasó el punto
+        (arco `None`) o va a contramano (no apunta hacia él) se excluye.
 
-        Los umbrales T salen del link / la zona; `None` ⇒ default global de
-        config (`yield_time_s`, inicial `DEFAULT_YIELD_TIME_S`).
+        Esto es lo que hace innecesaria la zona: el link se gana por geometría
+        lo que antes le daba el `yield_zone_id`, que ya no existe.
+
+        El umbral T sale del link; `None` ⇒ default global de config
+        (`yield_time_s`, inicial `DEFAULT_YIELD_TIME_S`).
         """
-        junction = link.nodes[-1]
+        puntos = self.map_recorder.get_link_conflict_points(
+            link,
+            self.config.get("yield_z_tolerance_m", DEFAULT_YIELD_Z_TOLERANCE_M),
+        )
+        if not puntos:
+            return False
+
         default_t = self.config.get("yield_time_s", DEFAULT_YIELD_TIME_S)
         t_link = link.yield_time_s if link.yield_time_s is not None else default_t
 
-        to_road = self.map_recorder.roads.get(link.to_road_id)
-        junction_idx = None
-        if to_road is not None and to_road.nodes:
-            junction_idx, _ = self._get_closest_node_index(
-                junction.x_m, junction.y_m, to_road.nodes
-            )
-
-        zone_point = None
-        t_zone = default_t
-        if link.yield_zone_id:
-            zone = self.map_recorder.zones.get(link.yield_zone_id)
-            if zone is not None and zone.nodes:
-                zone_point = zone.nodes[0]
-                if zone.yield_time_s is not None:
-                    t_zone = zone.yield_time_s
-
-        my = ai.player.telemetry
-        my_x, my_y = my.coordinates.x_m, my.coordinates.y_m
-        my_heading = my.heading.angle_lfs
+        # Los puntos se agrupan por road: solo el tráfico de la road cruzada
+        # llega a su punto de conflicto (por la propia road, no en línea recta).
+        por_road = {punto.road_id: punto for punto in puntos}
 
         def es_amenaza(player: Player, road_id, node_idx) -> bool:
+            punto = por_road.get(road_id)
+            if punto is None:
+                return False
+            road = self.map_recorder.roads.get(road_id)
+            if road is None or not road.nodes:
+                return False
+
+            arc_m = forward_arc_dist_m(
+                road.nodes, node_idx, punto.node_idx, road.is_circular
+            )
+            if arc_m is None:  # ya pasó el punto: no es amenaza
+                return False
+
             coords = player.telemetry.coordinates
-            speed_ms = player.telemetry.speed.speed_kmh / 3.6
-            heading = player.telemetry.heading.angle_lfs
-
-            # 1) Tráfico del to_road hacia el punto de unión.
-            if junction_idx is not None and road_id == link.to_road_id:
-                arc_m = forward_arc_dist_m(
-                    to_road.nodes, node_idx, junction_idx, to_road.is_circular
-                )
-                if (
-                    arc_m is not None
-                    and is_heading_towards(
-                        coords.x_m, coords.y_m, heading, junction.x_m, junction.y_m
-                    )
-                    and time_to_point_s(arc_m, speed_ms) <= t_link
-                ):
-                    return True
-
-            # 2) Zona referenciada: punto de conflicto + T.
-            if (
-                zone_point is not None
-                # Delante de la IA (los de detrás, excluidos):
-                and is_heading_towards(my_x, my_y, my_heading, coords.x_m, coords.y_m)
-                and is_heading_towards(
-                    coords.x_m, coords.y_m, heading, zone_point.x_m, zone_point.y_m
-                )
+            if not is_heading_towards(
+                coords.x_m,
+                coords.y_m,
+                player.telemetry.heading.angle_lfs,
+                punto.x_m,
+                punto.y_m,
             ):
-                dist_m = math.hypot(
-                    zone_point.x_m - coords.x_m, zone_point.y_m - coords.y_m
-                )
-                if time_to_point_s(dist_m, speed_ms) <= t_zone:
-                    return True
+                return False
 
-            return False
+            speed_ms = player.telemetry.speed.speed_kmh / 3.6
+            return time_to_point_s(arc_m, speed_ms) <= t_link
 
         # Humanos: no publican topología — se localizan por posición (nodo más
         # cercano de la vía más cercana, como el modelo viejo: find_links=False).
@@ -133,7 +129,7 @@ class _ZonesMixin(_MixinBase):
 
         # IAs: su topología es fiable (current_id); su nodo se recalcula por
         # posición — node_index es el nodo OBJETIVO (va uno por delante, S35) y
-        # cerca del punto de unión ese sesgo diría "ya pasó" justo al llegar.
+        # cerca del punto de conflicto ese sesgo diría "ya pasó" justo al llegar.
         for a in self.user_manager.ais.values():
             player = a.player
             if player.plid == ai.player.plid or not player.telemetry:
@@ -141,12 +137,13 @@ class _ZonesMixin(_MixinBase):
             other_behavior = a.extra.get("aic")
             other_mode = other_behavior.active_mode if other_behavior else None
             road_id = other_mode.current_id if other_mode else None
+            road = self.map_recorder.roads.get(road_id) if road_id else None
             node_idx = 0
-            if road_id == link.to_road_id and to_road is not None and to_road.nodes:
+            if road is not None and road.nodes:
                 node_idx, _ = self._get_closest_node_index(
                     player.telemetry.coordinates.x_m,
                     player.telemetry.coordinates.y_m,
-                    to_road.nodes,
+                    road.nodes,
                 )
             if es_amenaza(player, road_id, node_idx):
                 return True

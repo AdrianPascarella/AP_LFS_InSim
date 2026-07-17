@@ -1,6 +1,6 @@
 # 🙋 Tus acciones — AP_LFS_InSim
 
-> **0 pendientes** · nada te bloquea ahora mismo · actualizado en S44
+> **0 pendientes** · nada te bloquea ahora mismo · actualizado en S45
 >
 > Todo lo que hay aquí necesita tus manos o tu criterio: Claude no puede hacerlo, o no puede
 > comprobarlo (no puede ejecutar LFS). **Tú nunca editas este archivo**: me dices cómo ha ido y
@@ -10,13 +10,19 @@
 
 *(Ninguna.)* La cola de validación (Fase 7 + UI del 8.4) quedó despejada en S43 y sigue a 0.
 
-El **diseño del rediseño de la cesión** se cerró contigo en S44 (por selector) y está escrito en
-`PLAN.md § Fase 8, bloque 8.6`: implementarlo es trabajo mío y no te necesita. Lo que **sí** te
-tocará, cuando llegue:
+El **rediseño de la cesión** (diseño cerrado contigo en S44, `PLAN.md § Fase 8, bloque 8.6`) se
+está implementando: S45 dejó hechos el modelo, la geometría y la conducta del link; faltan la UI y
+el render. Es trabajo mío y no te necesita. Lo que **sí** te tocará, cuando llegue:
 
-- **Al terminar el 8.6** → ficha U nueva: validar en LFS la herramienta rediseñada.
-- **En el 8.7 (migración)** → ficha U: **regrabar `test1` como polígono** (≥3 puntos). Hoy es un
-  círculo con `radius_m`, y esa forma **no se convierte sola**; hay que rehacerla en el juego.
+- **Al terminar el 8.6 entero** (8.6.8) → ficha U nueva: validar en LFS la herramienta rediseñada.
+- **En el 8.7 (migración)** → ficha U: **regrabar `test1` como polígono** (≥3 puntos). Hoy es una
+  cápsula de 2 nodos con `radius_m`, y esa forma **no se convierte sola**; hay que rehacerla en el
+  juego.
+
+> 🚫 **Mientras tanto, no mapees en LFS** (esto no es una ficha, es una restricción temporal):
+> hasta que el **8.6.5** esté hecho, abrir el detalle de un link o una zona —o usar `!map check` /
+> `!map whereami`— puede petar, porque la UI todavía toca campos que el modelo nuevo ya borró.
+> **Conducir sí es seguro.** El aviso completo está en `ESTADO_ACTUAL.md`.
 
 ## ✅ Cerradas (recientes — el registro completo está en `HISTORIAL.md`)
 

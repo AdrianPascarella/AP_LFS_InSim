@@ -45,6 +45,38 @@ def calc_dist_point_to_segment_2d(
     return math.hypot(px - proj_x, py - proj_y)
 
 
+def segment_intersection_2d(
+    ax: float,
+    ay: float,
+    bx: float,
+    by: float,
+    cx: float,
+    cy: float,
+    dx: float,
+    dy: float,
+) -> Optional[Tuple[float, float, float, float]]:
+    """¿Dónde se cortan los segmentos AB y CD en XY?
+
+    Devuelve ``(px, py, t_ab, t_cd)`` — el punto de cruce y su posición
+    normalizada (0..1) sobre CADA segmento, que el llamante necesita para
+    interpolar la Z en el cruce. Paralelos, degenerados o que solo se cortarían
+    al prolongarlos ⇒ ``None``.
+    """
+    r_x, r_y = bx - ax, by - ay
+    s_x, s_y = dx - cx, dy - cy
+
+    denom = r_x * s_y - r_y * s_x
+    if -1e-9 < denom < 1e-9:
+        return None  # paralelos, colineales o algún segmento degenerado
+
+    t_ab = ((cx - ax) * s_y - (cy - ay) * s_x) / denom
+    t_cd = ((cx - ax) * r_y - (cy - ay) * r_x) / denom
+    if not (0.0 <= t_ab <= 1.0 and 0.0 <= t_cd <= 1.0):
+        return None  # el cruce cae fuera de alguno de los dos segmentos
+
+    return ax + t_ab * r_x, ay + t_ab * r_y, t_ab, t_cd
+
+
 def is_point_in_polygon_2d(px: float, py: float, nodes: List["Coordinates"]) -> bool:
     """Algoritmo de Ray-Casting para saber si un punto 2D esta dentro de un poligono."""
     inside = False

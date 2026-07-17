@@ -51,6 +51,11 @@ class FreeroamMode(AINavModeState):
     yield_link_id: Optional[str] = None
     yield_active: bool = False
 
+    # STOP (S44): link ante el que se está parando y link cuya parada ya se
+    # cumplió (a partir de ahí ese enlace se evalúa como un YIELD normal).
+    yield_stop_link_id: Optional[str] = None
+    yield_stop_done_link_id: Optional[str] = None
+
     # 7. Reglas Especiales activas
     active_special_rules: List[str] = field(default_factory=list)
 
@@ -72,6 +77,10 @@ class FreeroamMode(AINavModeState):
         # Histéresis del ceda-el-paso (anti-parpadeo): instante hasta el que se
         # mantiene el yield tras la última detección de un prioritario. 0.0 = sin hold.
         self._yield_hold_until: float = 0.0
+
+        # STOP: instante en que el coche se detuvo de verdad ante la línea, para
+        # cronometrar el aguante. 0.0 = todavía rueda (la cuenta no ha empezado).
+        self._yield_stopped_since: float = 0.0
 
         # FSM de adelantamiento — inicialización garantizada en construcción
         self.overtake_state: str = "IDLE"

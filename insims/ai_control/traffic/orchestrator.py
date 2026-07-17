@@ -15,10 +15,18 @@ from typing import TYPE_CHECKING
 
 from insims.ai_control.base import _MixinBase
 from insims.ai_control.behavior import AIBehavior
-from insims.ai_control.nav_modes.freeroam.enums import AIManeuverState, TrafficRule
+from insims.ai_control.nav_modes.freeroam.enums import (
+    AIManeuverState,
+    TrafficRule,
+    YieldType,
+)
 from insims.ai_control.nav_modes.freeroam.mode import FreeroamMode
 from insims.ai_control.traffic.cruise_control import PARADA_ABSOLUTA_M
-from insims.ai_control.traffic.yielding import has_crossed_line
+from insims.ai_control.traffic.yielding import (
+    DEFAULT_YIELD_STOP_HOLD_S,
+    STOPPED_SPEED_MS,
+    has_crossed_line,
+)
 
 if TYPE_CHECKING:
     from insims.users_management.main import AI
@@ -40,6 +48,44 @@ class _OrchestratorMixin(_MixinBase):
         `hold_until` de la última detección. Evita soltar el yield —y pegar un
         acelerón contra el freno de mano— por un único tick sin detección."""
         return detected or now < hold_until
+
+    def _stop_pending(self, mode, link, my_speed_ms: float, now: float) -> bool:
+        """¿Este link es un STOP que todavía no ha cumplido su parada? (S44)
+
+        Un `STOP` para siempre, venga alguien o no: frena hasta detenerse de
+        verdad (v≈0 ⇒ `STOPPED_SPEED_MS`), aguanta `yield_stop_hold_s` clavado
+        y solo entonces se da por cumplido — a partir de ahí evalúa como un
+        `YIELD` normal. La marca es por link: cambiar de enlace exige parar otra
+        vez.
+
+        Devuelve True mientras la parada esté pendiente (⇒ hay que frenar).
+        """
+        if link.yield_type is not YieldType.STOP:
+            return False
+
+        if mode.yield_stop_done_link_id == link.link_id:
+            return False  # ya paró en ESTE link: ahora es un YIELD
+
+        if mode.yield_stop_link_id != link.link_id:
+            # Primer tick ante este STOP: empieza la maniobra de parada.
+            mode.yield_stop_link_id = link.link_id
+            mode._yield_stopped_since = 0.0
+            return True
+
+        if my_speed_ms >= STOPPED_SPEED_MS:
+            mode._yield_stopped_since = 0.0  # aún rueda: la cuenta no empieza
+            return True
+
+        if mode._yield_stopped_since == 0.0:
+            mode._yield_stopped_since = now  # acaba de detenerse: arranca el reloj
+            return True
+
+        hold_s = self.config.get("yield_stop_hold_s", DEFAULT_YIELD_STOP_HOLD_S)
+        if now - mode._yield_stopped_since < hold_s:
+            return True  # aguantando la parada
+
+        mode.yield_stop_done_link_id = link.link_id
+        return False
 
     def _update_traffic_behavior(self, ai: AI) -> None:
         """
@@ -322,10 +368,12 @@ class _OrchestratorMixin(_MixinBase):
             # =========================================================
             # CONTROL DE INTERSECCIONES (cesión por RoadLink, Fase 8)
             # =========================================================
-            # La cesión cuelga del giro: un RoadLink con `yield_line` obliga a
-            # frenar ANTES de la línea si `_yield_threat_detected` ve tráfico
-            # vigilado a menos de T segundos (diseño S38). Cruzada la línea, la
-            # maniobra está comprometida y NO se frena en mitad del cruce.
+            # La cesión cuelga del giro: un RoadLink con `yield_type` YIELD/STOP
+            # y su `yield_point` marcado obliga a frenar ANTES de la línea —que
+            # se DERIVA del punto (S44)— si `_yield_threat_detected` ve tráfico
+            # a menos de T segundos de algún punto de conflicto. Cruzada la
+            # línea, la maniobra está comprometida y NO se frena en mitad del
+            # cruce. `STOP` además para siempre, venga alguien o no.
             YIELD_LOOK_AHEAD_S = (
                 5.0  # Anticipación: a cuántos segundos por delante se mira la línea
             )
@@ -340,22 +388,26 @@ class _OrchestratorMixin(_MixinBase):
 
             cediendo = False
             if candidato is not None and candidato.has_yield and candidato.nodes:
+                linea = self._yield_line_of(candidato)
                 punto_union = candidato.nodes[-1]
                 comprometida = has_crossed_line(
                     my_coords.x_m,
                     my_coords.y_m,
-                    candidato.yield_line,
+                    linea,
                     punto_union.x_m,
                     punto_union.y_m,
                 )
                 dist_linea_m = self._dist_to_yield_line_m(
-                    my_coords.x_m, my_coords.y_m, candidato.yield_line
+                    my_coords.x_m, my_coords.y_m, linea
                 )
                 yield_range_m = max(15.0, my_speed_ms * YIELD_LOOK_AHEAD_S)
 
                 if not comprometida and dist_linea_m <= yield_range_m:
                     now = time.time()
-                    detectado = self._yield_threat_detected(ai, candidato)
+                    # El STOP manda mientras no haya cumplido su parada: para
+                    # aunque no venga nadie. Cumplida, evalúa como un YIELD.
+                    parando = self._stop_pending(mode, candidato, my_speed_ms, now)
+                    detectado = parando or self._yield_threat_detected(ai, candidato)
                     # Histéresis anti-parpadeo (fix (5), S33): detectar renueva
                     # el hold; sin detección se cede hasta que expira.
                     if detectado:

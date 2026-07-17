@@ -762,10 +762,40 @@ conductor*, no el borde de un círculo, y regala el **punto de compromiso**.
       (`map_renderer.py`); 17 tests en `test_map_renderer.py` (10 caracterización + 7 cesión, red
       en rojo primero). La parte "en Elementos" ya la cubre el detalle textual del 8.4. Los PNG
       actuales no cambian (ningún mapa tiene `yield_line` aún; aparecerán al migrar `test1`).
-- [ ] **8.6 Rediseño de la UX/modelo de cesión** — **DISEÑO CERRADO Y APROBADO (S44)**, implementación
-      pendiente. Origen: veredicto de **U8** (*"funciona, a mejorar"*) + ideas del usuario en S43.
-      El diseño se cerró con el usuario por selector, y **se apartó bastante de las recomendaciones
-      de S43**: ver "Qué cambió respecto a lo previsto" al final.
+- [ ] **8.6 Rediseño de la UX/modelo de cesión** — **DISEÑO CERRADO Y APROBADO (S44)**; implementación
+      **empezada en S45 y a medias** (sub-bloques abajo). Origen: veredicto de **U8** (*"funciona, a
+      mejorar"*) + ideas del usuario en S43. El diseño se cerró con el usuario por selector, y **se
+      apartó bastante de las recomendaciones de S43**: ver "Qué cambió respecto a lo previsto" al final.
+
+  **Sub-bloques (red de tests primero en cada uno):**
+  - [x] **8.6.1 Modelo de datos** — ✅ S45: `YieldType` (`NONE|YIELD|STOP`, str-enum) en `enums.py`;
+        `RoadLink` = `yield_type` + `yield_point` + `yield_time_s`; `IntersectionZone` = polígono
+        (`has_polygon` ⇒ ≥3) + `yield_time_s` + `roads: Dict[str, YieldType]`; **borrados**
+        `yield_line`, `yield_zone_id`, `radius_m`, `priority_rules`; (de)serialización del enum y del
+        punto suelto. 13 tests en `test_map_persistencia.py` (rehecho), red en rojo primero.
+  - [x] **8.6.2 Geometría y predicados puros** — ✅ S45: `segment_intersection_2d` (`geometry.py`) +
+        `link_conflict_points` / `derive_yield_line` / `roads_touching_polygon` (`traffic/yielding.py`),
+        todos con tolerancia en Z donde toca. 27 tests en `test_yielding_geometria.py`.
+  - [x] **8.6.3 Conducta del link** — ✅ S45: `_yield_threat_detected` reescrito contra los puntos de
+        conflicto (**la rama de zona murió**); `_stop_pending` implementa el `STOP` (para → aguanta
+        `yield_stop_hold_s` → evalúa como `YIELD`); caché perezosa
+        `map_recorder.get_link_conflict_points()` por `(link_id, tol. Z)` — el hot loop no puede
+        cruzar un link contra 223 roads por MCI. 40 tests en `test_orchestrator.py`.
+  - [ ] **8.6.5 UI de mapeo** — ⏳ **PRÓXIMO**. Skill `ai-control-map-ui` ANTES de abrir `map_ui.py`.
+        Ver "C · UI" abajo. **Arregla los 9 tests rojos** (`test_map_ui_link_yield.py`,
+        `test_map_ui_zone_priority.py`) y los restos de `map_recorder.py` que aún tocan campos
+        borrados (`_cmd_set`, detalle, `_cmd_check`, `!map whereami`, `get_location_context`
+        → `zone_radius`). Al terminar, **actualizar la skill**: el grabador por fases del 8.4 muere
+        (el punto del link pasa a ser UN punto).
+  - [ ] **8.6.6 Render** — pintar la línea DERIVADA del `yield_point` (con su tipo y su T) y el
+        polígono de la zona con su tabla. Adaptar `test_map_renderer.py` (del 8.5).
+  - [ ] **8.6.7 Conducta de la zona** (era 8.6.4; movida en S45 DESPUÉS de la UI) — el que cruza de
+        recto: para antes del polígono si algún coche de una road `NONE` está a menos de T de su
+        borde más cercano; `STOP` aguanta y evalúa; compromiso si ya entró. **Se movió porque hoy no
+        hay forma de grabar un polígono**: sin la UI (8.6.5) esa conducta no se puede probar en LFS
+        ni con `test1` (que es una cápsula de 2 nodos, inerte). Ver "B · ZONA".
+  - [ ] **8.6.8 Salida del bloque** — **ficha U nueva** de validación en LFS de la herramienta
+        rediseñada.
 
   **Principio rector: DOS MECANISMOS ORTOGONALES que no se referencian jamás.**
   El **link** gobierna al que **hace la maniobra**; la **zona** gobierna al que **cruza de recto**
@@ -828,6 +858,19 @@ conductor*, no el borde de un círculo, y regala el **punto de compromiso**.
 
   **Salida del bloque:** red de tests primero → implementación → **ficha U nueva** de validación
   en LFS. Migración y validación van DESPUÉS (8.7/8.8), ya con la herramienta rediseñada.
+
+  **Decisiones de implementación (S45), para que no se rediscutan:**
+  - **Los campos muertos se borran en el 8.6, no en el 8.7.** El punto 8.7 heredaba esa frase de
+    S43 (antes de que existiera este diseño). El loader filtra claves desconocidas
+    (`_graph_item_from_json`), así que `south_city.json` carga igual y al re-guardar quedan fuera;
+    `test1` ya estaba inerte, así que no se pierde nada en el juego. El 8.7 conserva lo que sí
+    necesita al usuario: **regrabar `test1`**.
+  - **`has_yield` exige tipo Y punto**: un toggle en `YIELD` sin punto marcado está a medias (no
+    hay línea que derivar) ⇒ no cede.
+  - **La `from_road` no aporta punto de conflicto** (de la vía que dejas atrás no se cede: si
+    contara, tus propios seguidores te dejarían clavado en la línea) y **el punto de unión con la
+    `to_road` se añade a mano**: el trazado ACABA ahí, así que su "cruce" es degenerado y la
+    geometría no lo garantiza. El diseño ya decía que el punto de unión es "uno más".
 - [ ] **8.7 Migración** — (antes 8.6) convertir `test1` al modelo **ya rediseñado** (8.6) y retirar
       lo que el rediseño deje muerto. Con el diseño S44 eso es: `priority_rules`, `radius_m`,
       `yield_zone_id` y la rama de zona de `traffic/zones.py::_yield_threat_detected`.
