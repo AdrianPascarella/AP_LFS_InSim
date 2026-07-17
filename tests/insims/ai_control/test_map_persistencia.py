@@ -3,10 +3,10 @@
 Dos partes:
 
 - **Caracterización de la carga actual**: `south_city.json` (el mapa real:
-  223 roads / 374 road_links / 40 lateral_links / 1 zona) tiene que cargar
+  223 roads / 374 road_links / 43 lateral_links / 1 zona) tiene que cargar
   INTACTO. Es el requisito duro de compatibilidad de la Fase 8 (PLAN § Fase 8,
   decisión 6): los campos nuevos son opcionales con default. (Los conteos se
-  re-basan cuando el usuario amplía el mapa; el último ajuste fue en S42.)
+  re-basan cuando el usuario amplía el mapa; el último ajuste fue en S44.)
 
 - **Round-trip del modelo de cesión (S38)**: los campos `yield_*` del
   `RoadLink` (línea de detención + T + zona vigilada) y el `yield_time_s` de
@@ -44,7 +44,7 @@ class TestCargaSouthCity:
         assert mr._load_map_from_disk("south_city") is True
         assert len(mr.roads) == 223
         assert len(mr.road_links) == 374
-        assert len(mr.lateral_links) == 40
+        assert len(mr.lateral_links) == 43
         # La zona vieja (área + priority_rules) sigue cargando tal cual hasta
         # que 8.3/8.6 retiren el modelo antiguo.
         zona = mr.zones["test1"]
