@@ -5,6 +5,60 @@
 
 ---
 
+## S44 — 2026-07-17 — Diseño del 8.6 CERRADO Y APROBADO (sin código) + protección del remapeo S22
+
+**Arranque:** `git status` traía otra vez mapas sin commitear (remapeo de la zona S22, tocado esa
+misma mañana). Protegido según MODUS §1.2 sin preguntar: backup fuera del repo → commit `0140815`
+→ push. Contenido: **+5 road_links** (Vermilion/Victory/Commercial/Kenton), **−5** (los de
+Arcade↔Commercial), 2 modificados (total sigue en 374); **+3 lateral_links** (40 → **43**); roads
+(223) y zones (1) intactos. Eso tumbó `test_map_persistencia::test_south_city_carga_intacto` — es
+**caracterización**, así que se re-basó el conteo (como en S42 con `c7fc2b2`). Suite **855/855**.
+
+**Sesión de diseño puro**, la que S43 dejó apalabrada. Todo decidido con el usuario por selector.
+El resultado **se apartó mucho de lo que S43 recomendaba**, y merece la pena registrar el camino
+porque el valor está en los descartes:
+
+1. **Matriz N×N → rango → nada.** Se propuso sustituir la matriz de pares del usuario por un
+   **rango por vía** (N toggles en vez de N²; se pierden prioridades circulares, que no existen en
+   carreteras). Aprobado. Más tarde el propio rango se disolvió: el vocabulario acabó siendo el
+   **mismo `NONE|YIELD|STOP`** del link, con lo que "rango" desapareció como concepto.
+2. **El modelo híbrido de S43 (zona = quién cede a quién sobre los links) se descartó entero.** El
+   usuario aclaró el malentendido de fondo: **las zonas no tienen nada que ver con los links**. Una
+   zona resuelve el caso que el link NO puede resolver — **coches que van de recto**, cada uno por
+   su road, donde las roads se cortan sin que medie ningún link: nadie toma un enlace y chocan en
+   mitad del cruce. Claude había entendido lo contrario y **retiró su recomendación**.
+3. **De ahí sale el principio rector: DOS MECANISMOS ORTOGONALES**, que no se referencian jamás
+   (link = el que maniobra; zona = el que cruza recto). **`yield_zone_id` se borra.**
+4. **El link vigila todas las roads que su trazado pisa** (idea del usuario), con tolerancia en Z
+   para no confundir un puente. Eso le da solo lo que antes le daba el `yield_zone_id`.
+5. **`yield_line` polilínea → `yield_point`, un solo punto** (el punto implica la línea,
+   perpendicular a la tangente). Simplifica datos, UI (se acaba el grabador por fases del 8.4) y
+   el auto: **Auto** coloca el punto justo antes del primer cruce real.
+6. **`radius_m`: rehabilitado y vuelto a matar en la misma sesión.** Al decir el usuario "para antes
+   de entrar en la zona", Claude dedujo que el borde volvía a hacer falta ⇒ propuso recuperar el
+   círculo/radio. El usuario corrigió: **no hay radio aparte**, el único umbral es el **tiempo** al
+   **borde más cercano**, y la zona es un **polígono grabado** (**≥3 puntos**, sin máximo). Claude
+   se retractó. `radius_m` y `priority_rules` **se borran**.
+7. **`STOP` como toggle explícito** (petición del usuario, nombres en inglés): parada real (v≈0),
+   ~1 s de espera y luego evalúa como `YIELD`. La declaración deja de ser implícita ("tiene línea").
+
+**Decisiones registradas:** diseño completo en `PLAN.md § Fase 8, bloque 8.6`, con su sección
+**"Qué cambió respecto a lo previsto"** para que nadie relea S43 como vigente. **Limitación aceptada
+y escrita:** con dos niveles, **dos roads `YIELD` que se cruzan en la misma zona no se ceden entre
+sí**; si aparece en LFS, la salida es el rango numérico. **Config nuevo:** `yield_line_width_m`,
+`yield_stop_hold_s`, `yield_z_tolerance_m`.
+
+**Consecuencia asumida:** el 8.6 **invalida parte del 8.4 (UI) y del 8.5 (render)** — cambia el
+modelo de datos que ambos pintan. Es el precio de rediseñar tras el veredicto de U8, no una
+regresión.
+
+**Verificación:** sin código de producción → `pytest` **855/855** (el único cambio de test es el
+re-baseo del conteo). `close_check.py` → PASS.
+
+**Commits:** `0140815` (mapa S22 + re-baseo del conteo) + el commit de docs de esta entrada.
+
+---
+
 ## S43 — 2026-07-15 — Validación U3–U7/U8 + re-plan: rediseño de la cesión (diseño pendiente)
 
 **Contexto:** el usuario hizo sus deberes de `ACCIONES_USUARIO` y trajo veredictos + feedback de

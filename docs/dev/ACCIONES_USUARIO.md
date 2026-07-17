@@ -1,6 +1,6 @@
 # 🙋 Tus acciones — AP_LFS_InSim
 
-> **0 pendientes** · nada te bloquea ahora mismo · actualizado en S43
+> **0 pendientes** · nada te bloquea ahora mismo · actualizado en S44
 >
 > Todo lo que hay aquí necesita tus manos o tu criterio: Claude no puede hacerlo, o no puede
 > comprobarlo (no puede ejecutar LFS). **Tú nunca editas este archivo**: me dices cómo ha ido y
@@ -8,9 +8,15 @@
 
 ## ⏳ Pendientes
 
-*(Ninguna.)* La cola de validación (Fase 7 + UI del 8.4) quedó despejada en S43. El **rediseño de
-la cesión** (PLAN § Fase 8, bloque 8.6) es trabajo de diseño/código; cuando esté construido
-generará una **ficha U nueva** — validar la herramienta rediseñada en LFS.
+*(Ninguna.)* La cola de validación (Fase 7 + UI del 8.4) quedó despejada en S43 y sigue a 0.
+
+El **diseño del rediseño de la cesión** se cerró contigo en S44 (por selector) y está escrito en
+`PLAN.md § Fase 8, bloque 8.6`: implementarlo es trabajo mío y no te necesita. Lo que **sí** te
+tocará, cuando llegue:
+
+- **Al terminar el 8.6** → ficha U nueva: validar en LFS la herramienta rediseñada.
+- **En el 8.7 (migración)** → ficha U: **regrabar `test1` como polígono** (≥3 puntos). Hoy es un
+  círculo con `radius_m`, y esa forma **no se convierte sola**; hay que rehacerla en el juego.
 
 ## ✅ Cerradas (recientes — el registro completo está en `HISTORIAL.md`)
 

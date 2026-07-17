@@ -762,38 +762,78 @@ conductor*, no el borde de un círculo, y regala el **punto de compromiso**.
       (`map_renderer.py`); 17 tests en `test_map_renderer.py` (10 caracterización + 7 cesión, red
       en rojo primero). La parte "en Elementos" ya la cubre el detalle textual del 8.4. Los PNG
       actuales no cambian (ningún mapa tiene `yield_line` aún; aparecerán al migrar `test1`).
-- [ ] **8.6 Rediseño de la UX/modelo de cesión (S43)** ◀️ **PRÓXIMO** — flujo **DISEÑAR → APROBAR
-      → EJECUTAR** (NO tocar código hasta aprobar el diseño, como en S38). Origen: veredicto de
-      **U8** (*"funciona, a mejorar"*) + ideas del usuario en S43. Cuatro frentes (las recomendaciones
-      de Claude van entre paréntesis, **a discutir/aprobar**, no decididas):
-      1. **`yield_time_s` como float en la UI.** Hoy el TypeIn muestra el texto literal
-         `"default (4)"` cuando el valor es `None`. (Rec: conservar el concepto *`None` = default
-         global de config* —útil: retocar el global reajusta los links no override— pero que el
-         TypeIn muestre SIEMPRE el número efectivo y un botón "usar default" para volver a `None`.)
-      2. **`yield_zone_id` — qué es y si sobrevive.** Hoy = "vigila ADEMÁS el punto de conflicto de
-         esta zona" (junto al tráfico del `to_road`), sin prioridades (`traffic/zones.py`
-         `_yield_threat_detected`). Es confuso. (Rec: redefinirlo como "qué tabla de prioridades de
-         zona gobierna este link", coherente con el punto 4.)
-      3. **Auto-`yield_line`.** Un botón que crea la línea de detención sola (no perfecta, pero
-         cubre la mayoría). (Rec: segmento perpendicular a la tangente del link en su primer nodo
-         —donde deja la `from_road`—, ancho fijo por config; Regrabar a mano si sale mal. Va junto
-         a "+ Grabar línea" en el detalle.)
-      4. **Zonas con tabla auto-poblada + toggle de prioridades.** Al crear una zona, detectar los
-         roads que la cruzan y montar una matriz *toggle* de "quién tiene preferencia sobre quién";
-         poder **borrar** roads (falsos cruces a distinta altura: puentes) **sin ignorar Z** del
-         todo (pendientes ⇒ tolerancia en Z, no corte duro). ⚠️ Esto **revive parcialmente** la
-         idea de `priority_rules` que S38 retiró (decisiones 2 y 7) — pero auto-poblada, que era
-         donde estaba el dolor. (Rec: modelo **híbrido** — `yield_line` = *DÓNDE* paras (geometría,
-         auto/manual); tabla de zona = *QUIÉN* cede a *QUIÉN*. Retos a resolver en el diseño:
-         auto-detección de cruces XY + chequeo de Z; UI de la matriz N×N en botones de LFS —bien
-         para 3-4 vías, pensar el caso de más—; y cómo convive con el "quien tiene `yield_line`
-         cede" actual (¿la tabla lo reemplaza en cruces con zona? ¿coexisten?).)
-      **Salida del bloque:** diseño cerrado (estilo S38) → red de tests primero → implementación →
-      **ficha U nueva** de validación en LFS. La migración y su validación van DESPUÉS (8.7/8.8), ya
-      con la herramienta rediseñada — migrar `test1` ahora sería trabajo tirado.
+- [ ] **8.6 Rediseño de la UX/modelo de cesión** — **DISEÑO CERRADO Y APROBADO (S44)**, implementación
+      pendiente. Origen: veredicto de **U8** (*"funciona, a mejorar"*) + ideas del usuario en S43.
+      El diseño se cerró con el usuario por selector, y **se apartó bastante de las recomendaciones
+      de S43**: ver "Qué cambió respecto a lo previsto" al final.
+
+  **Principio rector: DOS MECANISMOS ORTOGONALES que no se referencian jamás.**
+  El **link** gobierna al que **hace la maniobra**; la **zona** gobierna al que **cruza de recto**
+  (varias vías que se cortan físicamente sin que medie ningún link: si todos siguen rectos, chocan
+  en mitad del cruce — eso es lo único que resuelve la zona). Cada uno es autocontenido:
+  **`yield_zone_id` desaparece**. Ese acoplamiento era el origen de la confusión del frente 2.
+
+  **A · Cesión del LINK**
+  - **Datos** (`RoadLink`): `yield_type: NONE|YIELD|STOP` (enum en inglés, default `NONE` ⇒ los
+    mapas viejos cargan sin ceder) · `yield_point: Optional[Coordinates]` — **un solo punto**; la
+    línea de detención se **deriva** perpendicular a la tangente del link en ese punto, con ancho de
+    config · `yield_time_s: Optional[float]` (sin cambios; `None` ⇒ default global).
+  - **Mueren:** `yield_zone_id` y la `yield_line` como polilínea grabada punto a punto.
+  - **Qué vigila:** ya NO solo el `to_road`. Se detectan por geometría **todas las roads que el
+    trazado del link pisa** (cruce en XY con **tolerancia en Z**, para que un puente no cuente); cada
+    una aporta un **punto de conflicto**, y el punto de unión sobre el `to_road` es simplemente uno
+    más. Se vigila el tráfico de cada road que se acerca a su punto de conflicto a menos de T.
+    Esto es lo que hace innecesaria la zona: el link se gana solo lo que antes le daba el
+    `yield_zone_id`.
+  - **Conducta:** `NONE` no cede · `YIELD` frena hasta parar antes del punto **solo** si hay amenaza
+    a <T (si está libre, ni levanta el pie) · `STOP` para siempre (v≈0), **aguanta ~1 s** y luego
+    evalúa como `YIELD`. **Compromiso:** pasado el punto, nunca frena dentro del cruce (S38 intacto).
+
+  **B · ZONA**
+  - **Datos** (`IntersectionZone`): `nodes` = **polígono, mínimo 3 puntos, sin máximo** (su contorno
+    **es** el borde donde se para) · `yield_time_s: Optional[float]` = **tiempo de proximidad**
+    (`None` ⇒ default global) · `roads: Dict[str, YieldType]` — tabla **auto-poblada** con las roads
+    que pisan el polígono, cada una con su toggle `NONE|YIELD|STOP` y **borrable** (falsos cruces por
+    altura), con filtro por tolerancia en Z.
+  - **Mueren:** `radius_m` **y** `priority_rules`. ⚠️ Ojo: `radius_m` NO se rehabilita — no hay radio
+    aparte. El único umbral es el **tiempo**, medido de los coches al **borde más cercano** de la zona.
+  - **Conducta:** un coche por una road marcada `YIELD`/`STOP` para **antes de entrar en el
+    polígono** si algún coche de una road `NONE` de esa zona está a menos de T de su borde más
+    cercano. `STOP` para siempre, aguanta ~1 s y evalúa. **Compromiso:** si ya entró, **termina de
+    pasar**. Las roads `NONE` no ceden nunca en esa zona.
+
+  **C · UI** (skill `ai-control-map-ui` antes de tocar `map_ui.py`)
+  - Detalle del **link**: toggle `[NONE|YIELD|STOP]` · `[+ Marcar punto] [Auto] [Borrar]` — **Auto**
+    coloca el punto **justo antes del primer cruce real** con otra road (reusa la detección de "qué
+    roads piso", así que no añade maquinaria) · T con el **float efectivo** + `[Usar default]`.
+  - Detalle de la **zona**: grabador de polígono (≥3 puntos) · mismo T con su `[Usar default]` ·
+    tabla auto-poblada, un toggle por road + `[X]` para borrar.
+  - **Marcar punto** ya no es "grabar puntos" (fases en `current_recording` del 8.4): es **un** punto.
+
+  **D · Config nuevo:** `yield_line_width_m` (ancho de la línea derivada) · `yield_stop_hold_s`
+  (~1.0, la parada del `STOP`) · `yield_z_tolerance_m` (~3.0, tolerancia de altura en la detección
+  de cruces). Se mantiene `yield_time_s` (4.0).
+
+  **E · Limitación conocida y ACEPTADA:** con dos niveles (`NONE` manda / `YIELD`-`STOP` ceden),
+  **dos roads `YIELD` que se cruzan en la misma zona no se ceden entre sí**. Es consecuencia de
+  elegir el vocabulario de dos niveles (mismo que el link) en vez de rangos numéricos 1..n. Queda
+  escrito como límite, no como olvido: si aparece en LFS, la salida es el rango numérico.
+
+  **Qué cambió respecto a lo previsto en S43** (para que no sorprenda al releer): la matriz **N×N**
+  de pares se descartó por el **rango**, y el rango a su vez se disolvió en el **mismo vocabulario
+  `NONE|YIELD|STOP`** del link · el modelo **híbrido** ("zona = quién cede a quién sobre los links")
+  se descartó entero: la zona **no gobierna links**, gobierna a los que van rectos · la mitad (b) del
+  frente 3 (que la zona generara las líneas de los links secundarios) **murió** con la ortogonalidad ·
+  `radius_m` se **borra** en vez de rehabilitarse.
+
+  **Salida del bloque:** red de tests primero → implementación → **ficha U nueva** de validación
+  en LFS. Migración y validación van DESPUÉS (8.7/8.8), ya con la herramienta rediseñada.
 - [ ] **8.7 Migración** — (antes 8.6) convertir `test1` al modelo **ya rediseñado** (8.6) y retirar
-      lo que el rediseño deje muerto (`priority_rules` viejo / código inerte). Ojo: el punto 4 del
-      8.6 puede cambiar qué se retira exactamente.
+      lo que el rediseño deje muerto. Con el diseño S44 eso es: `priority_rules`, `radius_m`,
+      `yield_zone_id` y la rama de zona de `traffic/zones.py::_yield_threat_detected`.
+      ⚠️ `test1` es hoy un **círculo** (`radius_m` 10) con 2 `priority_rules`: sus reglas dan
+      directamente el reparto `NONE`/`YIELD`, pero **la forma no se convierte sola** — hay que
+      **regrabar el polígono** (≥3 puntos) en el juego. Eso lo hace el usuario ⇒ **ficha U**.
 - [ ] **8.8 Validación en LFS (usuario)** — (antes 8.7) → cola de validación del handoff.
 
 **Criterio de aceptación:** intersecciones **fáciles de crear** (sin teclear ids ni razonar en pares) y conducta
