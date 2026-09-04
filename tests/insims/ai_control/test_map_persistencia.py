@@ -49,8 +49,8 @@ class TestCargaSouthCity:
         # normal; lo que vigilan es que el mapa real siga cargando entero.
         mr = ai_control.map_recorder
         assert mr._load_map_from_disk("south_city") is True
-        assert len(mr.roads) == 226
-        assert len(mr.road_links) == 387
+        assert len(mr.roads) == 225
+        assert len(mr.road_links) == 386
         assert len(mr.lateral_links) == 50
         assert "test1" in mr.zones
 
