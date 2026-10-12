@@ -113,6 +113,13 @@ jugador con un mod, para ver su SkinID en `CName` (P6). Con él se validan en LF
   está en `C:\LFS` y pide permiso). Se comprueba si OutSim y montar una
   carrera con IA se pueden configurar con comandos durante la partida; si hace falta tocar
   `cfg.txt`, se pide permiso cambio a cambio.
+  *Primera pasada en S12 → LOG.md S12:* `tests/live_lfs.py` hecho y ejecutado con LFS en el menú
+  (un jugador, sin carrera): 0 paquetes ilegibles, 0 con el contenido cambiado al reescribirlos;
+  texto con griego y `€` bien. **Falta:** una carrera con IA (NPL, MCI, NLP, RST, RES, LAP…), un
+  coche mod (SkinID en `CName`, P6), pulsar el botón (BTC/BTT) y OutSim/OutGauge en vivo.
+  **Preferencia del usuario (S12):** quedar fuera de la prueba. La activación de InSim la hace el
+  agente: controlando la pantalla y/o con `autoexec.lfs` (este, con permiso, porque está en
+  `C:\LFS`). En S12 aún la escribió el usuario.
 
 ## Aplicaciones aparte: lo que la biblioteca debe permitir (requisitos)
 > Decidido con el usuario en S1. **Aquí solo hay texto: el código de estas aplicaciones vive en sus

@@ -1,12 +1,11 @@
 # 📍 Estado — AP_LFS_InSim (lfs_insim)
-> Actualizado: 2026-10-12 (S11): **W3.7 y W3.8 hechas** — `lfs_insim.OutSim` y `OutGauge`
-> (`_udp.py`) escuchan UDP con `@x.on(...)` como `InSim`; `lfs_insim.run(insim, gauge)` (`_run.py`)
-> arranca varias fuentes a la vez; `@insim.every(s)` da un ritmo fijo mientras hay conexión. Los
-> manejadores viven en `_handlers.Handlers`. Hechas en S9–S10: W3.2–W3.6 (`InSim` conecta,
-> keep-alive, reconexión, `@insim.on_connect`). Decisiones de API en `API_DESIGN.md`. El agente
-> puede abrir LFS 0.8C31 (`C:\LFS`, limpio; InSim **no** activado). Tests en verde.
-> **▶️ SIGUIENTE: W3.1 — prueba en vivo con el LFS real** (lo último de W3; detalle y permisos en
-> `PLAN.md`): activar InSim con `/insim=29999` dentro del juego, nunca tocando `C:\LFS` sin permiso.
+> Actualizado: 2026-10-12 (S12): **primera prueba con el LFS real, en verde.**
+> `tests/live_lfs.py` (no lo ejecuta pytest) conecta, hace 23 peticiones, envía mensajes y un
+> botón, y comprueba que cada paquete recibido se lee y se reescribe con el mismo contenido. Con LFS
+> en el menú: 0 fallos. W3.2–W3.8 hechas en S9–S11. Tests en verde.
+> **▶️ SIGUIENTE: completar W3.1** (`PLAN.md`): carrera con IA, coche mod (SkinID), pulsar el botón
+> y OutSim/OutGauge en vivo. **El usuario quiere quedar fuera:** el agente activa InSim
+> (`/insim=29999`) controlando la pantalla, o con `autoexec.lfs` (pedir permiso: es `C:\LFS`).
 
 ## Dónde estamos
 Fase activa: **W3 — La conexión**, detallada en S9 (`PLAN.md`). W2 está hecha entera.

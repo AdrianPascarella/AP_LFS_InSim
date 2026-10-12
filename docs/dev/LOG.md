@@ -1,6 +1,46 @@
 # 📓 Diario — AP_LFS_InSim (lfs_insim)
 <!-- Solo se añade, lo más nuevo arriba. Una entrada por sesión. -->
 
+## S12 — 2026-10-12 — Primera prueba con el LFS real (W3.1, primera pasada)
+
+**Inicio:** según el protocolo; control de inicio en verde, 0 acciones del usuario pendientes.
+
+**Decisión del usuario:** InSim lo activó él esta vez, escribiendo `/insim=29999` en LFS (opción 1
+de 3). Para el futuro: «mejor la 2 y/o la 3 (prefiero yo quedar fuera)», es decir, el agente
+controlando la pantalla o con `autoexec.lfs` (con permiso, porque está en `C:\LFS`). Anotado en
+`PLAN.md` (W3.1).
+
+**Hecho:** `tests/live_lfs.py`, sin el prefijo `test_` para que pytest no lo recoja. Envuelve
+`unpack_insim` de `_stream` para guardar los bytes de cada paquete; pide con `IS_TINY` (cada
+`ReqI` distinto, para saber qué petición tuvo respuesta) VER, PING, SST, GTM, SCP, ISM, NCN, NPL,
+RES, NLP, MCI, REO, RST, AXI, RIP, NCI, ALC, AXM, SLC, MAL, PLH, IPB y LCL; envía `IS_MSL`, `IS_MSX`,
+`IS_MST` (con acentos, `€` y griego) y un `IS_BTN` con `Caption`; lo borra con `IS_BFN` y, con
+`--exit`, cierra LFS con `/exit`. El informe va a `tests/live_reports/` (en `.gitignore`: lleva
+nombres de jugadores). Ensayado antes contra el `FakeLFS`.
+
+**Resultado con LFS 0.8C31 en el menú (un jugador, sin carrera):** conectó; 0 paquetes ilegibles; 0
+reescritos con otro contenido. Respondieron VER, PING (`TINY_REPLY`), SST (`IS_STA`), GTM, SCP
+(`IS_CPP`), ISM, NCN, REO, RIP, ALC, AXM, MAL, PLH y LCL. Sin respuesta, lo esperable sin carrera,
+sin servidor o sin layout: NPL, RES, NLP, MCI, RST, AXI, NCI, SLC e IPB. Los tres mensajes
+volvieron como `IS_MSO` con el texto exacto (`TextStart` 21 = índice en el `str`, bien).
+LFS se cerró con `/exit`.
+
+**Diagnóstico (§8):** la primera versión exigía los mismos bytes al reescribir, y dos `IS_MSO`
+fallaban. No era un error de la biblioteca: LFS pone `^L` delante del texto del chat y rellena con
+más ceros; la biblioteca quita los cambios de página al leer y no los repite si no hacen falta
+(D3, S7). El criterio pasó a ser «mismo contenido al leer lo reescrito», y las diferencias de bytes
+quedan en el informe como información. Comprobado con los bytes reales guardados. También se vio
+que LFS quita los colores del chat en `IS_MSO` si no se pide `ISF.MSO_COLS`.
+
+**Tropiezo propio:** un comando con dos heredocs mal encadenados abrió el `python` de
+streamer-project en modo interactivo, sin ejecutar nada (§13 otra vez). Se paró la tarea y se rehizo
+con Edit.
+
+**Verificación:** `verify.py` → PASS (255 passed, 1 deselected); aviso de tamaño de `_codec.py`
+igual que antes.
+
+**Commits:** `276aa2d` (script) y el cierre de este hito.
+
 ## S11 — 2026-10-12 — `OutSim`, `OutGauge` y `run()` (W3.7)
 
 **Inicio:** según el protocolo; control de inicio en verde, documentos de acuerdo con git, 0
