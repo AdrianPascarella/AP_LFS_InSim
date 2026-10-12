@@ -1,6 +1,7 @@
 """Live protocol test against a real LFS (W3.1). Not collected by pytest: it needs the game.
 
     .venv/Scripts/python tests/live_lfs.py [--port 29999] [--seconds 10] [--wait 180] [--exit]
+        [--outgauge PORT] [--outsim PORT [--outsim-opts HEX]]
 
 With LFS open and InSim listening (`/insim=29999` in LFS), it connects, asks LFS for everything
 it can report (version, state, connections, players, results...), sends messages and a button,
@@ -10,6 +11,9 @@ the library does not keep, which the report shows so it can be told apart). The 
 tests/live_reports/ (ignored by git: it holds player names) and a summary to the console.
 
 --exit sends /exit at the end, which closes LFS: only for an LFS that the tester opened.
+--outgauge and --outsim also listen to those UDP ports (the OutGauge and OutSim lines of LFS's
+cfg.txt; --outsim-opts is its "OutSim Opts", in hexadecimal as there) and check their packets the
+same way. LFS sends them only while a car is on track.
 """
 
 from __future__ import annotations
@@ -22,12 +26,14 @@ import json
 import logging
 import time
 from collections import Counter
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 import lfs_insim
 import lfs_insim._stream
-from lfs_insim import InSim
+from lfs_insim import InSim, OutGauge, OutSim
+from lfs_insim._udp import _UDPSource
 from lfs_insim.packets import (
     BFN,
     IS_BFN,
@@ -41,7 +47,7 @@ from lfs_insim.packets import (
     ISF,
     TINY,
 )
-from lfs_insim.packets._codec import InSimPacket, unpack_insim
+from lfs_insim.packets._codec import InSimPacket, Structure, unpack_insim
 
 REPORTS = Path(__file__).resolve().parent / "live_reports"
 
@@ -71,6 +77,7 @@ REQUESTS = [  # TINY info requests: in single player some get no answer, which t
     TINY.LCL,
 ]
 FIRST_REQI = 10  # ReqI of REQUESTS[0]; the next ones count up, so each answer names its request
+KEPT_PER_TYPE = 20  # packets of each type written whole to the report (MCI and UDP ones abound)
 
 
 @dataclasses.dataclass
@@ -78,7 +85,8 @@ class Received:
     """One packet as LFS sent it, and what the library made of it."""
 
     raw: bytes
-    packet: InSimPacket | None = None
+    source: str = "InSim"
+    packet: Structure | None = None
     error: str = ""
     repacked: bytes = b""
     same_content: bool = False
@@ -86,7 +94,9 @@ class Received:
 
     @property
     def name(self) -> str:
-        return type(self.packet).__name__ if self.packet else f"type {self.raw[1]}"
+        if self.packet is not None:
+            return type(self.packet).__name__
+        return f"type {self.raw[1]}" if self.source == "InSim" else f"{self.source} datagram"
 
     @property
     def same_bytes(self) -> bool:
@@ -100,17 +110,23 @@ class Received:
 
 
 class Recorder:
-    """Wraps the library's packet reader to keep the bytes of every packet LFS sends."""
+    """Wraps the library's packet readers to keep the bytes of every packet LFS sends."""
 
     def __init__(self) -> None:
         self.received: list[Received] = []
         self.log: list[str] = []
 
     def unpack(self, data: bytes) -> InSimPacket:
-        item = Received(raw=bytes(data))
+        packet = self.read(data, unpack_insim, "InSim")
+        assert isinstance(packet, InSimPacket)
+        return packet
+
+    def read(self, data: bytes, reader: Callable[[bytes], Structure], source: str) -> Structure:
+        """Read with the library's own reader, then pack the result and read it again."""
+        item = Received(raw=bytes(data), source=source)
         self.received.append(item)
         try:
-            item.packet = unpack_insim(data)
+            item.packet = reader(data)
         except Exception as error:
             item.error = f"{type(error).__name__}: {error}"
             raise
@@ -120,13 +136,30 @@ class Recorder:
             item.error = f"pack() failed: {type(error).__name__}: {error}"
             return item.packet
         try:
-            item.same_content = unpack_insim(item.repacked) == item.packet
+            item.same_content = reader(item.repacked) == item.packet
         except Exception as error:
             item.error = f"reading the repacked bytes failed: {type(error).__name__}: {error}"
         return item.packet
 
     def emit(self, record: logging.LogRecord) -> None:
         self.log.append(f"{record.levelname} {record.getMessage()}")
+
+
+class _Recorded(_UDPSource):
+    """An OutSim or OutGauge whose packets also go through the Recorder."""
+
+    recorder: Recorder
+
+    def _read(self, data: bytes) -> Structure:
+        return self.recorder.read(data, super()._read, type(self).__name__.removeprefix("Live"))
+
+
+class LiveOutGauge(_Recorded, OutGauge):
+    pass
+
+
+class LiveOutSim(_Recorded, OutSim):
+    pass
 
 
 class _LogHandler(logging.Handler):
@@ -185,7 +218,7 @@ def _plain(value: Any) -> Any:
     return repr(value)
 
 
-def describe(packet: InSimPacket | None) -> dict[str, Any]:
+def describe(packet: Structure | None) -> dict[str, Any]:
     if packet is None:
         return {}
     plain: dict[str, Any] = _plain(packet)
@@ -193,7 +226,8 @@ def describe(packet: InSimPacket | None) -> dict[str, Any]:
 
 
 def report(recorder: Recorder, sent: list[InSimPacket], ver_seen: bool) -> dict[str, Any]:
-    by_reqi = {item.raw[2] for item in recorder.received}  # ReqI is the third byte
+    insim = [item for item in recorder.received if item.source == "InSim"]
+    by_reqi = {item.raw[2] for item in insim}  # ReqI is the third byte
     answered = {sub.name: (FIRST_REQI + i) in by_reqi for i, sub in enumerate(REQUESTS)}
     counts = Counter(item.name for item in recorder.received)
     return {
@@ -228,8 +262,20 @@ def report(recorder: Recorder, sent: list[InSimPacket], ver_seen: bool) -> dict[
         "requests_answered": answered,
         "sent": [type(packet).__name__ for packet in sent],
         "log": recorder.log,
-        "packets": [{"packet": item.name, **describe(item.packet)} for item in recorder.received],
+        "packets": [
+            {"packet": item.name, **describe(item.packet)} for item in kept(recorder.received)
+        ],
     }
+
+
+def kept(received: list[Received]) -> list[Received]:
+    seen: Counter[str] = Counter()
+    result = []
+    for item in received:
+        seen[item.name] += 1
+        if seen[item.name] <= KEPT_PER_TYPE:
+            result.append(item)
+    return result
 
 
 def summary(data: dict[str, Any]) -> str:
@@ -254,7 +300,15 @@ def summary(data: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-async def live(port: int, seconds: float, wait: float, exit_lfs: bool) -> dict[str, Any]:
+async def live(
+    port: int,
+    seconds: float,
+    wait: float,
+    exit_lfs: bool,
+    outgauge: int | None = None,
+    outsim: int | None = None,
+    outsim_opts: int = 0,
+) -> dict[str, Any]:
     recorder = Recorder()
     logging.getLogger("lfs_insim").addHandler(_LogHandler(recorder))
     logging.getLogger("lfs_insim").setLevel(logging.INFO)
@@ -269,7 +323,18 @@ async def live(port: int, seconds: float, wait: float, exit_lfs: bool) -> dict[s
     def version(packet: IS_VER) -> None:
         accepted.set()
 
-    async with insim:
+    udp: list[_Recorded] = []
+    if outgauge is not None:
+        udp.append(LiveOutGauge(outgauge))
+    if outsim is not None:
+        udp.append(LiveOutSim(outsim, options=outsim_opts))
+    for source in udp:
+        source.recorder = recorder
+
+    async with contextlib.AsyncExitStack() as stack:
+        for source in udp:
+            await stack.enter_async_context(source)
+        await stack.enter_async_context(insim)
         try:
             await asyncio.wait_for(accepted.wait(), wait)
         except TimeoutError:
@@ -289,8 +354,23 @@ def main() -> int:
     parser.add_argument("--seconds", type=float, default=10, help="time to listen after sending")
     parser.add_argument("--wait", type=float, default=180, help="time to wait for LFS to answer")
     parser.add_argument("--exit", action="store_true", help="close LFS with /exit at the end")
+    parser.add_argument("--outgauge", type=int, help="also listen to OutGauge on this UDP port")
+    parser.add_argument("--outsim", type=int, help="also listen to OutSim on this UDP port")
+    parser.add_argument(
+        "--outsim-opts", type=lambda text: int(text, 16), default=0, help="OutSim Opts (hex)"
+    )
     args = parser.parse_args()
-    data = asyncio.run(live(args.port, args.seconds, args.wait, args.exit))
+    data = asyncio.run(
+        live(
+            args.port,
+            args.seconds,
+            args.wait,
+            args.exit,
+            args.outgauge,
+            args.outsim,
+            args.outsim_opts,
+        )
+    )
     REPORTS.mkdir(exist_ok=True)
     path = REPORTS / time.strftime("live_%Y%m%d_%H%M%S.json")
     path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
