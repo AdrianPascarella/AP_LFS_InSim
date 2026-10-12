@@ -98,8 +98,9 @@ final.
 - [x] **W3.6** — **Reconexión:** si LFS no está o se cierra, reintentar con espera creciente y
   volver a enviar el `IS_ISI`; un evento de «(re)conectado» para que el `Roster` de W4 pida el
   estado. *Acepta:* tests con el LFS falso parado y vuelto a arrancar. hecho en S10 → LOG.md S10
-- [ ] **W3.7** — **UDP: `OutSim` y `OutGauge`** con la misma forma (D5) y `run(insim, gauge)` para
+- [x] **W3.7** — **UDP: `OutSim` y `OutGauge`** con la misma forma (D5) y `run(insim, gauge)` para
   varios a la vez. Nunca en el puerto 30000 (§13). *Acepta:* datagramas locales en los tests.
+  hecho en S11 → LOG.md S11
 - [ ] **W3.8** — **Ritmo fijo `@insim.every(segundos)`** (el antiguo `on_tick`), `def` o
   `async def`. *Acepta:* test con el tiempo acortado; un error en él no lo detiene.
 

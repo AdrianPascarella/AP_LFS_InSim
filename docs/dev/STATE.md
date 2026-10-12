@@ -1,12 +1,12 @@
 # 📍 Estado — AP_LFS_InSim (lfs_insim)
-> Actualizado: 2026-10-12 (S10): **W3.4, W3.5 y W3.6 hechas** — `lfs_insim.InSim`
-> (`_connection.py`) conecta, envía `IS_ISI`, reparte los paquetes a `@insim.on`, contesta los
-> keep-alive, da por muerta una conexión callada 70 s, envía `TINY_CLOSE` al salir y **reconecta**
-> sola (`@insim.on_connect` tras cada conexión). Decisiones de API en `API_DESIGN.md`. Hechas
-> antes: W3.2 (`_stream.PacketStream`) y W3.3 (`tests/fake_lfs.py`). El agente puede abrir LFS
-> 0.8C31 (`C:\LFS`, limpio; InSim **no** activado). Tests en verde.
-> **▶️ SIGUIENTE: W3.7 — `OutSim` y `OutGauge` por UDP** (misma forma que `InSim`, D5) y
-> `run(insim, gauge)`. Nunca el puerto 30000 (§13).
+> Actualizado: 2026-10-12 (S11): **W3.7 hecha** — `lfs_insim.OutSim` y `OutGauge` (`_udp.py`)
+> escuchan UDP con `@x.on(...)` como `InSim`, y `lfs_insim.run(insim, gauge)` (`_run.py`) arranca
+> varias fuentes a la vez. Los manejadores de las tres viven en `_handlers.Handlers`. Hechas en
+> S9–S10: W3.2–W3.6 (`InSim` conecta, keep-alive, reconexión, `@insim.on_connect`). Decisiones de
+> API en `API_DESIGN.md`. El agente puede abrir LFS 0.8C31 (`C:\LFS`, limpio; InSim **no**
+> activado). Tests en verde.
+> **▶️ SIGUIENTE: W3.8 — `@insim.every(segundos)`** (`def` o `async def`; un error no lo para).
+> Después, W3.1 (prueba en vivo con el LFS real), que cierra W3.
 
 ## Dónde estamos
 Fase activa: **W3 — La conexión**, detallada en S9 (`PLAN.md`). W2 está hecha entera.

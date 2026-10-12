@@ -1,6 +1,42 @@
 # 📓 Diario — AP_LFS_InSim (lfs_insim)
 <!-- Solo se añade, lo más nuevo arriba. Una entrada por sesión. -->
 
+## S11 — 2026-10-12 — `OutSim`, `OutGauge` y `run()` (W3.7)
+
+**Inicio:** según el protocolo; control de inicio en verde, documentos de acuerdo con git, 0
+acciones del usuario pendientes.
+
+**Hecho, en dos commits (§5: estructura y comportamiento por separado):**
+1. **Solo estructura:** el registro de manejadores de `InSim` (llamar a cada uno, aislar sus
+   errores, seguir y cancelar las tareas `async`) pasa a `src/lfs_insim/_handlers.py` (`Handlers`)
+   para compartirlo. Los 233 tests, en verde sin tocarlos.
+2. **`src/lfs_insim/_udp.py`**: `OutGauge(port, host)` y `OutSim(port, host, *, options)`, con
+   `@x.on(...)`, `async with`, `close()`, `wait_closed()` y `run()`. **`src/lfs_insim/_run.py`**:
+   `run(*fuentes)`, que arranca varias en un bucle (un `Protocol` con `__aenter__`, `__aexit__` y
+   `wait_closed`: no importa las clases, así no hay importaciones circulares). Exportados en
+   `lfs_insim`: `OutSim`, `OutGauge`, `run`.
+
+**Decisiones** (de API, en `API_DESIGN.md`, «Precisado al escribir `OutSim` y `OutGauge`», con lo
+descartado): `options` copia «OutSim Opts» de `cfg.txt` (0 → `OutSimPack`, otro → `OutSimPack2`,
+como dice InSim.txt); registrar un manejador del paquete que nunca llegará es un `TypeError`; un
+datagrama ilegible se salta con un solo aviso hasta que llegue uno bueno; `run()` vuelve cuando se
+cierra **cualquiera** de las fuentes y cierra las demás. `InSim.run()` no se tocó (no usa `run()`
+de `_run.py`; se podría unificar, pero no aporta nada ahora).
+
+**Diagnóstico (§8):** de 12 mutaciones, una seguía en verde: quitar la comprobación de tamaño. Los
+datagramas malos del test fallaban ya por cortos; la comprobación existe para los **largos** (un
+`OutGaugePack` con 8 bytes de más se leería en silencio con un `ID` inventado). Se añadió ese caso
+al test y la mutación pasó a rojo. Las 12, en rojo al final; el código restaurado se comprobó sin
+restos.
+
+**Red:** `tests/test_udp.py`, 11 tests con datagramas locales en puertos libres (`port=0`; nunca
+el 30000, §13) y el `FakeLFS` para `run(insim, gauge)`, que corre en un hilo con límite de tiempo.
+
+**Verificación:** `.venv/Scripts/python scripts/verify.py` → PASS (244 passed, 1 deselected). Sigue
+el aviso previo de tamaño de `_codec.py` (525 líneas), sin cambios.
+
+**Commits:** `e22054a` (extracción) y `213511f` (W3.7).
+
 ## S10 — 2026-10-12 — `InSim` básico (W3.4)
 
 **Hecho:** `src/lfs_insim/_connection.py`, clase `InSim`, exportada en `lfs_insim` (primera pieza
