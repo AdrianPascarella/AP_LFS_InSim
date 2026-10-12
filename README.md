@@ -7,3 +7,7 @@ OutGauge).
 > usable yet. The previous version lives in the `refactor/estabilizacion` branch.
 
 Planned: `pip install lfs-insim`, `import lfs_insim`, Python 3.11+, no dependencies.
+
+## License
+
+MIT — see [LICENSE](LICENSE).

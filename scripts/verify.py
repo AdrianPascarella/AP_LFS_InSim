@@ -1,0 +1,89 @@
+"""Single verification command for lfs_insim: run it before calling any change done.
+
+    .venv/Scripts/python scripts/verify.py      (Windows)
+    .venv/bin/python scripts/verify.py          (Linux, macOS, CI)
+
+Steps, in order (all of them run, even after a failure):
+
+  1. environment  the interpreter has the dev tools and imports lfs_insim from this checkout
+  2. lint         ruff check (Python 3.11 rules, so newer-only syntax is caught locally)
+  3. format       ruff format --check
+  4. types        mypy --strict
+  5. tests        pytest
+  6. size         warns about source files longer than MAX_LINES (never fails the run)
+
+Exit code 0 = everything passed, 1 = at least one step failed.
+"""
+
+from __future__ import annotations
+
+import importlib.util
+import subprocess
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+CHECKED_PATHS = ["src", "tests", "scripts/verify.py"]
+SIZE_SCANNED_DIRS = ["src", "tests", "examples", "scripts"]
+MAX_LINES = 500
+DEV_TOOLS = ["ruff", "mypy", "pytest"]
+
+
+def check_environment() -> bool:
+    ok = True
+    for tool in DEV_TOOLS:
+        if importlib.util.find_spec(tool) is None:
+            print(f"  missing dev tool: {tool} (install with: pip install --group dev)")
+            ok = False
+    spec = importlib.util.find_spec("lfs_insim")
+    expected = ROOT / "src" / "lfs_insim"
+    if spec is None or spec.origin is None:
+        print("  lfs_insim is not installed (install with: pip install -e .)")
+        ok = False
+    elif Path(spec.origin).resolve().parent != expected:
+        print(f"  lfs_insim is imported from {spec.origin}, not from {expected}")
+        ok = False
+    print(f"  python {sys.version.split()[0]} at {sys.executable}")
+    return ok
+
+
+def run_tool(*args: str) -> bool:
+    result = subprocess.run([sys.executable, "-m", *args], cwd=ROOT, check=False)
+    return result.returncode == 0
+
+
+def check_sizes() -> None:
+    for folder in SIZE_SCANNED_DIRS:
+        for path in sorted((ROOT / folder).rglob("*.py")):
+            with path.open(encoding="utf-8") as handle:
+                lines = sum(1 for _ in handle)
+            if lines > MAX_LINES:
+                relative = path.relative_to(ROOT).as_posix()
+                print(f"  WARNING: {relative} has {lines} lines (limit {MAX_LINES}); split it")
+
+
+def main() -> int:
+    steps = [
+        ("environment", check_environment),
+        ("lint", lambda: run_tool("ruff", "check", *CHECKED_PATHS)),
+        ("format", lambda: run_tool("ruff", "format", "--check", *CHECKED_PATHS)),
+        ("types", lambda: run_tool("mypy", *CHECKED_PATHS)),
+        ("tests", lambda: run_tool("pytest", "--color=no")),
+    ]
+    results: list[tuple[str, bool]] = []
+    for name, step in steps:
+        print(f"== {name}", flush=True)
+        results.append((name, step()))
+    print("== size", flush=True)
+    check_sizes()
+
+    print("-" * 40)
+    for name, passed in results:
+        print(f"[{'PASS' if passed else 'FAIL'}] {name}")
+    failed = [name for name, passed in results if not passed]
+    print(f"RESULT: {'FAIL (' + ', '.join(failed) + ')' if failed else 'PASS'}")
+    return 1 if failed else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
