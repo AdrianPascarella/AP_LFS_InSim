@@ -62,6 +62,14 @@ borrar todo el contexto antiguo (el protocolo antiguo fue el origen de la skill 
 - **Lo que nunca se pierde**: el archivo del proyecto anterior (rama y etiquetas).
 - **Instrucción permanente** (§15): decirle siempre cuando algo se puede hacer mejor.
 
+**Después de instalar:** el usuario dio permiso y `main` pasó a ser la rama por defecto en GitHub.
+Pidió dejar indicadas las aplicaciones de prueba («las que necesitamos aquí y las que ya
+estaban»), pero insistió: «en la biblioteca solo esté lo que será de la biblioteca y no se mezcle
+con los insims que vamos a crear aparte». Se acordó: **una lista de requisitos, solo texto**, en
+`PLAN.md` («Aplicaciones aparte»: gestión de usuarios, registrador, cámara libre, botones y control
+de IA, con los paquetes que usaban o usan), y **la prueba en vivo del protocolo como test de la
+biblioteca** (W3.1), que sustituye al `test_insim` antiguo y no es un InSim para el usuario.
+
 **Verificación:** no hay comando de verificación (P1, W1.2). Control de cierre al final.
 
 **Commits:** instalación del protocolo en `main` (primer commit de la rama huérfana); `dev` sale de

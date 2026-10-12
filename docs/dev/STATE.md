@@ -13,8 +13,12 @@ Lo decidido hasta ahora (detalle y motivos en `LOG.md` S1):
 - La especificación se descarga de lfs.net; en git solo su versión; los paquetes se generan.
 - Código y documentación pública en inglés; documentación de trabajo en castellano.
 
-El proyecto anterior está en la rama `refactor/estabilizacion` (que de momento es la rama por
-defecto en GitHub) y en las etiquetas `archivo/*`. Se consulta, no se copia.
+- Los InSims del usuario no entran en este repositorio: sus requisitos están, solo como texto, en
+  «Aplicaciones aparte» de `PLAN.md`. La prueba en vivo del protocolo es un test de la biblioteca
+  (W3.1).
+
+El proyecto anterior está en la rama `refactor/estabilizacion` y en las etiquetas `archivo/*`. Se
+consulta, no se copia. La rama por defecto en GitHub es `main` (desde S1).
 
 ## Lo que te espera
 **1 acción pendiente** (ninguna bloquea) → ver `USER_ACTIONS.md`. Empieza por **U1** (licencia).

@@ -32,6 +32,22 @@ como segunda opinión para encontrar errores, no como fuente.
 conexión, reconexión, errores de un manejador que no tumban a los demás, y un **LFS falso** para
 probar todo sin el juego. Primera prueba en el LFS real (punto ciego).
 
+- [ ] **W3.1** — **Prueba en vivo del protocolo** (es un test de la biblioteca, no un InSim): un script junto a los tests que, con LFS abierto, conecta, pide información (versión, conexiones, jugadores, estado), envía mensajes y botones, comprueba que cada paquete recibido se lee bien y deja un informe de lo que vio. Con él se validan en LFS las tarjetas del punto ciego. Sustituye al `test_insim` del proyecto anterior, que cubría ~50 paquetes recibidos y ~16 enviados con comandos de chat          bloqueado por: W2 y el resto de W3
+
+## Aplicaciones aparte: lo que la biblioteca debe permitir (requisitos)
+> Decidido con el usuario en S1. **Aquí solo hay texto: el código de estas aplicaciones vive en sus
+> propios proyectos, nunca en este repositorio.** Sirven para comprobar que la biblioteca es cómoda
+> (punto ciego) y para saber qué hace falta en cada fase. Los paquetes se dan sin prefijo (`MCI` =
+> `IS_MCI`). Cuando una aplicación demuestre que falta algo, se añade aquí y como tarea en su fase.
+
+| Aplicación | Para qué | Qué necesita de la biblioteca | Se puede escribir desde |
+|---|---|---|---|
+| **Gestión de usuarios** (antes `users_management`) | Saber en todo momento quién es quién: UCID ↔ PLID ↔ usuario/nombre, IA o humano, posición y velocidad | Recibir NCN, CNL, NPL, PLL, ISM, MCI, MSO y TINY; pedir el estado inicial (TINY NCN/NPL); rehacer el estado al reconectar. **Propuesta del agente:** que el estado sea parte opcional de la biblioteca (W1.5) | W3 |
+| **Registrador de eventos** (lo necesita streamer-project) | Anotar lo que pasa en una sesión: adelantamientos, luchas, contactos, vueltas, boxes, banderas, resultados | Recibir VER, STA, RST, NCN, CNL, NPL, PLL, PLP, PLA, MCI, CON, HLV, CRS, LAP, SPX, PIT, PSF, PEN, FLG, FIN, RES y TINY; pedir estado (TINY NCN/NPL/SST/VER) | W3 (cómodo, W4) |
+| **Cámara libre** (lo necesita streamer-project) | Mover la cámara del juego siguiendo la acción para grabar | Enviar CPP y SCC; recibir CPP y MCI (posiciones); quizás repeticiones (RIP) | W4 |
+| **Botones** (antes `prueba_botones`) | Interfaz dentro de LFS: botones, cuadros de texto | Enviar BTN y BFN; recibir BTC, BTT y BFN; MSL/MSO para comandos de chat | W4 |
+| **Control de IA** (antes `ai_control`) | Coches IA que conducen solos por rutas o calles | Enviar AIC, MST y botones; recibir MCI, CRS, RST, PLL, MSO, BTC y BTT; un ritmo fijo de actualización (`on_tick`) | W4 (la última: es la que hizo perder el control al proyecto anterior, P4) |
+
 ## W4 — La API de alto nivel y los ejemplos   📋 ESBOZADA
 **Objetivo:** la forma de uso acordada en W1.5: eventos, envío cómodo de paquetes, el estado
 opcional (conexiones, jugadores, UCID ↔ PLID ↔ nombre) y `examples/` con programas cortos que
@@ -50,4 +66,4 @@ cámara libre, que necesita streamer-project) y anotar cada incomodidad como tar
   documentación pública — solo si la generación de W2 no da algo mejor a partir de los comentarios
   de la especificación.
 - Las demás aplicaciones (control de IA, registrador de eventos) — después de W6, cada una en su
-  proyecto.
+  proyecto (sus requisitos, en «Aplicaciones aparte»).
