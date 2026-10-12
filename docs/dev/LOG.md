@@ -35,7 +35,27 @@ el 30000, §13) y el `FakeLFS` para `run(insim, gauge)`, que corre en un hilo co
 **Verificación:** `.venv/Scripts/python scripts/verify.py` → PASS (244 passed, 1 deselected). Sigue
 el aviso previo de tamaño de `_codec.py` (525 líneas), sin cambios.
 
-**Commits:** `e22054a` (extracción) y `213511f` (W3.7).
+**Commits:** `e22054a` (extracción) y `213511f` (W3.7). CI en verde.
+
+**W3.8 — `@insim.every(segundos)`** (el usuario: «sigue»). El bucle está en
+`Handlers.repeat` (`_handlers.py`) y `InSim` lo arranca y lo para (`_start_ticks`, `_stop_ticks`).
+Decisiones en `API_DESIGN.md` («Precisado al escribir `@insim.every`»): solo mientras hay conexión
+y desde el `IS_VER`, sin solaparse, y saltando las vueltas perdidas en vez de recuperarlas en
+ráfaga.
+- **Diagnóstico (§8):** el test «cerrar desde dentro» acabó en `RecursionError`. Causa raíz: el
+  ritmo llamaba a `close()`, que esperaba a la tarea lectora; esta, al desconectar, cancelaba el
+  ritmo, y la cancelación volvía por el `gather` que la esperaba, en un ciclo. Arreglo: `close()`
+  para primero los ritmos, salvo el que la llama, que termina solo porque su conexión ya no existe
+  (cada ritmo comprueba que sigue en **su** conexión, la del `writer` con la que empezó).
+- **Red:** `tests/test_every.py`, 11 tests; 9 en rojo antes del código. De 10 mutaciones, dos
+  seguían en verde y cada una señalaba un hueco real: un segundo `IS_VER` (pedido con `TINY_VER`)
+  duplicaba el ritmo, y sin pararlos al desconectar, una llamada `async` que esperaba seguía viva
+  sin conexión. Dos tests nuevos y las 10, en rojo.
+- Tropiezo propio: preparé el script de mutaciones con un heredoc de Python con `\n` (la cicatriz
+  de §13 otra vez) y además con un prefijo de shell mal escrito; el comando falló y se ejecutó la
+  copia vieja, sin daño (restaura en `finally`). Se rehízo con Write.
+- **Verificación:** `verify.py` → PASS (255 passed, 1 deselected).
+- **Commit:** `d690f47`.
 
 ## S10 — 2026-10-12 — `InSim` básico (W3.4)
 

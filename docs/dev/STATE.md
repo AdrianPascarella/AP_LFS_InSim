@@ -1,12 +1,12 @@
 # 📍 Estado — AP_LFS_InSim (lfs_insim)
-> Actualizado: 2026-10-12 (S11): **W3.7 hecha** — `lfs_insim.OutSim` y `OutGauge` (`_udp.py`)
-> escuchan UDP con `@x.on(...)` como `InSim`, y `lfs_insim.run(insim, gauge)` (`_run.py`) arranca
-> varias fuentes a la vez. Los manejadores de las tres viven en `_handlers.Handlers`. Hechas en
-> S9–S10: W3.2–W3.6 (`InSim` conecta, keep-alive, reconexión, `@insim.on_connect`). Decisiones de
-> API en `API_DESIGN.md`. El agente puede abrir LFS 0.8C31 (`C:\LFS`, limpio; InSim **no**
-> activado). Tests en verde.
-> **▶️ SIGUIENTE: W3.8 — `@insim.every(segundos)`** (`def` o `async def`; un error no lo para).
-> Después, W3.1 (prueba en vivo con el LFS real), que cierra W3.
+> Actualizado: 2026-10-12 (S11): **W3.7 y W3.8 hechas** — `lfs_insim.OutSim` y `OutGauge`
+> (`_udp.py`) escuchan UDP con `@x.on(...)` como `InSim`; `lfs_insim.run(insim, gauge)` (`_run.py`)
+> arranca varias fuentes a la vez; `@insim.every(s)` da un ritmo fijo mientras hay conexión. Los
+> manejadores viven en `_handlers.Handlers`. Hechas en S9–S10: W3.2–W3.6 (`InSim` conecta,
+> keep-alive, reconexión, `@insim.on_connect`). Decisiones de API en `API_DESIGN.md`. El agente
+> puede abrir LFS 0.8C31 (`C:\LFS`, limpio; InSim **no** activado). Tests en verde.
+> **▶️ SIGUIENTE: W3.1 — prueba en vivo con el LFS real** (lo último de W3; detalle y permisos en
+> `PLAN.md`): activar InSim con `/insim=29999` dentro del juego, nunca tocando `C:\LFS` sin permiso.
 
 ## Dónde estamos
 Fase activa: **W3 — La conexión**, detallada en S9 (`PLAN.md`). W2 está hecha entera.

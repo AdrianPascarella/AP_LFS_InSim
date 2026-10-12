@@ -101,8 +101,9 @@ final.
 - [x] **W3.7** — **UDP: `OutSim` y `OutGauge`** con la misma forma (D5) y `run(insim, gauge)` para
   varios a la vez. Nunca en el puerto 30000 (§13). *Acepta:* datagramas locales en los tests.
   hecho en S11 → LOG.md S11
-- [ ] **W3.8** — **Ritmo fijo `@insim.every(segundos)`** (el antiguo `on_tick`), `def` o
+- [x] **W3.8** — **Ritmo fijo `@insim.every(segundos)`** (el antiguo `on_tick`), `def` o
   `async def`. *Acepta:* test con el tiempo acortado; un error en él no lo detiene.
+  hecho en S11 → LOG.md S11
 
 - [ ] **W3.1** — **Prueba en vivo del protocolo** (es un test de la biblioteca, no un InSim): un script junto a los tests que, con LFS abierto, conecta, pide información (versión, conexiones, jugadores, estado), envía mensajes y botones, comprueba que cada paquete recibido se lee bien y deja un informe de lo que vio. Incluye un
 jugador con un mod, para ver su SkinID en `CName` (P6). Con él se validan en LFS las tarjetas del punto ciego. Sustituye al `test_insim` del proyecto anterior, que cubría ~50 paquetes recibidos y ~16 enviados con comandos de chat          bloqueado por: W2 y el resto de W3
