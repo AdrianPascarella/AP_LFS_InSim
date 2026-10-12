@@ -176,6 +176,21 @@ se va.
 - **Verificación:** `verify.py` → PASS (292 passed, 1 deselected).
 - **Commit:** `d24580c`.
 
+**W4.5 — comandos de chat** (`src/lfs_insim/_commands.py`; `Command` exportado en `lfs_insim`).
+- **Choque de nombres que creó el agente al planificar:** `insim.command("/restart")` (W4.4) y
+  `@insim.command("hello")` (W4.5) no pueden ser el mismo método. Se eligió
+  `@insim.on_command("hello")`, como `on` y `on_connect`. Falta que el usuario lo vea.
+- La función recibe un `Command` (`name`, `args`, `ucid`, `plid`, `packet` y `reply()` por
+  `IS_MTC`). Decisiones en `API_DESIGN.md` («Precisado al escribir los comandos de chat»). Cuenta
+  cualquier mensaje de usuario que empiece por el prefijo; cómo llega lo que escribe el anfitrión,
+  en W4.7.
+- **Red:** `tests/test_commands.py`, 7 tests, en rojo antes del código. De 11 mutaciones, dos
+  seguían en verde y cada una señalaba un hueco real: ningún test escribía un comando con otro
+  prefijo (`?hello`), y el test de «sin prefijo» pasaba por casualidad porque otro mensaje de error
+  también contiene «prefix». Se añadió el caso y se precisó el texto esperado; las 11, en rojo.
+- **Verificación:** `verify.py` → PASS (299 passed, 1 deselected).
+- **Commit:** `fc8d0fb`.
+
 ## S11 — 2026-10-12 — `OutSim`, `OutGauge` y `run()` (W3.7)
 
 **Inicio:** según el protocolo; control de inicio en verde, documentos de acuerdo con git, 0

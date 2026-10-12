@@ -174,10 +174,11 @@ contra el LFS falso y, al final (W4.7), contra el LFS real, que maneja el agente
   ya codificados; `ValueError` si no cabe), `insim.say(texto, to=UCID)` (`IS_MTC`) e
   `insim.command("/restart")`. *Acepta:* tests de los límites de tamaño con texto no latino.
   hecho en S12 → LOG.md S12
-- [ ] **W4.5** — **`@insim.command("hello")`** (el `!hello` del ejemplo 1): usa el `prefix` de
+- [x] **W4.5** — **`@insim.on_command("hello")`** (el `!hello` del ejemplo 1; se planificó como
+  `@insim.command`, pero ese nombre ya lo usa W4.4): usa el `prefix` de
   `InSim` (sin prefijo, error al registrar), separa los argumentos y da quién lo escribió y una forma
   de contestarle. *Acepta:* tests con `IS_MSO` de prefijo, con argumentos, con un comando que no
-  existe y con un error dentro del manejador.
+  existe y con un error dentro del manejador. hecho en S12 → LOG.md S12
 - [ ] **W4.6** — **`examples/`:** `hello.py`, `who.py`, `ai_and_gauge.py` (los ejemplos 1–3 de
   `API_DESIGN.md`, ajustados a lo que de verdad quedó) y `buttons.py` (`IS_BTN`, `IS_BTC`, `IS_BTT`
   tal cual). Si escribir `buttons.py` resulta incómodo, se anota como idea de ayudante. *Acepta:*
