@@ -33,7 +33,9 @@ import sys
 from pathlib import Path
 
 # The templates mandate a "▶️ NEXT:" marker line; accept the arrow or common wordings.
-NEXT_MARKER = re.compile(r"▶|\bNEXT\b|PR[ÓO]XIMO|SIGUIENTE|PROCHAIN|N[ÄA]CHSTE", re.IGNORECASE)
+NEXT_MARKER = re.compile(
+    r"▶|\bNEXT\b|PR[ÓO]XIMO|SIGUIENTE|PROCHAIN|N[ÄA]CHSTE", re.IGNORECASE
+)
 
 # A pending action is a card heading ("### U7 — ..."); a closed one is a single "- [x] U7 — ..."
 # line. That difference is what lets this script count them without parsing any prose, in any
@@ -48,7 +50,9 @@ STATE_SESSION = re.compile(r"\(S(\d+)\)")
 BLOCKING = "🚧"  # marks a card that blocks work
 STEP = re.compile(r"^\s*\d+[.)]\s+\S")  # "1. do this"
 FIELD = re.compile(r"^\s*\*\*[^*]+:\*\*")  # "**Why:** ...", whatever the language
-MIN_FIELDS = 3  # why + expected result + one more; below that the card cannot be acted on
+MIN_FIELDS = (
+    3  # why + expected result + one more; below that the card cannot be acted on
+)
 
 failures = 0
 warnings = 0
@@ -87,7 +91,9 @@ def check_git() -> None:
     if dirty:
         shown = ", ".join(ln[3:] for ln in dirty[:5])
         more = f" (+{len(dirty) - 5} more)" if len(dirty) > 5 else ""
-        report("FAIL", "clean tree", f"{len(dirty)} uncommitted change(s): {shown}{more}")
+        report(
+            "FAIL", "clean tree", f"{len(dirty)} uncommitted change(s): {shown}{more}"
+        )
     else:
         report("PASS", "clean tree")
 
@@ -98,7 +104,9 @@ def check_git() -> None:
     ahead = git("rev-list", "--count", "@{u}..HEAD")
     n = ahead.stdout.strip() or "0"
     if n != "0":
-        report("FAIL", "pushed", f"{n} commit(s) not pushed to {upstream.stdout.strip()}")
+        report(
+            "FAIL", "pushed", f"{n} commit(s) not pushed to {upstream.stdout.strip()}"
+        )
     else:
         report("PASS", "pushed", f"in sync with {upstream.stdout.strip()}")
 
@@ -237,7 +245,11 @@ def check_state(state: Path, cap: int, actions_name: str, pending: int) -> None:
 
     log = git("log", "-3", "--name-only", "--pretty=format:")
     if log.returncode == 0 and log.stdout:
-        touched = {ln.strip().replace("\\", "/") for ln in log.stdout.splitlines() if ln.strip()}
+        touched = {
+            ln.strip().replace("\\", "/")
+            for ln in log.stdout.splitlines()
+            if ln.strip()
+        }
         rel = state.as_posix()
         if not any(t.endswith(rel) or rel.endswith(t) for t in touched):
             report(
@@ -259,10 +271,7 @@ def check_sessions(state: Path, log: Path) -> None:
 
     sessions = [
         int(m.group(1))
-        for m in (
-            LOG_SESSION.match(ln)
-            for ln in log.read_text(encoding="utf-8", errors="replace").splitlines()
-        )
+        for m in (LOG_SESSION.match(ln) for ln in log.read_text(encoding="utf-8", errors="replace").splitlines())
         if m
     ]
     if not sessions:
@@ -299,9 +308,13 @@ def check_sessions(state: Path, log: Path) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Close-of-session check (Agentic Work Protocol).")
+    parser = argparse.ArgumentParser(
+        description="Close-of-session check (Agentic Work Protocol)."
+    )
     parser.add_argument("--context-dir", default="docs/dev", help="default: docs/dev")
-    parser.add_argument("--state", default="STATE.md", help="handoff file, relative to context-dir")
+    parser.add_argument(
+        "--state", default="STATE.md", help="handoff file, relative to context-dir"
+    )
     parser.add_argument(
         "--actions",
         default="USER_ACTIONS.md",
@@ -310,7 +323,9 @@ def main() -> int:
     parser.add_argument(
         "--log", default="LOG.md", help="append-only journal, relative to context-dir"
     )
-    parser.add_argument("--cap", type=int, default=120, help="hard line cap for the handoff")
+    parser.add_argument(
+        "--cap", type=int, default=120, help="hard line cap for the handoff"
+    )
     parser.add_argument(
         "--max-pending",
         type=int,
@@ -332,7 +347,9 @@ def main() -> int:
 
     print("-" * 60)
     if failures:
-        print(f"RESULT: FAIL ({failures} failure(s), {warnings} warning(s)) - fix before closing.")
+        print(
+            f"RESULT: FAIL ({failures} failure(s), {warnings} warning(s)) - fix before closing."
+        )
         return 1
     print(f"RESULT: PASS ({warnings} warning(s)) - the session can be closed.")
     return 0

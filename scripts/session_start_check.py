@@ -213,7 +213,9 @@ def check_protocol_version(project_file: Path, skill_file: Path) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Session-START check (Agentic Work Protocol).")
+    parser = argparse.ArgumentParser(
+        description="Session-START check (Agentic Work Protocol)."
+    )
     parser.add_argument(
         "--git-identity",
         required=True,
@@ -230,9 +232,7 @@ def main() -> int:
     )
     parser.add_argument(
         "--skill-template",
-        default=str(
-            Path.home() / ".claude" / "skills" / "agentic-protocol" / "references" / "protocol.md"
-        ),
+        default=str(Path.home() / ".claude" / "skills" / "agentic-protocol" / "references" / "protocol.md"),
         help="the installed skill's protocol.md, used for the version check",
     )
     parser.add_argument(
@@ -258,9 +258,7 @@ def main() -> int:
 
     print("-" * 60)
     if failures:
-        print(
-            f"RESULT: FAIL ({failures} failure(s), {warnings} warning(s)) - fix before continuing."
-        )
+        print(f"RESULT: FAIL ({failures} failure(s), {warnings} warning(s)) - fix before continuing.")
         return 1
     print(f"RESULT: PASS ({warnings} warning(s)) - continue with the session.")
     return 0
