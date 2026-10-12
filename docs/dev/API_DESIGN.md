@@ -224,6 +224,25 @@ sin aviso. *Por qué:* P4; una API pequeña se puede revisar entera.
   (`text_of(packet)`), que el editor no ofrece al escribir `packet.`.
 - Solo `IS_MSO` por ahora: en los demás paquetes con texto, el texto ya es el campo entero.
 
+## Precisado al escribir `request` (W4.2, S12; propuesto por el agente, el usuario delegó: «sigamos tus recomendaciones»)
+- **Se pide por el tipo de la respuesta**, no por el `TINY`: `await insim.request(IS_STA)` envía
+  `TINY_SST` y devuelve un `IS_STA`. El editor y mypy saben qué devuelve, y no hay que recordar
+  qué `TINY` pide cada cosa. *Descartado:* `request(TINY.SST)` (devolvería un `InSimPacket`
+  genérico).
+- **Dos funciones:** `request(IS_X, timeout=2.0)` para respuestas de un paquete y
+  `request_all(IS_X, quiet=0.5)` para las de varios (NCN, NPL, RES, NCI, SLC, MCI, AXM), que
+  devuelve una lista. Usar la que no toca es un `TypeError` que dice cuál usar. *Descartado:* una
+  sola que devuelva a veces un paquete y a veces una lista.
+- `request_all` termina cuando llegan tantos como dice el propio paquete (`Total`, `NumP`,
+  `NumRes`) o cuando pasan `quiet` segundos sin otro; sin respuesta, `[]` (LFS no contesta
+  `TINY_RES` antes de que alguien termine, visto en S12).
+- Cada petición lleva su `ReqI` (del 2 al 255, reutilizados; el 1 es del `IS_ISI`), así que varias
+  a la vez no se mezclan. Las respuestas llegan también a `@insim.on`. Sin conexión o si se corta
+  esperando: `ConnectionError`; sin respuesta en `timeout`: `TimeoutError`.
+- Fuera por ahora: las respuestas que son `IS_TINY` o `IS_SMALL` (`TINY_PING`, `TINY_GTM`,
+  `TINY_ALC`, `TINY_LCL`), porque el tipo no basta para saber qué pedir. Se añaden si alguien lo
+  necesita.
+
 ## Abierto (se decide más adelante, no ahora)
 - Agrupar manejadores en módulos (lo que hacía `InSimApp` con varias aplicaciones a la vez): si
   hiciera falta, algo como el `APIRouter` de FastAPI. Solo si una aplicación real lo pide.

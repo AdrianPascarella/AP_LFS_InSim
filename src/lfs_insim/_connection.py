@@ -7,8 +7,9 @@ import contextlib
 import logging
 from collections.abc import Awaitable, Callable
 from types import TracebackType
-from typing import Self, TypeVar
+from typing import Self, TypeVar, cast
 
+from lfs_insim import _requests
 from lfs_insim._handlers import Handlers
 from lfs_insim._stream import PacketStream
 from lfs_insim.packets import IS_ISI, IS_TINY, IS_VER, TINY, PacketError
@@ -74,6 +75,7 @@ class InSim:
         )
         self._isi.pack()  # fail now, not when connecting, if a name is too long
         self._handlers = Handlers()
+        self._requests = _requests.Requests()
         self._connect_handlers: list[ConnectHandler] = []
         self._every: list[tuple[float, ConnectHandler]] = []
         self._ticks: list[asyncio.Task[None]] = []  # the every() loops of this connection
@@ -131,6 +133,47 @@ class InSim:
         if self._writer is None:
             raise ConnectionError("not connected to LFS")
         self._writer.write(b"".join(packet.pack() for packet in packets))
+
+    async def request(self, reply: type[P], *, timeout: float | None = 2.0) -> P:
+        """Ask LFS for a packet and wait for it: `state = await insim.request(IS_STA)`.
+
+        Sends the IS_TINY that asks for it (TINY_SST for IS_STA, TINY_VER for IS_VER...); the
+        answer also reaches the `@insim.on` handlers. Raises TimeoutError if LFS does not answer
+        within `timeout` seconds, ConnectionError if there is no connection or it is lost while
+        waiting, and TypeError for a packet that LFS does not send on request, or sends in
+        several parts (those are for request_all).
+        """
+        sub = _requests.SINGLE.get(reply)
+        if sub is None:
+            raise TypeError(_requests.wrong_function(reply, "request"))
+        with self._requests.waiting(reply) as (req_i, waiting):
+            self.send(IS_TINY(ReqI=req_i, SubT=sub))
+            return cast(P, await _requests.answer(waiting, timeout))
+
+    async def request_all(self, reply: type[P], *, quiet: float = 0.5) -> list[P]:
+        """Ask LFS for packets that come in several: `players = await insim.request_all(IS_NPL)`.
+
+        For IS_NCN, IS_NPL, IS_RES, IS_NCI, IS_SLC, IS_MCI and IS_AXM. Returns when as many have
+        arrived as the packets themselves say (Total in IS_NCN, NumP in IS_NPL, NumRes in
+        IS_RES), or when none has arrived for `quiet` seconds: an empty list if LFS has nothing
+        to send (no results before anyone finishes, say). The answers also reach the handlers.
+        Raises ConnectionError and TypeError as request() does.
+        """
+        entry = _requests.MULTI.get(reply)
+        if entry is None:
+            raise TypeError(_requests.wrong_function(reply, "request_all"))
+        sub, counter = entry
+        answers: list[P] = []
+        with self._requests.waiting(reply) as (req_i, waiting):
+            self.send(IS_TINY(ReqI=req_i, SubT=sub))
+            while True:
+                try:
+                    packet = await _requests.answer(waiting, quiet)
+                except TimeoutError:
+                    return answers
+                answers.append(cast(P, packet))
+                if counter is not None and len(answers) >= getattr(packet, counter):
+                    return answers
 
     async def connect(self) -> None:
         """Connect once and send IS_ISI; packets are then dispatched in the background.
@@ -261,6 +304,7 @@ class InSim:
         await self._stop_ticks()
         writer, self._writer = self._writer, None
         if writer is not None:
+            self._requests.fail(ConnectionError("the connection to LFS was lost"))
             writer.close()
             with contextlib.suppress(OSError):
                 await writer.wait_closed()
@@ -271,4 +315,5 @@ class InSim:
         elif isinstance(packet, IS_VER) and not self._accepted:
             self._accepted = True
             self._start_ticks()
+        self._requests.deliver(packet)
         self._handlers.dispatch(packet)
