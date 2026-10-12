@@ -40,6 +40,30 @@ class Handlers:
             task.add_done_callback(self._tasks.discard)
             task.add_done_callback(functools.partial(_report, handler, event))
 
+    async def repeat(
+        self, seconds: float, handler: Callable[[], Any], running: Callable[[], bool]
+    ) -> None:
+        """Call a handler every `seconds` while `running()`; an `async def` one is awaited.
+
+        Errors are logged and the next call still comes. A call that takes too long does not
+        cause a burst of calls to catch up: the missed ones are skipped.
+        """
+        loop = asyncio.get_running_loop()
+        due = loop.time() + seconds
+        while True:
+            await asyncio.sleep(due - loop.time())
+            if not running():
+                return
+            try:
+                result = handler()
+                if inspect.isawaitable(result):
+                    await result
+            except Exception:
+                log.exception("handler %s failed on every(%s)", _name(handler), seconds)
+            due += seconds
+            if due < loop.time():
+                due = loop.time() + seconds
+
     async def cancel(self) -> None:
         """Cancel the `async def` handlers still running (except the caller) and wait for them."""
         tasks = [task for task in self._tasks if task is not asyncio.current_task()]

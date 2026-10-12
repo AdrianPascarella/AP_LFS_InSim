@@ -185,6 +185,20 @@ sin aviso. *Por qué:* P4; una API pequeña se puede revisar entera.
   no puede arrancar (puerto ocupado), se cierran las ya arrancadas y sale el error. *Descartado:*
   esperar a que se cierren todas (cerrar `insim` dejaría el programa vivo por el `gauge`).
 
+## Precisado al escribir `@insim.every` (W3.8, S11; propuesto por el agente)
+- **Solo corre mientras hay conexión:** empieza cuando LFS contesta el `IS_ISI` con `IS_VER`, se
+  para cuando la conexión se corta (cancelando una llamada `async` que estuviera esperando) y vuelve
+  a empezar tras reconectar. Así, dentro, `insim.send()` siempre puede enviar. *Descartado:* correr
+  siempre, desde `run()` (con LFS cerrado, cada vuelta lanzaría `ConnectionError`). Un `IS_VER`
+  pedido después con `TINY_VER` no lo arranca otra vez.
+- La primera llamada llega a los `segundos` de conectar, no en el acto.
+- Una `async def` se espera antes de la siguiente vuelta: **nunca se solapa consigo misma**.
+  *Descartado:* lanzarla como tarea en cada vuelta (con un `await` largo se acumularían).
+- Ritmo fijo, sin deriva. Si una vuelta tarda más de lo que toca, **las vueltas perdidas se
+  saltan**, sin una ráfaga para recuperarlas. *Por qué:* lo típico es enviar el estado actual
+  (`IS_AIC`), y enviar cinco seguidos del mismo instante no sirve.
+- Un error se registra y la siguiente vuelta llega igual. `every(0)` o negativo: `ValueError`.
+
 ## Abierto (se decide más adelante, no ahora)
 - Comandos de chat (`!hello`): ¿un ayudante en la biblioteca (`@insim.command("hello")`) o solo
   `IS_MSO`? Se decide en W4, cuando se escriba el ejemplo de botones.

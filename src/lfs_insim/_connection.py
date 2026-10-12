@@ -75,6 +75,8 @@ class InSim:
         self._isi.pack()  # fail now, not when connecting, if a name is too long
         self._handlers = Handlers()
         self._connect_handlers: list[ConnectHandler] = []
+        self._every: list[tuple[float, ConnectHandler]] = []
+        self._ticks: list[asyncio.Task[None]] = []  # the every() loops of this connection
         self._writer: asyncio.StreamWriter | None = None
         self._reader_task: asyncio.Task[None] | None = None
         self._supervisor: asyncio.Task[None] | None = None
@@ -103,6 +105,23 @@ class InSim:
         self._connect_handlers.append(handler)
         return handler
 
+    def every(self, seconds: float) -> Callable[[ConnectHandler], ConnectHandler]:
+        """Decorator: call the function (no arguments) every `seconds` while connected to LFS.
+
+        It starts when LFS accepts the connection, stops when it ends and starts again after a
+        reconnection, so it may always send. The function may be `def` or `async def` (awaited
+        before the next call, so calls never overlap). A call that takes too long skips the
+        missed ones instead of catching up. An exception in it is logged and the next call comes.
+        """
+        if seconds <= 0:
+            raise ValueError(f"every() needs a positive number of seconds, not {seconds}")
+
+        def register(handler: ConnectHandler) -> ConnectHandler:
+            self._every.append((seconds, handler))
+            return handler
+
+        return register
+
     @property
     def connected(self) -> bool:
         return self._writer is not None
@@ -126,6 +145,7 @@ class InSim:
 
     async def close(self) -> None:
         """Stop reconnecting, send TINY_CLOSE, close the connection, cancel running handlers."""
+        await self._stop_ticks()  # first: one of them may be the caller (see _stop_ticks)
         supervisor, self._supervisor = self._supervisor, None
         if supervisor is not None and supervisor is not asyncio.current_task():
             supervisor.cancel()
@@ -218,7 +238,27 @@ class InSim:
         finally:
             await self._disconnect()
 
+    def _start_ticks(self) -> None:
+        writer = self._writer
+
+        def running() -> bool:  # still the connection this tick was started for
+            return writer is not None and self._writer is writer
+
+        for seconds, handler in self._every:
+            tick = self._handlers.repeat(seconds, handler, running)
+            self._ticks.append(asyncio.create_task(tick))
+
+    async def _stop_ticks(self) -> None:
+        # The caller's own tick (if close() is called from one) is not cancelled: it ends by
+        # itself, because the connection it was started for is gone.
+        ticks, self._ticks = self._ticks, []
+        ticks = [tick for tick in ticks if tick is not asyncio.current_task()]
+        for tick in ticks:
+            tick.cancel()
+        await asyncio.gather(*ticks, return_exceptions=True)
+
     async def _disconnect(self) -> None:
+        await self._stop_ticks()
         writer, self._writer = self._writer, None
         if writer is not None:
             writer.close()
@@ -228,6 +268,7 @@ class InSim:
     def _dispatch(self, packet: InSimPacket) -> None:
         if isinstance(packet, IS_TINY) and packet.SubT == TINY.NONE and packet.ReqI == 0:
             self.send(IS_TINY(ReqI=0, SubT=TINY.NONE))  # keepalive: LFS expects the same back
-        elif isinstance(packet, IS_VER):
+        elif isinstance(packet, IS_VER) and not self._accepted:
             self._accepted = True
+            self._start_ticks()
         self._handlers.dispatch(packet)
