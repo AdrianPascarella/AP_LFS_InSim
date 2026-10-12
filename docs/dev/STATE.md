@@ -1,14 +1,15 @@
 # 📍 Estado — AP_LFS_InSim (lfs_insim)
-> Actualizado: 2026-10-12 (S12): **InSim validado en el LFS real, en verde.**
-> `tests/live_lfs.py` (no lo ejecuta pytest) hace 23 peticiones, envía mensajes y dos botones, y
-> comprueba que cada paquete se lee y se reescribe con el mismo contenido: 0 fallos en el menú y en
-> una carrera con IA y coche mod (SkinID bien). El agente maneja LFS solo, sin el usuario: teclas y
-> clics desde PowerShell y capturas de pantalla (cómo, en LOG S12). W3.2–W3.8 hechas. Tests en verde.
-> **▶️ SIGUIENTE: OutSim/OutGauge en vivo** (lo último de W3.1): necesita cambiar `cfg.txt`, con
-> permiso del usuario línea a línea. Después, cerrar W3.
+> Actualizado: 2026-10-12 (S12): **W3 hecha entera.** W3.1 validó la biblioteca en el LFS real:
+> InSim (menú y carrera con IA y coche mod), OutGauge, OutSim y `OutSimPack2`, sin un solo fallo
+> de lectura. Encontró y arregló un error: `OutGaugePack.Car` lleva el SkinID de un mod. El agente
+> maneja LFS sin el usuario con `tests/lfs_screen.ps1` (PROTOCOL §13). `cfg.txt` está restaurado:
+> para repetir OutSim/OutGauge en vivo hay que pedir permiso de nuevo. Tests en verde.
+> **▶️ SIGUIENTE: detallar W4 con el usuario** (API de alto nivel, `Roster`, `packet.text`,
+> `examples/`; está solo esbozada en `PLAN.md`) antes de escribir código.
 
 ## Dónde estamos
-Fase activa: **W3 — La conexión**, detallada en S9 (`PLAN.md`). W2 está hecha entera.
+Fase siguiente: **W4 — La API de alto nivel y los ejemplos**, por detallar con el usuario. W2 y W3
+están hechas enteras. Prueba en vivo: `tests/live_lfs.py` (cómo ejecutarla, en su docstring).
 
 - **Cómo se genera:** `.venv/Scripts/python scripts/generate_packets.py` lee
   `spec/cache/InSim.txt` y `spec/cache/OutSimPack.txt` (con `scripts/spec_parser.py`) y las

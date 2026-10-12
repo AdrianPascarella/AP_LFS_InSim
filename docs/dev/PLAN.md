@@ -67,7 +67,7 @@ generado va en git, con un control que comprueba que está al día (P3); los cam
 - [x] **W2.11** — **`IS_MSO.TextStart` en un `str`** (P8): índice en `Msg`, no bytes (U4).
   hecho en S8 → LOG.md S8
 
-## W3 — La conexión   ⏳ ACTIVA · detallada con el usuario en S9
+## W3 — La conexión   ✅ HECHA en S12 · detallada con el usuario en S9
 **Objetivo:** hablar con LFS: TCP (y UDP para OutSim/OutGauge), saludo `IS_ISI`, mantener viva la
 conexión, reconexión, errores de un manejador que no tumban a los demás, y un **LFS falso** para
 probar todo sin el juego. Primera prueba en el LFS real (punto ciego).
@@ -105,7 +105,7 @@ final.
   `async def`. *Acepta:* test con el tiempo acortado; un error en él no lo detiene.
   hecho en S11 → LOG.md S11
 
-- [ ] **W3.1** — **Prueba en vivo del protocolo** (es un test de la biblioteca, no un InSim): un script junto a los tests que, con LFS abierto, conecta, pide información (versión, conexiones, jugadores, estado), envía mensajes y botones, comprueba que cada paquete recibido se lee bien y deja un informe de lo que vio. Incluye un
+- [x] **W3.1** — **Prueba en vivo del protocolo** (es un test de la biblioteca, no un InSim): un script junto a los tests que, con LFS abierto, conecta, pide información (versión, conexiones, jugadores, estado), envía mensajes y botones, comprueba que cada paquete recibido se lee bien y deja un informe de lo que vio. Incluye un
 jugador con un mod, para ver su SkinID en `CName` (P6). Con él se validan en LFS las tarjetas del punto ciego. Sustituye al `test_insim` del proyecto anterior, que cubría ~50 paquetes recibidos y ~16 enviados con comandos de chat          bloqueado por: W2 y el resto de W3
   *Precisado en S9:* lo ejecuta el agente, que abre LFS y lo cierra con `/exit` por InSim (permisos
   en `PROTOCOL.md`). Se hace con el LFS recién reinstalado (U5). En el juego limpio InSim no
@@ -118,7 +118,10 @@ jugador con un mod, para ver su SkinID en `CName` (P6). Con él se validan en LF
   texto con griego y `€` bien. *Segunda pasada en S12:* carrera de 3 vueltas con 2 IA y un coche
   mod: NPL, MCI, NLP, RST, SPX, LAP, CON, HLV, FLG, FIN, RES, CIM, AXI, BTC y BTT, todo bien;
   `CName` = SkinID del mod (`35D799`, P6 validado); `Caption` visible en LFS (U3).
-  **Falta solo OutSim/OutGauge en vivo:** no hay comando, necesita `cfg.txt` (permiso).
+  *Tercera pasada en S12:* OutGauge, OutSim clásico y `OutSimPack2` (Opts `1ff`), ~100 paquetes
+  por segundo cada uno, todo bien; con permiso del usuario en `cfg.txt`, ya restaurado. Encontró
+  un error: `OutGaugePack.Car` lleva el SkinID de un mod, como `CName` (arreglado).
+  hecho en S12 → LOG.md S12
   **Preferencia del usuario (S12):** quedar fuera de la prueba. La activación de InSim la hace el
   agente: controlando la pantalla y/o con `autoexec.lfs` (este, con permiso, porque está en
   `C:\LFS`). En S12 aún la escribió el usuario.

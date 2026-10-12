@@ -64,6 +64,36 @@ igual que antes.
 - **OutSim/OutGauge:** no hay comando en `C:\LFS\docs\Commands.txt`; hace falta `cfg.txt`
   (`OutGauge Mode/Port`, `OutSim Mode/Port/Opts`, líneas 204–214, ahora todo a 0). Se pide permiso.
 
+**Tercera pasada: OutSim y OutGauge.** El usuario dio permiso para los cinco cambios de `cfg.txt`
+y para guardar en el repo el script de pantalla («me gusta tu propuesta. Procede»).
+- **`tests/lfs_screen.ps1`**: teclas (`-Keys`, `-Then`), clic (`-X`, `-Y`) y captura en
+  `tests/live_reports/screen.png`. Con él se abrió LFS, se activó InSim y se montó la carrera sin
+  el usuario. `live_lfs.py` escucha además `--outgauge`, `--outsim` y `--outsim-opts` (subclases que
+  pasan cada datagrama por el mismo registro) y guarda en el informe 20 paquetes de cada tipo como
+  máximo.
+- **`cfg.txt`:** copia en `_archivo_AP_LFS_InSim\cfg_backup_2026-10-12_S12.txt`; cambios con LFS
+  cerrado. **Tropiezo:** el primer `sed -i` pasó el archivo entero de CRLF a LF. Se vio con `diff`,
+  se rehízo desde la copia con Python en binario y se comprobó con `od -c` (cicatriz nueva en §13).
+  Al final, las cinco líneas vuelven a 0. Al salir, LFS cambió por su cuenta `Setup Name` y
+  `Setup Index`, que se dejan.
+- **Resultados** (carrera en BL1, unos 20 s): OutGauge (puerto 30001) y OutSim clásico (Opts 0,
+  puerto 30002), 2055 de cada uno; después `OutSimPack2` con Opts `1ff`, 2056. Todos leídos y
+  reescritos sin fallos; las partes opcionales de `OutSimPack2` tienen valores con sentido
+  (ruedas, entradas, `EngineAngVel`…).
+- **Error encontrado (§8):** `OutGaugePack.Car` salía `'™×5'`, que son los bytes `99 D7 35 00`: el
+  SkinID `35D799` leído como texto cp1252. La comprobación automática no podía verlo, porque leer
+  ese texto y volver a escribirlo no pierde nada; lo encontró mirar los valores. Test nuevo con esos
+  bytes (en rojo antes) y arreglo en `spec_overrides.CAR_NAMES` (`"Car"` usa el códec `CarName`),
+  regenerado. En la pasada siguiente, `Car` = `'35D799'`.
+- **`TINY_RES` sin respuesta:** es lo correcto. LFS solo envía `IS_RES` de quien ya terminó, y el
+  script lo pide al empezar; al acabar la carrera llegaron `IS_RES` solos.
+- **W3.1 y W3 hechas.** Siguiente: detallar W4 con el usuario.
+
+**Verificación:** `verify.py` → PASS (256 passed, 1 deselected).
+
+**Commits:** `60997bb` (arreglo de `Car`), `e3208e7` (OutSim/OutGauge en la prueba y
+`lfs_screen.ps1`) y el cierre.
+
 ## S11 — 2026-10-12 — `OutSim`, `OutGauge` y `run()` (W3.7)
 
 **Inicio:** según el protocolo; control de inicio en verde, documentos de acuerdo con git, 0

@@ -416,6 +416,17 @@ Formas en que este equipo o sus herramientas ya han dañado o pueden dañar el t
 - **Un comando que pasa de su tiempo límite sigue vivo en segundo plano** (visto en S9: un `du`
   sobre `C:\LFS` bloqueó la carpeta y Windows negó el renombrado). Antes de mover o renombrar,
   comprobar que no queda ninguna tarea propia trabajando sobre esa ruta, y pararla.
+- **`sed -i` de Git Bash convierte CRLF en LF en todo el archivo** (visto en S12 con
+  `C:\LFS\cfg.txt`, que es CRLF; se rehízo desde la copia). **Regla:** los archivos de LFS se
+  cambian línea a línea con Python en binario (`split(b"\r\n")`), y se comprueba después con `diff`
+  contra la copia y con `od -c` que siguen en CRLF.
+- **Git Bash convierte los argumentos que empiezan por `/` en rutas de Windows** (visto en S12:
+  `/help` llegó a LFS como `C:/Program Files/Git/help`). Para pasar comandos de LFS como
+  argumentos: `MSYS_NO_PATHCONV=1`.
+- **Manejar LFS sin el usuario** (desde S12): `tests/lfs_screen.ps1` teclea (`-Keys`, `-Then`), hace
+  clic (`-X`, `-Y`) y deja una captura en `tests/live_reports/screen.png`. InSim se activa con
+  `-Keys "t" -Then "/insim=29999{ENTER}"`. Una pulsación justo después de otra pantalla a veces no
+  llega: mirar siempre la captura antes del paso siguiente.
 
 ## §14 — Guías de procedimiento
 Cuando una tarea recurrente tenga un coste de orientación alto, se escribe una guía con la
