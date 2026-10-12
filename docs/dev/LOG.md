@@ -1,6 +1,37 @@
 # 📓 Diario — AP_LFS_InSim (lfs_insim)
 <!-- Solo se añade, lo más nuevo arriba. Una entrada por sesión. -->
 
+## S7 — 2026-10-12 — Texto de LFS ↔ `str` (W2.9)
+
+**Hecho:**
+- **`packets/_text.py`**: lee y escribe las 10 páginas de códigos de InSim.txt. Al leer quita
+  `^L`, `^E`…; al escribir añade un cambio solo cuando la página actual no tiene el carácter
+  (primero las de un byte, para que el cirílico sea `^C` y no `^J`). Lo que no está en ninguna
+  página pasa a `?`. En las páginas de dos bytes recorre carácter a carácter: el segundo byte puede
+  ser `^` (0x5E). `^8` vuelve a la página original y `^:` a Latin-1, y los dos se quedan en el `str`.
+- **`IS_MSO`**: el texto empieza en la página de `MSOData & 0x0f`. Excepción nueva
+  `TEXT_CODE_PAGES` en `spec_overrides.py`; el generador se para si un campo dice «code page» y no
+  está en ella. `TailText` acepta `code_page=`.
+- **`lfs_insim.text.strip_colours()`** (público).
+- **Fuentes** (regla de §15, leídas en Chrome con la sesión del usuario): Scawen, hilo «Any urgent
+  InSim requests?», post 460437 (2007): «^9 original colour, ^8 original colour and code page, ^:
+  original colour and Latin-1»; notas de 0.8C27, post 2177567 (2026): página del mensaje en
+  `IS_MSO`, y sin `ISF_MSO_COLS` el `^8` se convierte en `^L`, `^E`… Los escapes `^v`, `^d`… no
+  tienen fuente de Scawen (solo otras bibliotecas); como se dejan tal cual, no dependemos de ellos.
+- **Encontrado:** P7 (`IS_BTN` con título) y P8 (`TextStart`), como W2.10 y W2.11.
+
+**Decisiones:** en el `str` se quitan los cambios de página y se dejan los demás `^` (el usuario
+aceptó la propuesta). *Por qué:* son un detalle de la codificación; convertir `^^` en `^` y dejar
+`^1` haría ambiguo `"^1"`. *Descartado:* el texto limpio con los colores aparte.
+
+**Red:** 22 tests nuevos (`tests/test_text.py`); 11 fallan con el `_text.py` anterior. Mutaciones:
+sin los bytes iniciales de dos bytes falla el test del 0x5E; sin `TEXT_CODE_PAGES` el generador se
+para. Que funcione en el LFS real es punto ciego (W3.1).
+
+**Verificación:** `.venv/Scripts/python scripts/verify.py` → PASS (183 passed, 1 deselected).
+
+**Commits:** W2.9 y cierre, en uno.
+
 ## S6 — 2026-10-12 — Segunda opinión frente al proyecto anterior (W2.8) y `CName` de los mods (P6)
 
 **Hecho:**

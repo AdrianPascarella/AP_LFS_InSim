@@ -143,6 +143,10 @@ def plain_columns(struct: Struct, struct_names: set[str]) -> list[Column]:
     tail_array = overrides.TAIL_ARRAY.get(struct.name)
     if "variable size" in struct.comment and tail_text is None and tail_array is None:
         raise SpecError(f"{struct.name} has a variable size: add it to TAIL_TEXT or TAIL_ARRAY")
+    code_page = overrides.TEXT_CODE_PAGES.get(struct.name)
+    for item in struct.fields:
+        if "code page" in item.comment and (code_page != item.name or tail_text is None):
+            raise SpecError(f"{struct.name}.{item.name} holds a code page: check TEXT_CODE_PAGES")
     result: list[Column] = []
     for index, item in enumerate(struct.fields):
         last = index == len(struct.fields) - 1
@@ -154,7 +158,15 @@ def plain_columns(struct: Struct, struct_names: set[str]) -> list[Column]:
             if not last or item.ctype != "char":
                 raise SpecError(f"{struct.name}.{item.name} is not trailing text")
             result.append(
-                Column(item.name, f"_c.TailText({tail_text[1]})", "str", '""', item.comment)
+                Column(
+                    item.name,
+                    f'_c.TailText({tail_text[1]}, code_page="{code_page}")'
+                    if code_page
+                    else f"_c.TailText({tail_text[1]})",
+                    "str",
+                    '""',
+                    item.comment,
+                )
             )
         elif item.commented_out:
             raise SpecError(f"{struct.name}.{item.name} is commented out: add it to TAIL_TEXT")

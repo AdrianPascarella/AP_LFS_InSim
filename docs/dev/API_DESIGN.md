@@ -113,6 +113,10 @@ coche. `IS_MAL.SkinID` es una lista de `str` con el mismo formato, para que func
 `npl.CName in mal.SkinID`. *Descartado:* `str` o `int` según el coche (obliga a usar `isinstance`)
 y los bytes crudos (cada aplicación los interpretaría).
 
+*Precisado en S7 (aprobado por el usuario):* en el `str` del texto no están los cambios de página
+(`^L`, `^J`…), que se quitan al leer y se añaden al enviar; los demás códigos `^` (colores,
+`^^`, `^v`…) se quedan tal cual. `lfs_insim.text.strip_colours()` quita los colores (amplía D6).
+
 **D4 — El estado de conexiones y jugadores, en la biblioteca y opcional (`Roster`).** Casi todas
 las aplicaciones lo necesitan (la gestión de usuarios, el registrador, la IA) y es fácil hacerlo
 mal (reconexiones, cambios de nombre, IA sin conexión propia). Quien no lo crea no paga nada.

@@ -1,14 +1,12 @@
 # 📍 Estado — AP_LFS_InSim (lfs_insim)
-> Actualizado: 2026-10-12 (S6): **W2.1–W2.8 hechas.** La comparación con el proyecto anterior
-> no encontró ningún error en el código generado: los errores estaban en el anterior. Sí encontró
-> P6: `CName` de un mod (SkinID) se perdía. Ya está arreglado: `"XFG"` o `"5A1FB3"` (LOG S6).
-> Tests en verde. Árbol limpio y subido al cerrar.
-> **▶️ SIGUIENTE: W2.9**: texto de LFS ↔ `str`, con las páginas de códigos (`^L`, `^E`…) en
-> `packets/_text.py`, y `MSOData`/`LID_*` de 0.8C27. Con ella se cierra W2.
+> Actualizado: 2026-10-12 (S7): **W2.1–W2.9 hechas.** El texto se lee y escribe con las páginas de
+> códigos de LFS (`^L`, `^J`…) y `IS_MSO` empieza en la página de `MSOData` (LOG S7). Tests en verde.
+> **▶️ SIGUIENTE: W2.10 y W2.11** (P7: título de `IS_BTN`; P8: `TextStart`). Las dos necesitan una
+> decisión del usuario sobre la forma; después se cierra W2.
 
 ## Dónde estamos
 Fase activa: **W2 — El protocolo, generado desde la especificación**, detallada con el usuario en
-S4 (`PLAN.md`). Hechas W2.1–W2.8.
+S4 (`PLAN.md`). Hechas W2.1–W2.9.
 
 - **Cómo se genera:** `.venv/Scripts/python scripts/generate_packets.py` lee
   `spec/cache/InSim.txt` y `spec/cache/OutSimPack.txt` (con `scripts/spec_parser.py`) y las
@@ -22,7 +20,7 @@ S4 (`PLAN.md`). Hechas W2.1–W2.8.
   `__init__.py` y comprueba el resto: así funciona en el workflow `spec`.
 - **OutSimPack2** se lee con `OutSimPack2.unpack(data, opciones OSO)`; las partes no enviadas son
   `None` (LOG S5).
-- **Texto:** `packets/_text.py` usa cp1252 de forma provisional hasta W2.9. `CName` y
+- **Texto:** `packets/_text.py` (páginas de códigos; D3 precisada en S7). `CName` y
   `IS_MAL.SkinID` no son texto: tienen sus propios codecs (`CarName`, `SkinID`; P6).
 - **Verificación:** `.venv/Scripts/python scripts/verify.py`; el CI (workflow `verify`) ejecuta lo
   mismo en cada push. Sin `spec/cache/` (como en el CI), los tests que comparan con la

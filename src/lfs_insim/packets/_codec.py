@@ -16,6 +16,7 @@ from ipaddress import IPv4Address
 from typing import Any, ClassVar, Self
 
 from lfs_insim.packets import _text
+from lfs_insim.packets._enums import LID
 
 
 class PacketError(ValueError):
@@ -68,6 +69,17 @@ class Pad(Codec):
         if offset + self.size > len(data):
             raise PacketError("packet too short")
         return None, offset + self.size
+
+
+def _start(code_page: str | None, values: Any) -> LID:
+    """The code page a text starts in: Latin-1, or the one in the field named `code_page`.
+
+    `values` is the packet when packing and the dict of the fields read so far when unpacking.
+    """
+    if code_page is None:
+        return LID.LATIN
+    value = values[code_page] if isinstance(values, dict) else getattr(values, code_page)
+    return _text.code_page(value)
 
 
 class Text(Codec):
@@ -211,20 +223,25 @@ class Count(Codec):
 
 
 class TailText(Codec):
-    """Variable-size text at the end of a packet: zero-terminated, padded to a multiple of 4."""
+    """Variable-size text at the end of a packet: zero-terminated, padded to a multiple of 4.
 
-    def __init__(self, max_size: int) -> None:
+    `code_page` names the field that holds the code page the text starts in (IS_MSO.MSOData).
+    """
+
+    def __init__(self, max_size: int, code_page: str | None = None) -> None:
         self.max_size = max_size
+        self.code_page = code_page
 
     def pack(self, value: Any, packet: Any) -> bytes:
-        raw = _text.encode(value)
+        raw = _text.encode(value, _start(self.code_page, packet))
         if len(raw) > self.max_size - 1:
             raise PacketError(f"text is {len(raw)} bytes long; the limit is {self.max_size - 1}")
         size = len(raw) + 1
         return raw.ljust(size + (-size % 4), b"\0")
 
     def unpack(self, data: bytes, offset: int, values: dict[str, Any]) -> tuple[Any, int]:
-        return _text.decode(data[offset:].split(b"\0", 1)[0]), len(data)
+        text = data[offset:].split(b"\0", 1)[0]
+        return _text.decode(text, _start(self.code_page, values)), len(data)
 
 
 class TailArray(Codec):

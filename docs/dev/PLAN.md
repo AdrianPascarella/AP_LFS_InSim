@@ -59,8 +59,13 @@ generado va en git, con un control que comprueba que está al día (P3); los cam
   script de un solo uso; las diferencias se revisan y se anotan en `LOG.md`. Incluye comprobar si
   `CName` lleva un SkinID binario (no texto) cuando el coche es un mod (anotado en S4).
   hecho en S6 → LOG.md S6
-- [ ] **W2.9** — **Texto de LFS ↔ `str`**: páginas de códigos (`^L`, `^E`…) y `MSOData`/`LID_*`
+- [x] **W2.9** — **Texto de LFS ↔ `str`**: páginas de códigos (`^L`, `^E`…) y `MSOData`/`LID_*`
   de 0.8C27. Que funcione en el LFS real es punto ciego: se valida en W3.1.
+  hecho en S7 → LOG.md S7
+- [ ] **W2.10** — **Título del cuadro de texto en `IS_BTN`** (P7): el texto que empieza por un
+  cero se pierde. Hay que decidir con el usuario la forma (¿un campo `Caption`?).
+- [ ] **W2.11** — **`IS_MSO.TextStart` en un `str`** (P8): cuenta bytes, no caracteres. Decidir
+  si se resuelve aquí o en la capa de arriba (W4, `packet.text`).
 
 ## W3 — La conexión   📋 ESBOZADA
 **Objetivo:** hablar con LFS: TCP (y UDP para OutSim/OutGauge), saludo `IS_ISI`, mantener viva la

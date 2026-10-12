@@ -29,6 +29,13 @@ TAIL_TEXT: dict[str, tuple[str, int]] = {
     "IS_BTN": ("Text", 240),  # declared only in a comment: Text[TEXT_SIZE]
 }
 
+# Packets whose trailing text starts in the code page held by another field: packet -> that
+# field (0.8C27: "Code page of message is now included in IS_MSO", Scawen, lfs.net forum thread
+# "0.8C Downloads and Updates", post 2177567). Elsewhere text starts in Latin-1.
+TEXT_CODE_PAGES: dict[str, str] = {
+    "IS_MSO": "MSOData",
+}
+
 # Variable-size packets whose last field is an array: packet -> (array field, counter field).
 # The counter is filled in from the length of the list; None = the items simply fill the packet.
 TAIL_ARRAY: dict[str, tuple[str, str | None]] = {

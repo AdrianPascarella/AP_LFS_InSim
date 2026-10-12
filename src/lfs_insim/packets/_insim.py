@@ -407,7 +407,7 @@ class IS_MSO(InSimPacket):
         ("PLID", _c.Scalar("B")),
         ("UserType", _c.Scalar("B")),
         ("TextStart", _c.Scalar("B")),
-        ("Msg", _c.TailText(128)),
+        ("Msg", _c.TailText(128, code_page="MSOData")),
     )
 
 
