@@ -20,7 +20,7 @@ class OutGaugePack(Structure):
     """time in ms (to check order)"""
 
     Car: str = ""
-    """Car name"""
+    """Car name: an official car ('XFG'), a mod's SkinID ('5A1FB3') or ''"""
 
     Flags: int = 0
     """Info (see OG_x below)"""
@@ -77,7 +77,7 @@ class OutGaugePack(Structure):
     """optional - only if OutGauge ID is specified"""
     _LAYOUT = (
         ("Time", _c.Scalar("I")),
-        ("Car", _c.Text(4, terminated=False)),
+        ("Car", _c.CarName()),
         ("Flags", _c.Scalar("H")),
         ("Gear", _c.Scalar("B")),
         ("PLID", _c.Scalar("B")),

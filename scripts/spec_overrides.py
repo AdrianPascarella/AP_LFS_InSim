@@ -16,7 +16,8 @@ PADDING_NAMES = r"^(Zero|Sp[0-9]|Spare[0-9]?|SpA|SpB|SpW|SpF[0-9])$"
 # Fields that name a car. For a mod, LFS puts its SkinID in CName as a 32-bit unsigned (Scawen,
 # lfs.net forum thread "New InSim packet size byte and mod info"; InSim.txt only says "skin
 # prefix"). Both are read as str: "XFG", or the SkinID's hex "5A1FB3".
-CAR_NAMES = frozenset({"CName"})  # char[4]: official car or SkinID
+# OutGaugePack.Car too ("Car name" in the spec): LFS 0.8C31 sends a mod's SkinID there (S12).
+CAR_NAMES = frozenset({"CName", "Car"})  # char[4]: official car or SkinID
 SKIN_IDS = frozenset({"SkinID"})  # unsigned: SkinID only
 
 # Variable-size packets whose last field is text: packet -> (field, maximum size in bytes).

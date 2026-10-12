@@ -215,6 +215,15 @@ def test_car_name_is_an_official_car_or_a_mod_skin_id(raw: bytes, name: str) -> 
     assert packet.pack() == data
 
 
+def test_outgauge_car_is_a_car_name_too() -> None:
+    # Seen in the live test (S12): with a mod, LFS 0.8C31 puts its SkinID in OutGauge's Car too.
+    raw = (0x35D799).to_bytes(4, "little")
+    data = OutGaugePack(Car="XFG").pack().replace(b"XFG\0", raw, 1)
+    packet = OutGaugePack.unpack(data)
+    assert packet.Car == "35D799"
+    assert packet.pack() == data
+
+
 def test_car_name_accepts_lowercase_skin_ids() -> None:
     assert IS_SLC(CName="5a1fb3").pack() == IS_SLC(CName="5A1FB3").pack()
 
