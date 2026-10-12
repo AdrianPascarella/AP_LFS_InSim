@@ -39,9 +39,10 @@ generado va en git, con un control que comprueba que está al día (P3); los cam
 - [ ] **W2.2** — **Excepciones escritas a mano, en un solo archivo:** qué campo da la longitud de
   cada paquete variable, el nombre de los enums sin nombre, los valores que no son identificadores
   válidos (`DL_18`) y las partes condicionales de OutSimPack2.
-- [ ] **W2.3** — **Núcleo de empaquetado** escrito a mano (`_codec`): clase base, `pack()` y
+- [x] **W2.3** — **Núcleo de empaquetado** escrito a mano (`_codec`): clase base, `pack()` y
   `unpack()`, `Size` (÷4) y `Type` automáticos, relleno a cero, texto al final rellenado a 4 bytes
   y arrays con longitud dada por un campo.
+  hecho en S4 → LOG.md S4
 - [ ] **W2.4** — **Paquetes de InSim generados** (dataclasses con los nombres de la
   especificación y los comentarios de C como docstring) y sus enums y flags.
 - [ ] **W2.5** — **OutSim y OutGauge generados**, OutSimPack2 incluido según sus opciones.
