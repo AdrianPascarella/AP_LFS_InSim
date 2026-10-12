@@ -184,9 +184,16 @@ contra el LFS falso y, al final (W4.7), contra el LFS real, que maneja el agente
   tal cual). Si escribir `buttons.py` resulta incómodo, se anota como idea de ayudante. *Acepta:*
   un test por ejemplo que lo ejecuta contra el LFS falso. hecho en S12 → LOG.md S12 (el 3 quedó
   como `gauge.py`, sin IA; la idea del ayudante de botones, en «Ideas»)
-- [ ] **W4.7** — **Los ejemplos en el LFS real**, ejecutados por el agente con `tests/lfs_screen.ps1`
+- [x] **W4.7** — **Los ejemplos en el LFS real**, ejecutados por el agente con `tests/lfs_screen.ps1`
   (OutGauge, solo con permiso para `cfg.txt`). *Acepta:* cada ejemplo hace lo que dice, visto en la
-  captura de pantalla o en los paquetes.
+  captura de pantalla o en los paquetes. hecho en S12 → LOG.md S12 (los cuatro, bien; encontró que
+  LFS rechaza `IS_MTC` en un jugador: `say(to=0)` pasó a `IS_MSL`)
+- [ ] **W4.8** — **Texto legible para mostrar** (encontrado en W4.7): `who.py` imprime
+  `^h773 A.Pascarella`, porque `strip_colours()` quita los colores pero deja los caracteres
+  escapados de LFS (`^h` = `#`, `^v` = `|`, `^^` = `^`…). Falta una forma de convertirlos.
+  *Propuesta del agente, pendiente del usuario:* `lfs_insim.text.plain(texto)` (sin colores y con
+  los escapados convertidos), para imprimir o guardar; `strip_colours` sigue igual. *Acepta:* tests
+  con todos los escapados de InSim.txt y `who.py` imprimiendo `#773 A.Pascarella`.
 
 ## W5 — Publicación   📋 ESBOZADA
 **Objetivo:** documentación pública, versión 0.1.0 en TestPyPI y después en PyPI, y prueba de

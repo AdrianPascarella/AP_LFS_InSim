@@ -278,8 +278,11 @@ sin aviso. *Por qué:* P4; una API pequeña se puede revisar entera.
   (D6: una sola forma de hacer cada cosa).
 - Demasiado largo: `PacketError` (un `ValueError`) con el límite, **antes de mirar la conexión**,
   para que el error se vea aunque LFS no esté.
-- Fuera por ahora: `IS_MSL` (mensaje solo en este equipo) y el sonido de `IS_MTC`; se envían con
-  `insim.send()` si hacen falta.
+- Fuera por ahora: el sonido de `IS_MSL` e `IS_MTC`; se envían con `insim.send()` si hacen falta.
+- *Corregido en W4.7 con el LFS real:* LFS rechaza `IS_MTC` en un jugador («only for multiplayer
+  hosts»). Por eso **`to=0` va como `IS_MSL`**: UCID 0 es siempre este equipo (en un jugador y
+  siendo anfitrión) y `IS_MSL` solo se ve aquí, que es lo mismo. Otro UCID sigue con `IS_MTC`,
+  que solo existe en multijugador y pide ser el anfitrión.
 
 ## Precisado al escribir los comandos de chat (W4.5, S12; propuesto por el agente)
 - **Nombre: `@insim.on_command("hello")`, no `@insim.command`.** Choque detectado al escribirlo:

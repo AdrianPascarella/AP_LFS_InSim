@@ -207,6 +207,33 @@ se va.
 - **Verificación:** `verify.py` → PASS (304 passed, 1 deselected).
 - **Commit:** `5487d6b`.
 
+**W4.7 — los ejemplos en el LFS real.**
+- **Incidente (el más serio de la sesión):** con el usuario usando Chrome, Windows no dejó traer LFS
+  al frente y las teclas del agente (`t`, `/insim=29999`, Enter, `t`, `!hello`, Enter) fueron a
+  YouTube. El agente se paró, se lo contó al usuario y protegió `tests/lfs_screen.ps1`: comprueba
+  que la ventana de delante es LFS y, si no, sale con 2 sin enviar nada (commit `0f4008e`; reglas
+  en PROTOCOL §13). Segundo error propio: probó esa protección con un clic real en (5, 5); esa vez
+  LFS sí estaba delante y el clic cayó en su menú, sin efecto. El usuario dijo «Procede», que se
+  tomó como sí a seguir y a cambiar `cfg.txt` para `gauge.py`.
+- **Resultados**, cada uno visto en la captura: `hello.py` contesta «Hello from Python»;
+  `who.py` imprime quién entra en pista (con el SkinID del mod) y quién sale (`/spec` → `IS_PLL`,
+  aún encontrado en el `Roster`), y `!who` lista los tres; `buttons.py` cuenta los clics («Clicked
+  2 times»), el cuadro de texto muestra su título y contesta «You typed: hola mañana», y `!hide` los
+  quita; `gauge.py` muestra cada 2 s «148 km/h at 5771 rpm (2 in the race)».
+- **Encontrado con el LFS real:** LFS rechaza `IS_MTC` en un jugador («IS_MTC - only for
+  multiplayer hosts»), así que `command.reply()` no llegaba. Arreglo: `say(texto, to=0)` va como
+  `IS_MSL` (UCID 0 es siempre este equipo). Test nuevo en rojo antes del cambio; los tests de los
+  ejemplos se ajustaron (commit `6618f3b`). También: los comandos que escribe el propio anfitrión se
+  detectan bien.
+- **Pendiente (W4.8):** `who.py` imprime `^h773 A.Pascarella`: `strip_colours()` no convierte los
+  caracteres escapados de LFS. Propuesta en `PLAN.md`.
+- `cfg.txt`: copia en `_archivo_AP_LFS_InSim\cfg_backup_2026-10-13_S12_gauge.txt`; `OutGauge Mode`
+  y `Port` cambiados con LFS cerrado y restaurados después (idéntico a la copia, CRLF comprobado).
+  LFS se cerró con `/exit` por InSim.
+- Tropiezo menor: `Start-Process` partió un texto con espacios en varios argumentos; el script
+  falló al leer los parámetros sin enviar nada. Se repitió con el texto entre comillas.
+- **Verificación:** `verify.py` → PASS (305 passed, 1 deselected).
+
 ## S11 — 2026-10-12 — `OutSim`, `OutGauge` y `run()` (W3.7)
 
 **Inicio:** según el protocolo; control de inicio en verde, documentos de acuerdo con git, 0

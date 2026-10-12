@@ -12,8 +12,10 @@
 > `insim.command()`. W4.5 hecha: `@insim.on_command("hello")` (`_commands.py`; el nombre
 > cambió por un choque con `insim.command()`, falta que el usuario lo vea).
 > W4.6 hecha: `examples/` (`hello`, `who`, `gauge`, `buttons`), probados en `test_examples.py`.
-> **▶️ SIGUIENTE: W4.7 — los ejemplos en el LFS real** (el agente con `tests/lfs_screen.ps1`;
-> `gauge.py` necesita OutGauge en `cfg.txt`: pedir permiso). `_connection.py` va por 402 líneas.
+> W4.7 hecha: los cuatro, bien en el LFS real; `say(to=0)` pasó a `IS_MSL` (LFS rechaza `IS_MTC`
+> en un jugador). `cfg.txt` restaurado.
+> **▶️ SIGUIENTE: W4.8 — `lfs_insim.text.plain()`** (propuesta en `PLAN.md`, que el usuario
+> confirme el nombre), y con ella W4 queda cerrada. `_connection.py` va por ~405 líneas.
 
 ## Dónde estamos
 Fase activa: **W4 — La API de alto nivel y los ejemplos**, detallada en S12 (`PLAN.md`). W2 y W3
