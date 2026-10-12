@@ -12,13 +12,17 @@ from types import TracebackType
 from typing import Any, Self, TypeVar
 
 from lfs_insim._stream import PacketStream
-from lfs_insim.packets import IS_ISI, PacketError
+from lfs_insim.packets import IS_ISI, IS_TINY, TINY, PacketError
 from lfs_insim.packets._codec import InSimPacket
 
 log = logging.getLogger("lfs_insim")
 
 INSIM_VERSION = 10
 """The InSim version this library speaks (INSIM_VERSION in InSim.txt)."""
+
+SILENCE_TIMEOUT = 70.0
+"""Seconds without data after which the connection is taken for dead. LFS sends a keepalive
+packet every 30 s, and itself closes a connection that is silent for 70 s (InSim.txt)."""
 
 P = TypeVar("P", bound=InSimPacket)
 Handler = Callable[[P], None] | Callable[[P], Awaitable[None]]
@@ -69,6 +73,7 @@ class InSim:
         self._writer: asyncio.StreamWriter | None = None
         self._reader_task: asyncio.Task[None] | None = None
         self._tasks: set[asyncio.Task[None]] = set()
+        self._silence_timeout = SILENCE_TIMEOUT
 
     def on(self, packet_type: type[P]) -> Callable[[Handler[P]], Handler[P]]:
         """Decorator: call the function with every packet of this type that LFS sends.
@@ -100,7 +105,9 @@ class InSim:
         self._reader_task = asyncio.create_task(self._read(reader))
 
     async def close(self) -> None:
-        """Close the connection and cancel the async handlers that are still running."""
+        """Send TINY_CLOSE, close the connection and cancel the async handlers still running."""
+        if self._writer is not None:
+            self.send(IS_TINY(ReqI=0, SubT=TINY.CLOSE))
         task, self._reader_task = self._reader_task, None
         if task is not None:
             task.cancel()
@@ -140,11 +147,19 @@ class InSim:
     async def _read(self, reader: asyncio.StreamReader) -> None:
         stream = PacketStream()
         try:
-            while data := await reader.read(4096):
+            while True:
+                async with asyncio.timeout(self._silence_timeout):
+                    data = await reader.read(4096)
+                if not data:
+                    break
                 for packet in stream.feed(data):
                     self._dispatch(packet)
         except PacketError as error:
             log.error("closing the connection to LFS: %s", error)
+        except TimeoutError:
+            log.warning(
+                "no data from LFS for %s s: the connection is taken for dead", self._silence_timeout
+            )
         except ConnectionError as error:
             log.warning("the connection to LFS was lost: %s", error)
         finally:
@@ -158,6 +173,8 @@ class InSim:
                 await writer.wait_closed()
 
     def _dispatch(self, packet: InSimPacket) -> None:
+        if isinstance(packet, IS_TINY) and packet.SubT == TINY.NONE and packet.ReqI == 0:
+            self.send(IS_TINY(ReqI=0, SubT=TINY.NONE))  # keepalive: LFS expects the same back
         for handler in self._handlers.get(type(packet), []):
             try:
                 result = handler(packet)

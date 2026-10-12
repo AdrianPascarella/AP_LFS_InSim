@@ -35,7 +35,20 @@ manejador) y entonces sí falla. *Corrección de un test (§5), con su motivo:* 
 
 **Verificación:** `.venv/Scripts/python scripts/verify.py` → PASS (220 passed, 1 deselected).
 
-**Commits:** uno.
+**Commits:** uno. CI de GitHub en verde.
+
+**W3.5 — mantener viva la conexión** (en `_connection.py`):
+- Un `IS_TINY` con `SubT` `TINY_NONE` y `ReqI` 0 se contesta igual, como pide InSim.txt; los
+  manejadores lo siguen recibiendo.
+- Sin datos durante `SILENCE_TIMEOUT` (70 s, lo mismo que espera LFS) la conexión se da por muerta,
+  con un aviso en el registro. El tiempo es el atributo interno `_silence_timeout`, que los tests
+  acortan. *Descartado:* un parámetro público (D6: la superficie, pequeña; nadie lo ha pedido).
+- `close()` envía `TINY_CLOSE` si sigue conectado; si LFS ya se fue, no envía nada.
+- **Red:** 5 tests nuevos en `tests/test_insim.py`; 3 en rojo antes del código (los otros dos
+  vigilan que el cambio no rompa nada: datos que mantienen viva la conexión, cerrar tras irse LFS).
+  4 mutaciones, todas en rojo. El script de mutaciones se escribió primero con un heredoc y las
+  barras invertidas lo rompieron (la cicatriz de §13, otra vez): se rehízo con Write.
+- **Verificación:** `verify.py` → PASS (225 passed, 1 deselected).
 
 ## S9 — 2026-10-12 — W3 detallada con el usuario; pruebas con el LFS real; copia de setups y skins
 

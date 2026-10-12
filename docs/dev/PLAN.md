@@ -91,9 +91,10 @@ final.
   *Acepta:* los ejemplos 1 y 3 de `API_DESIGN.md` (sin OutGauge) funcionan contra el LFS falso.
   hecho en S10 → LOG.md S10 (de los ejemplos, lo que no es de W3.4 queda para su tarea:
   `packet.text` en W4, `every` en W3.8, `run(insim, gauge)` en W3.7)
-- [ ] **W3.5** — **Mantener viva la conexión:** contestar `TINY_NONE` a `TINY_NONE` (LFS lo manda
+- [x] **W3.5** — **Mantener viva la conexión:** contestar `TINY_NONE` a `TINY_NONE` (LFS lo manda
   cada 30 s y cierra tras 70 s sin recibir nada); sin datos durante ese tiempo, la conexión se da
   por muerta; al salir, `TINY_CLOSE`. *Acepta:* tests contra el LFS falso con el tiempo acortado.
+  hecho en S10 → LOG.md S10
 - [ ] **W3.6** — **Reconexión:** si LFS no está o se cierra, reintentar con espera creciente y
   volver a enviar el `IS_ISI`; un evento de «(re)conectado» para que el `Roster` de W4 pida el
   estado. *Acepta:* tests con el LFS falso parado y vuelto a arrancar.

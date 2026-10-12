@@ -197,6 +197,77 @@ def test_closing_cancels_async_handlers_that_are_still_waiting() -> None:
     run(test)
 
 
+def test_keepalive_packets_are_answered() -> None:
+    # LFS sends a blank IS_TINY every 30 s and closes the connection after 70 s of silence.
+    async def test(lfs: FakeLFS) -> None:
+        insim = InSim(port=lfs.port)
+        seen: list[IS_TINY] = []
+
+        @insim.on(IS_TINY)
+        def tiny(packet: IS_TINY) -> None:
+            seen.append(packet)  # handlers still see the keepalive packets
+
+        async with insim:
+            await lfs.wait_connected()
+            assert await lfs.wait_for(IS_TINY) == IS_TINY(ReqI=0, SubT=TINY.NONE)
+            assert await lfs.wait_for(IS_TINY) == IS_TINY(ReqI=0, SubT=TINY.NONE)
+            await asyncio.sleep(0.4)  # longer than the fake LFS's timeout
+            assert insim.connected and lfs.connected
+        assert seen and all(packet.SubT == TINY.NONE for packet in seen)
+
+    run(test, keepalive=0.05, timeout=0.2)  # type: ignore[arg-type]
+
+
+def test_a_silent_lfs_is_taken_for_dead(caplog: pytest.LogCaptureFixture) -> None:
+    async def test(lfs: FakeLFS) -> None:
+        insim = InSim(port=lfs.port)
+        insim._silence_timeout = 0.1
+        async with insim:
+            await lfs.wait_connected()
+            await _until(lambda: not insim.connected)
+            await lfs.wait_disconnected()
+
+    with caplog.at_level(logging.WARNING, logger="lfs_insim"):
+        run(test)
+    assert "no data from LFS" in caplog.text
+
+
+def test_data_keeps_the_connection_alive() -> None:
+    async def test(lfs: FakeLFS) -> None:
+        insim = InSim(port=lfs.port)
+        insim._silence_timeout = 0.2
+        async with insim:
+            await lfs.wait_connected()
+            for _ in range(6):
+                await asyncio.sleep(0.1)
+                await lfs.send(IS_MSO(Msg="still here"))
+            assert insim.connected
+
+    run(test)
+
+
+def test_leaving_sends_tiny_close() -> None:
+    async def test(lfs: FakeLFS) -> None:
+        async with InSim(port=lfs.port):
+            await lfs.wait_connected()
+        assert await lfs.wait_for(IS_TINY) == IS_TINY(ReqI=0, SubT=TINY.CLOSE)
+        await lfs.wait_disconnected()
+
+    run(test)
+
+
+def test_closing_after_lfs_has_gone_does_not_fail() -> None:
+    async def test(lfs: FakeLFS) -> None:
+        insim = InSim(port=lfs.port)
+        async with insim:
+            await lfs.wait_connected()
+            await lfs.drop()
+            await _until(lambda: not insim.connected)
+        assert not any(isinstance(packet, IS_TINY) for packet in lfs.received)
+
+    run(test)
+
+
 def test_send_without_a_connection_fails() -> None:
     with pytest.raises(ConnectionError):
         InSim().send(IS_TINY(SubT=TINY.PING))

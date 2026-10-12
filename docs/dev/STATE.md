@@ -1,10 +1,11 @@
 # 📍 Estado — AP_LFS_InSim (lfs_insim)
-> Actualizado: 2026-10-12 (S10): **W3.4 hecha** — `lfs_insim.InSim` (`_connection.py`) conecta,
-> envía `IS_ISI` y reparte los paquetes a `@insim.on`; decisiones de API en `API_DESIGN.md`.
-> Hechas antes: W3.2 (`_stream.PacketStream`) y W3.3 (`tests/fake_lfs.py`, `FakeLFS`). El agente
-> puede abrir LFS 0.8C31 (`C:\LFS`, limpio; InSim **no** activado). Tests en verde.
-> **▶️ SIGUIENTE: W3.5 — mantener viva la conexión** (`TINY_NONE` ↔ `TINY_NONE`, conexión muerta
-> tras 70 s sin datos, `TINY_CLOSE` al salir), probado contra `FakeLFS` con tiempos cortos.
+> Actualizado: 2026-10-12 (S10): **W3.4 y W3.5 hechas** — `lfs_insim.InSim` (`_connection.py`)
+> conecta, envía `IS_ISI`, reparte los paquetes a `@insim.on`, contesta los keep-alive, da por
+> muerta una conexión callada 70 s y envía `TINY_CLOSE` al salir. Decisiones de API en
+> `API_DESIGN.md`. Hechas antes: W3.2 (`_stream.PacketStream`) y W3.3 (`tests/fake_lfs.py`). El
+> agente puede abrir LFS 0.8C31 (`C:\LFS`, limpio; InSim **no** activado). Tests en verde.
+> **▶️ SIGUIENTE: W3.6 — reconexión** (reintentos con espera creciente, `IS_ISI` de nuevo, evento
+> de «(re)conectado» para el `Roster` de W4), probada parando y arrancando `FakeLFS`.
 
 ## Dónde estamos
 Fase activa: **W3 — La conexión**, detallada en S9 (`PLAN.md`). W2 está hecha entera.
