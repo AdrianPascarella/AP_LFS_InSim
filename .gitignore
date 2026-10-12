@@ -12,6 +12,9 @@ dist/
 # Especificación oficial descargada de lfs.net (W1.4): no se versiona
 spec/cache/
 
+# Informes de la prueba en vivo (W3.1): llevan nombres de jugadores
+tests/live_reports/
+
 # Editores y sistema
 .vscode/
 .idea/
