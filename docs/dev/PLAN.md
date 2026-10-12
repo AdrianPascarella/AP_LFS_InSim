@@ -95,9 +95,9 @@ final.
   cada 30 s y cierra tras 70 s sin recibir nada); sin datos durante ese tiempo, la conexión se da
   por muerta; al salir, `TINY_CLOSE`. *Acepta:* tests contra el LFS falso con el tiempo acortado.
   hecho en S10 → LOG.md S10
-- [ ] **W3.6** — **Reconexión:** si LFS no está o se cierra, reintentar con espera creciente y
+- [x] **W3.6** — **Reconexión:** si LFS no está o se cierra, reintentar con espera creciente y
   volver a enviar el `IS_ISI`; un evento de «(re)conectado» para que el `Roster` de W4 pida el
-  estado. *Acepta:* tests con el LFS falso parado y vuelto a arrancar.
+  estado. *Acepta:* tests con el LFS falso parado y vuelto a arrancar. hecho en S10 → LOG.md S10
 - [ ] **W3.7** — **UDP: `OutSim` y `OutGauge`** con la misma forma (D5) y `run(insim, gauge)` para
   varios a la vez. Nunca en el puerto 30000 (§13). *Acepta:* datagramas locales en los tests.
 - [ ] **W3.8** — **Ritmo fijo `@insim.every(segundos)`** (el antiguo `on_tick`), `def` o

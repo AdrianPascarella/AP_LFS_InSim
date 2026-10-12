@@ -12,7 +12,7 @@ from types import TracebackType
 from typing import Any, Self, TypeVar
 
 from lfs_insim._stream import PacketStream
-from lfs_insim.packets import IS_ISI, IS_TINY, TINY, PacketError
+from lfs_insim.packets import IS_ISI, IS_TINY, IS_VER, TINY, PacketError
 from lfs_insim.packets._codec import InSimPacket
 
 log = logging.getLogger("lfs_insim")
@@ -24,15 +24,20 @@ SILENCE_TIMEOUT = 70.0
 """Seconds without data after which the connection is taken for dead. LFS sends a keepalive
 packet every 30 s, and itself closes a connection that is silent for 70 s (InSim.txt)."""
 
+RETRY_DELAYS = (1.0, 2.0, 4.0, 8.0, 10.0)
+"""Seconds between attempts to reach LFS; the last one repeats for as long as LFS is away."""
+
 P = TypeVar("P", bound=InSimPacket)
 Handler = Callable[[P], None] | Callable[[P], Awaitable[None]]
+ConnectHandler = Callable[[], None] | Callable[[], Awaitable[None]]
 
 
 class InSim:
     """A connection to LFS over InSim (TCP).
 
     Register handlers with `@insim.on(IS_XXX)`, then call `insim.run()`. From code that already
-    runs an asyncio event loop, use `async with insim:` instead.
+    runs an asyncio event loop, use `async with insim:` instead. Both keep the connection up: if
+    LFS is not running yet, or closes, they try again until `close()` (or Ctrl+C).
     """
 
     def __init__(
@@ -70,10 +75,14 @@ class InSim:
         )
         self._isi.pack()  # fail now, not when connecting, if a name is too long
         self._handlers: dict[type[InSimPacket], list[Handler[Any]]] = {}
+        self._connect_handlers: list[ConnectHandler] = []
         self._writer: asyncio.StreamWriter | None = None
         self._reader_task: asyncio.Task[None] | None = None
+        self._supervisor: asyncio.Task[None] | None = None
         self._tasks: set[asyncio.Task[None]] = set()
+        self._accepted = False  # LFS answered IS_ISI with IS_VER on this connection
         self._silence_timeout = SILENCE_TIMEOUT
+        self._retry_delays: tuple[float, ...] = RETRY_DELAYS
 
     def on(self, packet_type: type[P]) -> Callable[[Handler[P]], Handler[P]]:
         """Decorator: call the function with every packet of this type that LFS sends.
@@ -88,6 +97,14 @@ class InSim:
 
         return register
 
+    def on_connect(self, handler: ConnectHandler) -> ConnectHandler:
+        """Decorator: call the function (no arguments) after every connection and reconnection.
+
+        IS_ISI has been sent, so it may send requests: the place to ask LFS for the initial state.
+        """
+        self._connect_handlers.append(handler)
+        return handler
+
     @property
     def connected(self) -> bool:
         return self._writer is not None
@@ -99,13 +116,22 @@ class InSim:
         self._writer.write(b"".join(packet.pack() for packet in packets))
 
     async def connect(self) -> None:
-        """Open the connection and send IS_ISI; packets are then dispatched in the background."""
+        """Connect once and send IS_ISI; packets are then dispatched in the background.
+
+        Raises OSError if LFS cannot be reached, and does not reconnect: for that, use
+        `async with insim:` or `run()`.
+        """
         reader, self._writer = await asyncio.open_connection(self.host, self.port)
+        self._accepted = False
         self.send(self._isi)
         self._reader_task = asyncio.create_task(self._read(reader))
 
     async def close(self) -> None:
-        """Send TINY_CLOSE, close the connection and cancel the async handlers still running."""
+        """Stop reconnecting, send TINY_CLOSE, close the connection, cancel running handlers."""
+        supervisor, self._supervisor = self._supervisor, None
+        if supervisor is not None and supervisor is not asyncio.current_task():
+            supervisor.cancel()
+            await asyncio.gather(supervisor, return_exceptions=True)
         if self._writer is not None:
             self.send(IS_TINY(ReqI=0, SubT=TINY.CLOSE))
         task, self._reader_task = self._reader_task, None
@@ -113,18 +139,19 @@ class InSim:
             task.cancel()
             await asyncio.gather(task, return_exceptions=True)
         await self._disconnect()
-        handlers = list(self._tasks)
+        handlers = [task for task in self._tasks if task is not asyncio.current_task()]
         for handler in handlers:
             handler.cancel()
         await asyncio.gather(*handlers, return_exceptions=True)
 
     async def wait_closed(self) -> None:
-        """Wait until the connection ends (LFS closes it, or close() is called)."""
-        if self._reader_task is not None:
-            await asyncio.gather(self._reader_task, return_exceptions=True)
+        """Wait until close() is called (or, after a bare connect(), until the connection ends)."""
+        task = self._supervisor or self._reader_task
+        if task is not None:
+            await asyncio.wait([task])
 
     def run(self) -> None:
-        """Connect and dispatch packets until LFS closes the connection or Ctrl+C is pressed."""
+        """Connect, reconnecting whenever needed, and dispatch packets until Ctrl+C or close()."""
         with contextlib.suppress(KeyboardInterrupt):
             asyncio.run(self._run())
 
@@ -133,7 +160,8 @@ class InSim:
             await self.wait_closed()
 
     async def __aenter__(self) -> Self:
-        await self.connect()
+        """Start keeping the connection up in the background; returns without waiting for LFS."""
+        self._supervisor = asyncio.create_task(self._keep_connected())
         return self
 
     async def __aexit__(
@@ -143,6 +171,36 @@ class InSim:
         tb: TracebackType | None,
     ) -> None:
         await self.close()
+
+    async def _keep_connected(self) -> None:
+        failures = 0  # attempts since LFS last accepted the connection
+        while True:
+            try:
+                await self.connect()
+            except OSError as error:
+                if failures == 0:
+                    log.warning(
+                        "LFS is not answering at %s:%d (%s); trying again until it does",
+                        self.host,
+                        self.port,
+                        error,
+                    )
+            else:
+                log.info("connected to LFS at %s:%d", self.host, self.port)
+                for handler in self._connect_handlers:
+                    self._call(handler, (), "on_connect")
+                if self._reader_task is not None:
+                    await asyncio.wait([self._reader_task])
+                if self._accepted:
+                    failures = 0
+                else:
+                    log.warning(
+                        "LFS closed the connection before answering IS_ISI "
+                        "(a wrong admin password?)"
+                    )
+            delay = self._retry_delays[min(failures, len(self._retry_delays) - 1)]
+            failures += 1
+            await asyncio.sleep(delay)
 
     async def _read(self, reader: asyncio.StreamReader) -> None:
         stream = PacketStream()
@@ -175,17 +233,23 @@ class InSim:
     def _dispatch(self, packet: InSimPacket) -> None:
         if isinstance(packet, IS_TINY) and packet.SubT == TINY.NONE and packet.ReqI == 0:
             self.send(IS_TINY(ReqI=0, SubT=TINY.NONE))  # keepalive: LFS expects the same back
+        elif isinstance(packet, IS_VER):
+            self._accepted = True
         for handler in self._handlers.get(type(packet), []):
-            try:
-                result = handler(packet)
-            except Exception:
-                log.exception("handler %s failed on %s", _name(handler), type(packet).__name__)
-                continue
-            if inspect.isawaitable(result):
-                task = asyncio.ensure_future(result)
-                self._tasks.add(task)
-                task.add_done_callback(self._tasks.discard)
-                task.add_done_callback(functools.partial(_report, handler, type(packet).__name__))
+            self._call(handler, (packet,), type(packet).__name__)
+
+    def _call(self, handler: Callable[..., Any], args: tuple[Any, ...], event: str) -> None:
+        """Run a handler: a `def` now, an `async def` as a task. Errors are logged, not raised."""
+        try:
+            result = handler(*args)
+        except Exception:
+            log.exception("handler %s failed on %s", _name(handler), event)
+            return
+        if inspect.isawaitable(result):
+            task = asyncio.ensure_future(result)
+            self._tasks.add(task)
+            task.add_done_callback(self._tasks.discard)
+            task.add_done_callback(functools.partial(_report, handler, event))
 
 
 def _name(handler: Callable[..., Any]) -> str:

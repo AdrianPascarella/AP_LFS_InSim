@@ -52,22 +52,22 @@ class FakeLFS:
         self.connections = 0
         """How many times a program has connected."""
         self._server: asyncio.Server | None = None
+        self._port = 0
         self._writer: asyncio.StreamWriter | None = None
         self._changed = asyncio.Condition()
         self._taken: dict[type[InSimPacket], int] = {}
 
     @property
     def port(self) -> int:
-        assert self._server is not None, "the fake LFS is not running"
-        port: int = self._server.sockets[0].getsockname()[1]
-        return port
+        assert self._port, "the fake LFS has never been started"
+        return self._port
 
     @property
     def connected(self) -> bool:
         return self._writer is not None
 
     async def __aenter__(self) -> Self:
-        self._server = await asyncio.start_server(self._serve, "127.0.0.1", 0)
+        await self.start()
         return self
 
     async def __aexit__(
@@ -76,10 +76,21 @@ class FakeLFS:
         exc: BaseException | None,
         tb: TracebackType | None,
     ) -> None:
+        await self.stop()
+
+    async def start(self) -> None:
+        """Listen again, on the same port as before (a free one the first time)."""
+        self._server = await asyncio.start_server(self._serve, "127.0.0.1", self._port)
+        self._port = self._server.sockets[0].getsockname()[1]
+
+    async def stop(self) -> None:
+        """Stop listening and drop the connection, as if LFS had been closed."""
+        server, self._server = self._server, None  # from now on, _serve refuses connections
+        if server is not None:
+            server.close()
         await self.drop()
-        if self._server is not None:
-            self._server.close()
-            await self._server.wait_closed()
+        if server is not None:
+            await server.wait_closed()  # waits for every connection it accepted to end
 
     async def send(self, *packets: InSimPacket) -> None:
         """Send packets to the connected program."""
@@ -132,7 +143,8 @@ class FakeLFS:
             self._changed.notify_all()
 
     async def _serve(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
-        if self._writer is not None:  # one program at a time is enough for the tests
+        # One program at a time is enough for the tests; and none once stop() has begun.
+        if self._writer is not None or self._server is None:
             writer.close()
             return
         self._writer = writer

@@ -147,6 +147,20 @@ sin aviso. *Por qué:* P4; una API pequeña se puede revisar entera.
   las pruebas de S10).
 - Un mismo paquete puede tener varios manejadores: se llaman en el orden en que se registraron.
 
+*Reconexión (W3.6, S10; propuesto por el agente):*
+- `run()` y `async with insim:` **mantienen la conexión**: si LFS no está o se cierra, reintentan
+  (1, 2, 4, 8 y después cada 10 s) hasta Ctrl+C o `close()`. `run()` ya no termina cuando LFS
+  cierra. `async with insim:` vuelve enseguida, sin esperar a LFS.
+- `await insim.connect()` es **un solo intento** (lanza `OSError` si LFS no está) y no reconecta.
+- **`@insim.on_connect`**: una función sin argumentos (`def` o `async def`) que se llama tras cada
+  conexión y reconexión, ya enviado el `IS_ISI`: el sitio para pedir el estado inicial (el
+  `Roster` de W4 lo usará). *Descartado:* usar `@insim.on(IS_VER)`, porque `IS_VER` también llega
+  cuando alguien pide la versión con `TINY_VER`.
+- La espera entre intentos solo vuelve a empezar cuando LFS contesta `IS_VER`. Si LFS cierra sin
+  contestar (una contraseña equivocada, se supone), la espera sigue creciendo y el registro lo
+  sugiere. Que LFS no responde se dice una vez, no en cada intento.
+- `await insim.wait_closed()` espera a `close()`; después de un `connect()` suelto, a que se corte.
+
 ## Abierto (se decide más adelante, no ahora)
 - Comandos de chat (`!hello`): ¿un ayudante en la biblioteca (`@insim.command("hello")`) o solo
   `IS_MSO`? Se decide en W4, cuando se escriba el ejemplo de botones.

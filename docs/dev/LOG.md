@@ -48,7 +48,36 @@ manejador) y entonces sí falla. *Corrección de un test (§5), con su motivo:* 
   vigilan que el cambio no rompa nada: datos que mantienen viva la conexión, cerrar tras irse LFS).
   4 mutaciones, todas en rojo. El script de mutaciones se escribió primero con un heredoc y las
   barras invertidas lo rompieron (la cicatriz de §13, otra vez): se rehízo con Write.
-- **Verificación:** `verify.py` → PASS (225 passed, 1 deselected).
+- **Verificación:** `verify.py` → PASS (225 passed, 1 deselected). CI en verde.
+
+**W3.6 — reconexión** (en `_connection.py`): `async with insim:` y `run()` arrancan un supervisor
+(`_keep_connected`) que conecta, llama a `@insim.on_connect`, espera a que la conexión se corte y
+vuelve a intentarlo con `RETRY_DELAYS` (1, 2, 4, 8, 10 s; el último se repite). `connect()` queda
+como un solo intento. `close()` para el supervisor antes de despedirse. Los manejadores de paquetes
+y de `on_connect` comparten `_call` (errores aislados, `async` como tareas). Decisiones de API en
+`API_DESIGN.md` («Reconexión»), con lo descartado.
+- **Cambio de un test (§5), con su motivo:** `test_run_blocks_until_lfs_closes_the_connection`
+  describía el comportamiento que W3.6 cambia a propósito (`run()` terminaba al cerrar LFS; ahora
+  reconecta, como ya decía el ejemplo 1 de `API_DESIGN.md`). Sustituido por
+  `test_run_reconnects_and_returns_when_closed`, que corre `run()` en un hilo con límite de tiempo:
+  un `run()` que no vuelve falla en vez de colgar la ejecución de tests (y el CI).
+- **`FakeLFS`:** `start()`/`stop()` en el mismo puerto, para parar y volver a arrancar LFS. Y un
+  defecto suyo: `stop()` podía colgarse si un programa se conectaba justo entonces
+  (`server.wait_closed()` espera a todas las conexiones aceptadas). Ahora deja de aceptar antes de
+  cortar y rechaza las conexiones que lleguen durante el cierre.
+- **Diagnóstico (§8):** las mutaciones dejaron ver tres cosas. (1) «Avisar en cada intento» seguía
+  en verde: en Windows un intento rechazado tarda ~2 s, así que en el test solo fallaba uno; el
+  test nuevo simula intentos fallidos instantáneos (`monkeypatch` de `asyncio.open_connection`).
+  (2) Con «`on_connect` nunca se llama», `run()` no volvía y la ejecución se colgaba: de ahí el
+  hilo con límite. (3) «`close()` sin `supervisor.cancel()`» colgaba por la propia mutación: dejaba
+  la espera al supervisor, que reconecta para siempre (hipótesis «el falso se cuelga al pararse»:
+  cierta, pero no era esto; refutada con un script que volcaba las tareas pendientes). La mutación
+  realista (olvidar el supervisor sin pararlo) la detecta el test ampliado de salir de
+  `async with`, que exige que no haya más conexiones después de cerrar.
+- `test_waits_for_lfs_to_start` esperaba un tiempo fijo y fallaba en Windows por los ~2 s de un
+  intento rechazado: ahora espera a ver el aviso.
+- **Red:** 8 tests nuevos de reconexión; 7 en rojo antes del código. 5 mutaciones, todas en rojo.
+- **Verificación:** `verify.py` → PASS (233 passed, 1 deselected).
 
 ## S9 — 2026-10-12 — W3 detallada con el usuario; pruebas con el LFS real; copia de setups y skins
 
