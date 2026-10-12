@@ -53,7 +53,8 @@ generado va en git, con un control que comprueba que está al día (P3); los cam
 - [ ] **W2.7** — **Control «código generado al día»**: regenerar en memoria y comparar con git,
   en `verify.py` (si existe `spec/cache/`) y en el workflow `spec`. Visto en rojo.
 - [ ] **W2.8** — **Segunda opinión:** comparar formatos y tamaños con el proyecto anterior con un
-  script de un solo uso; las diferencias se revisan y se anotan en `LOG.md`.
+  script de un solo uso; las diferencias se revisan y se anotan en `LOG.md`. Incluye comprobar si
+  `CName` lleva un SkinID binario (no texto) cuando el coche es un mod (anotado en S4).
 - [ ] **W2.9** — **Texto de LFS ↔ `str`**: páginas de códigos (`^L`, `^E`…) y `MSOData`/`LID_*`
   de 0.8C27. Que funcione en el LFS real es punto ciego: se valida en W3.1.
 

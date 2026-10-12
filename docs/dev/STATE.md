@@ -1,35 +1,40 @@
 # 📍 Estado — AP_LFS_InSim (lfs_insim)
-> Actualizado: 2026-10-12 (S3): **W1 cerrada.** Hay CI en GitHub (Python 3.11–3.14, Linux y
-> Windows, en verde) y un script que descarga la especificación y avisa si cambia. Árbol limpio y
+> Actualizado: 2026-10-12 (S4): **W2 a medias: los paquetes de InSim ya se generan** desde la
+> especificación (W2.1–W2.4), con tests y CI en verde. `main` ya tiene W1 (U2). Árbol limpio y
 > subido al cerrar.
-> **▶️ SIGUIENTE: detallar W2 con el usuario** (generar los paquetes de InSim, OutSim y OutGauge a
-> partir de `spec/cache/`): qué se genera, cómo es el generador, si el código generado va en git
-> (P3) y cómo se prueba. Antes, si el usuario contesta U2, fusionar en `main`.
+> **▶️ SIGUIENTE: W2.5** — generar OutSim (OutSimPack y OutSimPack2 según sus opciones OSO_) y
+> OutGauge (OutGaugePack), con el `ID` final opcional (`_c.Optional`), en sus propios módulos.
+> Después, completar W2.6 (sus tests de ida y vuelta) y seguir con W2.7 → W2.9.
 
 ## Dónde estamos
-Fase cerrada: **W1 — Cimientos** (W1.1–W1.5). La siguiente, **W2**, solo está esbozada en
-`PLAN.md`: se detalla con el usuario al abrirla. No hay nada a medias.
+Fase activa: **W2 — El protocolo, generado desde la especificación**, detallada con el usuario en
+S4 (`PLAN.md`). Hechas W2.1–W2.4. **W2.6, a medias:** los tests de InSim están; faltan los de
+OutSim/OutGauge, que llegan con W2.5.
 
-- **Verificación:** `.venv/Scripts/python scripts/verify.py`. El CI (workflow `verify`) ejecuta lo
-  mismo en cada push (lo que detecta, en la Configuración de `PROTOCOL.md`).
-- **Especificación:** `.venv/Scripts/python scripts/fetch_spec.py` deja el texto en `spec/cache/`
-  (ignorado por git) y lo compara con `spec/checked.json` (0.8C27, INSIM_VERSION 10). W2 genera a
-  partir de `spec/cache/InSim.txt` y `spec/cache/OutSimPack.txt`.
-- **API:** `docs/dev/API_DESIGN.md` es la referencia (D1–D6). El código de W2–W4 se escribe para
-  que sus ejemplos funcionen tal cual.
-- Lo decidido en S1 sigue vigente (`LOG.md` S1): biblioteca sin dependencias, Python ≥ 3.11,
-  especificación descargada, aplicaciones aparte y lo público en inglés.
+- **Cómo se genera:** `.venv/Scripts/python scripts/generate_packets.py` lee `spec/cache/InSim.txt`
+  (con `scripts/spec_parser.py`) y las excepciones de `scripts/spec_overrides.py`, y escribe
+  `src/lfs_insim/packets/_enums.py`, `_insim.py` y `__init__.py`, que van en git y no se editan a
+  mano. `--check` sale con 1 si no están al día (base de W2.7). El núcleo escrito a mano es
+  `packets/_codec.py`.
+- **Si la generación se para con un error**, es a propósito: algo de la especificación no está
+  cubierto. Se añade la entrada que pide en `spec_overrides.py`, nunca se salta.
+- `OutSimPack` y `OutGaugePack` están en `NOT_INSIM` (no se generan todavía). OutSimPack2 se lee
+  de `spec/cache/OutSimPack.txt`, que solo existe en este equipo (P3).
+- **Texto:** `packets/_text.py` usa cp1252 de forma provisional hasta W2.9.
+- **Verificación:** `.venv/Scripts/python scripts/verify.py`; el CI (workflow `verify`) ejecuta lo
+  mismo en cada push. Sin `spec/cache/` (como en el CI), los tests que comparan con la
+  especificación se saltan.
+- **API:** `docs/dev/API_DESIGN.md` (D1–D6; D3 precisada en S4: `TINY.NCN`, texto como `str`).
 
 El proyecto anterior está en la rama `refactor/estabilizacion` y en las etiquetas `archivo/*`. Se
 consulta, no se copia.
 
 ## Lo que te espera
-**1 acción pendiente, que no bloquea** → ver `USER_ACTIONS.md` (U2: decidir si `dev` se fusiona ya
-en `main`).
+**0 acciones pendientes** → `USER_ACTIONS.md`.
 
 ## Restricciones ahora mismo
 - En este equipo solo hay Python 3.14. Las demás versiones las comprueba el CI.
 - El `python` de la terminal es el de streamer-project: aquí siempre `.venv/Scripts/python` (§13).
-- El aviso semanal de cambios en lfs.net (workflow `spec`) no funciona hasta que `main` tenga W1
-  (U2).
+- `ruff format` y `ruff check --fix` solo sobre las rutas de `CHECKED_PATHS`, nunca sobre `scripts`
+  entera (§13).
 - El repositorio es público.

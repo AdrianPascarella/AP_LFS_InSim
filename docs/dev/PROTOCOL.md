@@ -42,7 +42,8 @@ de Python, si tiene LFS), y se hace pull y push en cada sesión.
 **Verificación.** `.venv/Scripts/python scripts/verify.py` (desde S2). Detecta: un intérprete
 equivocado o sin las herramientas de desarrollo, o un `lfs_insim` importado desde otra carpeta;
 errores de lint y sintaxis posterior a Python 3.11 (ruff); formato; tipos (mypy estricto); tests
-que fallan (pytest). También avisa, sin fallar, de los archivos `.py` demasiado largos (P4). Se
+que fallan (pytest). También avisa, sin fallar, de los archivos `.py` demasiado largos (P4), salvo
+los generados desde la especificación (desde S4: los marca su primera línea). Se
 prepara el entorno con `py -3.14 -m venv .venv` y `.venv/Scripts/python -m pip install -e . --group dev`.
 Visto en rojo en S2. **CI** (desde S3): el workflow `verify` de GitHub ejecuta el mismo comando
 en Python 3.11–3.14, en Linux y en Windows, en cada push a `dev` o `main` y en cada pull request.
@@ -396,6 +397,13 @@ Formas en que este equipo o sus herramientas ya han dañado o pueden dañar el t
 - **El `python` de la terminal es el `.venv` de streamer-project** (visto en S2). Ejecutar con él
   instala o prueba en el proyecto equivocado. Aquí, siempre `.venv/Scripts/python`; el control de
   entorno de `verify.py` lo detecta.
+- **`ruff format scripts` reformatea los scripts del protocolo** (visto en S4: `close_check.py` y
+  `session_start_check.py` acabaron en un commit sin pedirlo). Vienen de la plantilla y no son
+  nuestros. **Regla:** formatear solo las rutas de `CHECKED_PATHS` de `verify.py`, nunca la carpeta
+  entera.
+- **La trampa de las barras invertidas en heredocs se repitió en S4**: un `\b` de una regex se
+  convirtió en un carácter de control y un test acabó con saltos de línea reales. Cualquier texto
+  con `\` se escribe con Edit o Write, nunca con un heredoc de Python.
 
 ## §14 — Guías de procedimiento
 Cuando una tarea recurrente tenga un coste de orientación alto, se escribe una guía con la

@@ -1,6 +1,77 @@
 # 📓 Diario — AP_LFS_InSim (lfs_insim)
 <!-- Solo se añade, lo más nuevo arriba. Una entrada por sesión. -->
 
+## S4 — 2026-10-12 — U2 (dev en main), W2 detallada y paquetes de InSim generados (W2.1–W2.4)
+
+**Hecho:**
+- **U2 cerrada:** el usuario dijo «sí, sigamos tu recomendación». `main` avanzó en modo rápido de
+  `563a891` a `c97e62d` (era antecesor directo de `dev`: sin merge commit ni force-push). En `main`,
+  `verify` y `spec` en verde tras el push, y `spec` también lanzado a mano (workflow_dispatch).
+- **W2 detallada** en `PLAN.md` (W2.1–W2.9) a partir de un inventario de la especificación: 81
+  structs, 30 enums, 125 `#define`, 16 constantes y 3 listas de valores que solo aparecen en
+  comentarios (CS_, HOSTF_, AXO_).
+- **W2.1:** `scripts/spec_parser.py`. Lee los dos archivos enteros y falla, con el número de línea,
+  ante cualquier construcción desconocida. Visto en rojo estropeando la numeración de los enums y el
+  control de tipos.
+- **W2.3:** `src/lfs_insim/packets/_codec.py` (escrito a mano). Incluye `Size` ÷4 y `Type`
+  automáticos, relleno, texto fijo y al final del paquete, arrays fijos, contados o que llenan el
+  paquete, un final opcional, `unpack_insim()` y `PacketError`. Además, `_types.py` (`Vec`, `Vector`)
+  y `_text.py` (cp1252 provisional). Visto en rojo estropeando el relleno a 4 bytes y el cálculo de
+  `Size`.
+- **W2.2 y W2.4:** `scripts/spec_overrides.py` y `scripts/generate_packets.py`, que escriben
+  `_enums.py` (51 clases), `_insim.py` (81 structs) y `__init__.py`. El generador pidió por sí solo
+  las excepciones que faltaban (`PENALTY_30`, `JRR_2`…, `OCO_1`…), y así se comprobó que no deja
+  pasar nada en silencio.
+- **W2.6 (InSim):** `tests/test_packets.py` cubre:
+  - ida y vuelta de todas las clases, con valores por defecto y con valores distintos en cada
+    campo;
+  - que cada valor de `ISP` tiene su clase;
+  - los tamaños de 76 structs contra los comentarios de la especificación (fijos, rangos, fórmulas
+    `4 + NumC * 28` y «in 28 bytes»), con la lista de las 5 que no declaran tamaño;
+  - bytes hechos a mano de `IS_TINY` (keepalive), `IS_ISI`, `IS_MST` e `IS_MCI`.
+
+  Visto en rojo cambiando `CompCar.Heading` de `H` a `I` y un relleno de `IS_NPL`.
+
+**Decisiones:**
+- **Enums y flags como clases (`TINY.NCN`)**, el código generado en git (cierra la decisión
+  pendiente de P3) y el texto como `str` con la codificación de LFS en W2. Las tres, aprobadas por
+  el usuario tal como las recomendó el agente. D3 se precisó en `API_DESIGN.md`. *Descartado:*
+  constantes sueltas (`TINY_NCN`), que son cientos de nombres sin tipo; generar al construir, que
+  exigiría red y LFS para OutSimPack2; y usar `bytes` en W2, con lo que el Ejemplo 1 no funcionaría
+  hasta W4.
+- **Los campos que usan un enum siguen siendo `int`**, para no inflar W2. Se enlazarán en W4 si una
+  aplicación lo pide.
+- **Los `#define` se agrupan por bloques seguidos y se separan por prefijo**, porque un mismo
+  bloque mezcla LCS/LCL, PIF/RIF e INST/ISB. Cuando dos grupos tienen el mismo prefijo (ISB, PMO,
+  OCO), uno se renombra en las excepciones: `ISB_CLICK`, `PMOF`, `OCO_INDEX`.
+- **Un grupo es `IntFlag` si todos sus valores son bits o combinaciones de ellos; si no, es
+  `IntEnum`.** Los enums de C son siempre `IntEnum`. PSE y DL guardan la posición del bit, tal como
+  la especificación.
+- **Los codecs se usan en el código generado como `_c.Text`, `_c.Scalar`…**, porque el campo
+  `Text` de `IS_BTT` tapaba la clase `Text` dentro del cuerpo de la clase (mypy: «str not
+  callable»).
+- **El registro de tipos para `unpack_insim()` es explícito (`register(...)`) y rechaza un `Type`
+  duplicado.** Con el registro automático, las clases de prueba de `test_codec.py`, que tenían los
+  mismos `Type` que las reales, las sustituían: 5 tests fallaron solo en la ejecución completa.
+- **El aviso de tamaño (P4) no cuenta los archivos generados.** Su tamaño viene de la
+  especificación, no de una decisión de diseño. `_enums.py` (E741 por `MSO.O`) es la única
+  excepción de lint.
+- `Plate[8]` se trata como texto sin cero final, porque así lo dice la especificación (NO ZERO AT
+  END). Los campos con «last byte» reservan el último byte para el cero. Queda pendiente para W2.8:
+  comprobar si `CName` lleva un SkinID binario en los mods.
+
+**Problemas del agente:**
+- `ruff format scripts` reformateó los scripts del protocolo y entraron en el commit `bdec24f`. Se
+  restauraron en `4163c05`, y quedó como cicatriz nueva en §13.
+- Volvió a aparecer la trampa de las barras invertidas en heredocs (§13); se amplió la cicatriz.
+
+**Verificación:** `.venv/Scripts/python scripts/verify.py` → PASS (environment, lint, format, types,
+tests: 131 passed, 1 deselected). `generate_packets.py --check` → al día. GitHub: `verify` en verde
+en los 5 pushes de `dev`, y `verify` y `spec` en verde en `main`.
+
+**Commits:** plan de W2 y U2 (`0f09a8b`), W2.1 (`d4b2d07`), W2.3 (`0930b67`), W2.2+W2.4
+(`bdec24f`), restauración de los scripts del protocolo (`4163c05`) y el de cierre.
+
 ## S3 — 2026-10-12 — CI en GitHub Actions y script de la especificación: W1 cerrada
 
 **Hecho:**
