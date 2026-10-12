@@ -4,11 +4,11 @@
 > de lectura. Encontró y arregló un error: `OutGaugePack.Car` lleva el SkinID de un mod. El agente
 > maneja LFS sin el usuario con `tests/lfs_screen.ps1` (PROTOCOL §13). `cfg.txt` está restaurado:
 > para repetir OutSim/OutGauge en vivo hay que pedir permiso de nuevo. Tests en verde.
-> **▶️ SIGUIENTE: detallar W4 con el usuario** (API de alto nivel, `Roster`, `packet.text`,
-> `examples/`; está solo esbozada en `PLAN.md`) antes de escribir código.
+> **W4 detallada con el usuario en S12** (7 tareas en `PLAN.md`; decisiones en `API_DESIGN.md`).
+> **▶️ SIGUIENTE: W4.1 — `IS_MSO.text`**, y después W4.2 (`await insim.request`).
 
 ## Dónde estamos
-Fase siguiente: **W4 — La API de alto nivel y los ejemplos**, por detallar con el usuario. W2 y W3
+Fase activa: **W4 — La API de alto nivel y los ejemplos**, detallada en S12 (`PLAN.md`). W2 y W3
 están hechas enteras. Prueba en vivo: `tests/live_lfs.py` (cómo ejecutarla, en su docstring).
 
 - **Cómo se genera:** `.venv/Scripts/python scripts/generate_packets.py` lee

@@ -199,8 +199,20 @@ sin aviso. *Por qué:* P4; una API pequeña se puede revisar entera.
   (`IS_AIC`), y enviar cinco seguidos del mismo instante no sirve.
 - Un error se registra y la siguiente vuelta llega igual. `every(0)` o negativo: `ValueError`.
 
+## Decidido en S12 para W4 (por el usuario, las cuatro como recomendaba el agente)
+- **El `Roster` guarda identidad y estado**: UCID, PLID, usuario, nombre, coche, IA o humano, en
+  boxes. *Descartado:* guardar también lo último del `IS_MCI` (posición, velocidad): obligaría a
+  pedir `ISF.MCI` y lo haría crecer; cada aplicación lo lee del `IS_MCI`.
+- **`@insim.command("hello")`** para los comandos de chat: recibe quién lo escribió y los
+  argumentos separados. *Descartado:* que cada aplicación analice `IS_MSO` (casi todas las de la
+  lista lo necesitan). Esto cierra la pregunta abierta de S2.
+- **Botones: solo un ejemplo** con `IS_BTN`, `IS_BTC` e `IS_BTT` tal cual. *Descartado por ahora:*
+  un ayudante (`insim.button(...)`) diseñado sin una aplicación real que lo guíe. Si el ejemplo
+  resulta incómodo, se diseña con esa experiencia.
+- **`await insim.request(...)`**: pide y espera la respuesta (o las varias) con límite de tiempo.
+  *Descartado:* solo enviar `IS_TINY` y recoger en `@insim.on` (el `Roster`, el registrador y la
+  cámara se escribirían peor).
+
 ## Abierto (se decide más adelante, no ahora)
-- Comandos de chat (`!hello`): ¿un ayudante en la biblioteca (`@insim.command("hello")`) o solo
-  `IS_MSO`? Se decide en W4, cuando se escriba el ejemplo de botones.
 - Agrupar manejadores en módulos (lo que hacía `InSimApp` con varias aplicaciones a la vez): si
   hiciera falta, algo como el `APIRouter` de FastAPI. Solo si una aplicación real lo pide.

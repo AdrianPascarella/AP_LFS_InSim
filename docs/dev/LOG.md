@@ -94,6 +94,20 @@ y para guardar en el repo el script de pantalla («me gusta tu propuesta. Proced
 **Commits:** `60997bb` (arreglo de `Car`), `e3208e7` (OutSim/OutGauge en la prueba y
 `lfs_screen.ps1`) y el cierre.
 
+**W4 detallada con el usuario** («Empecemos»). El agente propuso 5 bloques y preguntó cuatro
+decisiones de forma; el usuario eligió en las cuatro la opción recomendada:
+- **`Roster`: identidad y estado**, sin posición ni velocidad (*descartado:* guardar lo último del
+  `IS_MCI`).
+- **`@insim.command`** para los comandos de chat (cierra la pregunta abierta de S2).
+- **Botones: solo un ejemplo**, sin ayudante hasta que una aplicación lo pida.
+- **`await insim.request(...)`**, que también usará el `Roster`.
+
+Quedan 7 tareas en `PLAN.md` (W4.1 `IS_MSO.text`, W4.2 `request`, W4.3 `Roster`, W4.4 `say` y
+`command`, W4.5 `@insim.command`, W4.6 `examples/`, W4.7 los ejemplos en el LFS real) y las
+decisiones en `API_DESIGN.md`. Una propuesta del agente queda para confirmar al escribir el
+`Roster`: actualizarlo antes que los manejadores del usuario cuando alguien llega y después cuando
+se va.
+
 ## S11 — 2026-10-12 — `OutSim`, `OutGauge` y `run()` (W3.7)
 
 **Inicio:** según el protocolo; control de inicio en verde, documentos de acuerdo con git, 0

@@ -140,10 +140,47 @@ jugador con un mod, para ver su SkinID en `CName` (P6). Con él se validan en LF
 | **Botones** (antes `prueba_botones`) | Interfaz dentro de LFS: botones, cuadros de texto | Enviar BTN y BFN; recibir BTC, BTT y BFN; MSL/MSO para comandos de chat | W4 |
 | **Control de IA** (antes `ai_control`) | Coches IA que conducen solos por rutas o calles | Enviar AIC, MST y botones; recibir MCI, CRS, RST, PLL, MSO, BTC y BTT; un ritmo fijo de actualización (`on_tick`) | W4 (la última: es la que hizo perder el control al proyecto anterior, P4) |
 
-## W4 — La API de alto nivel y los ejemplos   📋 ESBOZADA
+## W4 — La API de alto nivel y los ejemplos   ⏳ ACTIVA · detallada con el usuario en S12
 **Objetivo:** la forma de uso acordada en W1.5: eventos, envío cómodo de paquetes, el estado
 opcional (conexiones, jugadores, UCID ↔ PLID ↔ nombre) y `examples/` con programas cortos que
 funcionan.
+
+**Decidido en S12 (→ `API_DESIGN.md`, «Decidido en S12 para W4»):** el `Roster` guarda identidad
+y estado, no posición ni velocidad; habrá `@insim.command`; los botones, solo como ejemplo (sin
+ayudante hasta que una aplicación lo pida); habrá `await insim.request(...)`. Cada tarea se prueba
+contra el LFS falso y, al final (W4.7), contra el LFS real, que maneja el agente.
+
+- [ ] **W4.1** — **`packet.text` en `IS_MSO`:** lo que escribió el usuario (`Msg[TextStart:]`),
+  sin «Nombre : ». Los paquetes son generados: la propiedad va escrita a mano y el generador la
+  engancha. *Acepta:* tests con los `IS_MSO` reales de S12 (usuario, sistema, prefijo).
+- [ ] **W4.2** — **`await insim.request(...)`:** envía el `IS_TINY` con un `ReqI` propio (nunca el 1
+  del `IS_ISI`) y devuelve la respuesta; para las de varias partes (NCN, NPL, RES, SLC…), la lista,
+  sabiendo cuándo acaba por sus contadores (`Total`, `NumP`, `NumRes`) o por un tiempo sin más.
+  Con límite de tiempo (`TimeoutError`). Las respuestas siguen llegando también a `@insim.on`.
+  Forma exacta (una función o `request` y `request_all`) se precisa al escribirla. *Acepta:* tests
+  con el LFS falso: una respuesta, varias, ninguna (vence el plazo), dos peticiones a la vez.
+- [ ] **W4.3** — **`Roster` (`lfs_insim.state`, D4):** `roster.connections[UCID]` y
+  `roster.players[PLID]`, con usuario, nombre, coche, IA o humano, admin, en boxes, y el paso de
+  uno a otro (`player.connection`, `connection.players`). Pide NCN y NPL en cada (re)conexión y
+  rehace el estado. Sigue NCN, CNL, CPR, NPL, PLL, PLP, TOC, `TINY_CLR` y `TINY_MPE`. *Propuesta del
+  agente, a confirmar al escribirlo:* el `Roster` se actualiza antes que los manejadores del
+  usuario cuando alguien llega o cambia, y después cuando se va, para que en un manejador de
+  `IS_CNL` o `IS_PLL` aún se pueda saber quién era. *Acepta:* tests de cada paquete, de una
+  reconexión y de la IA (sin conexión propia: `UCID` 0), y el ejemplo 2 de `API_DESIGN.md`.
+- [ ] **W4.4** — **Enviar con comodidad:** `insim.say(texto)` (`IS_MST` o `IS_MSX` según los bytes
+  ya codificados; `ValueError` si no cabe), `insim.say(texto, to=UCID)` (`IS_MTC`) e
+  `insim.command("/restart")`. *Acepta:* tests de los límites de tamaño con texto no latino.
+- [ ] **W4.5** — **`@insim.command("hello")`** (el `!hello` del ejemplo 1): usa el `prefix` de
+  `InSim` (sin prefijo, error al registrar), separa los argumentos y da quién lo escribió y una forma
+  de contestarle. *Acepta:* tests con `IS_MSO` de prefijo, con argumentos, con un comando que no
+  existe y con un error dentro del manejador.
+- [ ] **W4.6** — **`examples/`:** `hello.py`, `who.py`, `ai_and_gauge.py` (los ejemplos 1–3 de
+  `API_DESIGN.md`, ajustados a lo que de verdad quedó) y `buttons.py` (`IS_BTN`, `IS_BTC`, `IS_BTT`
+  tal cual). Si escribir `buttons.py` resulta incómodo, se anota como idea de ayudante. *Acepta:*
+  un test por ejemplo que lo ejecuta contra el LFS falso.
+- [ ] **W4.7** — **Los ejemplos en el LFS real**, ejecutados por el agente con `tests/lfs_screen.ps1`
+  (OutGauge, solo con permiso para `cfg.txt`). *Acepta:* cada ejemplo hace lo que dice, visto en la
+  captura de pantalla o en los paquetes.
 
 ## W5 — Publicación   📋 ESBOZADA
 **Objetivo:** documentación pública, versión 0.1.0 en TestPyPI y después en PyPI, y prueba de
