@@ -179,10 +179,11 @@ contra el LFS falso y, al final (W4.7), contra el LFS real, que maneja el agente
   `InSim` (sin prefijo, error al registrar), separa los argumentos y da quién lo escribió y una forma
   de contestarle. *Acepta:* tests con `IS_MSO` de prefijo, con argumentos, con un comando que no
   existe y con un error dentro del manejador. hecho en S12 → LOG.md S12
-- [ ] **W4.6** — **`examples/`:** `hello.py`, `who.py`, `ai_and_gauge.py` (los ejemplos 1–3 de
+- [x] **W4.6** — **`examples/`:** `hello.py`, `who.py`, `ai_and_gauge.py` (los ejemplos 1–3 de
   `API_DESIGN.md`, ajustados a lo que de verdad quedó) y `buttons.py` (`IS_BTN`, `IS_BTC`, `IS_BTT`
   tal cual). Si escribir `buttons.py` resulta incómodo, se anota como idea de ayudante. *Acepta:*
-  un test por ejemplo que lo ejecuta contra el LFS falso.
+  un test por ejemplo que lo ejecuta contra el LFS falso. hecho en S12 → LOG.md S12 (el 3 quedó
+  como `gauge.py`, sin IA; la idea del ayudante de botones, en «Ideas»)
 - [ ] **W4.7** — **Los ejemplos en el LFS real**, ejecutados por el agente con `tests/lfs_screen.ps1`
   (OutGauge, solo con permiso para `cfg.txt`). *Acepta:* cada ejemplo hace lo que dice, visto en la
   captura de pantalla o en los paquetes.

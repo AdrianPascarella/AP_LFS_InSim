@@ -11,8 +11,9 @@
 > en `lfs_insim.state` (decisiones en `API_DESIGN.md`). W4.4 hecha: `insim.say()` e
 > `insim.command()`. W4.5 hecha: `@insim.on_command("hello")` (`_commands.py`; el nombre
 > cambió por un choque con `insim.command()`, falta que el usuario lo vea).
-> **▶️ SIGUIENTE: W4.6 — `examples/`** (`_connection.py` va por 402 líneas: lo próximo que crezca,
-> en un módulo propio), y después W4.7 (los ejemplos en el LFS real).
+> W4.6 hecha: `examples/` (`hello`, `who`, `gauge`, `buttons`), probados en `test_examples.py`.
+> **▶️ SIGUIENTE: W4.7 — los ejemplos en el LFS real** (el agente con `tests/lfs_screen.ps1`;
+> `gauge.py` necesita OutGauge en `cfg.txt`: pedir permiso). `_connection.py` va por 402 líneas.
 
 ## Dónde estamos
 Fase activa: **W4 — La API de alto nivel y los ejemplos**, detallada en S12 (`PLAN.md`). W2 y W3

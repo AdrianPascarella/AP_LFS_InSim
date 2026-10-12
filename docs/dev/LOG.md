@@ -191,6 +191,22 @@ se va.
 - **Verificación:** `verify.py` → PASS (299 passed, 1 deselected).
 - **Commit:** `fc8d0fb`.
 
+**W4.6 — `examples/`.**
+- `hello.py` (`!hello` y `IS_VER`), `who.py` (`Roster`, `IS_NPL`/`IS_PLL` y `!who`),
+  `gauge.py` (`@insim.every(2)` con `await insim.request(IS_STA)`, OutGauge y `run(insim, gauge)`,
+  con `IS_MSL` en pantalla) y `buttons.py` (`IS_BTN` tal cual, `IS_BTC`, `IS_BTT`, `!buttons` y
+  `!hide`). El ejemplo 3 del diseño (IA) quedó como `gauge.py`: controlar la IA con `IS_AIC` es una
+  aplicación entera (la de «Aplicaciones aparte»).
+- `tests/test_examples.py`: carga cada ejemplo sin ejecutar su `__main__`, lo conecta al LFS
+  falso y comprueba lo que hace (respuestas por `IS_MTC`, lo impreso, el `IS_MSL` con la velocidad
+  de un datagrama OutGauge enviado a mano, los botones). Un test comprueba que no hay ejemplos sin
+  probar. `verify.py` pasa ahora lint, formato y tipos también por `examples/`.
+- Escribir `buttons.py` fue llevadero, pero se nota lo que haría un ayudante (repartir `ClickID`,
+  el estado en globales, reenviar para actualizar): anotado en «Ideas», como se decidió.
+- `API_DESIGN.md` apunta a `examples/` como la referencia viva.
+- **Verificación:** `verify.py` → PASS (304 passed, 1 deselected).
+- **Commit:** `5487d6b`.
+
 ## S11 — 2026-10-12 — `OutSim`, `OutGauge` y `run()` (W3.7)
 
 **Inicio:** según el protocolo; control de inicio en verde, documentos de acuerdo con git, 0
