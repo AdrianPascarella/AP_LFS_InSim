@@ -260,11 +260,6 @@ class InSimPacket(Structure):
 
     _TYPE: ClassVar[int]
 
-    def __init_subclass__(cls, **kwargs: Any) -> None:
-        super().__init_subclass__(**kwargs)
-        if "_TYPE" in cls.__dict__:
-            _PACKET_TYPES[cls._TYPE] = cls
-
     def pack(self) -> bytes:
         body = bytearray(super().pack())
         body.extend(bytes(-len(body) % 4))
@@ -289,6 +284,14 @@ def _checked(data: bytes) -> bytes:
     if size < 4 or size > len(data):
         raise PacketError(f"Size says {size} bytes, but {len(data)} were given")
     return bytes(data[:size])
+
+
+def register(*classes: type[InSimPacket]) -> None:
+    """Make unpack_insim() read these classes. A Type can only belong to one class."""
+    for cls in classes:
+        known = _PACKET_TYPES.setdefault(cls._TYPE, cls)
+        if known is not cls:
+            raise ValueError(f"type {cls._TYPE} already belongs to {known.__name__}")
 
 
 def unpack_insim(data: bytes) -> InSimPacket:

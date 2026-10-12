@@ -25,6 +25,7 @@ from lfs_insim.packets._codec import (
     TailText,
     Text,
     factory,
+    register,
     unpack_insim,
 )
 
@@ -36,7 +37,7 @@ class TINY(InSimPacket):  # struct IS_TINY: Size, Type, ReqI, SubT
     ReqI: int = 0
     SubT: int = 0
 
-    _TYPE = 3
+    _TYPE = 201
     _LAYOUT = (("Size", SIZE), ("Type", TYPE), ("ReqI", B), ("SubT", B))
 
 
@@ -45,7 +46,7 @@ class MST(InSimPacket):  # struct IS_MST: fixed char Msg[64], last byte must be 
     ReqI: int = 0
     Msg: str = ""
 
-    _TYPE = 13
+    _TYPE = 202
     _LAYOUT = (("Size", SIZE), ("Type", TYPE), ("ReqI", B), ("Zero", Pad(1)), ("Msg", Text(64)))
 
 
@@ -54,7 +55,7 @@ class MSO(InSimPacket):  # struct IS_MSO: variable size text at the end
     UCID: int = 0
     Msg: str = ""
 
-    _TYPE = 11
+    _TYPE = 203
     _LAYOUT = (
         ("Size", SIZE),
         ("Type", TYPE),
@@ -81,7 +82,7 @@ class NLP(InSimPacket):  # struct IS_NLP: NumP counts Info; padded to a multiple
     ReqI: int = 0
     Info: list[Car] = field(default_factory=list)
 
-    _TYPE = 37
+    _TYPE = 204
     _LAYOUT = (
         ("Size", SIZE),
         ("Type", TYPE),
@@ -96,7 +97,7 @@ class AIC(InSimPacket):  # struct IS_AIC: no counter, the items fill the packet
     PLID: int = 0
     Inputs: list[int] = field(default_factory=list)
 
-    _TYPE = 68
+    _TYPE = 205
     _LAYOUT = (
         ("Size", SIZE),
         ("Type", TYPE),
@@ -123,15 +124,30 @@ class Mixed(Structure):  # fixed arrays, nested structure, unterminated text, IP
     )
 
 
+# Types 201+ are unused by LFS, so these never replace the real packets in unpack_insim().
+register(TINY, MST, MSO, NLP, AIC)
+
+
+def test_a_type_belongs_to_one_class() -> None:
+    register(TINY)  # registering the same class again is harmless
+
+    @dataclass(kw_only=True)
+    class Other(InSimPacket):
+        _TYPE = 201
+
+    with pytest.raises(ValueError, match="type 201 already belongs to TINY"):
+        register(Other)
+
+
 def test_header_is_filled_in() -> None:
-    assert TINY(ReqI=1, SubT=0).pack() == bytes([1, 3, 1, 0])  # Size is in units of 4 bytes
-    assert TINY.unpack(bytes([1, 3, 1, 4])) == TINY(ReqI=1, SubT=4)
+    assert TINY(ReqI=1, SubT=0).pack() == bytes([1, 201, 1, 0])  # Size is in units of 4 bytes
+    assert TINY.unpack(bytes([1, 201, 1, 4])) == TINY(ReqI=1, SubT=4)
 
 
 def test_fixed_text_and_padding() -> None:
     data = MST(Msg="/msg hi").pack()
     assert len(data) == 68
-    assert data[:4] == bytes([17, 13, 0, 0])
+    assert data[:4] == bytes([17, 202, 0, 0])
     assert data[4:12] == b"/msg hi\0"
     assert MST.unpack(data) == MST(Msg="/msg hi")
 
@@ -144,7 +160,7 @@ def test_fixed_text_too_long() -> None:
 
 def test_variable_text_is_zero_terminated_and_padded_to_4() -> None:
     data = MSO(UCID=2, Msg="abc").pack()
-    assert data == bytes([3, 11, 0, 0, 2, 0, 0, 0]) + b"abc\0"
+    assert data == bytes([3, 203, 0, 0, 2, 0, 0, 0]) + b"abc\0"
     data = MSO(Msg="abcd").pack()
     assert len(data) == 16 and data[8:] == b"abcd\0\0\0\0"
     assert MSO.unpack(data) == MSO(Msg="abcd")
@@ -153,14 +169,14 @@ def test_variable_text_is_zero_terminated_and_padded_to_4() -> None:
 def test_counted_array_sets_the_counter() -> None:
     packet = NLP(Info=[Car(Node=1, Lap=2, PLID=3, Position=1)])
     data = packet.pack()
-    assert data == bytes([3, 37, 0, 1, 1, 0, 2, 0, 3, 1, 0, 0])  # 4 + 6, padded to 12
+    assert data == bytes([3, 204, 0, 1, 1, 0, 2, 0, 3, 1, 0, 0])  # 4 + 6, padded to 12
     assert NLP.unpack(data) == packet
     assert NLP.unpack(NLP().pack()) == NLP()
 
 
 def test_uncounted_array_fills_the_packet() -> None:
     packet = AIC(PLID=5, Inputs=[1, 2])
-    assert packet.pack() == bytes([3, 68, 0, 5, 1, 0, 0, 0, 2, 0, 0, 0])
+    assert packet.pack() == bytes([3, 205, 0, 5, 1, 0, 0, 0, 2, 0, 0, 0])
     assert AIC.unpack(packet.pack()) == packet
     with pytest.raises(PacketError, match="at most 20"):
         AIC(Inputs=[0] * 21).pack()
@@ -184,7 +200,7 @@ def test_values_out_of_range_are_rejected() -> None:
 
 
 def test_unpack_any_chooses_the_class_by_type() -> None:
-    assert unpack_insim(bytes([1, 3, 0, 0])) == TINY()
+    assert unpack_insim(bytes([1, 201, 0, 0])) == TINY()
     assert unpack_insim(MSO(Msg="hi").pack()) == MSO(Msg="hi")
     with pytest.raises(PacketError, match="unknown packet type 250"):
         unpack_insim(bytes([1, 250, 0, 0]))
@@ -194,9 +210,9 @@ def test_unpack_any_chooses_the_class_by_type() -> None:
     ("data", "message"),
     [
         (b"\x01\x03", "at least 4 bytes"),
-        (bytes([2, 3, 0, 0]), "Size says 8 bytes"),
-        (bytes([0, 3, 0, 0]), "Size says 0 bytes"),
-        (bytes([1, 11, 0, 0]), "type 11 is not TINY"),
+        (bytes([2, 201, 0, 0]), "Size says 8 bytes"),
+        (bytes([0, 201, 0, 0]), "Size says 0 bytes"),
+        (bytes([1, 203, 0, 0]), "type 203 is not TINY"),
     ],
 )
 def test_malformed_bytes_raise_packet_error(data: bytes, message: str) -> None:
@@ -206,4 +222,4 @@ def test_malformed_bytes_raise_packet_error(data: bytes, message: str) -> None:
 
 def test_truncated_body_raises_packet_error() -> None:
     with pytest.raises(PacketError, match="too short"):
-        MST.unpack(bytes([2, 13, 0, 0, 0, 0, 0, 0]))
+        MST.unpack(bytes([2, 202, 0, 0, 0, 0, 0, 0]))

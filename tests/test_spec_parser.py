@@ -102,6 +102,21 @@ def test_reads_outsim_conditions() -> None:
     ]
 
 
+def test_collects_values_listed_only_in_comments() -> None:
+    text = (
+        "// Values for Input\n\n// CS_MSX\t\t\t 0 - steer: 1 hard left\n"
+        "// CS_THROTTLE\t\t 1 - 0 to 65535\n// HOSTF_FCV\t\t\t0x100\n"
+        "// AXO_START_LIGHTS1\t149 // layout\n// TINY_NONE is not followed by a number\n"
+    )
+    values = spec_parser.parse(text, "x").comment_values
+    assert [(v.name, v.value, v.comment, v.line) for v in values] == [
+        ("CS_MSX", 0, "steer: 1 hard left", 3),
+        ("CS_THROTTLE", 1, "0 to 65535", 4),
+        ("HOSTF_FCV", 256, "", 5),
+        ("AXO_START_LIGHTS1", 149, "layout", 6),
+    ]
+
+
 def test_a_heading_two_blank_lines_away_is_not_attached() -> None:
     text = "// unrelated\n\n\nenum\n{\n\tA_ONE,\n};\n"
     (enum,) = spec_parser.parse(text, "x").enums

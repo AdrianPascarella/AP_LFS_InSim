@@ -26,6 +26,7 @@ DEFINE = re.compile(r"^#define\s+(\w+)(?:\s+([^/]+?))?\s*(?://\s*(.*))?$")
 CONST = re.compile(r"^const\s+int\s+(\w+)\s*=\s*([^;]+);\s*(?://\s*(.*))?$")
 FIELD = re.compile(r"^(\w+)\s+(\w+)\s*(?:\[\s*(\w+)\s*\])?\s*;\s*(?://\s*(.*))?$")
 ENUM_MEMBER = re.compile(r"^(\w+)\s*(?:=\s*([^,/]+?))?\s*,?\s*(?://\s*(.*))?$")
+COMMENT_VALUE = re.compile(r"^//\s*([A-Z][A-Z0-9]*_\w+)\s+(0[xX][0-9a-fA-F]+|\d+)\b\W*(.*)$")
 CONDITION = re.compile(r"^if\s*\(\s*\w+\s*&\s*(\w+)\s*\)$")
 HEADER_GUARD = re.compile(r"^#(?:ifndef|endif)\b")
 INT_LITERAL = re.compile(r"^(?:0[xX][0-9a-fA-F]+|\d+)$")
@@ -102,6 +103,9 @@ class Spec:
     enums: list[Enum] = field(default_factory=list)
     define_groups: list[DefineGroup] = field(default_factory=list)
     constants: dict[str, Constant] = field(default_factory=dict)
+    # Values listed only in comments, e.g. "// CS_THROTTLE  1 - 0 to 65535". The generator decides
+    # which of them become enum members.
+    comment_values: list[Define] = field(default_factory=list)
 
 
 class _Parser:
@@ -153,6 +157,10 @@ class _Parser:
                 if self.blanks_after_paragraph > 0 or not self.paragraph:
                     self.paragraph = []
                 self.paragraph.append(code[2:].strip())
+                if match := COMMENT_VALUE.match(code):
+                    name, value, comment = match.groups()
+                    define = Define(name, int(value, 0), comment.strip(), self.index + 1)
+                    self.spec.comment_values.append(define)
                 self.blanks_after_paragraph = 0
             else:
                 self.statement(code)

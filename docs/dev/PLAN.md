@@ -36,15 +36,17 @@ generado va en git, con un control que comprueba que está al día (P3); los cam
   con un mensaje claro ante cualquier construcción que no entienda y no esté en las excepciones.
   *Acepta:* lee los 81 `struct` de InSim.txt y los de OutSimPack.txt; tests con fragmentos.
   hecho en S4 → LOG.md S4
-- [ ] **W2.2** — **Excepciones escritas a mano, en un solo archivo:** qué campo da la longitud de
+- [x] **W2.2** — **Excepciones escritas a mano, en un solo archivo:** qué campo da la longitud de
   cada paquete variable, el nombre de los enums sin nombre, los valores que no son identificadores
-  válidos (`DL_18`) y las partes condicionales de OutSimPack2.
+  válidos (`DL_18`) y las partes condicionales de OutSimPack2 (estas, con W2.5).
+  hecho en S4 → LOG.md S4
 - [x] **W2.3** — **Núcleo de empaquetado** escrito a mano (`_codec`): clase base, `pack()` y
   `unpack()`, `Size` (÷4) y `Type` automáticos, relleno a cero, texto al final rellenado a 4 bytes
   y arrays con longitud dada por un campo.
   hecho en S4 → LOG.md S4
-- [ ] **W2.4** — **Paquetes de InSim generados** (dataclasses con los nombres de la
+- [x] **W2.4** — **Paquetes de InSim generados** (dataclasses con los nombres de la
   especificación y los comentarios de C como docstring) y sus enums y flags.
+  hecho en S4 → LOG.md S4
 - [ ] **W2.5** — **OutSim y OutGauge generados**, OutSimPack2 incluido según sus opciones.
 - [ ] **W2.6** — **Tests:** ida y vuelta de todos los paquetes; tamaño contra el `// N` de la
   especificación; unos cuantos paquetes byte a byte escritos a mano; visto en rojo.
