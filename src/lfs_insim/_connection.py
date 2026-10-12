@@ -16,6 +16,7 @@ from lfs_insim._handlers import Handlers
 from lfs_insim._stream import PacketStream
 from lfs_insim.packets import (
     IS_ISI,
+    IS_MSL,
     IS_MSO,
     IS_MST,
     IS_MSX,
@@ -169,13 +170,16 @@ class InSim:
     def say(self, text: str, *, to: int | None = None) -> None:
         """Write in the chat, as if typed in LFS: `insim.say("Hello")`. Everyone sees it.
 
-        With `to=UCID` only that connection sees it (IS_MTC: LFS must be the host, as it is in
-        single player; 255 = everyone). The limit counts bytes as LFS stores them: 95 for the
-        chat (63 goes as IS_MST, longer as IS_MSX), 127 with `to`; longer text raises
-        PacketError (a ValueError). For commands such as /restart, use command().
+        With `to=UCID` only that connection sees it: `to=0` is this computer (IS_MSL, in single
+        player too); another UCID needs LFS to be a multiplayer host (IS_MTC; 255 = everyone).
+        The limit counts bytes as LFS stores them: 95 for the chat (63 goes as IS_MST, longer
+        as IS_MSX), 127 with `to`; longer text raises PacketError (a ValueError). For commands
+        such as /restart, use command().
         """
         packet: InSimPacket
-        if to is not None:
+        if to == 0:
+            packet = IS_MSL(Msg=text)  # LFS refuses IS_MTC in single player ("only for hosts")
+        elif to is not None:
             packet = IS_MTC(UCID=to, Text=text)
         elif text.startswith("/"):
             raise ValueError(f"{text!r} is a command: use insim.command() to send it")

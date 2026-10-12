@@ -7,7 +7,7 @@ import pytest
 from fake_lfs import FakeLFS
 
 from lfs_insim import InSim
-from lfs_insim.packets import IS_MST, IS_MSX, IS_MTC, PacketError
+from lfs_insim.packets import IS_MSL, IS_MST, IS_MSX, IS_MTC, PacketError
 
 
 def run(test: Callable[[FakeLFS, InSim], Awaitable[None]]) -> None:
@@ -65,6 +65,19 @@ def test_a_message_to_one_connection_goes_as_mtc() -> None:
         assert (packet.UCID, packet.PLID, packet.Text) == (3, 0, "only for you")
         insim.say("y" * 127, to=3)  # IS_MTC takes up to 127 bytes
         assert (await lfs.wait_for(IS_MTC)).Text == "y" * 127
+
+    run(test)
+
+
+def test_a_message_to_this_computer_goes_as_msl() -> None:
+    # UCID 0 is this computer. LFS answers IS_MTC with "only for multiplayer hosts" in single
+    # player (seen in W4.7, S12), so it goes as IS_MSL, which only this computer shows.
+    async def test(lfs: FakeLFS, insim: InSim) -> None:
+        insim.say("only for you", to=0)
+        assert (await lfs.wait_for(IS_MSL)).Msg == "only for you"
+        insim.say("y" * 127, to=0)
+        assert (await lfs.wait_for(IS_MSL)).Msg == "y" * 127
+        assert not [p for p in lfs.received if isinstance(p, IS_MTC)]
 
     run(test)
 

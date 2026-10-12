@@ -32,7 +32,7 @@ class Command:
     _reply: Callable[[str], None] = field(repr=False, compare=False)
 
     def reply(self, text: str) -> None:
-        """Answer only the connection that typed it (IS_MTC: LFS must be the host)."""
+        """Answer only the connection that typed it (insim.say with to=its UCID)."""
         self._reply(text)
 
 

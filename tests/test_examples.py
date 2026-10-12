@@ -86,7 +86,7 @@ def test_who(capsys: pytest.CaptureFixture[str]) -> None:
                 await lfs.wait_connected()
                 await _until(lambda: len(example.roster.players) == 2)
                 await lfs.send(typed("!who"))
-                replies = [(await lfs.wait_for(IS_MTC)).Text for _ in range(2)]
+                replies = [(await lfs.wait_for(IS_MSL)).Msg for _ in range(2)]
                 await lfs.send(IS_PLL(PLID=1))
                 await _until(lambda: 1 not in example.roster.players)
         assert replies == ["^1Bob^8: XFG", "AI 1^8: FBM (AI)"]
@@ -136,13 +136,13 @@ def test_buttons() -> None:
                 updated = await lfs.wait_for(IS_BTN)
                 await lfs.wait_for(IS_BTN)
                 await lfs.send(IS_BTT(ReqI=1, ClickID=example.TYPE_HERE, Text="hola"))
-                answer = await lfs.wait_for(IS_MTC)
+                answer = await lfs.wait_for(IS_MSL)  # UCID 0: this computer
                 await lfs.send(typed("!hide"))
                 hidden = await lfs.wait_for(IS_BFN)
         assert click_me.ReqI and click_me.Text == "Clicked 0 times"
         assert (type_here.TypeIn, type_here.Caption) == (20, "Your text")
         assert updated.Text == "Clicked 1 times"
-        assert answer.Text == "You typed: hola"
+        assert answer.Msg == "You typed: hola"
         assert hidden.SubT == BFN.CLEAR
 
     asyncio.run(main())
