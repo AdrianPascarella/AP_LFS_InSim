@@ -154,12 +154,13 @@ contra el LFS falso y, al final (W4.7), contra el LFS real, que maneja el agente
   sin «Nombre : ». Los paquetes son generados: la propiedad va escrita a mano y el generador la
   engancha. *Acepta:* tests con los `IS_MSO` reales de S12 (usuario, sistema, prefijo).
   hecho en S12 → LOG.md S12 (`packets/_extras.py` + `spec_overrides.EXTRAS`)
-- [ ] **W4.2** — **`await insim.request(...)`:** envía el `IS_TINY` con un `ReqI` propio (nunca el 1
+- [x] **W4.2** — **`await insim.request(...)`:** envía el `IS_TINY` con un `ReqI` propio (nunca el 1
   del `IS_ISI`) y devuelve la respuesta; para las de varias partes (NCN, NPL, RES, SLC…), la lista,
   sabiendo cuándo acaba por sus contadores (`Total`, `NumP`, `NumRes`) o por un tiempo sin más.
   Con límite de tiempo (`TimeoutError`). Las respuestas siguen llegando también a `@insim.on`.
   Forma exacta (una función o `request` y `request_all`) se precisa al escribirla. *Acepta:* tests
   con el LFS falso: una respuesta, varias, ninguna (vence el plazo), dos peticiones a la vez.
+  hecho en S12 → LOG.md S12 (`request(IS_X)` y `request_all(IS_X)`, por el tipo de la respuesta)
 - [ ] **W4.3** — **`Roster` (`lfs_insim.state`, D4):** `roster.connections[UCID]` y
   `roster.players[PLID]`, con usuario, nombre, coche, IA o humano, admin, en boxes, y el paso de
   uno a otro (`player.connection`, `connection.players`). Pide NCN y NPL en cada (re)conexión y

@@ -123,6 +123,25 @@ se va.
 - **Verificación:** `verify.py` → PASS (260 passed, 1 deselected).
 - **Commit:** `e809b0b`.
 
+**W4.2 — `await insim.request(...)`.**
+- **Forma** (propuesta del agente; el usuario había delegado: «sigamos tus recomendaciones»): se
+  pide por el tipo de la respuesta. `request(IS_STA)` devuelve un paquete y `request_all(IS_NPL)`
+  una lista; usar la que no toca da un `TypeError` que dice cuál usar. Lo descartado, en
+  `API_DESIGN.md` («Precisado al escribir `request`»).
+- `src/lfs_insim/_requests.py`: tablas `SINGLE` y `MULTI` (con el campo contador: `Total`, `NumP`,
+  `NumRes`) y `Requests`, que reparte `ReqI` del 2 al 255, entrega cada respuesta a su petición y,
+  al cortarse la conexión, falla las pendientes con `ConnectionError`. `InSim._dispatch` entrega
+  antes de llamar a los manejadores, que también reciben la respuesta.
+- `tests/fake_lfs.py`: `replies[TINY.X]` = paquetes con los que contesta, con el `ReqI` de la
+  petición.
+- **Red:** `tests/test_request.py`, 12 tests, todos en rojo antes del código. Siete mutaciones
+  (empezar en `ReqI` 1, no liberar el `ReqI`, aceptar cualquier tipo, no fallar al desconectar,
+  ignorar el contador, no entregar, quitar las respuestas a los manejadores), todas en rojo.
+- Los contadores coinciden con lo visto en el LFS real en S12 (3 `IS_NPL` con `NumP` 3, 1 `IS_NCN`
+  con `Total` 1). La prueba con el juego queda para W4.7.
+- **Verificación:** `verify.py` → PASS (272 passed, 1 deselected).
+- **Commit:** `abf109e`.
+
 ## S11 — 2026-10-12 — `OutSim`, `OutGauge` y `run()` (W3.7)
 
 **Inicio:** según el protocolo; control de inicio en verde, documentos de acuerdo con git, 0
