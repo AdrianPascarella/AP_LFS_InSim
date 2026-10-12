@@ -427,6 +427,11 @@ Formas en que este equipo o sus herramientas ya han dañado o pueden dañar el t
   clic (`-X`, `-Y`) y deja una captura en `tests/live_reports/screen.png`. InSim se activa con
   `-Keys "t" -Then "/insim=29999{ENTER}"`. Una pulsación justo después de otra pantalla a veces no
   llega: mirar siempre la captura antes del paso siguiente.
+- **Windows puede negarse a traer LFS al frente** (visto en S12, con el usuario usando Chrome): las
+  teclas fueron a su navegador. Desde entonces `lfs_screen.ps1` comprueba que la ventana de delante
+  es LFS y, si no, sale con 2 sin enviar nada. **Reglas:** después de activar InSim, comprobar que
+  el puerto 29999 responde antes de seguir; si el usuario puede estar usando el equipo, preguntar
+  antes de manejar LFS; y nunca probar la protección con un clic o una tecla de verdad.
 
 ## §14 — Guías de procedimiento
 Cuando una tarea recurrente tenga un coste de orientación alto, se escribe una guía con la

@@ -4,6 +4,8 @@
 #   powershell -File tests/lfs_screen.ps1 -X 1736 -Y 506                         click, then capture
 #   powershell -File tests/lfs_screen.ps1                                        capture only
 #
+# If LFS is not the window in front after asking for it (Windows refuses while someone uses
+# another window), nothing is sent and it exits with 2: never type into someone else's window.
 # Every call ends with a half-size screenshot in tests/live_reports/screen.png (ignored by git),
 # to see where LFS is. -Keys and -Then use SendKeys syntax ({ENTER}, {ESC}...); -Then is sent a
 # moment after -Keys, because opening the chat box with "t" takes LFS a little while.
@@ -17,6 +19,8 @@ using System; using System.Runtime.InteropServices;
 public static class LfsMouse {
   [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
   [DllImport("user32.dll")] public static extern void mouse_event(uint f, uint x, uint y, uint d, IntPtr e);
+  [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+  [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr w, out uint p);
 }
 "@
 
@@ -26,6 +30,14 @@ if ($X -ge 0 -or $Keys -ne "") {
     $shell = New-Object -ComObject WScript.Shell
     [void]$shell.AppActivate($lfs.Id)
     Start-Sleep -Milliseconds 300
+    # Windows may refuse to bring LFS to the front (someone is using another window): then the
+    # keys and clicks would go to that window. Never send anything unless LFS is in front (S12).
+    $front = [uint32]0
+    [void][LfsMouse]::GetWindowThreadProcessId([LfsMouse]::GetForegroundWindow(), [ref]$front)
+    if ($front -ne $lfs.Id) {
+        Write-Error "LFS is not the window in front (process $front is): nothing was sent"
+        exit 2
+    }
     if ($X -ge 0) {
         [LfsMouse]::SetCursorPos($X, $Y) | Out-Null
         Start-Sleep -Milliseconds 150
