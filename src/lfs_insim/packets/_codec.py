@@ -212,6 +212,63 @@ class Optional(Codec):
         return self.item.unpack(data, offset, values)
 
 
+_OPTIONS = "\0options"  # key of the unpack options in `values`; never a field name
+
+
+class Options(Codec):
+    """The options a packet was sent with (OutSim Opts): a field, but not part of the bytes."""
+
+    def pack(self, value: Any, packet: Any) -> bytes:
+        return b""
+
+    def unpack(self, data: bytes, offset: int, values: dict[str, Any]) -> tuple[Any, int]:
+        return values[_OPTIONS], offset
+
+
+class When(Codec):
+    """A part that is only in the bytes if an option is set (OSO_MAIN...): None if it is not.
+
+    `of` names the Options field. Packing checks that the value is given exactly when the option
+    is set, so a packet never disagrees with its own options.
+    """
+
+    def __init__(self, option: int, item: Codec, of: str) -> None:
+        self.option = option
+        self.item = item
+        self.of = of
+        self.is_field = item.is_field
+
+    def pack(self, value: Any, packet: Any) -> bytes:
+        present = bool(getattr(packet, self.of) & self.option)
+        if self.is_field and present != (value is not None):
+            state = "set" if present else "not set"
+            raise PacketError(f"option {self.option:#x} is {state}, but the value is {value!r}")
+        return self.item.pack(value, packet) if present else b""
+
+    def unpack(self, data: bytes, offset: int, values: dict[str, Any]) -> tuple[Any, int]:
+        if not values[self.of] & self.option:
+            return None, offset
+        return self.item.unpack(data, offset, values)
+
+
+class Magic(Codec):
+    """Fixed bytes that mark a packet (the "LFST" of OutSimPack2): written and checked."""
+
+    is_field = False
+
+    def __init__(self, magic: bytes) -> None:
+        self.magic = magic
+
+    def pack(self, value: Any, packet: Any) -> bytes:
+        return self.magic
+
+    def unpack(self, data: bytes, offset: int, values: dict[str, Any]) -> tuple[Any, int]:
+        end = offset + len(self.magic)
+        if data[offset:end] != self.magic:
+            raise PacketError(f"expected {self.magic!r}, got {data[offset:end]!r}")
+        return None, end
+
+
 class _Header(Codec):
     """Size or Type of an InSim packet: filled in by InSimPacket.pack()."""
 
@@ -244,12 +301,32 @@ class Structure:
         return instance
 
     @classmethod
-    def _unpack_from(cls, data: bytes, offset: int) -> tuple[Self, int]:
-        values: dict[str, Any] = {}
+    def _unpack_from(
+        cls, data: bytes, offset: int, values: dict[str, Any] | None = None
+    ) -> tuple[Self, int]:
+        values = {} if values is None else values
         for name, codec in cls._LAYOUT:
             values[name], offset = codec.unpack(data, offset, values)
         fields = {name: values[name] for name, codec in cls._LAYOUT if codec.is_field}
         return cls(**fields), offset
+
+
+class OptionalParts(Structure):
+    """A structure whose parts depend on options that are not in its bytes (OutSimPack2).
+
+    LFS sends only the parts selected in cfg.txt, so reading needs those options:
+    `OutSimPack2.unpack(data, OSO.TIME | OSO.MAIN)`.
+    """
+
+    @classmethod
+    def unpack(cls, data: bytes, options: int | None = None) -> Self:
+        if options is None:
+            raise PacketError(f"{cls.__name__} needs the options it was sent with")
+        data = bytes(data)
+        instance, end = cls._unpack_from(data, 0, {_OPTIONS: options})
+        if end != len(data):
+            raise PacketError(f"options {options:#x} give {end} bytes, but {len(data)} were given")
+        return instance
 
 
 _PACKET_TYPES: dict[int, type[InSimPacket]] = {}

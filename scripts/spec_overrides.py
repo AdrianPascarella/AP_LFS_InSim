@@ -35,8 +35,28 @@ TAIL_ARRAY: dict[str, tuple[str, str | None]] = {
     "IS_AIC": ("Inputs", None),
 }
 
-# Structs in InSim.txt that are not InSim packets: they go to their own modules (W2.5).
-NOT_INSIM = frozenset({"OutSimPack", "OutGaugePack"})
+# Structs in InSim.txt that are not InSim packets, and the module they go to. Every struct of
+# OutSimPack.txt goes to _outsim.
+MODULES: dict[str, str] = {
+    "OutSimPack": "_outsim",
+    "OutGaugePack": "_outgauge",
+}
+
+# Trailing fields that LFS only sends in some configurations ("optional - only if OutSim ID is
+# specified"): they are None when absent.
+OPTIONAL_TAIL: dict[str, str] = {
+    "OutSimPack": "ID",
+    "OutGaugePack": "ID",
+}
+
+# Single chars at the start of a struct that are a fixed marker, not data: struct -> the marker.
+MAGIC: dict[str, str] = {
+    "OutSimPack2": "LFST",  # char L; char F; char S; char T;
+}
+
+# Name of the field that holds the options of a struct with "// if (OSOpts & OSO_x)" parts. It is
+# the name the specification uses in those comments; it is not part of the bytes.
+OPTIONS_FIELD = "OSOpts"
 
 # Groups of #defines (named by their first #define) whose class name is not their prefix,
 # because the prefix is already taken by another class.
@@ -56,6 +76,7 @@ COMMENT_VALUES: dict[str, str] = {
 # Class docstrings where the comment above the values in the specification does not describe them.
 CLASS_DOCS: dict[str, str] = {
     "OCO_INDEX": "Index byte of IS_OCO: which start lights to override",
+    "OSO": "Parts of OutSimPack2 chosen by OutSim Opts in cfg.txt (hexadecimal; 1ff = all of them)",
 }
 
 # Class prefixes whose members keep their full C name (the prefix is not stripped).

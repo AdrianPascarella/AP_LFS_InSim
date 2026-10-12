@@ -2,6 +2,8 @@
 
 import itertools
 import re
+import struct
+from dataclasses import replace
 from ipaddress import IPv4Address
 from pathlib import Path
 from typing import Any
@@ -18,15 +20,31 @@ from lfs_insim.packets import (
     IS_TINY,
     ISF,
     ISP,
+    OG,
+    OSO,
     TINY,
     CompCar,
+    OutGaugePack,
+    OutSimPack,
+    OutSimPack2,
+    OutSimWheel,
     PacketError,
     Vec,
+    Vector,
 )
 from lfs_insim.packets import _codec as c
-from lfs_insim.packets._codec import InSimPacket, Structure, unpack_insim
+from lfs_insim.packets._codec import InSimPacket, OptionalParts, Structure, unpack_insim
 
 CACHE = Path(__file__).resolve().parent.parent / "spec" / "cache"
+# OutSim and OutGauge: no Size field, so their sizes are checked one by one below.
+OUTSIDE_INSIM = {
+    "OutSimPack",
+    "OutSimMain",
+    "OutSimInputs",
+    "OutSimWheel",
+    "OutSimPack2",
+    "OutGaugePack",
+}
 CLASSES = [
     cls
     for cls in vars(packets).values()
@@ -58,13 +76,22 @@ def sample_value(codec: c.Codec) -> Any:
         return [sample_value(codec.item) for _ in range(codec.count)]
     if isinstance(codec, c.TailArray):
         return [sample_value(codec.item) for _ in range(2)]
-    if isinstance(codec, c.Optional):
+    if isinstance(codec, (c.Optional, c.When)):
         return sample_value(codec.item)
+    if isinstance(codec, c.Options):
+        return sum(OSO)  # every part: what OutSim Opts 1ff sends
     raise AssertionError(f"no sample for {codec!r}")
 
 
 def sample(cls: type[Structure]) -> Any:
     return cls(**{name: sample_value(co) for name, co in cls._LAYOUT if co.is_field})
+
+
+def unpack(cls: type[Structure], data: bytes, instance: Any) -> Any:
+    """cls.unpack(data), passing the options when the layout depends on them."""
+    if issubclass(cls, OptionalParts):
+        return cls.unpack(data, instance.OSOpts)
+    return cls.unpack(data)
 
 
 def test_every_packet_type_is_generated() -> None:
@@ -78,7 +105,7 @@ def test_every_packet_type_is_generated() -> None:
 def test_round_trip(cls: type[Structure]) -> None:
     for instance in (cls(), sample(cls)):
         data = instance.pack()
-        assert cls.unpack(data) == instance
+        assert unpack(cls, data, instance) == instance
         if isinstance(instance, InSimPacket):
             assert len(data) % 4 == 0 and data[0] * 4 == len(data)
             assert unpack_insim(data) == instance
@@ -90,21 +117,21 @@ def spec_sizes() -> dict[str, tuple[int, int | None]]:
 
     spec = spec_parser.parse((CACHE / "InSim.txt").read_text(encoding="utf-8"), "InSim.txt")
     sizes: dict[str, tuple[int, int | None]] = {}
-    for struct in spec.structs.values():
-        size = struct.fields[0].comment if struct.fields[0].name == "Size" else ""
+    for item in spec.structs.values():
+        size = item.fields[0].comment if item.fields[0].name == "Size" else ""
         if match := re.match(r"^(\d+) \+ (?:Num\w+ \* (\d+)|(\d+) \* \(number)", size):
-            sizes[struct.name] = (int(match[1]), int(match[2] or match[3]))
+            sizes[item.name] = (int(match[1]), int(match[2] or match[3]))
         elif match := re.match(r"^(\d+) \+ TEXT_SIZE", size):
-            sizes[struct.name] = (int(match[1]) + 4, None)  # empty text still takes 4 bytes
-        elif match := re.match(r"^(\d+)\b", size) or re.search(r"(\d+) bytes", struct.comment):
-            sizes[struct.name] = (int(match[1]), None)  # "44", or "Car info in 28 bytes"
+            sizes[item.name] = (int(match[1]) + 4, None)  # empty text still takes 4 bytes
+        elif match := re.match(r"^(\d+)\b", size) or re.search(r"(\d+) bytes", item.comment):
+            sizes[item.name] = (int(match[1]), None)  # "44", or "Car info in 28 bytes"
     return sizes
 
 
 @pytest.mark.skipif(not (CACHE / "InSim.txt").exists(), reason="run scripts/fetch_spec.py first")
 def test_sizes_match_the_specification() -> None:
     sizes = spec_sizes()
-    unchecked = {cls.__name__ for cls in CLASSES} - sizes.keys()
+    unchecked = {cls.__name__ for cls in CLASSES} - sizes.keys() - OUTSIDE_INSIM
     # These declare no size anywhere in the specification.
     assert unchecked == {"ObjectInfo", "AIInputVal", "OSMain", "Vec", "Vector"}
     for name, (empty, per_item) in sizes.items():
@@ -183,3 +210,105 @@ def test_mci_from_hand_made_bytes() -> None:
 
 def test_vectors_inside_packets() -> None:
     assert isinstance(packets.IS_CPP().Pos, Vec)
+
+
+def test_outsim_and_outgauge_sizes() -> None:
+    assert len(OutSimPack().pack()) == 64
+    assert len(OutSimPack(ID=1).pack()) == 68  # "optional - only if OutSim ID is specified"
+    assert len(OutGaugePack().pack()) == 92
+    assert len(OutGaugePack(ID=1).pack()) == 96
+    assert len(OutSimWheel().pack()) == 40  # "struct OutSimWheel // 10 ints"
+    assert len(sample(OutSimPack2).pack()) == 280  # "for all fields set OutSim Opts to 1ff"
+
+
+def test_outsim2_size_of_each_part() -> None:
+    parts = {
+        OSO.HEADER: 4,
+        OSO.ID: 4,
+        OSO.TIME: 4,
+        OSO.MAIN: 60,
+        OSO.INPUTS: 20,
+        OSO.DRIVE: 12,
+        OSO.DISTANCE: 8,
+        OSO.WHEELS: 160,
+        OSO.EXTRA_1: 8,
+    }
+    assert set(parts) == set(OSO)
+    full = sample(OutSimPack2)
+    for option, size in parts.items():
+        values = {
+            name: getattr(full, name) if co.option == option else None
+            for name, co in OutSimPack2._LAYOUT
+            if isinstance(co, c.When) and co.is_field
+        }
+        packet = OutSimPack2(OSOpts=option, **values)
+        assert len(packet.pack()) == size, option.name
+        assert OutSimPack2.unpack(packet.pack(), option) == packet
+
+
+def test_outsim2_from_hand_made_bytes() -> None:
+    options = OSO.HEADER | OSO.TIME | OSO.DISTANCE
+    data = b"LFST" + struct.pack("<Iff", 1234, 1.5, 2.5)
+    expected = OutSimPack2(OSOpts=options, Time=1234, CurrentLapDist=1.5, IndexedDistance=2.5)
+    assert OutSimPack2.unpack(data, options) == expected
+    assert expected.pack() == data
+
+
+def test_outsim2_needs_the_right_options() -> None:
+    data = b"LFST" + struct.pack("<I", 1234)
+    with pytest.raises(PacketError, match="options"):
+        OutSimPack2.unpack(data)
+    with pytest.raises(PacketError, match="too short"):  # one part more than was sent
+        OutSimPack2.unpack(data, OSO.HEADER | OSO.TIME | OSO.ID)
+    with pytest.raises(PacketError, match="give 4 bytes, but 8"):  # one part less
+        OutSimPack2.unpack(data, OSO.HEADER)
+    with pytest.raises(PacketError, match="LFST"):
+        OutSimPack2.unpack(b"XXXX" + data[4:], OSO.HEADER | OSO.TIME)
+
+
+def test_outsim2_values_must_match_the_options() -> None:
+    with pytest.raises(PacketError, match="is set"):
+        OutSimPack2(OSOpts=OSO.TIME).pack()  # Time missing
+    with pytest.raises(PacketError, match="not set"):
+        OutSimPack2(OSOpts=OSO.TIME, Time=1, ID=7).pack()  # ID given, OSO_ID not set
+
+
+def test_outsim_from_hand_made_bytes() -> None:
+    body = struct.pack("<I12f3i", 99, 0.0, 0.0, 1.0, 0.5, 0.25, 0.125, *[0.0] * 6, 65536, 0, -1)
+    expected = OutSimPack(
+        Time=99,
+        AngVel=Vector(Z=1.0),
+        Heading=0.5,
+        Pitch=0.25,
+        Roll=0.125,
+        Pos=Vec(X=65536, Z=-1),
+    )
+    assert OutSimPack.unpack(body) == expected
+    assert OutSimPack.unpack(body + struct.pack("<i", 5)) == replace(expected, ID=5)
+    assert expected.pack() == body
+
+
+def test_outgauge_from_hand_made_bytes() -> None:
+    data = (
+        struct.pack("<I4sHBB", 500, b"XRT\0", OG.KM | OG.BAR, 3, 7)
+        + struct.pack("<7f", 30.0, 6000.0, 1.0, 90.0, 0.5, 4.0, 100.0)
+        + struct.pack("<II3f", 0x3FF, 0x5, 1.0, 0.0, 0.0)
+        + b"Fuel 50%".ljust(16, b"\0")
+        + b"Brake 60:40".ljust(16, b"\0")
+    )
+    packet = OutGaugePack.unpack(data)
+    assert (packet.Time, packet.Car, packet.Flags, packet.Gear, packet.PLID) == (
+        500,
+        "XRT",
+        OG.KM | OG.BAR,
+        3,
+        7,
+    )
+    assert (packet.RPM, packet.ShowLights, packet.Display2, packet.ID) == (
+        6000.0,
+        5,
+        "Brake 60:40",
+        None,
+    )
+    assert packet.pack() == data
+    assert OutGaugePack.unpack(data + struct.pack("<i", 2)).ID == 2

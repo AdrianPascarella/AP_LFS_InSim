@@ -5,12 +5,15 @@
     .venv/Scripts/python scripts/generate_packets.py --check
                                                         exit 1 if they are not up to date
 
-Input: spec/cache/InSim.txt, read by spec_parser, plus the hand-written exceptions in
-spec_overrides. Output (tracked by git, never edited by hand):
+Input: spec/cache/InSim.txt and spec/cache/OutSimPack.txt (only copied where LFS is installed),
+read by spec_parser, plus the hand-written exceptions in spec_overrides. Output (tracked by git,
+never edited by hand):
 
-  src/lfs_insim/packets/_enums.py    enums and flags (TINY.NCN, ISF.MCI)
-  src/lfs_insim/packets/_insim.py    InSim packets and the structures inside them
-  src/lfs_insim/packets/__init__.py  the public names
+  src/lfs_insim/packets/_enums.py     enums and flags (TINY.NCN, ISF.MCI, OSO.MAIN)
+  src/lfs_insim/packets/_insim.py     InSim packets and the structures inside them
+  src/lfs_insim/packets/_outsim.py    OutSimPack and OutSimPack2
+  src/lfs_insim/packets/_outgauge.py  OutGaugePack
+  src/lfs_insim/packets/__init__.py   the public names
 
 The code is passed through `ruff format`, so the dev tools must be installed.
 """
@@ -135,7 +138,7 @@ def is_flags(cls: EnumClass) -> bool:
 
 
 def emit_enums(classes: list[EnumClass], header: str) -> str:
-    out = [header, '"""Enums and flags of the InSim specification (TINY.NCN, ISF.MCI)."""\n\n']
+    out = [header, '"""Enums and flags of InSim, OutSim and OutGauge (TINY.NCN, OSO.MAIN)."""\n\n']
     out.append("from enum import IntEnum, IntFlag\n\n")
     out.append(f"__all__ = {sorted(c.name for c in classes)!r}\n")
     for cls in classes:
@@ -182,7 +185,60 @@ def item_codec(item: Field, struct_names: set[str]) -> tuple[str, str, str]:
     raise SpecError(f"no codec for type {item.ctype}")
 
 
+def magic_fields(struct: Struct) -> int:
+    """How many leading fields form the struct's MAGIC marker (0 if it has none)."""
+    magic = overrides.MAGIC.get(struct.name)
+    if magic is None:
+        return 0
+    head = struct.fields[: len(magic)]
+    if [(f.ctype, f.name, f.count) for f in head] != [("char", c, None) for c in magic]:
+        raise SpecError(f"{struct.name} does not start with the chars of {magic!r}")
+    if len({f.condition for f in head}) != 1:
+        raise SpecError(f"{struct.name}: the chars of {magic!r} have different conditions")
+    return len(magic)
+
+
 def columns(struct: Struct, struct_names: set[str]) -> list[Column]:
+    """The layout of a struct: its plain columns, with optional and conditional parts wrapped."""
+    optional = overrides.OPTIONAL_TAIL.get(struct.name)
+    skip = magic_fields(struct)
+    result: list[Column] = []
+    if any(item.condition for item in struct.fields):
+        doc = "OSO_x options LFS sends this packet with (OutSim Opts in cfg.txt); not in the bytes"
+        result.append(Column(overrides.OPTIONS_FIELD, "_c.Options()", "int", "0", doc))
+    if skip:
+        magic = overrides.MAGIC[struct.name].encode("ascii")
+        plain = [Column("Magic", f"_c.Magic({magic!r})")]
+        plain += plain_columns(struct, struct_names)[skip:]
+    else:
+        plain = plain_columns(struct, struct_names)
+    items = [struct.fields[0], *struct.fields[skip:]] if skip else list(struct.fields)
+    for index, (item, col) in enumerate(zip(items, plain, strict=True)):
+        if item.name == optional:
+            if index != len(items) - 1:
+                raise SpecError(f"{struct.name}.{item.name} is optional but not the last field")
+            col = wrapped(col, "_c.Optional({})")
+        elif "optional - only if" in item.comment:
+            raise SpecError(f"{struct.name}.{item.name} is optional: add it to OPTIONAL_TAIL")
+        if item.condition:
+            cls = prefix_of(item.condition)
+            option = f"{cls}.{member_name(cls, item.condition)}"
+            col = wrapped(col, f'_c.When({option}, {{}}, of="{overrides.OPTIONS_FIELD}")')
+        result.append(col)
+    if optional is not None and optional not in {c.name for c in result}:
+        raise SpecError(f"{struct.name} has no field {optional} (see OPTIONAL_TAIL)")
+    return result
+
+
+def wrapped(col: Column, codec: str) -> Column:
+    """The column with its codec inside another one that can leave it out (value None)."""
+    annotation = None if col.annotation is None else f"{col.annotation} | None"
+    default = None if col.annotation is None else "None"
+    return Column(col.name, codec.format(col.codec), annotation, default or "", col.doc)
+
+
+def plain_columns(struct: Struct, struct_names: set[str]) -> list[Column]:
+    """One column per field of the struct, as if every field were always present."""
     is_packet = struct.name.startswith("IS_")
     tail_text = overrides.TAIL_TEXT.get(struct.name)
     tail_array = overrides.TAIL_ARRAY.get(struct.name)
@@ -254,17 +310,28 @@ def columns(struct: Struct, struct_names: set[str]) -> list[Column]:
     return result
 
 
-def emit_insim(spec: Spec, enums: list[EnumClass], header: str) -> str:
+MODULE_DOCS = {
+    "_insim": "InSim packets and the structures inside them.",
+    "_outsim": "OutSim packets: OutSimPack, and OutSimPack2 with the parts chosen in OutSim Opts.",
+    "_outgauge": "OutGauge packets.",
+}
+
+
+def emit_structs(module: str, structs: list[Struct], enums: list[EnumClass], header: str) -> str:
     isp = {member_name("ISP", m.name) for c in enums if c.name == "ISP" for m in c.members}
-    structs = [s for s in spec.structs.values() if s.name not in overrides.NOT_INSIM]
     names = {s.name for s in structs}
     body: list[str] = []
     for struct in structs:
         is_packet = struct.name.startswith("IS_")
-        base = "InSimPacket" if is_packet else "Structure"
+        cols = columns(struct, names)
+        if is_packet:
+            base = "InSimPacket"
+        elif any(c.codec.startswith("_c.When(") for c in cols):
+            base = "OptionalParts"
+        else:
+            base = "Structure"
         body.append(f"\n\n@dataclass(kw_only=True)\nclass {struct.name}({base}):\n")
         body.append(docstring(struct.comment or struct.name, "    "))
-        cols = columns(struct, names)
         for col in cols:
             if col.annotation is not None:
                 body.append(f"\n    {col.name}: {col.annotation} = {col.default}\n")
@@ -276,19 +343,26 @@ def emit_insim(spec: Spec, enums: list[EnumClass], header: str) -> str:
         layout = "".join(f'        ("{c.name}", {c.codec}),\n' for c in cols)
         body.append(f"    _LAYOUT = (\n{layout}    )\n")
     packet_names = ", ".join(s.name for s in structs if s.name.startswith("IS_"))
-    body.append(f"\n\n_c.register({packet_names})\n")
+    if packet_names:
+        body.append(f"\n\n_c.register({packet_names})\n")
     text = "".join(body)
-    out = [header, '"""InSim packets and the structures inside them."""\n\n']
+    out = [header, f'"""{MODULE_DOCS[module]}"""\n\n']
     out.append("from __future__ import annotations\n\n")
-    out.append("from dataclasses import dataclass, field\n")
+    out.append("from dataclasses import dataclass")
+    out.append(", field\n" if "field(" in text else "\n")
     if "IPv4Address" in text:
         out.append("from ipaddress import IPv4Address\n")
     out.append("\n")
     out.append("from lfs_insim.packets import _codec as _c\n")
-    out.append("from lfs_insim.packets._codec import InSimPacket, Structure\n")
-    out.append("from lfs_insim.packets._enums import ISP\n")
-    out.append("from lfs_insim.packets._types import Vec, Vector\n\n")
-    out.append(f"__all__ = {sorted(s.name for s in structs)!r}\n")
+    bases = [b for b in ("InSimPacket", "OptionalParts", "Structure") if f"({b})" in text]
+    out.append(f"from lfs_insim.packets._codec import {', '.join(bases)}\n")
+    used = [c.name for c in enums if re.search(rf"\b{c.name}\.", text)]
+    if used:
+        out.append(f"from lfs_insim.packets._enums import {', '.join(used)}\n")
+    types = [t for t in ("Vec", "Vector") if re.search(rf"\b{t}\b", text)]
+    if types:
+        out.append(f"from lfs_insim.packets._types import {', '.join(types)}\n")
+    out.append(f"\n__all__ = {sorted(names)!r}\n")
     return "".join(out) + text
 
 
@@ -321,30 +395,46 @@ def ruff(text: str, path: Path) -> str:
     return text
 
 
+def read_spec(name: str, hint: str) -> Spec:
+    source = CACHE_DIR / name
+    if not source.exists():
+        raise SpecError(f"{source} not found: {hint}")
+    return parse(source.read_text(encoding="utf-8"), name)
+
+
 def generate() -> dict[Path, str]:
     """The generated modules: path -> content."""
-    source = CACHE_DIR / "InSim.txt"
-    if not source.exists():
-        raise SpecError(f"{source} not found: run scripts/fetch_spec.py first")
-    spec = parse(source.read_text(encoding="utf-8"), "InSim.txt")
+    insim = read_spec("InSim.txt", "run scripts/fetch_spec.py first")
+    outsim = read_spec("OutSimPack.txt", "run scripts/fetch_spec.py where LFS is installed")
     checked = json.loads(CHECKED_FILE.read_text(encoding="utf-8"))["insim"]
     header = (
         f"# Generated by scripts/generate_packets.py from the InSim specification of LFS "
-        f"{checked['lfs_version']} (InSim {checked['insim_version']}).\n"
+        f"{checked['lfs_version']} (InSim {checked['insim_version']})\n"
+        "# and LFS's docs/OutSimPack.txt.\n"
         "# Do not edit: change the generator or scripts/spec_overrides.py and run it again.\n"
     )
-    enums = collect_enums(spec)
-    insim = emit_insim(spec, enums, header)
-    structs = [s.name for s in spec.structs.values() if s.name not in overrides.NOT_INSIM]
+    enums = collect_enums(insim) + collect_enums(outsim)
+    seen: set[str] = set()
+    for cls in enums:
+        if cls.name in seen:
+            raise SpecError(f"class {cls.name} is in both InSim.txt and OutSimPack.txt")
+        seen.add(cls.name)
+    by_module: dict[str, list[Struct]] = {"_insim": [], "_outsim": [], "_outgauge": []}
+    for struct in insim.structs.values():
+        by_module[overrides.MODULES.get(struct.name, "_insim")].append(struct)
+    by_module["_outsim"] += outsim.structs.values()
     modules = {
         "_codec": ["PacketError"],
         "_enums": sorted(c.name for c in enums),
-        "_insim": sorted(structs),
+        **{module: sorted(s.name for s in structs) for module, structs in by_module.items()},
         "_types": ["Vec", "Vector"],
     }
     files = {
         PACKAGE_DIR / "_enums.py": emit_enums(enums, header),
-        PACKAGE_DIR / "_insim.py": insim,
+        **{
+            PACKAGE_DIR / f"{module}.py": emit_structs(module, structs, enums, header)
+            for module, structs in by_module.items()
+        },
         PACKAGE_DIR / "__init__.py": emit_init(modules, header),
     }
     return {path: ruff(text, path) for path, text in files.items()}
