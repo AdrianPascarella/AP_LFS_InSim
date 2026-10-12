@@ -23,7 +23,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-CHECKED_PATHS = ["src", "tests", "scripts/verify.py"]
+CHECKED_PATHS = ["src", "tests", "scripts/verify.py", "scripts/fetch_spec.py"]
 SIZE_SCANNED_DIRS = ["src", "tests", "examples", "scripts"]
 MAX_LINES = 500
 DEV_TOOLS = ["ruff", "mypy", "pytest"]

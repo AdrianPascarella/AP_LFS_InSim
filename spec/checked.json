@@ -1,0 +1,12 @@
+{
+  "insim": {
+    "source": "https://www.lfs.net/programmer/insim",
+    "sha256": "f355cbfbc1e2dfd021424b7c4d8b860acb9a86ceae234ce4f8d9a4375743fccf",
+    "lfs_version": "0.8C27",
+    "insim_version": 10
+  },
+  "outsim": {
+    "source": "<LFS>/docs/OutSimPack.txt",
+    "sha256": "26778fbb2d74cf24f9a6d4f4152cd85cebdc9aea03e69155ee4401cb63d5da77"
+  }
+}

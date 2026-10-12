@@ -47,7 +47,11 @@ select = ["E", "W", "F", "I", "UP", "B", "SIM", "RUF"]
 [tool.mypy]
 python_version = "3.11"
 strict = true
+mypy_path = "scripts"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = ["--strict-markers", "-ra"]
+pythonpath = ["scripts"]
+# Network tests are skipped by default; run them with: pytest -m network
+addopts = ["--strict-markers", "-ra", "-m", "not network"]
+markers = ["network: needs internet access to lfs.net"]
