@@ -6,13 +6,38 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from enum import IntFlag
 
 from lfs_insim.packets import _codec as _c
 from lfs_insim.packets._codec import OptionalParts, Structure
-from lfs_insim.packets._enums import OSO
 from lfs_insim.packets._types import Vec, Vector
 
-__all__ = ["OutSimInputs", "OutSimMain", "OutSimPack", "OutSimPack2", "OutSimWheel"]
+__all__ = ["OSO", "OutSimInputs", "OutSimMain", "OutSimPack", "OutSimPack2", "OutSimWheel"]
+
+
+class OSO(IntFlag):
+    """
+    Parts of OutSimPack2 chosen by OutSim Opts in cfg.txt (hexadecimal; 1ff = all of them). C
+    names: OSO_x.
+    """
+
+    HEADER = 1
+
+    ID = 2
+
+    TIME = 4
+
+    MAIN = 8
+
+    INPUTS = 16
+
+    DRIVE = 32
+
+    DISTANCE = 64
+
+    WHEELS = 128
+
+    EXTRA_1 = 256
 
 
 @dataclass(kw_only=True)

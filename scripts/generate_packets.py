@@ -6,15 +6,16 @@
                                                         exit 1 if they are not up to date
 
 Input: spec/cache/InSim.txt and spec/cache/OutSimPack.txt (only copied where LFS is installed),
-read by spec_parser, plus the hand-written exceptions in spec_overrides. Output (tracked by git,
-never edited by hand):
+read by spec_parser, plus the hand-written exceptions in spec_overrides. The enums are built by
+generate_enums. Output (tracked by git, never edited by hand):
 
-  src/lfs_insim/packets/_enums.py     enums and flags (TINY.NCN, ISF.MCI, OSO.MAIN)
+  src/lfs_insim/packets/_enums.py     enums and flags of InSim.txt (TINY.NCN, ISF.MCI)
   src/lfs_insim/packets/_insim.py     InSim packets and the structures inside them
-  src/lfs_insim/packets/_outsim.py    OutSimPack and OutSimPack2
   src/lfs_insim/packets/_outgauge.py  OutGaugePack
-  src/lfs_insim/packets/__init__.py   the public names
+  src/lfs_insim/packets/_outsim.py    OutSimPack, OutSimPack2 and OSO   (need OutSimPack.txt)
+  src/lfs_insim/packets/__init__.py   the public names                  (need OutSimPack.txt)
 
+Without OutSimPack.txt, as in the CI, the last two are skipped and the rest is still checked.
 The code is passed through `ruff format`, so the dev tools must be installed.
 """
 
@@ -22,16 +23,24 @@ from __future__ import annotations
 
 import argparse
 import json
-import keyword
 import re
 import subprocess
 import sys
-import textwrap
 from dataclasses import dataclass
 from pathlib import Path
 
 import spec_overrides as overrides
-from spec_parser import Define, Field, Spec, SpecError, Struct, parse
+from generate_enums import (
+    EnumClass,
+    collect_enums,
+    docstring,
+    emit_enums,
+    enum_classes,
+    enum_import,
+    member_name,
+    prefix_of,
+)
+from spec_parser import Field, Spec, SpecError, Struct, parse
 
 ROOT = Path(__file__).resolve().parent.parent
 CACHE_DIR = ROOT / "spec" / "cache"
@@ -43,120 +52,6 @@ SIZES = {"B": 1, "H": 2, "h": 2, "I": 4, "i": 4, "f": 4, "b": 1}
 BUILTIN_CLASSES = {"Vec": "Vec", "Vector": "Vector"}
 PADDING = re.compile(overrides.PADDING_NAMES)
 HAND_WRITTEN = {"PacketError": "_codec", "Vec": "_types", "Vector": "_types"}
-
-
-@dataclass
-class EnumClass:
-    name: str
-    doc: str
-    members: list[Define]
-    from_c_enum: bool  # values of a C enum (never flags) rather than #defines
-
-
-def docstring(text: str, indent: str) -> str:
-    """A docstring literal (with its indentation) for text taken from the specification."""
-    text = " ".join(text.split()).replace("\\", "\\\\").replace('"', '\\"')
-    if not text:
-        return ""
-    lines = textwrap.wrap(text, width=96 - len(indent))
-    if len(lines) == 1:
-        return f'{indent}"""{lines[0]}"""\n'
-    body = "\n".join(indent + line for line in lines)
-    return f'{indent}"""\n{body}\n{indent}"""\n'
-
-
-def prefix_of(name: str) -> str:
-    return name.split("_", 1)[0]
-
-
-def collect_enums(spec: Spec) -> list[EnumClass]:
-    classes: dict[str, EnumClass] = {}
-
-    def add(name: str, doc: str, members: list[Define], from_c_enum: bool, where: str) -> None:
-        if name in classes:
-            raise SpecError(f"{where}: class {name} already exists (see GROUP_NAMES)")
-        classes[name] = EnumClass(name, doc, members, from_c_enum)
-
-    for enum in spec.enums:
-        members = [Define(m.name, m.value, m.comment, enum.line) for m in enum.members]
-        prefixes = {prefix_of(m.name) for m in members}
-        if len(prefixes) != 1:
-            raise SpecError(f"line {enum.line}: enum mixes prefixes {sorted(prefixes)}")
-        add(prefixes.pop(), enum.comment or enum.heading, members, True, f"line {enum.line}")
-
-    for group in spec.define_groups:
-        runs: list[list[Define]] = []
-        for define in group.defines:
-            if runs and prefix_of(runs[-1][0].name) == prefix_of(define.name):
-                runs[-1].append(define)
-            else:
-                runs.append([define])
-        for index, run in enumerate(runs):
-            first = run[0].name
-            name = overrides.GROUP_NAMES.get(first, prefix_of(first))
-            add(name, group.heading if index == 0 else "", run, False, f"line {run[0].line}")
-
-    for value in spec.comment_values:
-        prefix = prefix_of(value.name)
-        if prefix not in overrides.COMMENT_VALUES:
-            continue
-        target = overrides.COMMENT_VALUES[prefix]
-        if target not in classes:
-            classes[target] = EnumClass(target, "", [], False)
-        classes[target].members.append(value)
-
-    for cls in classes.values():
-        cls.members.sort(key=lambda m: m.value)
-    return list(classes.values())
-
-
-def member_name(cls: str, name: str) -> str:
-    if name in overrides.MEMBER_NAMES:
-        return overrides.MEMBER_NAMES[name]
-    prefix = prefix_of(name)
-    if name.startswith(cls + "_"):
-        short = name[len(cls) + 1 :]
-    elif prefix in overrides.KEEP_PREFIX:
-        short = name
-    else:
-        short = name[len(prefix) + 1 :]
-    if not short.isidentifier() or keyword.iskeyword(short) or short.startswith("_"):
-        raise SpecError(f"{name}: {short!r} is not a valid member name (see MEMBER_NAMES)")
-    return short
-
-
-def is_flags(cls: EnumClass) -> bool:
-    if cls.from_c_enum:
-        return False
-    singles = {m.value for m in cls.members if m.value > 0 and m.value & (m.value - 1) == 0}
-    combined = 0
-    for value in singles:
-        combined |= value
-    return all(
-        m.value in singles or (m.value > 0 and m.value & ~combined == 0) for m in cls.members
-    )
-
-
-def emit_enums(classes: list[EnumClass], header: str) -> str:
-    out = [header, '"""Enums and flags of InSim, OutSim and OutGauge (TINY.NCN, OSO.MAIN)."""\n\n']
-    out.append("from enum import IntEnum, IntFlag\n\n")
-    out.append(f"__all__ = {sorted(c.name for c in classes)!r}\n")
-    for cls in classes:
-        base = "IntFlag" if is_flags(cls) else "IntEnum"
-        c_names = sorted({prefix_of(m.name) for m in cls.members})
-        doc = overrides.CLASS_DOCS.get(cls.name, cls.doc).rstrip(":").strip()
-        doc = f"{doc}. " if doc else ""
-        out.append(f"\n\nclass {cls.name}({base}):\n")
-        out.append(docstring(f"{doc}C names: {', '.join(n + '_x' for n in c_names)}.", "    "))
-        seen: set[str] = set()
-        for member in cls.members:
-            name = member_name(cls.name, member.name)
-            if name in seen:
-                raise SpecError(f"{member.name}: {cls.name}.{name} is defined twice")
-            seen.add(name)
-            out.append(f"\n    {name} = {member.value}\n")
-            out.append(docstring(member.comment, "    "))
-    return "".join(out)
 
 
 @dataclass
@@ -317,7 +212,14 @@ MODULE_DOCS = {
 }
 
 
-def emit_structs(module: str, structs: list[Struct], enums: list[EnumClass], header: str) -> str:
+def emit_structs(
+    module: str,
+    structs: list[Struct],
+    enums: list[EnumClass],
+    local_enums: list[EnumClass],
+    header: str,
+) -> str:
+    """A module of structs. `local_enums` are defined in it (they come from the same file)."""
     isp = {member_name("ISP", m.name) for c in enums if c.name == "ISP" for m in c.members}
     names = {s.name for s in structs}
     body: list[str] = []
@@ -345,9 +247,10 @@ def emit_structs(module: str, structs: list[Struct], enums: list[EnumClass], hea
     packet_names = ", ".join(s.name for s in structs if s.name.startswith("IS_"))
     if packet_names:
         body.append(f"\n\n_c.register({packet_names})\n")
-    text = "".join(body)
+    text = enum_classes(local_enums) + "".join(body)
     out = [header, f'"""{MODULE_DOCS[module]}"""\n\n']
     out.append("from __future__ import annotations\n\n")
+    out.append(enum_import(text))
     out.append("from dataclasses import dataclass")
     out.append(", field\n" if "field(" in text else "\n")
     if "IPv4Address" in text:
@@ -356,13 +259,14 @@ def emit_structs(module: str, structs: list[Struct], enums: list[EnumClass], hea
     out.append("from lfs_insim.packets import _codec as _c\n")
     bases = [b for b in ("InSimPacket", "OptionalParts", "Structure") if f"({b})" in text]
     out.append(f"from lfs_insim.packets._codec import {', '.join(bases)}\n")
-    used = [c.name for c in enums if re.search(rf"\b{c.name}\.", text)]
+    used = [c.name for c in enums if re.search(rf"\b{c.name}\.", text) and c not in local_enums]
     if used:
         out.append(f"from lfs_insim.packets._enums import {', '.join(used)}\n")
     types = [t for t in ("Vec", "Vector") if re.search(rf"\b{t}\b", text)]
     if types:
         out.append(f"from lfs_insim.packets._types import {', '.join(types)}\n")
-    out.append(f"\n__all__ = {sorted(names)!r}\n")
+    exported = names | {c.name for c in local_enums}
+    out.append(f"\n__all__ = {sorted(exported)!r}\n")
     return "".join(out) + text
 
 
@@ -395,49 +299,62 @@ def ruff(text: str, path: Path) -> str:
     return text
 
 
-def read_spec(name: str, hint: str) -> Spec:
+def read_spec(name: str) -> Spec | None:
     source = CACHE_DIR / name
     if not source.exists():
-        raise SpecError(f"{source} not found: {hint}")
+        return None
     return parse(source.read_text(encoding="utf-8"), name)
 
 
-def generate() -> dict[Path, str]:
-    """The generated modules: path -> content."""
-    insim = read_spec("InSim.txt", "run scripts/fetch_spec.py first")
-    outsim = read_spec("OutSimPack.txt", "run scripts/fetch_spec.py where LFS is installed")
+def generate() -> tuple[dict[Path, str], list[Path]]:
+    """The generated modules (path -> content), and those skipped for lack of OutSimPack.txt.
+
+    OutSimPack.txt only exists where LFS is installed (P3). Without it, the modules that come from
+    InSim.txt alone are still generated: that is what the CI can check.
+    """
+    insim = read_spec("InSim.txt")
+    if insim is None:
+        raise SpecError(f"{CACHE_DIR / 'InSim.txt'} not found: run scripts/fetch_spec.py first")
+    outsim = read_spec("OutSimPack.txt")
     checked = json.loads(CHECKED_FILE.read_text(encoding="utf-8"))["insim"]
-    header = (
+    source = (
         f"# Generated by scripts/generate_packets.py from the InSim specification of LFS "
-        f"{checked['lfs_version']} (InSim {checked['insim_version']})\n"
-        "# and LFS's docs/OutSimPack.txt.\n"
-        "# Do not edit: change the generator or scripts/spec_overrides.py and run it again.\n"
+        f"{checked['lfs_version']} (InSim {checked['insim_version']})"
     )
-    enums = collect_enums(insim) + collect_enums(outsim)
-    seen: set[str] = set()
-    for cls in enums:
-        if cls.name in seen:
-            raise SpecError(f"class {cls.name} is in both InSim.txt and OutSimPack.txt")
-        seen.add(cls.name)
+    rule = "# Do not edit: change the generator or scripts/spec_overrides.py and run it again.\n"
+    header = f"{source}.\n{rule}"
+    enums = collect_enums(insim)
     by_module: dict[str, list[Struct]] = {"_insim": [], "_outsim": [], "_outgauge": []}
     for struct in insim.structs.values():
         by_module[overrides.MODULES.get(struct.name, "_insim")].append(struct)
-    by_module["_outsim"] += outsim.structs.values()
-    modules = {
-        "_codec": ["PacketError"],
-        "_enums": sorted(c.name for c in enums),
-        **{module: sorted(s.name for s in structs) for module, structs in by_module.items()},
-        "_types": ["Vec", "Vector"],
-    }
     files = {
         PACKAGE_DIR / "_enums.py": emit_enums(enums, header),
         **{
-            PACKAGE_DIR / f"{module}.py": emit_structs(module, structs, enums, header)
-            for module, structs in by_module.items()
+            PACKAGE_DIR / f"{module}.py": emit_structs(module, by_module[module], enums, [], header)
+            for module in ("_insim", "_outgauge")
         },
-        PACKAGE_DIR / "__init__.py": emit_init(modules, header),
     }
-    return {path: ruff(text, path) for path, text in files.items()}
+    skipped = [PACKAGE_DIR / "_outsim.py", PACKAGE_DIR / "__init__.py"]
+    if outsim is not None:
+        header = f"{source}\n# and LFS's docs/OutSimPack.txt.\n{rule}"
+        outsim_enums = collect_enums(outsim)
+        clash = {c.name for c in enums} & {c.name for c in outsim_enums}
+        if clash:
+            raise SpecError(f"classes in both InSim.txt and OutSimPack.txt: {sorted(clash)}")
+        by_module["_outsim"] += outsim.structs.values()
+        files[PACKAGE_DIR / "_outsim.py"] = emit_structs(
+            "_outsim", by_module["_outsim"], enums, outsim_enums, header
+        )
+        modules = {
+            "_codec": ["PacketError"],
+            "_enums": sorted(c.name for c in enums),
+            **{module: sorted(s.name for s in structs) for module, structs in by_module.items()},
+            "_types": ["Vec", "Vector"],
+        }
+        modules["_outsim"] = sorted(modules["_outsim"] + [c.name for c in outsim_enums])
+        files[PACKAGE_DIR / "__init__.py"] = emit_init(modules, header)
+        skipped = []
+    return {path: ruff(text, path) for path, text in files.items()}, skipped
 
 
 def main() -> int:
@@ -445,10 +362,12 @@ def main() -> int:
     parser.add_argument("--check", action="store_true", help="only report out-of-date files")
     args = parser.parse_args()
     try:
-        files = generate()
+        files, skipped = generate()
     except SpecError as error:
         print(f"error: {error}", file=sys.stderr)
         return 2
+    for path in skipped:
+        print(f"  {path.relative_to(ROOT).as_posix()}: skipped (needs spec/cache/OutSimPack.txt)")
     stale = []
     for path, text in files.items():
         current = path.read_text(encoding="utf-8") if path.exists() else None

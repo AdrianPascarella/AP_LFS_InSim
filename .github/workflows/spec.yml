@@ -1,7 +1,9 @@
 name: spec
 
-# Fails when lfs.net publishes an InSim specification different from spec/checked.json.
-# To update: run scripts/fetch_spec.py locally, review the change, then --accept.
+# Fails when lfs.net publishes an InSim specification different from spec/checked.json, or when
+# the generated packets no longer match it (the verify workflow cannot check that: it has no
+# spec/cache/). To update: run scripts/fetch_spec.py locally, review the change, then --accept.
+# OutSimPack.txt is not on lfs.net (P3), so _outsim.py and __init__.py are only checked locally.
 # The schedule only runs from the default branch (main); pushes run it on any branch.
 
 on:
@@ -11,6 +13,11 @@ on:
     paths:
       - spec/checked.json
       - scripts/fetch_spec.py
+      - scripts/spec_parser.py
+      - scripts/spec_overrides.py
+      - scripts/generate_enums.py
+      - scripts/generate_packets.py
+      - src/lfs_insim/packets/**
       - .github/workflows/spec.yml
   workflow_dispatch:
 
@@ -31,3 +38,7 @@ jobs:
           python -m pip install -e . --group dev
       - name: Compare with lfs.net
         run: python -m pytest -m network --color=no
+      - name: Download into spec/cache
+        run: python scripts/fetch_spec.py
+      - name: Generated packets up to date
+        run: python scripts/generate_packets.py --check

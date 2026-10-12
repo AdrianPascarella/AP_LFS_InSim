@@ -10,7 +10,9 @@ Steps, in order (all of them run, even after a failure):
   3. format       ruff format --check
   4. types        mypy --strict
   5. tests        pytest
-  6. size         warns about source files longer than MAX_LINES (never fails the run)
+  6. generated    the generated packets match the specification in spec/cache/ (skipped if
+                  there is none, as in the CI; the `spec` workflow checks them there)
+  7. size         warns about source files longer than MAX_LINES (never fails the run)
 
 Exit code 0 = everything passed, 1 = at least one step failed.
 """
@@ -30,6 +32,7 @@ CHECKED_PATHS = [
     "scripts/fetch_spec.py",
     "scripts/spec_parser.py",
     "scripts/spec_overrides.py",
+    "scripts/generate_enums.py",
     "scripts/generate_packets.py",
 ]
 SIZE_SCANNED_DIRS = ["src", "tests", "examples", "scripts"]
@@ -61,6 +64,14 @@ def run_tool(*args: str) -> bool:
     return result.returncode == 0
 
 
+def check_generated() -> bool:
+    if not (ROOT / "spec" / "cache" / "InSim.txt").is_file():
+        print("  skipped: no spec/cache/ (run scripts/fetch_spec.py to check the generated code)")
+        return True
+    command = [sys.executable, "scripts/generate_packets.py", "--check"]
+    return subprocess.run(command, cwd=ROOT, check=False).returncode == 0
+
+
 def check_sizes() -> None:
     for folder in SIZE_SCANNED_DIRS:
         for path in sorted((ROOT / folder).rglob("*.py")):
@@ -80,6 +91,7 @@ def main() -> int:
         ("format", lambda: run_tool("ruff", "format", "--check", *CHECKED_PATHS)),
         ("types", lambda: run_tool("mypy", *CHECKED_PATHS)),
         ("tests", lambda: run_tool("pytest", "--color=no")),
+        ("generated", check_generated),
     ]
     results: list[tuple[str, bool]] = []
     for name, step in steps:

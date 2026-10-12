@@ -36,7 +36,6 @@ from lfs_insim.packets._enums import (
     OCO,
     OCO_INDEX,
     OG,
-    OSO,
     PENALTY,
     PENR,
     PIF,
@@ -141,7 +140,14 @@ from lfs_insim.packets._insim import (
     PlayerHCap,
 )
 from lfs_insim.packets._outgauge import OutGaugePack
-from lfs_insim.packets._outsim import OutSimInputs, OutSimMain, OutSimPack, OutSimPack2, OutSimWheel
+from lfs_insim.packets._outsim import (
+    OSO,
+    OutSimInputs,
+    OutSimMain,
+    OutSimPack,
+    OutSimPack2,
+    OutSimWheel,
+)
 from lfs_insim.packets._types import Vec, Vector
 
 __all__ = [
