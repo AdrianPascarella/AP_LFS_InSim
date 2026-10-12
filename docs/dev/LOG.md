@@ -1,6 +1,42 @@
 # 📓 Diario — AP_LFS_InSim (lfs_insim)
 <!-- Solo se añade, lo más nuevo arriba. Una entrada por sesión. -->
 
+## S10 — 2026-10-12 — `InSim` básico (W3.4)
+
+**Hecho:** `src/lfs_insim/_connection.py`, clase `InSim`, exportada en `lfs_insim` (primera pieza
+de la API pública). Conecta por TCP, envía `IS_ISI` (`ReqI=1`, `InSimVer` 10), parte lo recibido
+con `PacketStream` (W3.2) y llama a los manejadores de `@insim.on(Tipo)`: los `def` al momento,
+los `async def` como tareas. Un error en un manejador se registra (logger `lfs_insim`, con su
+nombre y traza) y no para a los demás ni a los paquetes siguientes. `Size` 0 cierra la conexión
+con un error en el registro. `run()` bloquea hasta que LFS cierra o se pulsa Ctrl+C; sin
+reconexión todavía (W3.6) y sin keep-alive (W3.5).
+
+**Decisiones** (de API, en `API_DESIGN.md`, «Precisado al escribir `InSim`»): firma de `InSim`;
+`send()` normal que lanza `ConnectionError` sin conexión (*descartado:* descartar en silencio);
+`connect`/`close`/`wait_closed`/`connected` para quien tiene su propio bucle; **al cerrar se
+cancelan los manejadores `async` que siguen esperando** (*descartado:* esperarlos). La constante
+`INSIM_VERSION = 10` va escrita a mano en `_connection.py`: el generador no emite constantes.
+
+**Diagnóstico (§8):** con la mutación «solo el primer manejador», los tests se colgaban en vez de
+fallar. Causa raíz: `close()` esperaba a los manejadores `async`, y uno esperaba un evento que
+nunca llegaba, así que `close()` (y el Ctrl+C) no volvía nunca. Test nuevo
+(`test_closing_cancels_async_handlers_that_are_still_waiting`), visto en rojo, y arreglo: `close()`
+los cancela.
+
+**Red:** `tests/test_insim.py`, 12 tests contra el `FakeLFS`, más uno de `run()` con el LFS falso
+en otro hilo. Mutaciones de `_connection.py` (7): todas en rojo al final. «Errores `async` sin
+registrar» seguía en verde porque asyncio también escribe el error en el registro («Task exception
+was never retrieved»); el test se hizo más estricto (exige el aviso de `lfs_insim` con el nombre del
+manejador) y entonces sí falla. *Corrección de un test (§5), con su motivo:* era demasiado laxo.
+- Tropiezo propio: en la prueba del cuelgue, la copia de seguridad de `_connection.py` fue a
+  `$TMPDIR` y la restauración buscó en el scratchpad; se restauró a mano desde `$TMPDIR` y se
+  comprobó que no quedaba la mutación (archivo sin seguimiento en git: `git diff` no lo habría
+  visto).
+
+**Verificación:** `.venv/Scripts/python scripts/verify.py` → PASS (220 passed, 1 deselected).
+
+**Commits:** uno.
+
 ## S9 — 2026-10-12 — W3 detallada con el usuario; pruebas con el LFS real; copia de setups y skins
 
 **Hecho:**

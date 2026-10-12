@@ -132,6 +132,21 @@ venían mezclados; son protocolos UDP independientes y muchos programas solo usa
 `lfs_insim.packets`, `lfs_insim.state` y las excepciones. Todo lo demás lleva `_` y puede cambiar
 sin aviso. *Por qué:* P4; una API pequeña se puede revisar entera.
 
+## Precisado al escribir `InSim` (W3.4, S10; propuesto por el agente, pendiente de que el usuario lo use)
+- `InSim(name, admin_password, *, host, port, flags, interval_ms, prefix)`: los dos primeros por
+  posición, como en el ejemplo 1; el resto, solo por nombre. `prefix` es un carácter (`"!"`). Un
+  nombre o una contraseña demasiado largos fallan al crear el objeto, no al conectar.
+- El `IS_ISI` va siempre con `ReqI=1`, para que LFS conteste `IS_VER` (el ejemplo 1 lo usa).
+- `insim.send(*paquetes)` es una función normal (no `async`): se puede llamar desde un manejador
+  `def`. Sin conexión lanza `ConnectionError` (del propio Python: no hace falta una excepción
+  nuestra). *Descartado:* descartar el paquete con un aviso (se perdería sin que nadie lo viera).
+- Para quien tiene su propio bucle: `await insim.connect()`, `await insim.close()`,
+  `await insim.wait_closed()`, `insim.connected`, o `async with insim:`.
+- **Al cerrar, los manejadores `async` que siguen esperando se cancelan.** *Descartado:* esperar a
+  que terminen (un manejador que espera para siempre dejaba colgados `close()` y el Ctrl+C; visto en
+  las pruebas de S10).
+- Un mismo paquete puede tener varios manejadores: se llaman en el orden en que se registraron.
+
 ## Abierto (se decide más adelante, no ahora)
 - Comandos de chat (`!hello`): ¿un ayudante en la biblioteca (`@insim.command("hello")`) o solo
   `IS_MSO`? Se decide en W4, cuando se escriba el ejemplo de botones.

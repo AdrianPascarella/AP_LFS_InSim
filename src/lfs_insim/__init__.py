@@ -2,6 +2,8 @@
 
 from importlib.metadata import version as _version
 
+from lfs_insim._connection import InSim
+
 __version__ = _version("lfs-insim")
 
-__all__ = ["__version__"]
+__all__ = ["InSim", "__version__"]

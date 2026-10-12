@@ -85,10 +85,12 @@ final.
 - [x] **W3.3** — **El LFS falso** (en los tests): servidor asyncio que recibe el `IS_ISI`,
   contesta `IS_VER`, envía paquetes preparados y apunta lo que recibe. *Acepta:* lo usan los tests
   de W3.4–W3.6. hecho en S9 → LOG.md S9 (su aceptación se completa al usarlo en W3.4)
-- [ ] **W3.4** — **`InSim` básico (D1, D2):** conectar y enviar `IS_ISI` (nombre, contraseña,
+- [x] **W3.4** — **`InSim` básico (D1, D2):** conectar y enviar `IS_ISI` (nombre, contraseña,
   flags, intervalo, prefijo); `send()`; `@insim.on(...)` con `def` y `async def`; `run()` y
   `async with insim`. Un error en un manejador se registra con `logging` y no para a los demás.
   *Acepta:* los ejemplos 1 y 3 de `API_DESIGN.md` (sin OutGauge) funcionan contra el LFS falso.
+  hecho en S10 → LOG.md S10 (de los ejemplos, lo que no es de W3.4 queda para su tarea:
+  `packet.text` en W4, `every` en W3.8, `run(insim, gauge)` en W3.7)
 - [ ] **W3.5** — **Mantener viva la conexión:** contestar `TINY_NONE` a `TINY_NONE` (LFS lo manda
   cada 30 s y cierra tras 70 s sin recibir nada); sin datos durante ese tiempo, la conexión se da
   por muerta; al salir, `TINY_CLOSE`. *Acepta:* tests contra el LFS falso con el tiempo acortado.
