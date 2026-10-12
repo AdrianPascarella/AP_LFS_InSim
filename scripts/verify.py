@@ -28,6 +28,7 @@ ROOT = Path(__file__).resolve().parent.parent
 CHECKED_PATHS = [
     "src",
     "tests",
+    "examples",
     "scripts/verify.py",
     "scripts/fetch_spec.py",
     "scripts/spec_parser.py",

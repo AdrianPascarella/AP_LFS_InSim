@@ -196,6 +196,9 @@ instalación en otro equipo (punto ciego).
 cámara libre, que necesita streamer-project) y anotar cada incomodidad como tarea de la biblioteca.
 
 ## Ideas (aparcadas, sin compromiso)
+- **Ayudante de botones** (de escribir `examples/buttons.py`, S12): hay que repartir los `ClickID` a
+  mano, guardar el estado en globales y reenviar el botón entero para cambiar su texto. Llevadero
+  en un ejemplo; se diseña cuando la aplicación de botones o la de IA lo pida (decidido en S12).
 - Rescatar del proyecto anterior los 73 tutoriales por paquete (`docs/tutorial/`) como base de la
   documentación pública — solo si la generación de W2 no da algo mejor a partir de los comentarios
   de la especificación.

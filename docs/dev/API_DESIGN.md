@@ -10,6 +10,11 @@ autocomplete cada paquete y cada campo, y que un error en un manejador nunca tum
 La referencia es FastAPI (que el usuario citó): **una sola forma de hacer cada cosa**, funciones
 decoradas, y `def` o `async def` según lo que necesite cada manejador.
 
+> **Desde S12 (W4.6), la referencia viva son `examples/`** (probados en cada push por
+> `tests/test_examples.py`). Los tres ejemplos de abajo son el diseño de S2: el 1 quedó con
+> `@insim.on_command("hello")` (`examples/hello.py`), el 2 casi igual (`examples/who.py`) y el 3
+> se convirtió en `examples/gauge.py` (ritmo fijo, `request` y OutGauge), sin control de IA.
+
 ## Ejemplo 1 — Lo mínimo: conectar, responder a un comando de chat
 ```python
 from lfs_insim import InSim
