@@ -162,6 +162,20 @@ se va.
 - **Verificación:** `verify.py` → PASS (284 passed, 1 deselected).
 - **Commit:** `c52a919`.
 
+**W4.4 — `insim.say()` e `insim.command()`** (en `_connection.py`).
+- Límites leídos en InSim.txt: `IS_MST` 63 bytes y vale para comandos; `IS_MSX` 95, «not for
+  commands»; `IS_MTC` 127, solo si LFS es el anfitrión. El códec ya cuenta los bytes después de
+  codificar y da un error claro («the limit is 63»), así que `say` prueba `IS_MST` y, si no cabe,
+  `IS_MSX`.
+- Decisiones (en `API_DESIGN.md`, «Precisado al escribir `say` y `command`»): `say("/...")` y
+  `command("sin barra")` son un `ValueError` que dice cuál usar; lo demasiado largo falla antes de
+  mirar la conexión.
+- **Red:** `tests/test_say.py`, 8 tests (con cirílico y japonés para los límites), en rojo antes
+  del código. Seis mutaciones (siempre `IS_MSX`, nunca `IS_MSX`, ignorar `to`, dejar pasar
+  comandos en `say`, `command` sin barra, no comprobar antes), todas en rojo.
+- **Verificación:** `verify.py` → PASS (292 passed, 1 deselected).
+- **Commit:** `d24580c`.
+
 ## S11 — 2026-10-12 — `OutSim`, `OutGauge` y `run()` (W3.7)
 
 **Inicio:** según el protocolo; control de inicio en verde, documentos de acuerdo con git, 0

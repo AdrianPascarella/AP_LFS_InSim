@@ -8,8 +8,10 @@
 > W4.1 hecha: `IS_MSO.text`, con un mecanismo para añadir propiedades escritas a mano a los
 > paquetes generados (`packets/_extras.py` + `spec_overrides.EXTRAS`). W4.2 hecha:
 > `await insim.request(IS_STA)` y `request_all(IS_NPL)` (`_requests.py`). W4.3 hecha: `Roster`
-> en `lfs_insim.state` (decisiones en `API_DESIGN.md`).
-> **▶️ SIGUIENTE: W4.4 — `insim.say()` e `insim.command()`**, y después W4.5 (`@insim.command`).
+> en `lfs_insim.state` (decisiones en `API_DESIGN.md`). W4.4 hecha: `insim.say()` e
+> `insim.command()`.
+> **▶️ SIGUIENTE: W4.5 — `@insim.command("hello")`** (en un módulo propio: `_connection.py` va
+> por 375 líneas), y después W4.6 (`examples/`).
 
 ## Dónde estamos
 Fase activa: **W4 — La API de alto nivel y los ejemplos**, detallada en S12 (`PLAN.md`). W2 y W3
