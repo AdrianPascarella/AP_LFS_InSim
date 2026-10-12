@@ -64,6 +64,21 @@ un error inesperado de un codec, igual, pero con su traza.
 - **Verificación:** `.venv/Scripts/python scripts/verify.py` → PASS (198 passed, 1 deselected).
   Aviso previo, sin cambio: `_codec.py` tiene 525 líneas (límite 500).
 
+**W3.3 — el LFS falso:** `tests/fake_lfs.py`, clase `FakeLFS` (`async with FakeLFS() as lfs`,
+puerto libre en 127.0.0.1). Hace solo lo que dice InSim.txt: `IS_VER` tras un `IS_ISI` con `ReqI`;
+`TINY_VER` → `IS_VER`, `TINY_PING` → `TINY_REPLY`; `TINY_CLOSE` cierra; `keepalive` y `timeout`
+configurables (LFS: 30 s y 70 s). Apunta lo recibido (`received`, `wait_for`), y tiene `send`,
+`send_raw` (bytes rotos) y `drop` (LFS que se cae).
+- *Suposición, no está en InSim.txt:* una contraseña de administrador equivocada cierra la
+  conexión sin respuesta. Se comprueba en el LFS real en W3.1.
+- Sin dependencias nuevas: los tests usan `asyncio.run` (*descartado:* `pytest-asyncio`, que no
+  hace falta para esto).
+- **Red:** `tests/test_fake_lfs.py`, 10 tests con un cliente TCP mínimo. Pasaron a la primera, así
+  que se comprobaron con 7 mutaciones del falso (ping sin `ReqI`, sin comprobar la contraseña,
+  `TINY_CLOSE` ignorado, `IS_VER` sin `ReqI`, sin keep-alive, sin timeout, `wait_for` que repite):
+  las 7 en rojo.
+- **Verificación:** `verify.py` → PASS (208 passed, 1 deselected).
+
 ## S8 — 2026-10-12 — `IS_BTN.Caption` (W2.10), `IS_MSO.TextStart` (W2.11): W2 cerrada
 
 **Hecho:**

@@ -82,9 +82,9 @@ final.
   paquete partido entre lecturas, varios en una lectura. Un tipo desconocido o un tamaño imposible
   se registra y se salta sin cortar la conexión. *Acepta:* tests unitarios con esos casos.
   hecho en S9 → LOG.md S9
-- [ ] **W3.3** — **El LFS falso** (en los tests): servidor asyncio que recibe el `IS_ISI`,
+- [x] **W3.3** — **El LFS falso** (en los tests): servidor asyncio que recibe el `IS_ISI`,
   contesta `IS_VER`, envía paquetes preparados y apunta lo que recibe. *Acepta:* lo usan los tests
-  de W3.4–W3.6.
+  de W3.4–W3.6. hecho en S9 → LOG.md S9 (su aceptación se completa al usarlo en W3.4)
 - [ ] **W3.4** — **`InSim` básico (D1, D2):** conectar y enviar `IS_ISI` (nombre, contraseña,
   flags, intervalo, prefijo); `send()`; `@insim.on(...)` con `def` y `async def`; `run()` y
   `async with insim`. Un error en un manejador se registra con `logging` y no para a los demás.
