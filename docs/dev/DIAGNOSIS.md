@@ -14,11 +14,13 @@ generadas, y las ideas de la conexión (reconexión, errores aislados por maneja
 - La identidad y las credenciales locales del repositorio, configuradas en S1.
 
 ## 🔴 Gravedad alta
-### P1 — No hay comando de verificación   [ABIERTO]
+### P1 — No hay comando de verificación   [RESUELTO en S2]
 - **Evidencia:** la rama `main` nació vacía en S1; no hay tests, ni lint, ni CI.
 - **Impacto:** hasta que exista un comando que pueda fallar, las reglas de la red de seguridad
   (§5) no se pueden aplicar y cada cambio es una afirmación, no un resultado.
 - **Acción:** W1.2 (comando de verificación) y W1.3 (CI con Python 3.11–3.14).
+- Resuelto (S2): `scripts/verify.py` (lint, formato, tipos, tests, entorno y aviso de tamaño), visto
+  fallar en cada comprobación con defectos inyectados y en verde tras retirarlos. El CI sigue en W1.3.
 
 ### P4 — El proyecto anterior perdió el control por crecer sin límites   [ABIERTO: riesgo a vigilar]
 - **Evidencia:** en `refactor/estabilizacion`, `insims/ai_control/map_ui.py` tiene 4.360 líneas y

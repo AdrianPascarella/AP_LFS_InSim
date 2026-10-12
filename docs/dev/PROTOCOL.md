@@ -39,9 +39,12 @@ este equipo no tiene las comprueba el CI de GitHub, cuando exista. LFS está ins
 No se descarta usar más equipos. Cuando llegue otro, se anota aquí qué cambia entre ellos (versión
 de Python, si tiene LFS), y se hace pull y push en cada sesión.
 
-**Verificación.** **Todavía no hay comando de verificación (P1).** Es la primera tarea del plan
-(W1). Hasta que exista, ningún cambio de código se puede dar por terminado. Cuando exista, se anota
-aquí su nombre y qué clase de defecto detecta.
+**Verificación.** `.venv/Scripts/python scripts/verify.py` (desde S2). Detecta: un intérprete
+equivocado o sin las herramientas de desarrollo, o un `lfs_insim` importado desde otra carpeta;
+errores de lint y sintaxis posterior a Python 3.11 (ruff); formato; tipos (mypy estricto); tests
+que fallan (pytest). También avisa, sin fallar, de los archivos `.py` demasiado largos (P4). Se
+prepara el entorno con `py -3.14 -m venv .venv` y `.venv/Scripts/python -m pip install -e . --group dev`.
+Visto en rojo en S2. Todavía no hay CI (W1.3).
 
 **Punto ciego (lo que el agente no puede comprobar).**
 - **Que funcione en el LFS real**: que el juego acepte los paquetes y haga lo esperado (cámara,
@@ -115,6 +118,7 @@ nadie pidió quitar. Ni los tests ni `close_check.py` lo detectan.*
 | `LOG.md` | Diario de solo añadir, una entrada por sesión | Sin límite. Al empezar solo se lee la última entrada. |
 | `PLAN.md` | Plan por fases, con tareas y criterios de aceptación | Sin límite. Al empezar solo se lee la fase activa. |
 | `DIAGNOSIS.md` | Problemas conocidos, con ID estable y estado | Referencia: se lee bajo demanda. |
+| `API_DESIGN.md` | Cómo se usa la biblioteca: ejemplos y decisiones `D<n>` aprobadas | Referencia: se lee al tocar la API pública. |
 | `PROTOCOL.md` | Estas reglas | **Se lee entero en cada sesión.** |
 | `INDEX.md` | Punto de entrada | Mínimo. |
 
@@ -383,6 +387,9 @@ Formas en que este equipo o sus herramientas ya han dañado o pueden dañar el t
 - **pytest con colores oculta líneas a `grep`.** Para filtrar su salida, `--color=no`.
 - **OutGauge de LFS ya está en uso** (puerto UDP 30000, lo usa otra aplicación del usuario). Los
   ejemplos y pruebas en vivo no ocupan ese puerto sin avisar.
+- **El `python` de la terminal es el `.venv` de streamer-project** (visto en S2). Ejecutar con él
+  instala o prueba en el proyecto equivocado. Aquí, siempre `.venv/Scripts/python`; el control de
+  entorno de `verify.py` lo detecta.
 
 ## §14 — Guías de procedimiento
 Cuando una tarea recurrente tenga un coste de orientación alto, se escribe una guía con la

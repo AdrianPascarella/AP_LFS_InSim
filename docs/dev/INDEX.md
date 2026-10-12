@@ -27,6 +27,7 @@ en cada hito.
 | LOG.md | Diario de solo añadir | Al final de cada sesión |
 | PLAN.md | Fases, tareas y criterios de aceptación | Cuando se terminan tareas o cambia el plan |
 | DIAGNOSIS.md | Problemas conocidos, con ID estable | Cuando se encuentra algo nuevo |
+| API_DESIGN.md | Cómo se usa la biblioteca (decisiones `D<n>`) | Cuando cambia la API pública |
 | PROTOCOL.md | Las reglas de trabajo | Cuando cambian las reglas |
 
 > Estos archivos los escribe el agente, nunca a mano. Si algo está mal, díselo al agente y lo

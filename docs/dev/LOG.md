@@ -74,3 +74,45 @@ biblioteca** (W3.1), que sustituye al `test_insim` antiguo y no es un InSim para
 
 **Commits:** instalación del protocolo en `main` (primer commit de la rama huérfana); `dev` sale de
 ahí.
+
+## S2 — 2026-10-12 — Paquete vacío, comando de verificación, licencia y diseño de la API
+
+**Hecho:**
+- **U1 cerrada:** el usuario eligió **MIT**, la recomendación del agente. Se añadieron `LICENSE`
+  (Copyright 2026 Adrian Pascarella), la declaración en `pyproject.toml` y una línea en el README.
+- **W1.1:** `pyproject.toml` (`lfs-insim` 0.0.0, Python ≥ 3.11, sin dependencias, construido con
+  hatchling), `src/lfs_insim/` con `__version__` y `py.typed`, y un `.venv` propio con Python 3.14.
+- **W1.2:** `scripts/verify.py`. **Visto en rojo:** con un archivo temporal que tenía un import sin
+  usar, un `type X = int` (Python 3.12), un retorno mal tipado, una función sin anotar y mal
+  formateada, un test que fallaba y un archivo de 600 líneas, fallaron lint, formato, tipos y tests
+  por esos motivos, y saltó el aviso de tamaño. La sintaxis de 3.12 la detectaron tanto ruff como
+  mypy (P5). Con el `python` de streamer-project falló el control de entorno. Después de retirar
+  los defectos y borrar `__pycache__`, todo volvió a verde.
+- **W1.5:** `docs/dev/API_DESIGN.md`, con tres ejemplos de uso y las decisiones D1–D6. Antes se
+  revisó cómo se escribía una aplicación en el proyecto anterior (subclase de `InSimApp` con
+  métodos `on_<paquete>` e hilos), para contrastar.
+
+**Decisiones:**
+- **D1 — asyncio por dentro, `def` o `async def` por fuera, `insim.run()`** (aprobada). El porqué:
+  es la forma de FastAPI, que citó el usuario; quien no sabe `async` no lo ve, y sin hilos
+  desaparecen la cola, los locks y el hilo de despacho del proyecto anterior. Se descartaron los
+  hilos y una API solo `async`.
+- **D2 — `@insim.on(IS_MSO)`** (aprobada), porque da tipos y autocompletado. Se descartó la
+  subclase con `on_mso`, que ignora en silencio un nombre mal escrito.
+- **D3 — Los nombres de la especificación** (`IS_MST(Msg=...)`, `packet.PLID`) (aprobada), para
+  que coincidan con `InSim.txt` y el foro. Lo pitónico va en la capa alta. Se descartó `snake_case`.
+- **D4 — `Roster`, estado opcional dentro de la biblioteca** (aprobada). Cierra la discrepancia
+  que quedó abierta en S1.
+- **D5 (OutSim y OutGauge con la misma forma y `run(...)` para varios) y D6 (superficie pública
+  pequeña):** propuestas sin objeción.
+- **Dependencias de desarrollo en `[dependency-groups]`** (PEP 735, `pip install --group dev`) y
+  no en un extra: así no aparecen como opción de instalación para los usuarios de la biblioteca.
+- **Aviso de tamaño a partir de 500 líneas, sin fallar**, como pedía W1.2. Si hace falta más mano
+  dura, se convierte en fallo.
+- **Trampa nueva (§13):** el `python` de la terminal es el `.venv` de streamer-project.
+
+**Verificación:** `.venv/Scripts/python scripts/verify.py` → PASS (environment, lint, format,
+types y tests: 2 passed). P1 queda resuelto.
+
+**Commits:** `bfc3095` (esqueleto, verificación y licencia) y el de cierre, con los documentos y
+`API_DESIGN.md`.
