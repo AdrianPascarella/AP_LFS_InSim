@@ -150,9 +150,10 @@ y estado, no posición ni velocidad; habrá `@insim.command`; los botones, solo 
 ayudante hasta que una aplicación lo pida); habrá `await insim.request(...)`. Cada tarea se prueba
 contra el LFS falso y, al final (W4.7), contra el LFS real, que maneja el agente.
 
-- [ ] **W4.1** — **`packet.text` en `IS_MSO`:** lo que escribió el usuario (`Msg[TextStart:]`),
+- [x] **W4.1** — **`packet.text` en `IS_MSO`:** lo que escribió el usuario (`Msg[TextStart:]`),
   sin «Nombre : ». Los paquetes son generados: la propiedad va escrita a mano y el generador la
   engancha. *Acepta:* tests con los `IS_MSO` reales de S12 (usuario, sistema, prefijo).
+  hecho en S12 → LOG.md S12 (`packets/_extras.py` + `spec_overrides.EXTRAS`)
 - [ ] **W4.2** — **`await insim.request(...)`:** envía el `IS_TINY` con un `ReqI` propio (nunca el 1
   del `IS_ISI`) y devuelve la respuesta; para las de varias partes (NCN, NPL, RES, SLC…), la lista,
   sabiendo cuándo acaba por sus contadores (`Total`, `NumP`, `NumRes`) o por un tiempo sin más.

@@ -5,7 +5,9 @@
 > maneja LFS sin el usuario con `tests/lfs_screen.ps1` (PROTOCOL §13). `cfg.txt` está restaurado:
 > para repetir OutSim/OutGauge en vivo hay que pedir permiso de nuevo. Tests en verde.
 > **W4 detallada con el usuario en S12** (7 tareas en `PLAN.md`; decisiones en `API_DESIGN.md`).
-> **▶️ SIGUIENTE: W4.1 — `IS_MSO.text`**, y después W4.2 (`await insim.request`).
+> W4.1 hecha: `IS_MSO.text`, con un mecanismo para añadir propiedades escritas a mano a los
+> paquetes generados (`packets/_extras.py` + `spec_overrides.EXTRAS`).
+> **▶️ SIGUIENTE: W4.2 — `await insim.request(...)`**, y después W4.3 (`Roster`).
 
 ## Dónde estamos
 Fase activa: **W4 — La API de alto nivel y los ejemplos**, detallada en S12 (`PLAN.md`). W2 y W3

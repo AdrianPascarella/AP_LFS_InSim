@@ -108,6 +108,21 @@ decisiones en `API_DESIGN.md`. Una propuesta del agente queda para confirmar al 
 `Roster`: actualizarlo antes que los manejadores del usuario cuando alguien llega y después cuando
 se va.
 
+**W4.1 — `IS_MSO.text`** (el usuario: «sigamos tus recomendaciones. Procedamos»).
+- `src/lfs_insim/packets/_extras.py` con `MSOText.text` (`Msg[TextStart:]`), y
+  `spec_overrides.EXTRAS = {"IS_MSO": "MSOText"}`. El generador la pone como base de `IS_MSO`,
+  importa `_extras as _x` solo si hace falta y falla si `EXTRAS` nombra un paquete que no existe.
+  Decisión y lo descartado, en `API_DESIGN.md` («Precisado al escribir `IS_MSO.text`»).
+- **Red:** 4 tests en `tests/test_text.py` (mensaje de usuario con `^L` y griego como los reales de
+  S12, de prefijo, del sistema, y que `text` no es un campo), en rojo antes del código. Bytes
+  hechos a mano, sin el nombre del usuario, porque el repositorio es público. Tres mutaciones
+  (`Msg` entero, un carácter de más, la parte de antes), las tres en rojo; restaurado sin restos.
+- **Tropiezos:** otra vez las barras invertidas en un heredoc (§13): el parche del generador falló
+  antes de escribir nada y se rehízo con Edit. mypy encontró un nombre (`bases`) reutilizado con
+  otro tipo en la misma función.
+- **Verificación:** `verify.py` → PASS (260 passed, 1 deselected).
+- **Commit:** `e809b0b`.
+
 ## S11 — 2026-10-12 — `OutSim`, `OutGauge` y `run()` (W3.7)
 
 **Inicio:** según el protocolo; control de inicio en verde, documentos de acuerdo con git, 0
