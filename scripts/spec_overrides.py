@@ -51,6 +51,12 @@ TEXT_STARTS: dict[str, str] = {
     "IS_MSO": "TextStart",
 }
 
+# Hand-written classes added as a base of a generated packet, for properties that the
+# specification does not give: packet -> class in src/lfs_insim/packets/_extras.py.
+EXTRAS: dict[str, str] = {
+    "IS_MSO": "MSOText",  # .text: what the user typed (W4.1)
+}
+
 # Variable-size packets whose last field is an array: packet -> (array field, counter field).
 # The counter is filled in from the length of the list; None = the items simply fill the packet.
 TAIL_ARRAY: dict[str, tuple[str, str | None]] = {

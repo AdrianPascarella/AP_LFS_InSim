@@ -268,7 +268,9 @@ def emit_structs(
             base = "OptionalParts"
         else:
             base = "Structure"
-        body.append(f"\n\n@dataclass(kw_only=True)\nclass {struct.name}({base}):\n")
+        extra = overrides.EXTRAS.get(struct.name)
+        parents = f"_x.{extra}, {base}" if extra else base
+        body.append(f"\n\n@dataclass(kw_only=True)\nclass {struct.name}({parents}):\n")
         body.append(docstring(struct.comment or struct.name, "    "))
         for col in cols:
             if col.annotation is not None:
@@ -293,7 +295,13 @@ def emit_structs(
         out.append("from ipaddress import IPv4Address\n")
     out.append("\n")
     out.append("from lfs_insim.packets import _codec as _c\n")
-    bases = [b for b in ("InSimPacket", "OptionalParts", "Structure") if f"({b})" in text]
+    if "(_x." in text:
+        out.append("from lfs_insim.packets import _extras as _x\n")
+    bases = [
+        b
+        for b in ("InSimPacket", "OptionalParts", "Structure")
+        if re.search(rf"[(,] ?{b}\):", text)
+    ]
     out.append(f"from lfs_insim.packets._codec import {', '.join(bases)}\n")
     used = [c.name for c in enums if re.search(rf"\b{c.name}\.", text) and c not in local_enums]
     if used:
@@ -363,6 +371,9 @@ def generate() -> tuple[dict[Path, str], list[Path]]:
     by_module: dict[str, list[Struct]] = {"_insim": [], "_outsim": [], "_outgauge": []}
     for struct in insim.structs.values():
         by_module[overrides.MODULES.get(struct.name, "_insim")].append(struct)
+    unknown = set(overrides.EXTRAS) - set(insim.structs)
+    if unknown:
+        raise SpecError(f"EXTRAS names packets that are not in InSim.txt: {sorted(unknown)}")
     files = {
         PACKAGE_DIR / "_enums.py": emit_enums(enums, header),
         **{

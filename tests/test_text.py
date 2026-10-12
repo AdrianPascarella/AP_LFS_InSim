@@ -1,8 +1,10 @@
 """LFS text <-> str: code pages switched with ^L, ^J... and the ^ codes that stay in the str."""
 
+from dataclasses import fields
+
 import pytest
 
-from lfs_insim.packets import IS_BTN, IS_MSO, IS_MST, ISP, LID
+from lfs_insim.packets import IS_BTN, IS_MSO, IS_MST, ISP, LID, MSO
 from lfs_insim.packets._text import decode, encode
 from lfs_insim.text import strip_colours
 
@@ -107,6 +109,34 @@ def test_mso_text_start_points_after_an_added_switch() -> None:
     assert data[8:] == b"Bob : ^J\x82\xa0\0\0"
     assert data[7] == 8  # after ^J, where the typed text starts
     assert IS_MSO.unpack(data) == packet
+
+
+def _mso(user_type: int, text_start: int, msg: bytes) -> IS_MSO:
+    data = bytes([0, ISP.MSO, 0, 0, 0, 0, user_type, text_start]) + msg + b"\0"
+    data += bytes(-len(data) % 4)
+    return IS_MSO.unpack(bytes([len(data) // 4]) + data[1:])
+
+
+def test_mso_text_is_what_the_user_typed() -> None:
+    # Shaped like the messages seen in the live test (S12): LFS puts ^L before the typed text.
+    packet = _mso(MSO.USER, 11, b"^1Driver : ^Lhello ^G\xd9\xeb")
+    assert packet.Msg == "^1Driver : hello Ωλ"
+    assert packet.text == "hello Ωλ"
+
+
+def test_mso_text_of_a_prefix_message_keeps_the_prefix() -> None:
+    packet = _mso(MSO.PREFIX, 9, b"Driver : ^L!hello world")
+    assert packet.text == "!hello world"
+
+
+def test_mso_text_of_a_system_message_is_all_of_it() -> None:
+    packet = _mso(MSO.SYSTEM, 0, b"Circuito no disponible")
+    assert packet.text == packet.Msg == "Circuito no disponible"
+
+
+def test_mso_text_is_not_a_field() -> None:
+    assert "text" not in {f.name for f in fields(IS_MSO)}
+    assert IS_MSO(TextStart=6, Msg="Bob : hi").text == "hi"
 
 
 def test_mso_text_start_out_of_the_text_is_rejected() -> None:

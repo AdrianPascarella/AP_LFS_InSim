@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from ipaddress import IPv4Address
 
 from lfs_insim.packets import _codec as _c
+from lfs_insim.packets import _extras as _x
 from lfs_insim.packets._codec import InSimPacket, Structure
 from lfs_insim.packets._enums import ISP
 from lfs_insim.packets._types import Vec, Vector
@@ -373,7 +374,7 @@ class IS_MOD(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_MSO(InSimPacket):
+class IS_MSO(_x.MSOText, InSimPacket):
     """MSg Out - system messages and user messages - variable size"""
 
     ReqI: int = 0

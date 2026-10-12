@@ -213,6 +213,17 @@ sin aviso. *Por qué:* P4; una API pequeña se puede revisar entera.
   *Descartado:* solo enviar `IS_TINY` y recoger en `@insim.on` (el `Roster`, el registrador y la
   cámara se escribirían peor).
 
+## Precisado al escribir `IS_MSO.text` (W4.1, S12; propuesto por el agente)
+- `packet.text` es `Msg[TextStart:]`: lo escrito sin «Nombre : »; en un mensaje del sistema, todo.
+  Conserva los códigos `^` como `Msg` (`strip_colours()` quita los colores). Es una propiedad, no
+  un campo: no se pasa al crear el paquete ni cambia sus bytes.
+- **Cómo se añade a un paquete generado:** una clase en `packets/_extras.py` (solo propiedades,
+  nunca campos) y una entrada en `spec_overrides.EXTRAS`; el generador la pone como base
+  (`class IS_MSO(_x.MSOText, InSimPacket)`) y falla si `EXTRAS` nombra un paquete que no existe.
+  *Descartado:* editar lo generado a mano (se perdería al regenerar) y una función suelta
+  (`text_of(packet)`), que el editor no ofrece al escribir `packet.`.
+- Solo `IS_MSO` por ahora: en los demás paquetes con texto, el texto ya es el campo entero.
+
 ## Abierto (se decide más adelante, no ahora)
 - Agrupar manejadores en módulos (lo que hacía `InSimApp` con varias aplicaciones a la vez): si
   hiciera falta, algo como el `APIRouter` de FastAPI. Solo si una aplicación real lo pide.
