@@ -78,9 +78,10 @@ casos raros fáciles de montar) y el **real**, que abre y cierra el agente, en W
 ser una tarjeta del usuario: solo le queda lo que se ve en pantalla. Orden: W3.2 → W3.8, y W3.1 al
 final.
 
-- [ ] **W3.2** — **Partir el flujo TCP en paquetes**, sin sockets (función pura): `Size` × 4, un
+- [x] **W3.2** — **Partir el flujo TCP en paquetes**, sin sockets (función pura): `Size` × 4, un
   paquete partido entre lecturas, varios en una lectura. Un tipo desconocido o un tamaño imposible
   se registra y se salta sin cortar la conexión. *Acepta:* tests unitarios con esos casos.
+  hecho en S9 → LOG.md S9
 - [ ] **W3.3** — **El LFS falso** (en los tests): servidor asyncio que recibe el `IS_ISI`,
   contesta `IS_VER`, envía paquetes preparados y apunta lo que recibe. *Acepta:* lo usan los tests
   de W3.4–W3.6.

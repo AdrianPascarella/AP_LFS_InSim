@@ -46,7 +46,23 @@
   bloqueó la carpeta (Windows negó el renombrado) → cicatriz en §13.
 - A petición del usuario, setups y skins devueltos desde la copia sin sobrescribir nada. Solo
   chocaba `setups/FBM_RACE_blackwood.set`, distinto del que trae el juego; se dejó el del juego a
-  la espera de que el usuario decida.
+  la espera de que el usuario decida. **Decidió no cambiarlo:** se queda el del juego.
+
+**W3.2 — partir el flujo TCP en paquetes:** `src/lfs_insim/_stream.py`, clase interna
+`PacketStream` con `feed(bytes) -> list[InSimPacket]`. Usa el `unpack_insim()` que ya había en
+`_codec.py`. Un paquete que no se puede leer (tipo desconocido, bytes que no encajan) se registra
+con `logging` (logger `lfs_insim`, nombrando el paquete: `IS_VER (type 2, 4 bytes)`) y se salta;
+un error inesperado de un codec, igual, pero con su traza.
+- *Decisión (corrige el plan, dicha al usuario antes de escribir):* el plan decía que un tamaño
+  imposible se salta, pero el único imposible es `Size` 0, y entonces no se sabe dónde empieza el
+  paquete siguiente. `feed` lanza `PacketError` y la conexión (W3.4/W3.6) se rehace.
+  *Descartado:* buscar el siguiente paquete válido byte a byte (adivinaría, y un falso positivo
+  entrega basura como si fuera un paquete).
+- **Red:** `tests/test_stream.py`, 10 tests (un paquete, varios, partido, byte a byte, tipo
+  desconocido, mal formado, `Size` 0). En rojo antes del código; el del mensaje del registro, en
+  rojo también con la primera versión (decía «type 2» sin nombre).
+- **Verificación:** `.venv/Scripts/python scripts/verify.py` → PASS (198 passed, 1 deselected).
+  Aviso previo, sin cambio: `_codec.py` tiene 525 líneas (límite 500).
 
 ## S8 — 2026-10-12 — `IS_BTN.Caption` (W2.10), `IS_MSO.TextStart` (W2.11): W2 cerrada
 

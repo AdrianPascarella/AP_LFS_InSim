@@ -2,7 +2,8 @@
 > Actualizado: 2026-10-12 (S9): **W3 detallada con el usuario** (W3.2–W3.8, y W3.1 al final).
 > El agente puede abrir LFS para las pruebas (permisos en `PROTOCOL.md`). LFS 0.8C31 reinstalado
 > limpio en `C:\LFS` (U5); InSim **no** está activado (`autoexec.lfs` vacío). Tests en verde.
-> **▶️ SIGUIENTE: W3.2 — partir el flujo TCP en paquetes** (función pura, sin sockets).
+> W3.2 hecha (`_stream.PacketStream`).
+> **▶️ SIGUIENTE: W3.3 — el LFS falso** (servidor asyncio para los tests), y después W3.4.
 
 ## Dónde estamos
 Fase activa: **W3 — La conexión**, detallada en S9 (`PLAN.md`). W2 está hecha entera.
