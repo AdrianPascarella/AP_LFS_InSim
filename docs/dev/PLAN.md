@@ -31,10 +31,11 @@ como segunda opinión para encontrar errores, no como fuente.
 generado va en git, con un control que comprueba que está al día (P3); los campos de texto son
 `str`, con la codificación de LFS hecha en W2. Los campos que usan un enum quedan como `int`.
 
-- [ ] **W2.1** — **Lector de la especificación** (`scripts/generate_packets.py`): convierte
+- [x] **W2.1** — **Lector de la especificación** (`scripts/spec_parser.py`): convierte
   `spec/cache/` en un modelo (structs, campos, enums, flags, constantes y sus comentarios). Falla
   con un mensaje claro ante cualquier construcción que no entienda y no esté en las excepciones.
   *Acepta:* lee los 81 `struct` de InSim.txt y los de OutSimPack.txt; tests con fragmentos.
+  hecho en S4 → LOG.md S4
 - [ ] **W2.2** — **Excepciones escritas a mano, en un solo archivo:** qué campo da la longitud de
   cada paquete variable, el nombre de los enums sin nombre, los valores que no son identificadores
   válidos (`DL_18`) y las partes condicionales de OutSimPack2.
