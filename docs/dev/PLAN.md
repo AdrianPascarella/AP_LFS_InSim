@@ -101,5 +101,3 @@ cámara libre, que necesita streamer-project) y anotar cada incomodidad como tar
   de la especificación.
 - Las demás aplicaciones (control de IA, registrador de eventos) — después de W6, cada una en su
   proyecto (sus requisitos, en «Aplicaciones aparte»).
-- Fijar la versión de `ruff` en el grupo `dev` (S5): el código generado pasa por `ruff format`,
-  así que una versión nueva de ruff puede poner en rojo `spec` y `verify` sin cambiar nada nuestro.

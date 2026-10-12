@@ -53,14 +53,16 @@
 **Problemas del agente:** volvió a usar un heredoc con `\` para parchear el generador (cicatriz de
 §13, ya escrita) y el archivo quedó roto. Se restauró desde git y se rehízo con Edit, sin pérdidas.
 
-**Para revisar:** `ruff` no tiene versión fija en el grupo `dev`, y el código generado pasa por
-`ruff format`. Una versión nueva podría poner en rojo `spec` y `verify` sin ningún cambio nuestro.
-Se ha anotado en «Ideas» de `PLAN.md`.
+**`ruff` fijado a `>=0.17,<0.18`** en el grupo `dev` de `pyproject.toml`. Lo recomendó el agente y
+el usuario dijo «haz lo que recomendaste». *Por qué:* el código generado pasa por `ruff format`, y
+una versión nueva podría poner en rojo `spec` y `verify` sin ningún cambio nuestro. Se fija la
+versión menor, porque ruff cambia el estilo de formato en las versiones menores. *Para subirla:*
+cambiar el límite, regenerar y revisar el diff.
 
 **Verificación:** `.venv/Scripts/python scripts/verify.py` → PASS (environment, lint, format,
 types, tests: 144 passed, 1 deselected; generated). En GitHub, `verify` y `spec` en verde.
 
-**Commits:** W2.5 + W2.6 (`048fcca`), cierre parcial (`913c608`), W2.7 (`5873c14`) y el de cierre.
+**Commits:** W2.5 + W2.6 (`048fcca`), cierre parcial (`913c608`), W2.7 (`5873c14`), cierre (`99e1f1b`), `ruff` fijado y el de cierre.
 
 ## S4 — 2026-10-12 — U2 (dev en main), W2 detallada y paquetes de InSim generados (W2.1–W2.4)
 

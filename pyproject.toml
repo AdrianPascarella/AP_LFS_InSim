@@ -32,7 +32,9 @@ Homepage = "https://github.com/AdrianPascarella/AP_LFS_InSim"
 Issues = "https://github.com/AdrianPascarella/AP_LFS_InSim/issues"
 
 [dependency-groups]
-dev = ["ruff", "mypy", "pytest"]
+# ruff is pinned to a minor version: the generated packets go through `ruff format`, and a new
+# release could change them (and turn `spec` and `verify` red) without any change of ours.
+dev = ["ruff>=0.17,<0.18", "mypy", "pytest"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/lfs_insim"]
