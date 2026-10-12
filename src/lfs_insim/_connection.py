@@ -30,6 +30,7 @@ RETRY_DELAYS = (1.0, 2.0, 4.0, 8.0, 10.0)
 P = TypeVar("P", bound=InSimPacket)
 Handler = Callable[[P], None] | Callable[[P], Awaitable[None]]
 ConnectHandler = Callable[[], None] | Callable[[], Awaitable[None]]
+PacketWatcher = Callable[[InSimPacket], None]
 
 
 class InSim:
@@ -85,6 +86,7 @@ class InSim:
         self._accepted = False  # LFS answered IS_ISI with IS_VER on this connection
         self._silence_timeout = SILENCE_TIMEOUT
         self._retry_delays: tuple[float, ...] = RETRY_DELAYS
+        self._watchers: list[tuple[PacketWatcher, PacketWatcher]] = []
 
     def on(self, packet_type: type[P]) -> Callable[[Handler[P]], Handler[P]]:
         """Decorator: call the function with every packet of this type that LFS sends.
@@ -315,5 +317,16 @@ class InSim:
         elif isinstance(packet, IS_VER) and not self._accepted:
             self._accepted = True
             self._start_ticks()
+        for before, _ in self._watchers:
+            self._handlers.call(before, (packet,), f"{type(packet).__name__} (before handlers)")
         self._requests.deliver(packet)
         self._handlers.dispatch(packet)
+        # After the handlers, and after the first step of the async ones: their tasks were
+        # scheduled first, so until their first await they still see the state before the packet.
+        loop = asyncio.get_running_loop()
+        for _, after in self._watchers:
+            loop.call_soon(self._handlers.call, after, (packet,), type(packet).__name__)
+
+    def _watch(self, before: PacketWatcher, after: PacketWatcher) -> None:
+        """For the library's own state (Roster): see every packet before and after the handlers."""
+        self._watchers.append((before, after))

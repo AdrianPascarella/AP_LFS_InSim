@@ -243,6 +243,26 @@ sin aviso. *Por qué:* P4; una API pequeña se puede revisar entera.
   `TINY_ALC`, `TINY_LCL`), porque el tipo no basta para saber qué pedir. Se añaden si alguien lo
   necesita.
 
+## Precisado al escribir el `Roster` (W4.3, S12; propuesto por el agente, el usuario delegó)
+- `Roster(insim)`, creado antes de `run()`. `roster.connections[UCID]` → `Connection` (`ucid`,
+  `username`, `name`, `admin`, `remote`, `players`) y `roster.players[PLID]` → `Player` (`plid`,
+  `connection`, `name`, `plate`, `car`, `is_ai`, `in_pits`). Los dos mapas son de solo lectura.
+  Los objetos se conservan mientras existen (`roster.players[4] is player` antes y después de ir
+  a boxes), así que una aplicación puede guardarlos.
+- **Orden respecto a los manejadores** (confirmado: el usuario siguió la recomendación): cuando
+  alguien llega o cambia, el `Roster` se actualiza antes; cuando se va (`IS_PLL`, `IS_CNL`),
+  después, programado con `call_soon` para que un manejador `async` lo encuentre aún hasta su
+  primer `await`. Por dentro, `InSim._watch(antes, después)`, privado.
+- **Cuándo pide el estado entero:** en cada (re)conexión y al empezar o acabar una partida
+  multijugador (`IS_ISM`, `TINY_MPE`). Antes de pedirlo olvida lo que tenía (así no quedan
+  conexiones de antes de un corte).
+- Un `IS_NPL` de una conexión aún desconocida crea una conexión vacía que su `IS_NCN` completa.
+  Un `IS_NPL` con `NumP` 0 es una solicitud para unirse (`ISF.REQ_JOIN`) y no se cuenta. Un PLID o
+  UCID desconocido en los demás paquetes se ignora.
+- `IS_CPR` cambia el nombre de la conexión y de sus jugadores humanos, no el de la IA que añadió.
+  `TINY_CLR` vacía la carrera y deja las conexiones.
+- Sin conexión, el `Roster` conserva lo último que supo hasta la siguiente conexión.
+
 ## Abierto (se decide más adelante, no ahora)
 - Agrupar manejadores en módulos (lo que hacía `InSimApp` con varias aplicaciones a la vez): si
   hiciera falta, algo como el `APIRouter` de FastAPI. Solo si una aplicación real lo pide.
