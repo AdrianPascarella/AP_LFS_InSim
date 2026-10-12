@@ -161,6 +161,30 @@ sin aviso. *Por qué:* P4; una API pequeña se puede revisar entera.
   sugiere. Que LFS no responde se dice una vez, no en cada intento.
 - `await insim.wait_closed()` espera a `close()`; después de un `connect()` suelto, a que se corte.
 
+## Precisado al escribir `OutSim` y `OutGauge` (W3.7, S11; propuesto por el agente)
+- `OutGauge(port, host="127.0.0.1")` y `OutSim(port, host="127.0.0.1", *, options=0)`: `port`
+  es la línea «Port» de `cfg.txt` y es obligatorio (LFS no tiene puerto por defecto); `host`, la
+  dirección en la que se escucha. `port=0` toma uno libre y `gauge.port` dice cuál (lo usan los
+  tests).
+- **`options` es la línea «OutSim Opts» de `cfg.txt`**: con 0 LFS envía `OutSimPack`; con otra
+  cosa, `OutSimPack2` solo con esas partes (InSim.txt y OutSimPack.txt). Sin cabecera `LFST` no se
+  puede adivinar, así que hay que decirlo. *Descartado:* adivinarlo por el tamaño (dos opciones
+  distintas pueden dar el mismo tamaño).
+- **Un manejador del paquete que nunca llegará se rechaza al registrarlo** (`TypeError`):
+  `@outsim.on(OutSimPack)` con `options` distinto de 0, o `@gauge.on(OutSimPack)`. *Descartado:*
+  aceptarlo y que nunca se llame (el error se vería como «no llega nada»).
+- Un datagrama que no se puede leer (tamaño distinto del esperado, más 4 bytes si LFS añade el
+  `ID`) se salta, con **un** aviso que sugiere revisar `cfg.txt`; se vuelve a avisar solo si antes
+  ha llegado uno bueno. *Por qué:* llegan hasta 100 por segundo y un aviso por cada uno taparía el
+  registro.
+- Igual que `InSim`: `async with gauge:` (lanza `OSError` si el puerto está ocupado),
+  `await gauge.close()` (cancela los manejadores `async`), `await gauge.wait_closed()` y
+  `gauge.run()`. Sin reconexión: escuchar un puerto UDP no se corta.
+- **`run(*fuentes)`** las arranca todas en un bucle y **vuelve cuando se cierra cualquiera**, y
+  entonces cierra las demás (así `await insim.close()` en un manejador termina el programa). Si una
+  no puede arrancar (puerto ocupado), se cierran las ya arrancadas y sale el error. *Descartado:*
+  esperar a que se cierren todas (cerrar `insim` dejaría el programa vivo por el `gauge`).
+
 ## Abierto (se decide más adelante, no ahora)
 - Comandos de chat (`!hello`): ¿un ayudante en la biblioteca (`@insim.command("hello")`) o solo
   `IS_MSO`? Se decide en W4, cuando se escriba el ejemplo de botones.
