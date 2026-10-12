@@ -34,13 +34,17 @@ generadas, y las ideas de la conexión (reconexión, errores aislados por maneja
   fuera del repositorio.
 
 ## 🟠 Gravedad media
-### P2 — Una copia fija de la especificación se queda desfasada   [ABIERTO: lo resuelve W1.4]
+### P2 — Una copia fija de la especificación se queda desfasada   [RESUELTO en S3]
 - **Evidencia:** `docs/InSim.txt` del proyecto anterior (copiado el 03/07) frente a
   https://www.lfs.net/programmer/insim el 12/10: 41 líneas distintas. Falta la versión 0.8C27, que
   añade la página de códigos de los mensajes (`MSOData` en `IS_MSO`) y el enum `LID_*`.
 - **Impacto:** paquetes que no coinciden con lo que envía LFS, sin que nada avise.
 - **Acción:** W1.4: descargar la especificación oficial con un script, apuntar en git la versión
   comprobada y avisar cuando lfs.net cambie.
+- Resuelto (S3): `scripts/fetch_spec.py` descarga la página, guarda el texto en `spec/cache/` y lo
+  compara con `spec/checked.json` (0.8C27, INSIM_VERSION 10, huella SHA-256). Visto en rojo con
+  una huella falseada (sale con 1 y falla el test de red) y sin conexión (sale con 2 y deja intacta
+  la copia anterior). El workflow `spec` de GitHub lo comprueba cada lunes, aunque solo desde `main`.
 
 ### P3 — OutSimPack2 no se publica en la web   [ABIERTO]
 - **Evidencia:** la página de InSim remite a `docs\OutSimPack.txt`, que solo viene con la
@@ -50,10 +54,16 @@ generadas, y las ideas de la conexión (reconexión, errores aislados por maneja
 - **Acción:** el código generado se guarda en git (así nadie necesita la especificación para
   instalar la biblioteca), y la comprobación contra `OutSimPack.txt` se hace solo donde exista ese
   archivo. Se decide en W1.4 / W2.
+- Avance (S3): `fetch_spec.py` lee `OutSimPack.txt` si existe, guarda su huella en
+  `spec/checked.json` y avisa si cambia; en el CI se salta. Que el código generado vaya en git se
+  decide en W2.
 
-### P5 — Este equipo no tiene Python 3.11, 3.12 ni 3.13   [ABIERTO]
+### P5 — Este equipo no tiene Python 3.11, 3.12 ni 3.13   [RESUELTO en S3]
 - **Evidencia:** `py -0p` en S1: solo 3.14 y un 3.9 antiguo.
 - **Impacto:** código que use algo de 3.12 o posterior pasaría la verificación local y rompería a
   los usuarios de 3.11.
 - **Acción:** el CI comprueba de 3.11 a 3.14 (W1.3), y ruff se configura con `target-version`
   3.11 para avisar en local de la sintaxis demasiado nueva.
+- Resuelto (S3): el workflow `verify` ejecuta `verify.py` en Python 3.11–3.14, en Linux y Windows,
+  en cada push; las 8 combinaciones en verde. El equipo sigue sin esas versiones, pero ya no pasa
+  nada sin que se note.

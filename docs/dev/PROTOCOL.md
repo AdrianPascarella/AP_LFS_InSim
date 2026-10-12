@@ -35,7 +35,7 @@ rama borrada en S1).
 
 **Máquinas.** De momento solo hay un equipo: el portátil Windows 11 Pro, con Python 3.14 (y un 3.9
 antiguo, inservible aquí), Git y `gh`. **No tiene Python 3.11, 3.12 ni 3.13**: las versiones que
-este equipo no tiene las comprueba el CI de GitHub, cuando exista. LFS está instalado en `C:\LFS`.
+este equipo no tiene las comprueba el CI de GitHub (desde S3). LFS está instalado en `C:\LFS`.
 No se descarta usar más equipos. Cuando llegue otro, se anota aquí qué cambia entre ellos (versión
 de Python, si tiene LFS), y se hace pull y push en cada sesión.
 
@@ -44,7 +44,13 @@ equivocado o sin las herramientas de desarrollo, o un `lfs_insim` importado desd
 errores de lint y sintaxis posterior a Python 3.11 (ruff); formato; tipos (mypy estricto); tests
 que fallan (pytest). También avisa, sin fallar, de los archivos `.py` demasiado largos (P4). Se
 prepara el entorno con `py -3.14 -m venv .venv` y `.venv/Scripts/python -m pip install -e . --group dev`.
-Visto en rojo en S2. Todavía no hay CI (W1.3).
+Visto en rojo en S2. **CI** (desde S3): el workflow `verify` de GitHub ejecuta el mismo comando
+en Python 3.11–3.14, en Linux y en Windows, en cada push a `dev` o `main` y en cada pull request.
+**Especificación** (desde S3): `.venv/Scripts/python scripts/fetch_spec.py` detecta si la página
+de lfs.net o `OutSimPack.txt` difieren de la versión comprobada (`spec/checked.json`), y
+`--accept` registra la nueva tras revisarla. Los tests que necesitan red se saltan por defecto
+(`pytest -m network`). El workflow `spec` los ejecuta cada lunes (**solo desde `main`**, que es
+la rama por defecto) y en cada push que cambie la especificación.
 
 **Punto ciego (lo que el agente no puede comprobar).**
 - **Que funcione en el LFS real**: que el juego acepte los paquetes y haga lo esperado (cámara,
