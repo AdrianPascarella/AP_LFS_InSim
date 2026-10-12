@@ -263,6 +263,19 @@ sin aviso. *Por qué:* P4; una API pequeña se puede revisar entera.
   `TINY_CLR` vacía la carrera y deja las conexiones.
 - Sin conexión, el `Roster` conserva lo último que supo hasta la siguiente conexión.
 
+## Precisado al escribir `say` y `command` (W4.4, S12; propuesto por el agente, el usuario delegó)
+- `insim.say(texto)` escribe en el chat: `IS_MST` si caben 63 bytes (ya codificados: un texto en
+  japonés ocupa el doble), `IS_MSX` hasta 95. `insim.say(texto, to=UCID)` va con `IS_MTC`, hasta
+  127 (LFS debe ser el anfitrión, como en un jugador; 255 = todos).
+- `insim.command("/restart")` va con `IS_MST`, hasta 63.
+- **Uno no hace lo del otro:** `say("/...")` y `command("sin barra")` son un `ValueError` que dice
+  cuál usar. *Por qué:* un `say` con un texto que empieza por `/` ejecutaría un comando sin querer
+  (D6: una sola forma de hacer cada cosa).
+- Demasiado largo: `PacketError` (un `ValueError`) con el límite, **antes de mirar la conexión**,
+  para que el error se vea aunque LFS no esté.
+- Fuera por ahora: `IS_MSL` (mensaje solo en este equipo) y el sonido de `IS_MTC`; se envían con
+  `insim.send()` si hacen falta.
+
 ## Abierto (se decide más adelante, no ahora)
 - Agrupar manejadores en módulos (lo que hacía `InSimApp` con varias aplicaciones a la vez): si
   hiciera falta, algo como el `APIRouter` de FastAPI. Solo si una aplicación real lo pide.

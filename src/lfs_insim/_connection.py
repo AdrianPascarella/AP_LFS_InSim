@@ -12,7 +12,16 @@ from typing import Self, TypeVar, cast
 from lfs_insim import _requests
 from lfs_insim._handlers import Handlers
 from lfs_insim._stream import PacketStream
-from lfs_insim.packets import IS_ISI, IS_TINY, IS_VER, TINY, PacketError
+from lfs_insim.packets import (
+    IS_ISI,
+    IS_MST,
+    IS_MSX,
+    IS_MTC,
+    IS_TINY,
+    IS_VER,
+    TINY,
+    PacketError,
+)
 from lfs_insim.packets._codec import InSimPacket
 
 log = logging.getLogger("lfs_insim")
@@ -135,6 +144,40 @@ class InSim:
         if self._writer is None:
             raise ConnectionError("not connected to LFS")
         self._writer.write(b"".join(packet.pack() for packet in packets))
+
+    def say(self, text: str, *, to: int | None = None) -> None:
+        """Write in the chat, as if typed in LFS: `insim.say("Hello")`. Everyone sees it.
+
+        With `to=UCID` only that connection sees it (IS_MTC: LFS must be the host, as it is in
+        single player; 255 = everyone). The limit counts bytes as LFS stores them: 95 for the
+        chat (63 goes as IS_MST, longer as IS_MSX), 127 with `to`; longer text raises
+        PacketError (a ValueError). For commands such as /restart, use command().
+        """
+        packet: InSimPacket
+        if to is not None:
+            packet = IS_MTC(UCID=to, Text=text)
+        elif text.startswith("/"):
+            raise ValueError(f"{text!r} is a command: use insim.command() to send it")
+        else:
+            packet = IS_MST(Msg=text)
+            try:
+                packet.pack()
+            except PacketError:
+                packet = IS_MSX(Msg=text)
+        packet.pack()  # too long: fail here, even without a connection
+        self.send(packet)
+
+    def command(self, command: str) -> None:
+        """Run an LFS command, as if typed in LFS: `insim.command("/restart")`.
+
+        Up to 63 bytes (IS_MST); longer raises PacketError (a ValueError). LFS answers commands
+        sent this way with IS_ACR when it is the host.
+        """
+        if not command.startswith("/"):
+            raise ValueError(f"{command!r} is not a command (they start with /): use insim.say()")
+        packet = IS_MST(Msg=command)
+        packet.pack()
+        self.send(packet)
 
     async def request(self, reply: type[P], *, timeout: float | None = 2.0) -> P:
         """Ask LFS for a packet and wait for it: `state = await insim.request(IS_STA)`.
