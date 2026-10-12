@@ -437,6 +437,14 @@ Si no está claro si una instrucción es permanente o puntual, **se pregunta**.
   claro que mi palabra no es ley, cuando creas que algo se puede hacer mejor de otra forma SIEMPRE
   tienes que decírmelo y aconsejar.» Ante cualquier decisión o petición del usuario, si hay una
   forma mejor, se dice con el motivo y una recomendación, antes de hacerla a su manera.
+- **2026-10-12 (S6) — Lo que dice Scawen, si está al día, es la referencia.** «Todo lo que diga
+  Scawen (y esté actualizado) va a biblia, él es el principal creador de LFS.» Sus palabras (en
+  InSim.txt, en el foro de lfs.net o en las notas de las versiones) mandan sobre cualquier otra
+  fuente: otros usuarios del foro, otras bibliotecas, el proyecto anterior o lo que el agente crea
+  saber. «Al día» quiere decir que una explicación suya más reciente, o la especificación vigente,
+  sustituye a una anterior. Si una fuente suya choca con la especificación, se dice y se investiga,
+  sin elegir en silencio. Al usarla se cita dónde la dijo (hilo o versión) en el código o en
+  `spec_overrides.py`, y en `LOG.md`.
 
 ## §16 — Mantener vivo el sistema
 - **La configuración no está congelada.** Cuando cambie la realidad (un comando de verificación
