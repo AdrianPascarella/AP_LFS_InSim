@@ -1,11 +1,11 @@
 # 📍 Estado — AP_LFS_InSim (lfs_insim)
-> Actualizado: 2026-10-12 (S12): **primera prueba con el LFS real, en verde.**
-> `tests/live_lfs.py` (no lo ejecuta pytest) conecta, hace 23 peticiones, envía mensajes y un
-> botón, y comprueba que cada paquete recibido se lee y se reescribe con el mismo contenido. Con LFS
-> en el menú: 0 fallos. W3.2–W3.8 hechas en S9–S11. Tests en verde.
-> **▶️ SIGUIENTE: completar W3.1** (`PLAN.md`): carrera con IA, coche mod (SkinID), pulsar el botón
-> y OutSim/OutGauge en vivo. **El usuario quiere quedar fuera:** el agente activa InSim
-> (`/insim=29999`) controlando la pantalla, o con `autoexec.lfs` (pedir permiso: es `C:\LFS`).
+> Actualizado: 2026-10-12 (S12): **InSim validado en el LFS real, en verde.**
+> `tests/live_lfs.py` (no lo ejecuta pytest) hace 23 peticiones, envía mensajes y dos botones, y
+> comprueba que cada paquete se lee y se reescribe con el mismo contenido: 0 fallos en el menú y en
+> una carrera con IA y coche mod (SkinID bien). El agente maneja LFS solo, sin el usuario: teclas y
+> clics desde PowerShell y capturas de pantalla (cómo, en LOG S12). W3.2–W3.8 hechas. Tests en verde.
+> **▶️ SIGUIENTE: OutSim/OutGauge en vivo** (lo último de W3.1): necesita cambiar `cfg.txt`, con
+> permiso del usuario línea a línea. Después, cerrar W3.
 
 ## Dónde estamos
 Fase activa: **W3 — La conexión**, detallada en S9 (`PLAN.md`). W2 está hecha entera.

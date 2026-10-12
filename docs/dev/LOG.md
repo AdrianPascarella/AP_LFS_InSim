@@ -41,6 +41,29 @@ igual que antes.
 
 **Commits:** `276aa2d` (script) y el cierre de este hito.
 
+**Segunda pasada (el usuario: «continuemos»), sin el usuario:**
+- **Activar InSim y manejar LFS desde el agente.** No hay herramientas de control de pantalla en la
+  sesión. Funcionó lo siguiente: `WScript.Shell.AppActivate` + `SendKeys` (`t`, `/insim=29999`,
+  Enter), y clics con `SetCursorPos`/`mouse_event` de `user32` desde PowerShell, con capturas de
+  pantalla a media resolución (`CopyFromScreen`) para ver dónde está. El script de clic y captura
+  está en el scratchpad de la sesión, no en el repositorio. Pantalla de 1920×1080: Un Jugador
+  (1736, 506), OK del circuito (356, 1038), GO (1786, 1038). Los botones InSim (200×200 unidades)
+  caen en x = 420 + L·5,4, y = T·5,4.
+- **Tropiezo:** Git Bash convierte `/help` en `C:/Program Files/Git/help` al pasarlo como
+  argumento. Solo salió basura en el chat local. Hace falta `MSYS_NO_PATHCONV=1`.
+- **Montar la carrera:** en el menú, `/ai` contesta «Circuito no disponible»; en la pantalla de Un
+  Jugador sí añade IA (`IS_NPL` con `PType=2`). El coche elegido era un mod (`SLX180 TYPEX~008`):
+  LFS generó la trayectoria de la IA para él al pulsar GO (lo escribe el propio LFS en `C:\LFS`).
+- **Resultados:** carrera de 3 vueltas en BL1 con 2 IA, todo en verde. Llegaron, entre otros,
+  `IS_MCI` ×361, NLP, NPL, RST, SPX, LAP, CON, HLV, FLG, FIN, RES, CIM y AXI. **`CName` = `35D799`**,
+  el mismo SkinID que muestra LFS (P6 validado). El botón con `TypeIn` abrió el cuadro «Type
+  something» (`Caption`, U3) y devolvió `IS_BTT` con «hola mañana»; un segundo botón sin `TypeIn`
+  (añadido al script) devolvió `IS_BTC`. NCI, SLC e IPB: LFS dice «only for multiplayer hosts».
+  Solo `TINY_RES` no respondió, ni siquiera durante la carrera. Pendiente de mirar.
+- Script: se añadieron `ISF.MCI | HLV | OBH` y el segundo botón; `IS_BFN` con `BFN.CLEAR` al final.
+- **OutSim/OutGauge:** no hay comando en `C:\LFS\docs\Commands.txt`; hace falta `cfg.txt`
+  (`OutGauge Mode/Port`, `OutSim Mode/Port/Opts`, líneas 204–214, ahora todo a 0). Se pide permiso.
+
 ## S11 — 2026-10-12 — `OutSim`, `OutGauge` y `run()` (W3.7)
 
 **Inicio:** según el protocolo; control de inicio en verde, documentos de acuerdo con git, 0

@@ -71,7 +71,6 @@ REQUESTS = [  # TINY info requests: in single player some get no answer, which t
     TINY.LCL,
 ]
 FIRST_REQI = 10  # ReqI of REQUESTS[0]; the next ones count up, so each answer names its request
-BUTTON_ID = 1
 
 
 @dataclasses.dataclass
@@ -151,7 +150,7 @@ def sent_packets() -> list[InSimPacket]:
     button = IS_BTN(
         ReqI=1,
         UCID=0,
-        ClickID=BUTTON_ID,
+        ClickID=1,
         BStyle=ISB.DARK | ISB.CLICK,
         TypeIn=20,
         L=70,
@@ -160,8 +159,19 @@ def sent_packets() -> list[InSimPacket]:
         H=8,
         Text="lfs_insim live test: button",
         Caption="Type something",
-    )
-    return [*requests, *messages, button]
+    )  # clicked, it opens a text box and LFS answers with IS_BTT
+    plain_button = IS_BTN(
+        ReqI=2,
+        UCID=0,
+        ClickID=2,
+        BStyle=ISB.LIGHT | ISB.CLICK,
+        L=70,
+        T=50,
+        W=60,
+        H=8,
+        Text="lfs_insim live test: click me",
+    )  # clicked, LFS answers with IS_BTC
+    return [*requests, *messages, button, plain_button]
 
 
 def _plain(value: Any) -> Any:
@@ -250,7 +260,8 @@ async def live(port: int, seconds: float, wait: float, exit_lfs: bool) -> dict[s
     logging.getLogger("lfs_insim").setLevel(logging.INFO)
     lfs_insim._stream.unpack_insim = recorder.unpack  # type: ignore[attr-defined]
 
-    insim = InSim(name="lfs_insim live", port=port, flags=ISF.LOCAL | ISF.CON, interval_ms=500)
+    flags = ISF.LOCAL | ISF.CON | ISF.MCI | ISF.HLV | ISF.OBH  # in a race: positions, contacts
+    insim = InSim(name="lfs_insim live", port=port, flags=flags, interval_ms=500)
     accepted = asyncio.Event()
     sent = sent_packets()
 
@@ -265,7 +276,7 @@ async def live(port: int, seconds: float, wait: float, exit_lfs: bool) -> dict[s
             return report(recorder, sent, ver_seen=False)
         insim.send(*sent)
         await asyncio.sleep(seconds)
-        insim.send(IS_BFN(SubT=BFN.DEL_BTN, ClickID=BUTTON_ID))
+        insim.send(IS_BFN(SubT=BFN.CLEAR))
         if exit_lfs:
             insim.send(IS_MST(Msg="/exit"))
         await asyncio.sleep(0.5)

@@ -115,8 +115,10 @@ jugador con un mod, para ver su SkinID en `CName` (P6). Con él se validan en LF
   `cfg.txt`, se pide permiso cambio a cambio.
   *Primera pasada en S12 → LOG.md S12:* `tests/live_lfs.py` hecho y ejecutado con LFS en el menú
   (un jugador, sin carrera): 0 paquetes ilegibles, 0 con el contenido cambiado al reescribirlos;
-  texto con griego y `€` bien. **Falta:** una carrera con IA (NPL, MCI, NLP, RST, RES, LAP…), un
-  coche mod (SkinID en `CName`, P6), pulsar el botón (BTC/BTT) y OutSim/OutGauge en vivo.
+  texto con griego y `€` bien. *Segunda pasada en S12:* carrera de 3 vueltas con 2 IA y un coche
+  mod: NPL, MCI, NLP, RST, SPX, LAP, CON, HLV, FLG, FIN, RES, CIM, AXI, BTC y BTT, todo bien;
+  `CName` = SkinID del mod (`35D799`, P6 validado); `Caption` visible en LFS (U3).
+  **Falta solo OutSim/OutGauge en vivo:** no hay comando, necesita `cfg.txt` (permiso).
   **Preferencia del usuario (S12):** quedar fuera de la prueba. La activación de InSim la hace el
   agente: controlando la pantalla y/o con `autoexec.lfs` (este, con permiso, porque está en
   `C:\LFS`). En S12 aún la escribió el usuario.
