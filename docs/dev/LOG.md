@@ -18,7 +18,8 @@
   original colour and Latin-1»; notas de 0.8C27, post 2177567 (2026): página del mensaje en
   `IS_MSO`, y sin `ISF_MSO_COLS` el `^8` se convierte en `^L`, `^E`… Los escapes `^v`, `^d`… no
   tienen fuente de Scawen (solo otras bibliotecas); como se dejan tal cual, no dependemos de ellos.
-- **Encontrado:** P7 (`IS_BTN` con título) y P8 (`TextStart`), como W2.10 y W2.11.
+- **Encontrado:** P7 (`IS_BTN` con título) y P8 (`TextStart`), como W2.10 y W2.11. Sus
+  decisiones, como U3 y U4 en `USER_ACTIONS.md`.
 
 **Decisiones:** en el `str` se quitan los cambios de página y se dejan los demás `^` (el usuario
 aceptó la propuesta). *Por qué:* son un detalle de la codificación; convertir `^^` en `^` y dejar

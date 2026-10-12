@@ -32,7 +32,7 @@ El proyecto anterior está en la rama `refactor/estabilizacion` y en las etiquet
 consulta, no se copia.
 
 ## Lo que te espera
-**0 acciones pendientes** → `USER_ACTIONS.md`.
+**2 acciones pendientes, las dos bloquean** (U3 → W2.10, U4 → W2.11) → `USER_ACTIONS.md`.
 
 ## Restricciones ahora mismo
 - En este equipo solo hay Python 3.14. Las demás versiones las comprueba el CI.
