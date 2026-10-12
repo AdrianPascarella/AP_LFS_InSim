@@ -4,16 +4,19 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import functools
 import logging
 from collections.abc import Awaitable, Callable
 from types import TracebackType
 from typing import Self, TypeVar, cast
 
 from lfs_insim import _requests
+from lfs_insim._commands import Command, CommandHandler, Commands
 from lfs_insim._handlers import Handlers
 from lfs_insim._stream import PacketStream
 from lfs_insim.packets import (
     IS_ISI,
+    IS_MSO,
     IS_MST,
     IS_MSX,
     IS_MTC,
@@ -85,6 +88,7 @@ class InSim:
         )
         self._isi.pack()  # fail now, not when connecting, if a name is too long
         self._handlers = Handlers()
+        self._commands = Commands(prefix)
         self._requests = _requests.Requests()
         self._connect_handlers: list[ConnectHandler] = []
         self._every: list[tuple[float, ConnectHandler]] = []
@@ -106,6 +110,23 @@ class InSim:
 
         def register(handler: Handler[P]) -> Handler[P]:
             self._handlers.add(packet_type, handler)
+            return handler
+
+        return register
+
+    def on_command(self, name: str) -> Callable[[CommandHandler], CommandHandler]:
+        """Decorator: call the function when someone types the prefix and this name in the chat.
+
+        With `InSim(prefix="!")`, `@insim.on_command("kick")` is called for "!kick Bob" with a
+        Command: `command.args` is ("Bob",), and `command.reply("...")` answers only who typed
+        it. The name is matched in any case. `def` or `async def`, as for `on()`; the IS_MSO
+        still reaches the IS_MSO handlers. A command without a function is left alone (it may
+        be for another program).
+        """
+        self._commands.check(name)  # fail here, not when the function is given
+
+        def register(handler: CommandHandler) -> CommandHandler:
+            self._commands.add(name, handler)
             return handler
 
         return register
@@ -364,6 +385,12 @@ class InSim:
             self._handlers.call(before, (packet,), f"{type(packet).__name__} (before handlers)")
         self._requests.deliver(packet)
         self._handlers.dispatch(packet)
+        if isinstance(packet, IS_MSO) and (found := self._commands.find(packet)) is not None:
+            handler, name, args = found
+            ucid = packet.UCID
+            reply = functools.partial(self.say, to=ucid)
+            command = Command(name, args, ucid, packet.PLID, packet, reply)
+            self._handlers.call(handler, (command,), f"command {self._commands.prefix}{name}")
         # After the handlers, and after the first step of the async ones: their tasks were
         # scheduled first, so until their first await they still see the state before the packet.
         loop = asyncio.get_running_loop()

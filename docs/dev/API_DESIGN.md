@@ -276,6 +276,22 @@ sin aviso. *Por qué:* P4; una API pequeña se puede revisar entera.
 - Fuera por ahora: `IS_MSL` (mensaje solo en este equipo) y el sonido de `IS_MTC`; se envían con
   `insim.send()` si hacen falta.
 
+## Precisado al escribir los comandos de chat (W4.5, S12; propuesto por el agente)
+- **Nombre: `@insim.on_command("hello")`, no `@insim.command`.** Choque detectado al escribirlo:
+  `insim.command("/restart")` (W4.4) ya envía comandos, y un método no puede hacer las dos cosas.
+  `on_command` encaja con `@insim.on` y `@insim.on_connect`. *Pendiente de que el usuario lo vea*
+  (eligió la idea en S12 con el nombre `command`). *Descartado:* renombrar el de enviar.
+- La función recibe un `Command` (exportado en `lfs_insim`, amplía D6): `name` (en minúsculas),
+  `args` (las palabras siguientes, tal cual), `ucid`, `plid`, `packet` (el `IS_MSO`) y
+  `reply(texto)`, que contesta solo a quien lo escribió (`IS_MTC`).
+- Necesita `InSim(prefix="!")` (sin prefijo, `ValueError` al registrar). Cuenta cualquier mensaje
+  de un usuario cuyo texto empiece por el prefijo, no solo los `MSO_PREFIX` (cómo llega lo que
+  escribe el propio anfitrión se comprobará en W4.7). El nombre no distingue mayúsculas; los
+  argumentos se separan por espacios (sin comillas). Nombre vacío, con espacios o con el prefijo,
+  o repetido: `ValueError` al registrar.
+- Un comando sin función se deja pasar sin aviso (puede ser de otro programa). El `IS_MSO` sigue
+  llegando a los manejadores de `IS_MSO`. Un error en la función se registra, como en `on()`.
+
 ## Abierto (se decide más adelante, no ahora)
 - Agrupar manejadores en módulos (lo que hacía `InSimApp` con varias aplicaciones a la vez): si
   hiciera falta, algo como el `APIRouter` de FastAPI. Solo si una aplicación real lo pide.
