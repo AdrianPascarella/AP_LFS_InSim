@@ -44,6 +44,9 @@
   tocado). InSim no escucha hasta que se active.
 - Un `du` sobre `C:\LFS` lanzado por el agente siguió en segundo plano tras su tiempo límite y
   bloqueó la carpeta (Windows negó el renombrado) → cicatriz en §13.
+- A petición del usuario, setups y skins devueltos desde la copia sin sobrescribir nada. Solo
+  chocaba `setups/FBM_RACE_blackwood.set`, distinto del que trae el juego; se dejó el del juego a
+  la espera de que el usuario decida.
 
 ## S8 — 2026-10-12 — `IS_BTN.Caption` (W2.10), `IS_MSO.TextStart` (W2.11): W2 cerrada
 
