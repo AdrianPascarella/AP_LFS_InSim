@@ -142,6 +142,26 @@ se va.
 - **Verificación:** `verify.py` → PASS (272 passed, 1 deselected).
 - **Commit:** `abf109e`.
 
+**W4.3 — `Roster`** (`src/lfs_insim/state.py`, público como `lfs_insim.state`, D6).
+- Antes de escribir se leyó en InSim.txt cómo se comporta cada paquete: `IS_NPL` con un PLID que
+  ya existe significa que sale de boxes; `NumP` 0 es una solicitud para unirse; `IS_PLP` lo deja en
+  la lista; `TINY_CLR`, `TINY_MPE`, `IS_ISM`.
+- **Orden** (la propuesta de S12, que el usuario aceptó al decir «sigamos tus recomendaciones»):
+  nuevo `InSim._watch(antes, después)`. «Después» va con `call_soon`, para que también un
+  manejador `async` encuentre al que se va hasta su primer `await` (sus tareas se programan antes).
+  Detalle y lo demás, en `API_DESIGN.md` («Precisado al escribir el `Roster`»).
+- **Red:** `tests/test_roster.py`, 12 tests (estado inicial, conexiones, boxes, solicitud de
+  unión, cambio de nombre, toma de coche, `TINY_CLR`, conexión desconocida, reconexión,
+  `IS_ISM`/`TINY_MPE`, orden respecto a los manejadores, identificadores desconocidos). Pasaron a la
+  primera, así que se pasaron 13 mutaciones (orden de antes y después, solicitud de unión, nombre
+  de la IA, boxes, olvidar al pedir de nuevo, `IS_ISM`/`TINY_MPE`, `IS_CNL`, `IS_TOC`, `remote`,
+  `is_ai`, `TINY_CLR`, `IS_PLP`): las 13, en rojo.
+- mypy y ruff pidieron dos retoques de forma (un nombre reutilizado con otro tipo y un `if`
+  anidado); el código de `IS_CNL` cambió de forma después de las mutaciones, sin cambiar lo que
+  hace, y sus tests siguen en verde.
+- **Verificación:** `verify.py` → PASS (284 passed, 1 deselected).
+- **Commit:** `c52a919`.
+
 ## S11 — 2026-10-12 — `OutSim`, `OutGauge` y `run()` (W3.7)
 
 **Inicio:** según el protocolo; control de inicio en verde, documentos de acuerdo con git, 0

@@ -161,7 +161,7 @@ contra el LFS falso y, al final (W4.7), contra el LFS real, que maneja el agente
   Forma exacta (una función o `request` y `request_all`) se precisa al escribirla. *Acepta:* tests
   con el LFS falso: una respuesta, varias, ninguna (vence el plazo), dos peticiones a la vez.
   hecho en S12 → LOG.md S12 (`request(IS_X)` y `request_all(IS_X)`, por el tipo de la respuesta)
-- [ ] **W4.3** — **`Roster` (`lfs_insim.state`, D4):** `roster.connections[UCID]` y
+- [x] **W4.3** — **`Roster` (`lfs_insim.state`, D4):** `roster.connections[UCID]` y
   `roster.players[PLID]`, con usuario, nombre, coche, IA o humano, admin, en boxes, y el paso de
   uno a otro (`player.connection`, `connection.players`). Pide NCN y NPL en cada (re)conexión y
   rehace el estado. Sigue NCN, CNL, CPR, NPL, PLL, PLP, TOC, `TINY_CLR` y `TINY_MPE`. *Propuesta del
@@ -169,6 +169,7 @@ contra el LFS falso y, al final (W4.7), contra el LFS real, que maneja el agente
   usuario cuando alguien llega o cambia, y después cuando se va, para que en un manejador de
   `IS_CNL` o `IS_PLL` aún se pueda saber quién era. *Acepta:* tests de cada paquete, de una
   reconexión y de la IA (sin conexión propia: `UCID` 0), y el ejemplo 2 de `API_DESIGN.md`.
+  hecho en S12 → LOG.md S12 (el ejemplo 2 se escribe y prueba en W4.6)
 - [ ] **W4.4** — **Enviar con comodidad:** `insim.say(texto)` (`IS_MST` o `IS_MSX` según los bytes
   ya codificados; `ValueError` si no cabe), `insim.say(texto, to=UCID)` (`IS_MTC`) e
   `insim.command("/restart")`. *Acepta:* tests de los límites de tamaño con texto no latino.
