@@ -20,9 +20,12 @@
   - Solo en el anterior: `IS_NONE` (un marcador, no un paquete) y `Vec`/`Vector`, que en el nuevo
     están en `_types.py`, fuera del volcado. Coinciden byte a byte dentro de OutSimPack.
 - **`CName` de los mods (P6):** InSim.txt solo dice «skin prefix», y ni la documentación local de
-  LFS ni el proyecto anterior lo resuelven. Según dos hilos del foro de lfs.net (leídos en el
-  extracto del buscador, porque el foro pide sesión), para un mod `CName` es el SkinID como entero
-  de 32 bits, y su valor en hexadecimal es el ID del mod. Un coche oficial se reconoce porque sus
+  LFS ni el proyecto anterior lo resuelven. La fuente es el hilo «New InSim packet size byte and
+  mod info» del foro de lfs.net. Primero se leyó solo el extracto del buscador, porque el foro pide
+  sesión; después el usuario inició sesión y se leyó en Chrome el post de Scawen y su respuesta a
+  una pregunta. Para un mod, `CName` es el SkinID como entero de 32 bits con el byte alto a cero,
+  en orden de bytes de Intel, y su valor en hexadecimal es el ID del mod. Su ejemplo (`_A3` = mod
+  `33415F`; `XRZ` = coche oficial, quizá futuro) está en los tests. Un coche oficial se reconoce porque sus
   tres primeros bytes son letras o cifras ASCII. Con el código de S5, los SkinID 0x8D0A90, 0x100081
   y 0x5A0012 se perdían al ir y volver. Arreglado con los codecs `CarName` y `SkinID` en `_codec`,
   y las excepciones `CAR_NAMES` y `SKIN_IDS` en `spec_overrides.py`. El generador se para si un

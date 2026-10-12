@@ -88,3 +88,7 @@ generadas, y las ideas de la conexión (reconexión, errores aislados por maneja
 - Resuelto (S6): `_codec.CarName` y `_codec.SkinID`, y las excepciones `CAR_NAMES` y `SKIN_IDS`
   en `spec_overrides.py`. Tests con bytes de mods reales y ambiguos; red vista en rojo. Sigue
   pendiente comprobarlo con un mod en el LFS real (punto ciego, W3.1).
+- Avance (S6): fuente leída entera, con la sesión del usuario en el foro: hilo «New InSim packet
+  size byte and mod info» de lfs.net, primer post de Scawen (InSim 9). Confirma la regla de los
+  tres bytes alfanuméricos y el orden de bytes de Intel. Su ejemplo (`_A3` = mod `33415F`; `XRZ` =
+  coche oficial, quizá futuro) está ya en los tests.

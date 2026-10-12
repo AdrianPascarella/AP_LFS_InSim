@@ -187,14 +187,17 @@ def test_mst_text_is_zero_terminated() -> None:
 
 
 # CName is an official car ("XFG") or, for a mod, its SkinID: a 32-bit unsigned whose hex digits
-# are the skin ID shown by LFS (LFS forum). The mods below have bytes that are not valid cp1252
-# (0x81, 0x8D, 0x90) or a zero in the middle, which plain text would lose.
+# are the skin ID shown by LFS (Scawen, lfs.net forum thread "New InSim packet size byte and mod
+# info"). "_A3" is his example. The other mods have bytes that are not valid cp1252 (0x81, 0x8D,
+# 0x90) or a zero in the middle, which plain text would lose.
 @pytest.mark.parametrize(
     ("raw", "name"),
     [
         (b"XFG\0", "XFG"),
         (b"FZ5\0", "FZ5"),
+        (b"XRZ\0", "XRZ"),  # all alphanumeric: an official car, maybe a future one
         (bytes(4), ""),  # IS_SLC with no car selected
+        (b"_A3\0", "33415F"),  # one byte is not alphanumeric: a mod, in Intel byte order
         ((0x5A1FB3).to_bytes(4, "little"), "5A1FB3"),
         ((0x8D0A90).to_bytes(4, "little"), "8D0A90"),
         ((0x100081).to_bytes(4, "little"), "100081"),
