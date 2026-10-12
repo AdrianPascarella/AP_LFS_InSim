@@ -413,6 +413,9 @@ Formas en que este equipo o sus herramientas ya han dañado o pueden dañar el t
 - **La trampa de las barras invertidas en heredocs se repitió en S4**: un `\b` de una regex se
   convirtió en un carácter de control y un test acabó con saltos de línea reales. Cualquier texto
   con `\` se escribe con Edit o Write, nunca con un heredoc de Python.
+- **Un comando que pasa de su tiempo límite sigue vivo en segundo plano** (visto en S9: un `du`
+  sobre `C:\LFS` bloqueó la carpeta y Windows negó el renombrado). Antes de mover o renombrar,
+  comprobar que no queda ninguna tarea propia trabajando sobre esa ruta, y pararla.
 
 ## §14 — Guías de procedimiento
 Cuando una tarea recurrente tenga un coste de orientación alto, se escribe una guía con la

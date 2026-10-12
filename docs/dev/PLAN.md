@@ -102,7 +102,9 @@ final.
 - [ ] **W3.1** — **Prueba en vivo del protocolo** (es un test de la biblioteca, no un InSim): un script junto a los tests que, con LFS abierto, conecta, pide información (versión, conexiones, jugadores, estado), envía mensajes y botones, comprueba que cada paquete recibido se lee bien y deja un informe de lo que vio. Incluye un
 jugador con un mod, para ver su SkinID en `CName` (P6). Con él se validan en LFS las tarjetas del punto ciego. Sustituye al `test_insim` del proyecto anterior, que cubría ~50 paquetes recibidos y ~16 enviados con comandos de chat          bloqueado por: W2 y el resto de W3
   *Precisado en S9:* lo ejecuta el agente, que abre LFS y lo cierra con `/exit` por InSim (permisos
-  en `PROTOCOL.md`). Se hace con el LFS recién reinstalado (U5). Se comprueba si OutSim y montar una
+  en `PROTOCOL.md`). Se hace con el LFS recién reinstalado (U5). En el juego limpio InSim no
+  escucha: hay que activarlo con `/insim=29999` (se escribe en LFS, o va en `autoexec.lfs`, que
+  está en `C:\LFS` y pide permiso). Se comprueba si OutSim y montar una
   carrera con IA se pueden configurar con comandos durante la partida; si hace falta tocar
   `cfg.txt`, se pide permiso cambio a cambio.
 

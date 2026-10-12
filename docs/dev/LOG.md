@@ -31,6 +31,20 @@
 
 **Commits:** uno, con todo lo anterior.
 
+**Después del commit — reinstalación de LFS (U5, la hizo el agente a petición del usuario):**
+- Descargado `LFS_S3_8C31_setup.exe` (1,74 GB) desde lfs.net con la sesión del usuario en Chrome.
+  Era la misma versión instalada (0.8C31, la «nueva gráfica» en prueba pública). El instalador no
+  está firmado (LFS nunca lo ha hecho); es NSIS.
+- `UninstallLFS.exe /S` salió con 0 sin borrar ningún archivo. Se movió todo `C:\LFS` a
+  `C:\LFS_old_2026-10-12` para no borrar nada; el usuario borró después esa carpeta él mismo.
+- Instalado con `/S /D=C:\LFS`. El instalador deja las texturas y los circuitos en
+  `C:\LFS\inst_tmp\*.7z` y es **`LFS.exe` quien los descomprime al abrirse la primera vez** (~75 s).
+- En el juego limpio, `data/script/autoexec.lfs` solo tiene comentarios: el `/insim=29999` lo
+  había puesto otro programa (en el registro hay una aplicación «LFS SpeedMonitor Core»; no se ha
+  tocado). InSim no escucha hasta que se active.
+- Un `du` sobre `C:\LFS` lanzado por el agente siguió en segundo plano tras su tiempo límite y
+  bloqueó la carpeta (Windows negó el renombrado) → cicatriz en §13.
+
 ## S8 — 2026-10-12 — `IS_BTN.Caption` (W2.10), `IS_MSO.TextStart` (W2.11): W2 cerrada
 
 **Hecho:**

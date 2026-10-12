@@ -1,7 +1,7 @@
 # 📍 Estado — AP_LFS_InSim (lfs_insim)
 > Actualizado: 2026-10-12 (S9): **W3 detallada con el usuario** (W3.2–W3.8, y W3.1 al final).
-> El agente puede abrir LFS para las pruebas (permisos en `PROTOCOL.md`). Setups y skins copiados
-> antes de que el usuario reinstale LFS (U5). Tests en verde.
+> El agente puede abrir LFS para las pruebas (permisos en `PROTOCOL.md`). LFS 0.8C31 reinstalado
+> limpio en `C:\LFS` (U5); InSim **no** está activado (`autoexec.lfs` vacío). Tests en verde.
 > **▶️ SIGUIENTE: W3.2 — partir el flujo TCP en paquetes** (función pura, sin sockets).
 
 ## Dónde estamos
@@ -31,7 +31,7 @@ El proyecto anterior está en la rama `refactor/estabilizacion` y en las etiquet
 consulta, no se copia.
 
 ## Lo que te espera
-**1 acción pendiente** (U5, reinstalar LFS; solo bloquea W3.1) → `USER_ACTIONS.md`.
+**0 acciones pendientes** → `USER_ACTIONS.md`.
 
 ## Restricciones ahora mismo
 - En este equipo solo hay Python 3.14. Las demás versiones las comprueba el CI.
