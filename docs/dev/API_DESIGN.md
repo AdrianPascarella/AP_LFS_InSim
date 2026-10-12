@@ -40,7 +40,7 @@ from lfs_insim.state import Roster
 
 insim = InSim(name="who")
 roster = Roster(insim)          # opt-in: tracks NCN/CNL/CPR/NPL/PLL/PLP/TOC... and asks for the
-                                # initial state (TINY_NCN, TINY_NPL) on every (re)connection
+                                # initial state (TINY.NCN, TINY.NPL) on every (re)connection
 
 
 @insim.on(IS_NPL)
@@ -97,12 +97,16 @@ mismo paquete admite varios manejadores, y un error en uno se registra y no para
 ignora en silencio y no hay tipos) y cadenas como `"MSO"`.
 
 **D3 — Los paquetes, con los nombres de la especificación**: `IS_MST(Msg=...)`, `packet.PLID`,
-`ISF.LOCAL`, `TINY_NCN`. Son dataclasses generadas (W2); `Size`, `Type` y los ceros de relleno
+`ISF.LOCAL`, `TINY.NCN`. Son dataclasses generadas (W2); `Size`, `Type` y los ceros de relleno
 los pone la biblioteca. *Por qué:* quien lee `InSim.txt`, el foro de LFS o un ejemplo en C
 encuentra lo mismo, y la generación es mecánica. *Descartado:* `snake_case` (`req_i`, `plid`):
 más PEP 8, pero cada nombre necesita una traducción que hay que recordar y documentar. Lo pitónico
 va en la capa de arriba: `packet.text` (texto ya decodificado de la página de códigos de LFS),
 `roster.players`, `insim.say("...")`.
+*Precisado en S4 (aprobado por el usuario):* los enums y flags son clases con el prefijo de C como
+nombre y el resto como miembro (`TINY.NCN`, `ISF.MCI`), no constantes sueltas (`TINY_NCN`): el
+editor los agrupa y mypy distingue un `TINY` de un `SMALL`. Los valores que no son identificadores
+válidos (`DL_18`) reciben un nombre fijado en las excepciones de W2. Los campos de texto son `str`.
 
 **D4 — El estado de conexiones y jugadores, en la biblioteca y opcional (`Roster`).** Casi todas
 las aplicaciones lo necesitan (la gestión de usuarios, el registrador, la IA) y es fácil hacerlo

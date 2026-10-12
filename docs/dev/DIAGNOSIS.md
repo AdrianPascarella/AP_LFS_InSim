@@ -57,6 +57,8 @@ generadas, y las ideas de la conexión (reconexión, errores aislados por maneja
 - Avance (S3): `fetch_spec.py` lee `OutSimPack.txt` si existe, guarda su huella en
   `spec/checked.json` y avisa si cambia; en el CI se salta. Que el código generado vaya en git se
   decide en W2.
+- Avance (S4): decidido con el usuario que el código generado va en git, con un control que
+  comprueba que está al día (W2.7).
 
 ### P5 — Este equipo no tiene Python 3.11, 3.12 ni 3.13   [RESUELTO en S3]
 - **Evidencia:** `py -0p` en S1: solo 3.14 y un 3.9 antiguo.

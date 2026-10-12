@@ -21,11 +21,37 @@ forma de la API acordada antes de escribir el código.
 verificación pasa y se ha visto fallar; el CI está en verde en las cuatro versiones; el script baja
 la especificación y detecta un cambio; el diseño de la API está escrito y el usuario lo ha aprobado.
 
-## W2 — El protocolo, generado desde la especificación   ⏳ ACTIVA · por detallar con el usuario
+## W2 — El protocolo, generado desde la especificación   ⏳ ACTIVA · detallada con el usuario en S4
 **Objetivo:** todos los paquetes y enums de InSim v10, OutSim y OutGauge, generados a partir de la
 especificación oficial (los `struct` de C), con sus comentarios convertidos en documentación y
 tests de ida y vuelta (empaquetar → desempaquetar). Las definiciones del proyecto anterior se usan
 como segunda opinión para encontrar errores, no como fuente.
+
+**Decidido en S4 (→ LOG.md S4):** enums y flags como clases (`TINY.NCN`, `ISF.MCI`); el código
+generado va en git, con un control que comprueba que está al día (P3); los campos de texto son
+`str`, con la codificación de LFS hecha en W2. Los campos que usan un enum quedan como `int`.
+
+- [ ] **W2.1** — **Lector de la especificación** (`scripts/generate_packets.py`): convierte
+  `spec/cache/` en un modelo (structs, campos, enums, flags, constantes y sus comentarios). Falla
+  con un mensaje claro ante cualquier construcción que no entienda y no esté en las excepciones.
+  *Acepta:* lee los 81 `struct` de InSim.txt y los de OutSimPack.txt; tests con fragmentos.
+- [ ] **W2.2** — **Excepciones escritas a mano, en un solo archivo:** qué campo da la longitud de
+  cada paquete variable, el nombre de los enums sin nombre, los valores que no son identificadores
+  válidos (`DL_18`) y las partes condicionales de OutSimPack2.
+- [ ] **W2.3** — **Núcleo de empaquetado** escrito a mano (`_codec`): clase base, `pack()` y
+  `unpack()`, `Size` (÷4) y `Type` automáticos, relleno a cero, texto al final rellenado a 4 bytes
+  y arrays con longitud dada por un campo.
+- [ ] **W2.4** — **Paquetes de InSim generados** (dataclasses con los nombres de la
+  especificación y los comentarios de C como docstring) y sus enums y flags.
+- [ ] **W2.5** — **OutSim y OutGauge generados**, OutSimPack2 incluido según sus opciones.
+- [ ] **W2.6** — **Tests:** ida y vuelta de todos los paquetes; tamaño contra el `// N` de la
+  especificación; unos cuantos paquetes byte a byte escritos a mano; visto en rojo.
+- [ ] **W2.7** — **Control «código generado al día»**: regenerar en memoria y comparar con git,
+  en `verify.py` (si existe `spec/cache/`) y en el workflow `spec`. Visto en rojo.
+- [ ] **W2.8** — **Segunda opinión:** comparar formatos y tamaños con el proyecto anterior con un
+  script de un solo uso; las diferencias se revisan y se anotan en `LOG.md`.
+- [ ] **W2.9** — **Texto de LFS ↔ `str`**: páginas de códigos (`^L`, `^E`…) y `MSOData`/`LID_*`
+  de 0.8C27. Que funcione en el LFS real es punto ciego: se valida en W3.1.
 
 ## W3 — La conexión   📋 ESBOZADA
 **Objetivo:** hablar con LFS: TCP (y UDP para OutSim/OutGauge), saludo `IS_ISI`, mantener viva la
