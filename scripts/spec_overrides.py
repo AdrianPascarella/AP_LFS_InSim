@@ -36,6 +36,20 @@ TEXT_CODE_PAGES: dict[str, str] = {
     "IS_MSO": "MSOData",
 }
 
+# Packets whose trailing text may start with a caption: packet -> name of the extra str field.
+# InSim.txt, after IS_BTN: "If the first character of IS_BTN's Text field is zero, LFS will read
+# the caption up to the second zero. The visible button text then follows that second zero."
+CAPTIONS: dict[str, str] = {
+    "IS_BTN": "Caption",
+}
+
+# Fields that give a byte offset into the packet's trailing text: packet -> field. They are
+# exposed as an index into the str, since code page switches are not in it ("first character of
+# the actual text", IS_MSO.TextStart).
+TEXT_STARTS: dict[str, str] = {
+    "IS_MSO": "TextStart",
+}
+
 # Variable-size packets whose last field is an array: packet -> (array field, counter field).
 # The counter is filled in from the length of the list; None = the items simply fill the packet.
 TAIL_ARRAY: dict[str, tuple[str, str | None]] = {

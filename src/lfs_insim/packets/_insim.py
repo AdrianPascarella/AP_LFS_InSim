@@ -392,7 +392,10 @@ class IS_MSO(InSimPacket):
     """set if typed by a user (see User Values below)"""
 
     TextStart: int = 0
-    """first character of the actual text (after player name)"""
+    """
+    first character of the actual text (after player name): an index into Msg (LFS sends a byte
+    offset)
+    """
 
     Msg: str = ""
     """4, 8, 12... 128 characters - last byte is zero"""
@@ -406,8 +409,8 @@ class IS_MSO(InSimPacket):
         ("UCID", _c.Scalar("B")),
         ("PLID", _c.Scalar("B")),
         ("UserType", _c.Scalar("B")),
-        ("TextStart", _c.Scalar("B")),
-        ("Msg", _c.TailText(128, code_page="MSOData")),
+        ("TextStart", _c.TextOffset(of="Msg", code_page="MSOData")),
+        ("Msg", _c.TailText(128, code_page="MSOData", text_start="TextStart")),
     )
 
 
@@ -2639,6 +2642,9 @@ class IS_BTN(InSimPacket):
     Text: str = ""
     """0 to 240 characters of text"""
 
+    Caption: str = ""
+    """caption of the text entry dialog (TypeIn); empty = LFS's default caption"""
+
     _TYPE = ISP.BTN
     _LAYOUT = (
         ("Size", _c.SIZE),
@@ -2653,7 +2659,8 @@ class IS_BTN(InSimPacket):
         ("T", _c.Scalar("B")),
         ("W", _c.Scalar("B")),
         ("H", _c.Scalar("B")),
-        ("Text", _c.TailText(240)),
+        ("Text", _c.TailText(240, caption="Caption")),
+        ("Caption", _c.FilledIn("Caption")),
     )
 
 

@@ -74,16 +74,18 @@ generadas, y las ideas de la conexión (reconexión, errores aislados por maneja
   en cada push; las 8 combinaciones en verde. El equipo sigue sin esas versiones, pero ya no pasa
   nada sin que se note.
 
-### P7 — `IS_BTN` con título de cuadro de texto pierde todo el texto   [ABIERTO]
+### P7 — `IS_BTN` con título de cuadro de texto pierde todo el texto   [RESUELTO en S8]
 - **Evidencia:** S7. InSim.txt: si el primer carácter de `Text` es cero, LFS lee el título hasta el
   segundo cero y el texto del botón va después. `TailText` corta en el primer cero: lee `""` y
   no se puede enviar un título.
 - **Acción:** W2.10, con la forma decidida por el usuario.
+- Resuelto (S8): campo `IS_BTN.Caption` (U3); excepción `CAPTIONS`; codecs `TailText(caption=)` y `FilledIn`.
 
-### P8 — `IS_MSO.TextStart` no sirve como índice del `str`   [ABIERTO]
+### P8 — `IS_MSO.TextStart` no sirve como índice del `str`   [RESUELTO en S8]
 - **Evidencia:** S7. `TextStart` es una posición en bytes; el `str` ya no tiene los `^L`/`^J` y los
   caracteres de dos bytes cuentan uno, así que `Msg[TextStart:]` falla con nombres no latinos.
 - **Acción:** W2.11.
+- Resuelto (S8): `TextStart` es un índice en `Msg` (U4); excepción `TEXT_STARTS`; codec `TextOffset`.
 
 ### P6 — `CName` de un mod se perdía al leerlo como texto   [RESUELTO en S6, falta verlo en el LFS real]
 - **Evidencia:** W2.8 (S6). InSim.txt solo dice «skin prefix», pero en el foro de lfs.net consta

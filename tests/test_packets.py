@@ -70,6 +70,10 @@ def sample_value(codec: c.Codec) -> Any:
         return (chr(ord("a") + n % 26) * codec.limit)[: max(1, codec.limit)]
     if isinstance(codec, c.TailText):
         return "hello" + str(n)
+    if isinstance(codec, c.TextOffset):
+        return 3  # inside the "hello..." of the TailText
+    if isinstance(codec, c.FilledIn):
+        return "caption" + str(n)
     if isinstance(codec, c.CarName):
         return "XRT" if n % 2 else f"{n:06X}"
     if isinstance(codec, c.SkinID):

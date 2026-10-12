@@ -2,7 +2,7 @@
 
 import pytest
 
-from lfs_insim.packets import IS_MSO, IS_MST, ISP, LID
+from lfs_insim.packets import IS_BTN, IS_MSO, IS_MST, ISP, LID
 from lfs_insim.packets._text import decode, encode
 from lfs_insim.text import strip_colours
 
@@ -87,3 +87,43 @@ def test_text_limit_counts_bytes_after_encoding() -> None:
 )
 def test_strip_colours(text: str, plain: str) -> None:
     assert strip_colours(text) == plain
+
+
+def test_mso_text_start_is_an_index_into_the_str() -> None:
+    # The name has a two-byte character and LFS adds code page switches (Scawen, post 460437):
+    # TextStart counts bytes, up to "hi" after the last ^L.
+    msg = b"^J\x82\xa0^L : ^Lhi"
+    data = bytes([0, ISP.MSO, 0, 0, 0, 0, 1, msg.index(b"hi")]) + msg + b"\0"
+    data = bytes([len(data + bytes(-len(data) % 4)) // 4]) + data[1:] + bytes(-len(data) % 4)
+    packet = IS_MSO.unpack(data)
+    assert packet.Msg == "あ : hi"
+    assert packet.Msg[packet.TextStart :] == "hi"
+    assert IS_MSO.unpack(packet.pack()) == packet
+
+
+def test_mso_text_start_points_after_an_added_switch() -> None:
+    packet = IS_MSO(TextStart=6, Msg="Bob : あ")
+    data = packet.pack()
+    assert data[8:] == b"Bob : ^J\x82\xa0\0\0"
+    assert data[7] == 8  # after ^J, where the typed text starts
+    assert IS_MSO.unpack(data) == packet
+
+
+def test_mso_text_start_out_of_the_text_is_rejected() -> None:
+    with pytest.raises(ValueError, match="not a position in Msg"):
+        IS_MSO(TextStart=3, Msg="ab").pack()
+
+
+def test_button_caption() -> None:
+    # InSim.txt: 0-65-66-67-0-68-69-70-71-0-0-0 displays "DEFG" with caption "ABC".
+    packet = IS_BTN(ReqI=1, TypeIn=10, Text="DEFG", Caption="ABC")
+    data = packet.pack()
+    assert data[12:] == bytes([0, 65, 66, 67, 0, 68, 69, 70, 71, 0, 0, 0])
+    assert IS_BTN.unpack(data) == packet
+
+
+def test_button_without_caption() -> None:
+    data = IS_BTN(ReqI=1, Text="ABC").pack()
+    assert data[12:] == bytes([65, 66, 67, 0])  # "65-66-67-0 would display button text ABC"
+    assert IS_BTN.unpack(data) == IS_BTN(ReqI=1, Text="ABC")
+    assert IS_BTN.unpack(IS_BTN(Caption="only").pack()) == IS_BTN(Caption="only")

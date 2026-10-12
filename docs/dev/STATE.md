@@ -1,12 +1,11 @@
 # 📍 Estado — AP_LFS_InSim (lfs_insim)
-> Actualizado: 2026-10-12 (S7): **W2.1–W2.9 hechas.** El texto se lee y escribe con las páginas de
-> códigos de LFS (`^L`, `^J`…) y `IS_MSO` empieza en la página de `MSOData` (LOG S7). Tests en verde.
-> **▶️ SIGUIENTE: W2.10 y W2.11** (P7: título de `IS_BTN`; P8: `TextStart`). Las dos necesitan una
-> decisión del usuario sobre la forma; después se cierra W2.
+> Actualizado: 2026-10-12 (S8): **W2 cerrada** (W2.1–W2.11). Texto con páginas de códigos (S7),
+> `IS_BTN.Caption` y `IS_MSO.TextStart` como índice del `str` (S8). Tests en verde.
+> **▶️ SIGUIENTE: detallar W3 (la conexión) con el usuario**, como se hizo con W2 en S4: TCP y UDP,
+> `IS_ISI`, mantener viva la conexión, reconexión, errores aislados y el LFS falso.
 
 ## Dónde estamos
-Fase activa: **W2 — El protocolo, generado desde la especificación**, detallada con el usuario en
-S4 (`PLAN.md`). Hechas W2.1–W2.9.
+Fase activa: **W3 — La conexión**, solo esbozada (`PLAN.md`). W2 está hecha entera.
 
 - **Cómo se genera:** `.venv/Scripts/python scripts/generate_packets.py` lee
   `spec/cache/InSim.txt` y `spec/cache/OutSimPack.txt` (con `scripts/spec_parser.py`) y las
@@ -32,7 +31,7 @@ El proyecto anterior está en la rama `refactor/estabilizacion` y en las etiquet
 consulta, no se copia.
 
 ## Lo que te espera
-**2 acciones pendientes, las dos bloquean** (U3 → W2.10, U4 → W2.11) → `USER_ACTIONS.md`.
+**0 acciones pendientes** → `USER_ACTIONS.md`.
 
 ## Restricciones ahora mismo
 - En este equipo solo hay Python 3.14. Las demás versiones las comprueba el CI.

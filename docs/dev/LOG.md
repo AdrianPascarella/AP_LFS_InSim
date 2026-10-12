@@ -1,6 +1,29 @@
 # 📓 Diario — AP_LFS_InSim (lfs_insim)
 <!-- Solo se añade, lo más nuevo arriba. Una entrada por sesión. -->
 
+## S8 — 2026-10-12 — `IS_BTN.Caption` (W2.10), `IS_MSO.TextStart` (W2.11): W2 cerrada
+
+**Hecho:**
+- **W2.10 (P7):** `IS_BTN` tiene un campo `Caption`. Si no está vacío, se envía
+  `0 + Caption + 0 + Text`, como dice InSim.txt; al leer, un texto que empieza por cero se separa
+  en los dos. Excepción `CAPTIONS` en `spec_overrides.py`; codecs `TailText(caption=)` y
+  `FilledIn` (un campo sin bytes propios, que lee otro codec).
+- **W2.11 (P8):** `IS_MSO.TextStart` es un índice en `Msg`. Al leer se decodifica el trozo anterior
+  y se cuenta; al enviar se codifica y, si el codificador añade un cambio de página justo ahí, se
+  apunta después (Scawen, post 460437: «excluding the codepage»). Excepción `TEXT_STARTS`; el
+  generador se para si un campo dice «first character» y no está en ella. Codec `TextOffset`.
+
+**Decisiones:** U3 y U4: el usuario eligió las opciones recomendadas. `Caption` como campo aparte
+(*descartado:* que cada uno ponga los ceros dentro de `Text`); `TextStart` arreglado en el paquete
+(*descartado:* dejarlo en bytes y resolverlo en W4). Anotado en `API_DESIGN.md` (D3).
+
+**Red:** 6 tests nuevos en `tests/test_text.py`, con el ejemplo de InSim.txt (`ABC`/`DEFG`) y un
+nombre con un carácter japonés y `^L` añadidos por LFS; 5 fallan con el código de S7.
+
+**Verificación:** `.venv/Scripts/python scripts/verify.py` → PASS (188 passed, 1 deselected).
+
+**Commits:** W2.10, W2.11 y cierre, en uno.
+
 ## S7 — 2026-10-12 — Texto de LFS ↔ `str` (W2.9)
 
 **Hecho:**

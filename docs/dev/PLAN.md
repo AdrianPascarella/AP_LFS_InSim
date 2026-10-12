@@ -21,7 +21,7 @@ forma de la API acordada antes de escribir el código.
 verificación pasa y se ha visto fallar; el CI está en verde en las cuatro versiones; el script baja
 la especificación y detecta un cambio; el diseño de la API está escrito y el usuario lo ha aprobado.
 
-## W2 — El protocolo, generado desde la especificación   ⏳ ACTIVA · detallada con el usuario en S4
+## W2 — El protocolo, generado desde la especificación   ✅ HECHA en S8 · detallada con el usuario en S4
 **Objetivo:** todos los paquetes y enums de InSim v10, OutSim y OutGauge, generados a partir de la
 especificación oficial (los `struct` de C), con sus comentarios convertidos en documentación y
 tests de ida y vuelta (empaquetar → desempaquetar). Las definiciones del proyecto anterior se usan
@@ -62,12 +62,12 @@ generado va en git, con un control que comprueba que está al día (P3); los cam
 - [x] **W2.9** — **Texto de LFS ↔ `str`**: páginas de códigos (`^L`, `^E`…) y `MSOData`/`LID_*`
   de 0.8C27. Que funcione en el LFS real es punto ciego: se valida en W3.1.
   hecho en S7 → LOG.md S7
-- [ ] **W2.10** — **Título del cuadro de texto en `IS_BTN`** (P7): el texto que empieza por un
-  cero se pierde. Hay que decidir con el usuario la forma (¿un campo `Caption`?).
-- [ ] **W2.11** — **`IS_MSO.TextStart` en un `str`** (P8): cuenta bytes, no caracteres. Decidir
-  si se resuelve aquí o en la capa de arriba (W4, `packet.text`).
+- [x] **W2.10** — **Título del cuadro de texto en `IS_BTN`** (P7): campo `Caption` (U3).
+  hecho en S8 → LOG.md S8
+- [x] **W2.11** — **`IS_MSO.TextStart` en un `str`** (P8): índice en `Msg`, no bytes (U4).
+  hecho en S8 → LOG.md S8
 
-## W3 — La conexión   📋 ESBOZADA
+## W3 — La conexión   ⏳ ACTIVA · falta detallarla con el usuario
 **Objetivo:** hablar con LFS: TCP (y UDP para OutSim/OutGauge), saludo `IS_ISI`, mantener viva la
 conexión, reconexión, errores de un manejador que no tumban a los demás, y un **LFS falso** para
 probar todo sin el juego. Primera prueba en el LFS real (punto ciego).

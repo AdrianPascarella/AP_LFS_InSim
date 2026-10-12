@@ -126,6 +126,10 @@ def columns(struct: Struct, struct_names: set[str]) -> list[Column]:
         result.append(col)
     if optional is not None and optional not in {c.name for c in result}:
         raise SpecError(f"{struct.name} has no field {optional} (see OPTIONAL_TAIL)")
+    caption = overrides.CAPTIONS.get(struct.name)
+    if caption is not None:
+        doc = "caption of the text entry dialog (TypeIn); empty = LFS's default caption"
+        result.append(Column(caption, f'_c.FilledIn("{caption}")', "str", '""', doc))
     return result
 
 
@@ -147,6 +151,21 @@ def plain_columns(struct: Struct, struct_names: set[str]) -> list[Column]:
     for item in struct.fields:
         if "code page" in item.comment and (code_page != item.name or tail_text is None):
             raise SpecError(f"{struct.name}.{item.name} holds a code page: check TEXT_CODE_PAGES")
+    text_start = overrides.TEXT_STARTS.get(struct.name)
+    for item in struct.fields:
+        if "first character" in item.comment and (text_start != item.name or tail_text is None):
+            raise SpecError(f"{struct.name}.{item.name} points into the text: check TEXT_STARTS")
+    if struct.name in overrides.CAPTIONS and tail_text is None:
+        raise SpecError(f"{struct.name} has a caption but no trailing text (see CAPTIONS)")
+    options = "".join(
+        f', {name}="{value}"'
+        for name, value in (
+            ("code_page", code_page),
+            ("caption", overrides.CAPTIONS.get(struct.name)),
+            ("text_start", text_start),
+        )
+        if value
+    )
     result: list[Column] = []
     for index, item in enumerate(struct.fields):
         last = index == len(struct.fields) - 1
@@ -157,17 +176,13 @@ def plain_columns(struct: Struct, struct_names: set[str]) -> list[Column]:
         elif tail_text is not None and item.name == tail_text[0]:
             if not last or item.ctype != "char":
                 raise SpecError(f"{struct.name}.{item.name} is not trailing text")
-            result.append(
-                Column(
-                    item.name,
-                    f'_c.TailText({tail_text[1]}, code_page="{code_page}")'
-                    if code_page
-                    else f"_c.TailText({tail_text[1]})",
-                    "str",
-                    '""',
-                    item.comment,
-                )
-            )
+            codec = f"_c.TailText({tail_text[1]}{options})"
+            result.append(Column(item.name, codec, "str", '""', item.comment))
+        elif item.name == text_start and tail_text is not None:
+            page = f', code_page="{code_page}"' if code_page else ""
+            doc = f"{item.comment}: an index into {tail_text[0]} (LFS sends a byte offset)"
+            codec = f'_c.TextOffset(of="{tail_text[0]}"{page})'
+            result.append(Column(item.name, codec, "int", "0", doc))
         elif item.commented_out:
             raise SpecError(f"{struct.name}.{item.name} is commented out: add it to TAIL_TEXT")
         elif tail_array is not None and item.name == tail_array[1]:

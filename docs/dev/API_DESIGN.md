@@ -116,6 +116,9 @@ y los bytes crudos (cada aplicación los interpretaría).
 *Precisado en S7 (aprobado por el usuario):* en el `str` del texto no están los cambios de página
 (`^L`, `^J`…), que se quitan al leer y se añaden al enviar; los demás códigos `^` (colores,
 `^^`, `^v`…) se quedan tal cual. `lfs_insim.text.strip_colours()` quita los colores (amplía D6).
+*Precisado en S8 (decidido por el usuario, U3 y U4):* `IS_BTN.Caption` es el título del cuadro de
+texto (la biblioteca pone los ceros), e `IS_MSO.TextStart` es un índice en `Msg`, no bytes:
+`mso.Msg[mso.TextStart:]` es lo que escribió el usuario.
 
 **D4 — El estado de conexiones y jugadores, en la biblioteca y opcional (`Roster`).** Casi todas
 las aplicaciones lo necesitan (la gestión de usuarios, el registrador, la IA) y es fácil hacerlo

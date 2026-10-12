@@ -226,22 +226,86 @@ class TailText(Codec):
     """Variable-size text at the end of a packet: zero-terminated, padded to a multiple of 4.
 
     `code_page` names the field that holds the code page the text starts in (IS_MSO.MSOData).
+    `caption` names the field for the text entry caption of IS_BTN: LFS reads it between a zero
+    at the start and a second zero, and the button text follows. `text_start` names a field read
+    as a byte offset into the text (IS_MSO.TextStart), turned here into an index into the str.
     """
 
-    def __init__(self, max_size: int, code_page: str | None = None) -> None:
+    def __init__(
+        self,
+        max_size: int,
+        code_page: str | None = None,
+        caption: str | None = None,
+        text_start: str | None = None,
+    ) -> None:
         self.max_size = max_size
         self.code_page = code_page
+        self.caption = caption
+        self.text_start = text_start
 
     def pack(self, value: Any, packet: Any) -> bytes:
         raw = _text.encode(value, _start(self.code_page, packet))
+        if self.caption is not None and getattr(packet, self.caption):
+            raw = b"\0" + _text.encode(getattr(packet, self.caption)) + b"\0" + raw
         if len(raw) > self.max_size - 1:
             raise PacketError(f"text is {len(raw)} bytes long; the limit is {self.max_size - 1}")
         size = len(raw) + 1
         return raw.ljust(size + (-size % 4), b"\0")
 
     def unpack(self, data: bytes, offset: int, values: dict[str, Any]) -> tuple[Any, int]:
-        text = data[offset:].split(b"\0", 1)[0]
-        return _text.decode(text, _start(self.code_page, values)), len(data)
+        tail = data[offset:]
+        if self.caption is not None:
+            caption = b""
+            if tail[:1] == b"\0":
+                caption, _, tail = tail[1:].partition(b"\0")
+            values[self.caption] = _text.decode(caption)
+        text = tail.split(b"\0", 1)[0]
+        start = _start(self.code_page, values)
+        if self.text_start is not None:
+            values[self.text_start] = len(_text.decode(text[: values[self.text_start]], start))
+        return _text.decode(text, start), len(data)
+
+
+class TextOffset(Codec):
+    """A byte giving where something starts in a text (IS_MSO.TextStart).
+
+    The field is an index into the str named by `of`; LFS counts bytes, so it is converted here
+    when packing and by that text's TailText when unpacking.
+    """
+
+    def __init__(self, of: str, code_page: str | None = None) -> None:
+        self.scalar = Scalar("B")
+        self.of = of
+        self.code_page = code_page
+
+    def pack(self, value: Any, packet: Any) -> bytes:
+        text = getattr(packet, self.of)
+        if not 0 <= value <= len(text):
+            raise PacketError(f"{value!r} is not a position in {self.of} ({len(text)} characters)")
+        start = _start(self.code_page, packet)
+        offset = len(_text.encode(text[:value], start))
+        if (
+            text[value : value + 1] != "^"
+            and _text.encode(text, start)[offset : offset + 1] == b"^"
+        ):
+            offset += 2  # a code page switch added before the character: LFS points after it
+        return self.scalar.pack(offset, packet)
+
+    def unpack(self, data: bytes, offset: int, values: dict[str, Any]) -> tuple[Any, int]:
+        return self.scalar.unpack(data, offset, values)
+
+
+class FilledIn(Codec):
+    """A field with no bytes of its own: another codec reads it (IS_BTN.Caption)."""
+
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+    def pack(self, value: Any, packet: Any) -> bytes:
+        return b""
+
+    def unpack(self, data: bytes, offset: int, values: dict[str, Any]) -> tuple[Any, int]:
+        return values[self.name], offset
 
 
 class TailArray(Codec):
