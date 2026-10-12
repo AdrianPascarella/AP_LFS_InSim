@@ -47,9 +47,11 @@ generado va en git, con un control que comprueba que está al día (P3); los cam
 - [x] **W2.4** — **Paquetes de InSim generados** (dataclasses con los nombres de la
   especificación y los comentarios de C como docstring) y sus enums y flags.
   hecho en S4 → LOG.md S4
-- [ ] **W2.5** — **OutSim y OutGauge generados**, OutSimPack2 incluido según sus opciones.
-- [ ] **W2.6** — **Tests:** ida y vuelta de todos los paquetes; tamaño contra el `// N` de la
+- [x] **W2.5** — **OutSim y OutGauge generados**, OutSimPack2 incluido según sus opciones.
+  hecho en S5 → LOG.md S5
+- [x] **W2.6** — **Tests:** ida y vuelta de todos los paquetes; tamaño contra el `// N` de la
   especificación; unos cuantos paquetes byte a byte escritos a mano; visto en rojo.
+  hecho en S4 (InSim) y S5 (OutSim/OutGauge) → LOG.md S4, S5
 - [ ] **W2.7** — **Control «código generado al día»**: regenerar en memoria y comparar con git,
   en `verify.py` (si existe `spec/cache/`) y en el workflow `spec`. Visto en rojo.
 - [ ] **W2.8** — **Segunda opinión:** comparar formatos y tamaños con el proyecto anterior con un

@@ -1,6 +1,47 @@
 # 📓 Diario — AP_LFS_InSim (lfs_insim)
 <!-- Solo se añade, lo más nuevo arriba. Una entrada por sesión. -->
 
+## S5 — 2026-10-12 — OutSim y OutGauge generados (W2.5) y W2.6 completa
+
+**Hecho:**
+- **W2.5:** el generador escribe además `_outsim.py` (`OutSimPack` de InSim.txt; `OutSimMain`,
+  `OutSimInputs`, `OutSimWheel` y `OutSimPack2` de OutSimPack.txt) y `_outgauge.py`
+  (`OutGaugePack`). El enum `OSO` va a `_enums.py` con los demás; `OG`, `DL` y `DLF` ya estaban.
+  - Núcleo (`_codec`): `Options` (las opciones, campo sin bytes), `When` (parte presente solo si
+    una opción está activa), `Magic` (bytes fijos comprobados al leer) y la clase base
+    `OptionalParts`, cuyo `unpack(data, options)` exige las opciones y el tamaño exacto.
+  - Excepciones nuevas en `spec_overrides.py`: `MODULES` (sustituye a `NOT_INSIM`),
+    `OPTIONAL_TAIL` (el `ID` final de OutSim y OutGauge), `MAGIC` (`"LFST"`), `OPTIONS_FIELD` y la
+    docstring de `OSO`. Las condiciones `// if (OSOpts & OSO_x)` no son excepciones: salen de la
+    especificación (el lector ya las guardaba desde W2.1).
+  - El generador se para si un campo dice «optional - only if» y no está en `OPTIONAL_TAIL`
+    (comprobado quitando la entrada de OutGaugePack).
+- **W2.6 completa:** tamaños (OutSim 64/68, OutGauge 92/96, `OutSimWheel` 40 por «10 ints»,
+  OutSimPack2 280 con todo, como dice OutSimPack.txt, y cada parte por separado), ida y vuelta de
+  todas las clases, bytes hechos a mano de los tres paquetes y errores (sin opciones, opciones de
+  más o de menos, `LFST` incorrecto, valores que no casan con las opciones). Visto en rojo
+  quitando un relleno de la parte DRIVE y desactivando la comprobación de `When`.
+
+**Decisiones:**
+- **OutSimPack2 lleva sus opciones en un campo `OSOpts`** (el nombre de los comentarios de la
+  especificación), que no viaja en los bytes, y **se lee con `OutSimPack2.unpack(data, opciones)`**.
+  Las partes no enviadas son `None`. *Por qué:* los bytes no dicen qué partes llevan (la cabecera
+  `LFST` también es opcional) y adivinarlas por el tamaño es ambiguo. Al empaquetar se exige que
+  cada valor esté exactamente cuando su opción está activa. *Descartado:* deducir las opciones de
+  los campos rellenos (la cabecera no tiene campos) y valores por defecto en vez de `None` (no se
+  distinguiría «no enviado» de «cero»). La capa `OutSim(...)` de W4 recibirá las opciones una vez.
+- **`L`, `F`, `S`, `T` son una sola marca fija** (`Magic`), no cuatro campos: siempre valen
+  «LFST» y se comprueban al leer.
+- **Un único `_enums.py`** para InSim, OutSim y OutGauge; el generador rechaza un nombre de clase
+  repetido entre los dos archivos.
+- **El generador necesita ahora también `OutSimPack.txt`.** Afecta a W2.7: el workflow `spec`
+  solo descarga InSim.txt (P3), así que allí no se podrá regenerar todo. Se decide en W2.7.
+
+**Verificación:** `.venv/Scripts/python scripts/verify.py` → PASS (environment, lint, format,
+types, tests: 144 passed, 1 deselected). `generate_packets.py --check` → al día.
+
+**Commits:** W2.5 + W2.6 (`048fcca`) y el de cierre.
+
 ## S4 — 2026-10-12 — U2 (dev en main), W2 detallada y paquetes de InSim generados (W2.1–W2.4)
 
 **Hecho:**

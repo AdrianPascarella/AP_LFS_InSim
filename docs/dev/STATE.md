@@ -1,25 +1,25 @@
 # 📍 Estado — AP_LFS_InSim (lfs_insim)
-> Actualizado: 2026-10-12 (S4): **W2 a medias: los paquetes de InSim ya se generan** desde la
-> especificación (W2.1–W2.4), con tests y CI en verde. `main` ya tiene W1 (U2). Árbol limpio y
-> subido al cerrar.
-> **▶️ SIGUIENTE: W2.5** — generar OutSim (OutSimPack y OutSimPack2 según sus opciones OSO_) y
-> OutGauge (OutGaugePack), con el `ID` final opcional (`_c.Optional`), en sus propios módulos.
-> Después, completar W2.6 (sus tests de ida y vuelta) y seguir con W2.7 → W2.9.
+> Actualizado: 2026-10-12 (S5): **W2.1–W2.6 hechas: InSim, OutSim y OutGauge se generan** desde la
+> especificación, con tests y CI en verde. Árbol limpio y subido al cerrar.
+> **▶️ SIGUIENTE: W2.7** — control «código generado al día» en `verify.py` y en el workflow `spec`.
+> Ojo: el generador necesita ahora `OutSimPack.txt`, que el workflow `spec` no tiene (P3); hay que
+> decidir cómo comprobar allí (p. ej. solo los módulos que salen de InSim.txt). Después, W2.8 → W2.9.
 
 ## Dónde estamos
 Fase activa: **W2 — El protocolo, generado desde la especificación**, detallada con el usuario en
-S4 (`PLAN.md`). Hechas W2.1–W2.4. **W2.6, a medias:** los tests de InSim están; faltan los de
-OutSim/OutGauge, que llegan con W2.5.
+S4 (`PLAN.md`). Hechas W2.1–W2.6.
 
-- **Cómo se genera:** `.venv/Scripts/python scripts/generate_packets.py` lee `spec/cache/InSim.txt`
-  (con `scripts/spec_parser.py`) y las excepciones de `scripts/spec_overrides.py`, y escribe
-  `src/lfs_insim/packets/_enums.py`, `_insim.py` y `__init__.py`, que van en git y no se editan a
-  mano. `--check` sale con 1 si no están al día (base de W2.7). El núcleo escrito a mano es
+- **Cómo se genera:** `.venv/Scripts/python scripts/generate_packets.py` lee
+  `spec/cache/InSim.txt` y `spec/cache/OutSimPack.txt` (con `scripts/spec_parser.py`) y las
+  excepciones de `scripts/spec_overrides.py`, y escribe en `src/lfs_insim/packets/` `_enums.py`,
+  `_insim.py`, `_outsim.py`, `_outgauge.py` y `__init__.py`, que van en git y no se editan a mano.
+  `--check` sale con 1 si no están al día (base de W2.7). El núcleo escrito a mano es
   `packets/_codec.py`.
 - **Si la generación se para con un error**, es a propósito: algo de la especificación no está
   cubierto. Se añade la entrada que pide en `spec_overrides.py`, nunca se salta.
-- `OutSimPack` y `OutGaugePack` están en `NOT_INSIM` (no se generan todavía). OutSimPack2 se lee
-  de `spec/cache/OutSimPack.txt`, que solo existe en este equipo (P3).
+- `OutSimPack.txt` solo existe en este equipo (P3): sin él, el generador se para.
+- **OutSimPack2** se lee con `OutSimPack2.unpack(data, opciones OSO)`; las partes no enviadas son
+  `None` (LOG S5).
 - **Texto:** `packets/_text.py` usa cp1252 de forma provisional hasta W2.9.
 - **Verificación:** `.venv/Scripts/python scripts/verify.py`; el CI (workflow `verify`) ejecuta lo
   mismo en cada push. Sin `spec/cache/` (como en el CI), los tests que comparan con la
