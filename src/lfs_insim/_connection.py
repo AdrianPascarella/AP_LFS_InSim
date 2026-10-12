@@ -4,13 +4,12 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-import functools
-import inspect
 import logging
 from collections.abc import Awaitable, Callable
 from types import TracebackType
-from typing import Any, Self, TypeVar
+from typing import Self, TypeVar
 
+from lfs_insim._handlers import Handlers
 from lfs_insim._stream import PacketStream
 from lfs_insim.packets import IS_ISI, IS_TINY, IS_VER, TINY, PacketError
 from lfs_insim.packets._codec import InSimPacket
@@ -74,12 +73,11 @@ class InSim:
             IName=name,
         )
         self._isi.pack()  # fail now, not when connecting, if a name is too long
-        self._handlers: dict[type[InSimPacket], list[Handler[Any]]] = {}
+        self._handlers = Handlers()
         self._connect_handlers: list[ConnectHandler] = []
         self._writer: asyncio.StreamWriter | None = None
         self._reader_task: asyncio.Task[None] | None = None
         self._supervisor: asyncio.Task[None] | None = None
-        self._tasks: set[asyncio.Task[None]] = set()
         self._accepted = False  # LFS answered IS_ISI with IS_VER on this connection
         self._silence_timeout = SILENCE_TIMEOUT
         self._retry_delays: tuple[float, ...] = RETRY_DELAYS
@@ -92,7 +90,7 @@ class InSim:
         """
 
         def register(handler: Handler[P]) -> Handler[P]:
-            self._handlers.setdefault(packet_type, []).append(handler)
+            self._handlers.add(packet_type, handler)
             return handler
 
         return register
@@ -139,10 +137,7 @@ class InSim:
             task.cancel()
             await asyncio.gather(task, return_exceptions=True)
         await self._disconnect()
-        handlers = [task for task in self._tasks if task is not asyncio.current_task()]
-        for handler in handlers:
-            handler.cancel()
-        await asyncio.gather(*handlers, return_exceptions=True)
+        await self._handlers.cancel()
 
     async def wait_closed(self) -> None:
         """Wait until close() is called (or, after a bare connect(), until the connection ends)."""
@@ -188,7 +183,7 @@ class InSim:
             else:
                 log.info("connected to LFS at %s:%d", self.host, self.port)
                 for handler in self._connect_handlers:
-                    self._call(handler, (), "on_connect")
+                    self._handlers.call(handler, (), "on_connect")
                 if self._reader_task is not None:
                     await asyncio.wait([self._reader_task])
                 if self._accepted:
@@ -235,27 +230,4 @@ class InSim:
             self.send(IS_TINY(ReqI=0, SubT=TINY.NONE))  # keepalive: LFS expects the same back
         elif isinstance(packet, IS_VER):
             self._accepted = True
-        for handler in self._handlers.get(type(packet), []):
-            self._call(handler, (packet,), type(packet).__name__)
-
-    def _call(self, handler: Callable[..., Any], args: tuple[Any, ...], event: str) -> None:
-        """Run a handler: a `def` now, an `async def` as a task. Errors are logged, not raised."""
-        try:
-            result = handler(*args)
-        except Exception:
-            log.exception("handler %s failed on %s", _name(handler), event)
-            return
-        if inspect.isawaitable(result):
-            task = asyncio.ensure_future(result)
-            self._tasks.add(task)
-            task.add_done_callback(self._tasks.discard)
-            task.add_done_callback(functools.partial(_report, handler, event))
-
-
-def _name(handler: Callable[..., Any]) -> str:
-    return getattr(handler, "__qualname__", repr(handler))
-
-
-def _report(handler: Callable[..., Any], packet: str, task: asyncio.Future[Any]) -> None:
-    if not task.cancelled() and (error := task.exception()) is not None:
-        log.error("handler %s failed on %s", _name(handler), packet, exc_info=error)
+        self._handlers.dispatch(packet)
