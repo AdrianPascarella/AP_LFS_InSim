@@ -52,8 +52,9 @@ generado va en git, con un control que comprueba que está al día (P3); los cam
 - [x] **W2.6** — **Tests:** ida y vuelta de todos los paquetes; tamaño contra el `// N` de la
   especificación; unos cuantos paquetes byte a byte escritos a mano; visto en rojo.
   hecho en S4 (InSim) y S5 (OutSim/OutGauge) → LOG.md S4, S5
-- [ ] **W2.7** — **Control «código generado al día»**: regenerar en memoria y comparar con git,
+- [x] **W2.7** — **Control «código generado al día»**: regenerar en memoria y comparar con git,
   en `verify.py` (si existe `spec/cache/`) y en el workflow `spec`. Visto en rojo.
+  hecho en S5 → LOG.md S5
 - [ ] **W2.8** — **Segunda opinión:** comparar formatos y tamaños con el proyecto anterior con un
   script de un solo uso; las diferencias se revisan y se anotan en `LOG.md`. Incluye comprobar si
   `CName` lleva un SkinID binario (no texto) cuando el coche es un mod (anotado en S4).
@@ -100,3 +101,5 @@ cámara libre, que necesita streamer-project) y anotar cada incomodidad como tar
   de la especificación.
 - Las demás aplicaciones (control de IA, registrador de eventos) — después de W6, cada una en su
   proyecto (sus requisitos, en «Aplicaciones aparte»).
+- Fijar la versión de `ruff` en el grupo `dev` (S5): el código generado pasa por `ruff format`,
+  así que una versión nueva de ruff puede poner en rojo `spec` y `verify` sin cambiar nada nuestro.

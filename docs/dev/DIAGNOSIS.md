@@ -59,6 +59,10 @@ generadas, y las ideas de la conexión (reconexión, errores aislados por maneja
   decide en W2.
 - Avance (S4): decidido con el usuario que el código generado va en git, con un control que
   comprueba que está al día (W2.7).
+- Avance (S5): el control existe. En este equipo, `verify.py` comprueba todo el código generado.
+  En el workflow `spec` se comprueba lo que sale solo de InSim.txt, y `_outsim.py` y `__init__.py`
+  se saltan avisando. Sigue abierto: si LFS cambiara `OutSimPack.txt`, solo se notaría en un equipo
+  con LFS (`fetch_spec.py` avisa por la huella).
 
 ### P5 — Este equipo no tiene Python 3.11, 3.12 ni 3.13   [RESUELTO en S3]
 - **Evidencia:** `py -0p` en S1: solo 3.14 y un 3.9 antiguo.

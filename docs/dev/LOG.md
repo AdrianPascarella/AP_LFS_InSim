@@ -1,12 +1,13 @@
 # 📓 Diario — AP_LFS_InSim (lfs_insim)
 <!-- Solo se añade, lo más nuevo arriba. Una entrada por sesión. -->
 
-## S5 — 2026-10-12 — OutSim y OutGauge generados (W2.5) y W2.6 completa
+## S5 — 2026-10-12 — OutSim y OutGauge generados (W2.5), W2.6 completa y control del código generado (W2.7)
 
 **Hecho:**
 - **W2.5:** el generador escribe además `_outsim.py` (`OutSimPack` de InSim.txt; `OutSimMain`,
   `OutSimInputs`, `OutSimWheel` y `OutSimPack2` de OutSimPack.txt) y `_outgauge.py`
-  (`OutGaugePack`). El enum `OSO` va a `_enums.py` con los demás; `OG`, `DL` y `DLF` ya estaban.
+  (`OutGaugePack`). `OG`, `DL` y `DLF` ya estaban en `_enums.py`; el enum `OSO` se define en
+  `_outsim.py` (ver W2.7).
   - Núcleo (`_codec`): `Options` (las opciones, campo sin bytes), `When` (parte presente solo si
     una opción está activa), `Magic` (bytes fijos comprobados al leer) y la clase base
     `OptionalParts`, cuyo `unpack(data, options)` exige las opciones y el tamaño exacto.
@@ -21,6 +22,13 @@
   todas las clases, bytes hechos a mano de los tres paquetes y errores (sin opciones, opciones de
   más o de menos, `LFST` incorrecto, valores que no casan con las opciones). Visto en rojo
   quitando un relleno de la parte DRIVE y desactivando la comprobación de `When`.
+- **W2.7:** `verify.py` tiene el paso `generated` (`generate_packets.py --check`; se salta sin
+  `spec/cache/`, como en el CI). El workflow `spec` descarga la especificación y hace la misma
+  comprobación; se lanza también al cambiar el lector, las excepciones, el generador o los
+  paquetes. Visto en rojo editando a mano `_insim.py`, en modo completo y sin `OutSimPack.txt`; en
+  GitHub, `spec` en verde ejecutando el paso, con `_outsim.py` y `__init__.py` saltados.
+- La parte de enums del generador pasa a `scripts/generate_enums.py`: `generate_packets.py` había
+  llegado a 504 líneas (aviso de P4).
 
 **Decisiones:**
 - **OutSimPack2 lleva sus opciones en un campo `OSOpts`** (el nombre de los comentarios de la
@@ -32,15 +40,27 @@
   distinguiría «no enviado» de «cero»). La capa `OutSim(...)` de W4 recibirá las opciones una vez.
 - **`L`, `F`, `S`, `T` son una sola marca fija** (`Magic`), no cuatro campos: siempre valen
   «LFST» y se comprueban al leer.
-- **Un único `_enums.py`** para InSim, OutSim y OutGauge; el generador rechaza un nombre de clase
-  repetido entre los dos archivos.
-- **El generador necesita ahora también `OutSimPack.txt`.** Afecta a W2.7: el workflow `spec`
-  solo descarga InSim.txt (P3), así que allí no se podrá regenerar todo. Se decide en W2.7.
+- **Sin `OutSimPack.txt`, el generador comprueba lo que sale solo de InSim.txt** (`_enums.py`,
+  `_insim.py`, `_outgauge.py`) y dice qué se salta (`_outsim.py`, `__init__.py`). Era la
+  recomendación del agente, y el usuario dijo «procede». *Por qué:* el CI no tiene OutSimPack.txt
+  (P3), y así comprueba igualmente casi todo el código generado. *Descartado:* subir OutSimPack.txt
+  al repositorio, porque el usuario no quiere la especificación copiada (S1).
+- **`OSO` se define en `_outsim.py`, no en `_enums.py`.** Al principio iba con los demás enums,
+  pero así `_enums.py` depende solo de InSim.txt y se comprueba en el CI. `OSO` sale de
+  OutSimPack.txt y solo lo usa OutSimPack2. Se importa igual: `from lfs_insim.packets import OSO`.
+  El generador rechaza un nombre de clase repetido entre los dos archivos.
+
+**Problemas del agente:** volvió a usar un heredoc con `\` para parchear el generador (cicatriz de
+§13, ya escrita) y el archivo quedó roto. Se restauró desde git y se rehízo con Edit, sin pérdidas.
+
+**Para revisar:** `ruff` no tiene versión fija en el grupo `dev`, y el código generado pasa por
+`ruff format`. Una versión nueva podría poner en rojo `spec` y `verify` sin ningún cambio nuestro.
+Se ha anotado en «Ideas» de `PLAN.md`.
 
 **Verificación:** `.venv/Scripts/python scripts/verify.py` → PASS (environment, lint, format,
-types, tests: 144 passed, 1 deselected). `generate_packets.py --check` → al día.
+types, tests: 144 passed, 1 deselected; generated). En GitHub, `verify` y `spec` en verde.
 
-**Commits:** W2.5 + W2.6 (`048fcca`) y el de cierre.
+**Commits:** W2.5 + W2.6 (`048fcca`), cierre parcial (`913c608`), W2.7 (`5873c14`) y el de cierre.
 
 ## S4 — 2026-10-12 — U2 (dev en main), W2 detallada y paquetes de InSim generados (W2.1–W2.4)
 
