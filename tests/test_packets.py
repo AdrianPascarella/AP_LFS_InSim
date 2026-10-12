@@ -14,9 +14,11 @@ from lfs_insim import packets
 from lfs_insim.packets import (
     CCI,
     IS_ISI,
+    IS_MAL,
     IS_MCI,
     IS_MSO,
     IS_MST,
+    IS_SLC,
     IS_TINY,
     ISF,
     ISP,
@@ -68,6 +70,10 @@ def sample_value(codec: c.Codec) -> Any:
         return (chr(ord("a") + n % 26) * codec.limit)[: max(1, codec.limit)]
     if isinstance(codec, c.TailText):
         return "hello" + str(n)
+    if isinstance(codec, c.CarName):
+        return "XRT" if n % 2 else f"{n:06X}"
+    if isinstance(codec, c.SkinID):
+        return f"{n:06X}"
     if isinstance(codec, c.IPv4):
         return IPv4Address(f"10.0.0.{n % 250}")
     if isinstance(codec, c.Nested):
@@ -178,6 +184,49 @@ def test_isi_bytes() -> None:
 def test_mst_text_is_zero_terminated() -> None:
     data = IS_MST(Msg="/msg hi").pack()
     assert data[:4] == bytes([17, ISP.MST, 0, 0]) and data[4:12] == b"/msg hi\0"
+
+
+# CName is an official car ("XFG") or, for a mod, its SkinID: a 32-bit unsigned whose hex digits
+# are the skin ID shown by LFS (LFS forum). The mods below have bytes that are not valid cp1252
+# (0x81, 0x8D, 0x90) or a zero in the middle, which plain text would lose.
+@pytest.mark.parametrize(
+    ("raw", "name"),
+    [
+        (b"XFG\0", "XFG"),
+        (b"FZ5\0", "FZ5"),
+        (bytes(4), ""),  # IS_SLC with no car selected
+        ((0x5A1FB3).to_bytes(4, "little"), "5A1FB3"),
+        ((0x8D0A90).to_bytes(4, "little"), "8D0A90"),
+        ((0x100081).to_bytes(4, "little"), "100081"),
+        ((0x5A0012).to_bytes(4, "little"), "5A0012"),
+    ],
+)
+def test_car_name_is_an_official_car_or_a_mod_skin_id(raw: bytes, name: str) -> None:
+    data = bytes([2, ISP.SLC, 0, 1]) + raw
+    packet = IS_SLC.unpack(data)
+    assert packet.CName == name
+    assert packet.pack() == data
+
+
+def test_car_name_accepts_lowercase_skin_ids() -> None:
+    assert IS_SLC(CName="5a1fb3").pack() == IS_SLC(CName="5A1FB3").pack()
+
+
+@pytest.mark.parametrize("name", ["XFGT", "XF", "5A1FB", "5A1FBZ", "X G", "5A5A5A"])
+def test_car_name_rejects_what_is_neither(name: str) -> None:
+    # 5A5A5A would be read back as the official car "ZZZ": LFS never issues such a SkinID.
+    with pytest.raises(PacketError):
+        IS_SLC(CName=name).pack()
+
+
+def test_mal_skin_ids_look_like_car_names() -> None:
+    packet = IS_MAL(SkinID=["5A1FB3", "000001"])
+    data = packet.pack()
+    assert data[3] == 2  # NumM
+    assert data[8:] == struct.pack("<II", 0x5A1FB3, 1)
+    assert IS_MAL.unpack(data) == packet
+    with pytest.raises(PacketError):
+        IS_MAL(SkinID=["XFG"]).pack()
 
 
 def test_mci_from_hand_made_bytes() -> None:

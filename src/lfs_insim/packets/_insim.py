@@ -907,7 +907,7 @@ class IS_SLC(InSimPacket):
     """connection's unique id (0 = host)"""
 
     CName: str = ""
-    """skin prefix"""
+    """skin prefix: an official car ('XFG'), a mod's SkinID ('5A1FB3') or ''"""
 
     _TYPE = ISP.SLC
     _LAYOUT = (
@@ -915,7 +915,7 @@ class IS_SLC(InSimPacket):
         ("Type", _c.TYPE),
         ("ReqI", _c.Scalar("B")),
         ("UCID", _c.Scalar("B")),
-        ("CName", _c.Text(4, terminated=False)),
+        ("CName", _c.CarName()),
     )
 
 
@@ -932,7 +932,7 @@ class IS_MAL(InSimPacket):
     Flags: int = 0
     """zero (for now)"""
 
-    SkinID: list[int] = field(default_factory=list)
+    SkinID: list[str] = field(default_factory=list)
     """SkinID of each mod in compressed format, 0 to MAL_MAX_MODS (NumM)"""
 
     _TYPE = ISP.MAL
@@ -945,7 +945,7 @@ class IS_MAL(InSimPacket):
         ("Flags", _c.Scalar("B")),
         ("Sp2", _c.Pad(1)),
         ("Sp3", _c.Pad(1)),
-        ("SkinID", _c.TailArray(_c.Scalar("I"), 120, count="NumM")),
+        ("SkinID", _c.TailArray(_c.SkinID(), 120, count="NumM")),
     )
 
 
@@ -1087,7 +1087,7 @@ class IS_NPL(InSimPacket):
     """number plate - NO ZERO AT END!"""
 
     CName: str = ""
-    """skin prefix"""
+    """skin prefix: an official car ('XFG'), a mod's SkinID ('5A1FB3') or ''"""
 
     SName: str = ""
     """skin name - MAX_CAR_TEX_NAME"""
@@ -1139,7 +1139,7 @@ class IS_NPL(InSimPacket):
         ("Flags", _c.Scalar("H")),
         ("PName", _c.Text(24, terminated=False)),
         ("Plate", _c.Text(8, terminated=False)),
-        ("CName", _c.Text(4, terminated=False)),
+        ("CName", _c.CarName()),
         ("SName", _c.Text(16, terminated=False)),
         ("Tyres", _c.Array(_c.Scalar("B"), 4)),
         ("H_Mass", _c.Scalar("B")),
@@ -1612,7 +1612,7 @@ class IS_RES(InSimPacket):
     """number plate - NO ZERO AT END!"""
 
     CName: str = ""
-    """skin prefix"""
+    """skin prefix: an official car ('XFG'), a mod's SkinID ('5A1FB3') or ''"""
 
     TTime: int = 0
     """(ms) race or autocross: total time / qualify: session time"""
@@ -1650,7 +1650,7 @@ class IS_RES(InSimPacket):
         ("UName", _c.Text(24, terminated=False)),
         ("PName", _c.Text(24, terminated=False)),
         ("Plate", _c.Text(8, terminated=False)),
-        ("CName", _c.Text(4, terminated=False)),
+        ("CName", _c.CarName()),
         ("TTime", _c.Scalar("I")),
         ("BTime", _c.Scalar("I")),
         ("SpA", _c.Pad(1)),
@@ -2131,7 +2131,7 @@ class IS_SET(InSimPacket):
     """player's unique id"""
 
     CName: str = ""
-    """skin prefix"""
+    """skin prefix: an official car ('XFG'), a mod's SkinID ('5A1FB3') or ''"""
 
     FuelLoad: int = 0
     """FuelLoad at start"""
@@ -2148,7 +2148,7 @@ class IS_SET(InSimPacket):
         ("Type", _c.TYPE),
         ("ReqI", _c.Scalar("B")),
         ("PLID", _c.Scalar("B")),
-        ("CName", _c.Text(4, terminated=False)),
+        ("CName", _c.CarName()),
         ("Spare", _c.Pad(4)),
         ("FuelLoad", _c.Scalar("B")),
         ("Sp1", _c.Pad(1)),

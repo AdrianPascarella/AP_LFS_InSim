@@ -67,6 +67,10 @@ class Column:
 
 def item_codec(item: Field, struct_names: set[str]) -> tuple[str, str, str]:
     """(codec, annotation, default) of one value of the field's type."""
+    if item.name in overrides.SKIN_IDS or "SkinID" in item.comment:
+        if item.name not in overrides.SKIN_IDS or item.ctype != "unsigned":
+            raise SpecError(f"{item.name} holds a SkinID: check SKIN_IDS")
+        return "_c.SkinID()", "str", '"000000"'
     if item.ctype in SCALARS:
         fmt = SCALARS[item.ctype]
         return f'_c.Scalar("{fmt}")', "float" if fmt == "f" else "int", "0.0" if fmt == "f" else "0"
@@ -176,6 +180,11 @@ def plain_columns(struct: Struct, struct_names: set[str]) -> list[Column]:
         elif PADDING.match(item.name):
             fmt = "b" if item.ctype == "char" else SCALARS[item.ctype]
             result.append(Column(item.name, f"_c.Pad({SIZES[fmt] * (item.count or 1)})"))
+        elif item.name in overrides.CAR_NAMES or "skin prefix" in item.comment:
+            if item.name not in overrides.CAR_NAMES or (item.ctype, item.count) != ("char", 4):
+                raise SpecError(f"{struct.name}.{item.name} names a car: check CAR_NAMES")
+            doc = f"{item.comment}: an official car ('XFG'), a mod's SkinID ('5A1FB3') or ''"
+            result.append(Column(item.name, "_c.CarName()", "str", '""', doc))
         elif item.ctype == "char" and item.count is not None:
             terminated = "last byte" in item.comment
             codec = (

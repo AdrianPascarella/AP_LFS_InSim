@@ -107,6 +107,11 @@ va en la capa de arriba: `packet.text` (texto ya decodificado de la página de c
 nombre y el resto como miembro (`TINY.NCN`, `ISF.MCI`), no constantes sueltas (`TINY_NCN`): el
 editor los agrupa y mypy distingue un `TINY` de un `SMALL`. Los valores que no son identificadores
 válidos (`DL_18`) reciben un nombre fijado en las excepciones de W2. Los campos de texto son `str`.
+*Precisado en S6 (decidido por el usuario):* `CName` es un `str`: el coche oficial (`"XFG"`), el
+SkinID de un mod en hexadecimal (`"5A1FB3"`), tal como lo enseñan LFS y lfs.net, o `""` si no hay
+coche. `IS_MAL.SkinID` es una lista de `str` con el mismo formato, para que funcione
+`npl.CName in mal.SkinID`. *Descartado:* `str` o `int` según el coche (obliga a usar `isinstance`)
+y los bytes crudos (cada aplicación los interpretaría).
 
 **D4 — El estado de conexiones y jugadores, en la biblioteca y opcional (`Roster`).** Casi todas
 las aplicaciones lo necesitan (la gestión de usuarios, el registrador, la IA) y es fácil hacerlo

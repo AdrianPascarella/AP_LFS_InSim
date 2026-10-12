@@ -13,6 +13,11 @@ from __future__ import annotations
 # it carries the closing speed.
 PADDING_NAMES = r"^(Zero|Sp[0-9]|Spare[0-9]?|SpA|SpB|SpW|SpF[0-9])$"
 
+# Fields that name a car. For a mod, LFS puts its SkinID in CName as a 32-bit unsigned (LFS forum;
+# InSim.txt only says "skin prefix"). Both are read as str: "XFG", or the SkinID's hex "5A1FB3".
+CAR_NAMES = frozenset({"CName"})  # char[4]: official car or SkinID
+SKIN_IDS = frozenset({"SkinID"})  # unsigned: SkinID only
+
 # Variable-size packets whose last field is text: packet -> (field, maximum size in bytes).
 # Size grows in steps of 4 bytes with the text, which always ends with at least one zero.
 TAIL_TEXT: dict[str, tuple[str, int]] = {

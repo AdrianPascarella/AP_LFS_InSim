@@ -102,6 +102,63 @@ class IPv4(Codec):
         return IPv4Address(data[offset : offset + 4]), offset + 4
 
 
+_CAR_CHARS = frozenset(b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789")
+
+
+def _skin_id_number(value: Any) -> int:
+    """'5A1FB3' -> 0x5A1FB3. A SkinID is written as at least 6 hex digits."""
+    if not isinstance(value, str) or len(value) < 6 or len(value) > 8:
+        raise PacketError(f"{value!r} is not a SkinID (6 hex digits, like '5A1FB3')")
+    try:
+        return int(value, 16)
+    except ValueError:
+        raise PacketError(f"{value!r} is not a SkinID (6 hex digits, like '5A1FB3')") from None
+
+
+class SkinID(Codec):
+    """unsigned SkinID of a mod, as the hex digits LFS shows: '5A1FB3'."""
+
+    def pack(self, value: Any, packet: Any) -> bytes:
+        return struct.pack("<I", _skin_id_number(value))
+
+    def unpack(self, data: bytes, offset: int, values: dict[str, Any]) -> tuple[Any, int]:
+        if offset + 4 > len(data):
+            raise PacketError("packet too short")
+        return f"{int.from_bytes(data[offset : offset + 4], 'little'):06X}", offset + 4
+
+
+class CarName(Codec):
+    """char CName[4]: an official car ('XFG'), a mod's SkinID ('5A1FB3'), or '' for no car.
+
+    LFS tells them apart by the first three bytes: all ASCII letters or digits means an official
+    car; anything else is the SkinID as a 32-bit unsigned (LFS never issues a SkinID whose bytes
+    would all be letters or digits).
+    """
+
+    def pack(self, value: Any, packet: Any) -> bytes:
+        if value == "":
+            return bytes(4)
+        if isinstance(value, str) and len(value) == 3:
+            raw = value.encode("ascii", errors="replace")
+            if set(raw) <= _CAR_CHARS:
+                return raw + b"\0"
+        raw = struct.pack("<I", _skin_id_number(value))
+        if set(raw[:3]) <= _CAR_CHARS:
+            raise PacketError(f"{value!r} would be read as the official car {raw[:3]!r}")
+        return raw
+
+    def unpack(self, data: bytes, offset: int, values: dict[str, Any]) -> tuple[Any, int]:
+        end = offset + 4
+        if end > len(data):
+            raise PacketError("packet too short")
+        raw = data[offset:end]
+        if raw == bytes(4):
+            return "", end
+        if set(raw[:3]) <= _CAR_CHARS:
+            return raw[:3].decode("ascii"), end
+        return f"{int.from_bytes(raw, 'little'):06X}", end
+
+
 class Nested(Codec):
     """A structure inside another one (CompCar, Vec, ...)."""
 

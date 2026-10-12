@@ -1,6 +1,57 @@
 # 📓 Diario — AP_LFS_InSim (lfs_insim)
 <!-- Solo se añade, lo más nuevo arriba. Una entrada por sesión. -->
 
+## S6 — 2026-10-12 — Segunda opinión frente al proyecto anterior (W2.8) y `CName` de los mods (P6)
+
+**Hecho:**
+- **W2.8:** un script de un solo uso (en el scratchpad de la sesión, no en el repositorio) vuelca
+  la disposición byte a byte de cada clase del proyecto anterior (`refactor/estabilizacion`,
+  extraído con `git archive`) y del nuevo, y las compara: tamaño fijo, tipo de cada byte, cola
+  variable y nombres de campo. **70 de 85 clases idénticas.** Las diferencias, revisadas una a una
+  contra InSim.txt:
+  - **Errores del proyecto anterior, bien en el nuevo:** `IS_CSC` llevaba `UCID` donde la
+    especificación dice `PLID`; `IS_LAP` e `IS_SPX` tenían `PLIP`; `IS_ISM` tenía `Hname` e
+    `IS_RES` tenía `Cname`, `Pname` y `Uname`; `IS_SET` era de tamaño variable, pero mide 136 fijos
+    (`Setup[120]`); `OutGaugePack` no tenía el `ID` final opcional (92 frente a 96).
+  - **Cambios a propósito:** `IS_MSO` tiene `MSOData` donde antes había `Zero` (0.8C27, W2.9);
+    `OutSimPack2` usa `Magic` en lugar de `L`, `F`, `S`, `T` (S5); las colas variables tienen ahora
+    el máximo de la especificación (MCI 16, NLP 48, PLH 48, AXM 60, MAL 120, IPB 120), que antes no
+    se limitaba; `IS_IPB.BanIPs` son `IPv4Address` en lugar de 4 bytes.
+  - Solo en el anterior: `IS_NONE` (un marcador, no un paquete) y `Vec`/`Vector`, que en el nuevo
+    están en `_types.py`, fuera del volcado. Coinciden byte a byte dentro de OutSimPack.
+- **`CName` de los mods (P6):** InSim.txt solo dice «skin prefix», y ni la documentación local de
+  LFS ni el proyecto anterior lo resuelven. Según dos hilos del foro de lfs.net (leídos en el
+  extracto del buscador, porque el foro pide sesión), para un mod `CName` es el SkinID como entero
+  de 32 bits, y su valor en hexadecimal es el ID del mod. Un coche oficial se reconoce porque sus
+  tres primeros bytes son letras o cifras ASCII. Con el código de S5, los SkinID 0x8D0A90, 0x100081
+  y 0x5A0012 se perdían al ir y volver. Arreglado con los codecs `CarName` y `SkinID` en `_codec`,
+  y las excepciones `CAR_NAMES` y `SKIN_IDS` en `spec_overrides.py`. El generador se para si un
+  campo dice «skin prefix» o «SkinID» y no está en ellas. La docstring de `CName` explica las tres
+  formas.
+
+**Decisiones:**
+- **`CName` es un `str`: `"XFG"` (oficial), `"5A1FB3"` (mod) o `""` (sin coche).** El usuario
+  eligió la opción recomendada. *Por qué:* siempre el mismo tipo; es como LFS y lfs.net enseñan el
+  ID de un mod, y no hay ambigüedad (3 caracteres frente a 6). Al empaquetar se aceptan minúsculas
+  y se rechaza un SkinID cuyos bytes parecerían un coche oficial (`5A5A5A` → `ZZZ`): LFS nunca los
+  emite, y se volvería a leer como otro coche. *Descartado:* `str` o `int` según el coche (obliga a
+  usar `isinstance`) y los bytes crudos.
+- **`IS_MAL.SkinID` es una lista de `str` con el mismo formato**, para que funcione
+  `npl.CName in mal.SkinID`. El usuario eligió la opción recomendada. *Descartado:* dejarlo `int`,
+  como dice la especificación, porque cada aplicación tendría que convertir.
+- Ambas quedan en `API_DESIGN.md` (D3, precisión de S6). **Cambia la API pública** de `IS_SLC`,
+  `IS_NPL`, `IS_RES`, `IS_SET` e `IS_MAL`; no se ha publicado nada, así que no rompe a nadie.
+
+**Red:** los tests nuevos se vieron en rojo antes del arreglo. Después se comprobaron con dos
+mutaciones: sin `CName` en `CAR_NAMES`, el generador se para; sin el control de ambigüedad, falla
+`test_car_name_rejects_what_is_neither[5A5A5A]`. Que funcione con un mod en el LFS real es punto
+ciego: se añade a W3.1.
+
+**Verificación:** `.venv/Scripts/python scripts/verify.py` → PASS (environment, lint, format,
+types, tests: 159 passed, 1 deselected; generated).
+
+**Commits:** W2.8 + P6 y cierre, en uno.
+
 ## S5 — 2026-10-12 — OutSim y OutGauge generados (W2.5), W2.6 completa y control del código generado (W2.7)
 
 **Hecho:**

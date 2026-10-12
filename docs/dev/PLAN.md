@@ -55,9 +55,10 @@ generado va en git, con un control que comprueba que está al día (P3); los cam
 - [x] **W2.7** — **Control «código generado al día»**: regenerar en memoria y comparar con git,
   en `verify.py` (si existe `spec/cache/`) y en el workflow `spec`. Visto en rojo.
   hecho en S5 → LOG.md S5
-- [ ] **W2.8** — **Segunda opinión:** comparar formatos y tamaños con el proyecto anterior con un
+- [x] **W2.8** — **Segunda opinión:** comparar formatos y tamaños con el proyecto anterior con un
   script de un solo uso; las diferencias se revisan y se anotan en `LOG.md`. Incluye comprobar si
   `CName` lleva un SkinID binario (no texto) cuando el coche es un mod (anotado en S4).
+  hecho en S6 → LOG.md S6
 - [ ] **W2.9** — **Texto de LFS ↔ `str`**: páginas de códigos (`^L`, `^E`…) y `MSOData`/`LID_*`
   de 0.8C27. Que funcione en el LFS real es punto ciego: se valida en W3.1.
 
@@ -66,7 +67,8 @@ generado va en git, con un control que comprueba que está al día (P3); los cam
 conexión, reconexión, errores de un manejador que no tumban a los demás, y un **LFS falso** para
 probar todo sin el juego. Primera prueba en el LFS real (punto ciego).
 
-- [ ] **W3.1** — **Prueba en vivo del protocolo** (es un test de la biblioteca, no un InSim): un script junto a los tests que, con LFS abierto, conecta, pide información (versión, conexiones, jugadores, estado), envía mensajes y botones, comprueba que cada paquete recibido se lee bien y deja un informe de lo que vio. Con él se validan en LFS las tarjetas del punto ciego. Sustituye al `test_insim` del proyecto anterior, que cubría ~50 paquetes recibidos y ~16 enviados con comandos de chat          bloqueado por: W2 y el resto de W3
+- [ ] **W3.1** — **Prueba en vivo del protocolo** (es un test de la biblioteca, no un InSim): un script junto a los tests que, con LFS abierto, conecta, pide información (versión, conexiones, jugadores, estado), envía mensajes y botones, comprueba que cada paquete recibido se lee bien y deja un informe de lo que vio. Incluye un
+jugador con un mod, para ver su SkinID en `CName` (P6). Con él se validan en LFS las tarjetas del punto ciego. Sustituye al `test_insim` del proyecto anterior, que cubría ~50 paquetes recibidos y ~16 enviados con comandos de chat          bloqueado por: W2 y el resto de W3
 
 ## Aplicaciones aparte: lo que la biblioteca debe permitir (requisitos)
 > Decidido con el usuario en S1. **Aquí solo hay texto: el código de estas aplicaciones vive en sus

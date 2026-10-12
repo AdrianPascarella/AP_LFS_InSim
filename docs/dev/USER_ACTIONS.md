@@ -1,5 +1,5 @@
 # 🙋 Tus acciones — AP_LFS_InSim (lfs_insim)
-> **0 pendientes** · 0 bloquean · actualizado en S4
+> **0 pendientes** · 0 bloquean · actualizado en S6
 >
 > Todo lo de aquí necesita tus manos o tu criterio: el agente no puede hacerlo o no puede
 > comprobarlo. **Nunca editas este archivo**: cuéntale el resultado al agente y él cerrará la tarjeta.

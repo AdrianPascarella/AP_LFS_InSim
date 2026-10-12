@@ -73,3 +73,18 @@ generadas, y las ideas de la conexión (reconexión, errores aislados por maneja
 - Resuelto (S3): el workflow `verify` ejecuta `verify.py` en Python 3.11–3.14, en Linux y Windows,
   en cada push; las 8 combinaciones en verde. El equipo sigue sin esas versiones, pero ya no pasa
   nada sin que se note.
+
+### P6 — `CName` de un mod se perdía al leerlo como texto   [RESUELTO en S6, falta verlo en el LFS real]
+- **Evidencia:** W2.8 (S6). InSim.txt solo dice «skin prefix», pero en el foro de lfs.net consta
+  que, para un mod, LFS pone en `CName` el SkinID como entero de 32 bits, cuyo valor en
+  hexadecimal es el ID del mod. Leído como texto cp1252, los SkinID 0x8D0A90, 0x100081 y 0x5A0012
+  volvían como bytes distintos (huecos de cp1252, o un cero en medio que cortaba el texto), y los
+  demás llegaban como un `str` sin sentido. El proyecto anterior también leía `CName` como texto
+  y nunca trató los mods.
+- **Impacto:** cualquier aplicación con mods (gestión de usuarios, registrador) no sabría qué
+  coche lleva cada jugador, y al reenviar el `CName` mandaría otro coche.
+- **Acción:** codec `CarName` (oficial `"XFG"`, mod `"5A1FB3"`, sin coche `""`) en los cuatro
+  `CName`, y `IS_MAL.SkinID` como lista de `str` con el mismo formato (`API_DESIGN.md`, D3).
+- Resuelto (S6): `_codec.CarName` y `_codec.SkinID`, y las excepciones `CAR_NAMES` y `SKIN_IDS`
+  en `spec_overrides.py`. Tests con bytes de mods reales y ambiguos; red vista en rojo. Sigue
+  pendiente comprobarlo con un mod en el LFS real (punto ciego, W3.1).
