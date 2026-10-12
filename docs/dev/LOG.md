@@ -1,6 +1,36 @@
 # 📓 Diario — AP_LFS_InSim (lfs_insim)
 <!-- Solo se añade, lo más nuevo arriba. Una entrada por sesión. -->
 
+## S9 — 2026-10-12 — W3 detallada con el usuario; pruebas con el LFS real; copia de setups y skins
+
+**Hecho:**
+- **W3 detallada** en `PLAN.md`: W3.2 (partir el flujo TCP), W3.3 (LFS falso), W3.4 (`InSim`
+  básico), W3.5 (mantener viva la conexión), W3.6 (reconexión), W3.7 (OutSim/OutGauge y `run`),
+  W3.8 (`every`), y W3.1 (prueba en vivo) al final.
+- **Copia de los setups y las skins de LFS** (`setups`, `skins` y `skins_dds` de `C:\LFS\data`;
+  49, 3 y 108 archivos) en `C:\Users\pasca\proyectos\_archivo_AP_LFS_InSim\LFS_backup_2026-10-12`,
+  comprobada con `diff -rq` (idéntica). La pidió el usuario antes de reinstalar LFS.
+- `PROTOCOL.md`: la copia pasa a «lo que nunca se debe perder»; permisos nuevos para abrir y cerrar
+  LFS; el punto ciego se precisa.
+
+**Decisiones (el usuario eligió las recomendadas):**
+- `@insim.every()` va en W3 (W3.8): es parte del bucle de eventos. *Descartado:* llevarlo a W4.
+- InSim por UDP, a «Ideas». El usuario cree que debería ser configurable, con TCP por defecto y
+  `MCI`/`NLP` por UDP, pero prefiere pensarlo con calma. *Descartado por ahora:* solo `MCI`/`NLP`
+  por UDP, o todo InSim por UDP.
+- El relay de InSim, a «Ideas»: ninguna aplicación de la lista lo usa.
+- **Pruebas con el LFS real** (propuesta del usuario): el agente puede abrir LFS y conectarse, así
+  que comprueba él mismo lo que se ve como paquetes, y W3.1 deja de ser una tarjeta del usuario.
+  El LFS falso se queda para el CI (no tiene LFS) y para los casos raros. Permisos acordados: abrir
+  `LFS.exe` y cerrarlo con `/exit` por InSim, solo si no había otro abierto y sin matar el proceso;
+  cambiar `cfg.txt`, solo con permiso y cambio a cambio.
+- El usuario reinstala LFS (U5) porque la instalación tiene cosas que no son del juego:
+  `data/script/autoexec.lfs` con `/insim=29999`, que cree que puso un programa InSim que instaló.
+
+**Verificación:** solo documentación; no hay código que verificar.
+
+**Commits:** uno, con todo lo anterior.
+
 ## S8 — 2026-10-12 — `IS_BTN.Caption` (W2.10), `IS_MSO.TextStart` (W2.11): W2 cerrada
 
 **Hecho:**

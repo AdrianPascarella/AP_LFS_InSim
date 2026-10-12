@@ -1,11 +1,11 @@
 # 📍 Estado — AP_LFS_InSim (lfs_insim)
-> Actualizado: 2026-10-12 (S8): **W2 cerrada** (W2.1–W2.11). Texto con páginas de códigos (S7),
-> `IS_BTN.Caption` y `IS_MSO.TextStart` como índice del `str` (S8). Tests en verde.
-> **▶️ SIGUIENTE: detallar W3 (la conexión) con el usuario**, como se hizo con W2 en S4: TCP y UDP,
-> `IS_ISI`, mantener viva la conexión, reconexión, errores aislados y el LFS falso.
+> Actualizado: 2026-10-12 (S9): **W3 detallada con el usuario** (W3.2–W3.8, y W3.1 al final).
+> El agente puede abrir LFS para las pruebas (permisos en `PROTOCOL.md`). Setups y skins copiados
+> antes de que el usuario reinstale LFS (U5). Tests en verde.
+> **▶️ SIGUIENTE: W3.2 — partir el flujo TCP en paquetes** (función pura, sin sockets).
 
 ## Dónde estamos
-Fase activa: **W3 — La conexión**, solo esbozada (`PLAN.md`). W2 está hecha entera.
+Fase activa: **W3 — La conexión**, detallada en S9 (`PLAN.md`). W2 está hecha entera.
 
 - **Cómo se genera:** `.venv/Scripts/python scripts/generate_packets.py` lee
   `spec/cache/InSim.txt` y `spec/cache/OutSimPack.txt` (con `scripts/spec_parser.py`) y las
@@ -31,7 +31,7 @@ El proyecto anterior está en la rama `refactor/estabilizacion` y en las etiquet
 consulta, no se copia.
 
 ## Lo que te espera
-**0 acciones pendientes** → `USER_ACTIONS.md`.
+**1 acción pendiente** (U5, reinstalar LFS; solo bloquea W3.1) → `USER_ACTIONS.md`.
 
 ## Restricciones ahora mismo
 - En este equipo solo hay Python 3.14. Las demás versiones las comprueba el CI.

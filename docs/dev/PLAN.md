@@ -67,13 +67,44 @@ generado va en git, con un control que comprueba que está al día (P3); los cam
 - [x] **W2.11** — **`IS_MSO.TextStart` en un `str`** (P8): índice en `Msg`, no bytes (U4).
   hecho en S8 → LOG.md S8
 
-## W3 — La conexión   ⏳ ACTIVA · falta detallarla con el usuario
+## W3 — La conexión   ⏳ ACTIVA · detallada con el usuario en S9
 **Objetivo:** hablar con LFS: TCP (y UDP para OutSim/OutGauge), saludo `IS_ISI`, mantener viva la
 conexión, reconexión, errores de un manejador que no tumban a los demás, y un **LFS falso** para
 probar todo sin el juego. Primera prueba en el LFS real (punto ciego).
 
+**Decidido en S9 (→ LOG.md S9):** `@insim.every()` entra en W3; InSim por UDP y el relay, a
+«Ideas». Las pruebas usan los dos LFS: el **falso** en los tests de cada push (el CI no tiene LFS;
+casos raros fáciles de montar) y el **real**, que abre y cierra el agente, en W3.1. W3.1 deja de
+ser una tarjeta del usuario: solo le queda lo que se ve en pantalla. Orden: W3.2 → W3.8, y W3.1 al
+final.
+
+- [ ] **W3.2** — **Partir el flujo TCP en paquetes**, sin sockets (función pura): `Size` × 4, un
+  paquete partido entre lecturas, varios en una lectura. Un tipo desconocido o un tamaño imposible
+  se registra y se salta sin cortar la conexión. *Acepta:* tests unitarios con esos casos.
+- [ ] **W3.3** — **El LFS falso** (en los tests): servidor asyncio que recibe el `IS_ISI`,
+  contesta `IS_VER`, envía paquetes preparados y apunta lo que recibe. *Acepta:* lo usan los tests
+  de W3.4–W3.6.
+- [ ] **W3.4** — **`InSim` básico (D1, D2):** conectar y enviar `IS_ISI` (nombre, contraseña,
+  flags, intervalo, prefijo); `send()`; `@insim.on(...)` con `def` y `async def`; `run()` y
+  `async with insim`. Un error en un manejador se registra con `logging` y no para a los demás.
+  *Acepta:* los ejemplos 1 y 3 de `API_DESIGN.md` (sin OutGauge) funcionan contra el LFS falso.
+- [ ] **W3.5** — **Mantener viva la conexión:** contestar `TINY_NONE` a `TINY_NONE` (LFS lo manda
+  cada 30 s y cierra tras 70 s sin recibir nada); sin datos durante ese tiempo, la conexión se da
+  por muerta; al salir, `TINY_CLOSE`. *Acepta:* tests contra el LFS falso con el tiempo acortado.
+- [ ] **W3.6** — **Reconexión:** si LFS no está o se cierra, reintentar con espera creciente y
+  volver a enviar el `IS_ISI`; un evento de «(re)conectado» para que el `Roster` de W4 pida el
+  estado. *Acepta:* tests con el LFS falso parado y vuelto a arrancar.
+- [ ] **W3.7** — **UDP: `OutSim` y `OutGauge`** con la misma forma (D5) y `run(insim, gauge)` para
+  varios a la vez. Nunca en el puerto 30000 (§13). *Acepta:* datagramas locales en los tests.
+- [ ] **W3.8** — **Ritmo fijo `@insim.every(segundos)`** (el antiguo `on_tick`), `def` o
+  `async def`. *Acepta:* test con el tiempo acortado; un error en él no lo detiene.
+
 - [ ] **W3.1** — **Prueba en vivo del protocolo** (es un test de la biblioteca, no un InSim): un script junto a los tests que, con LFS abierto, conecta, pide información (versión, conexiones, jugadores, estado), envía mensajes y botones, comprueba que cada paquete recibido se lee bien y deja un informe de lo que vio. Incluye un
 jugador con un mod, para ver su SkinID en `CName` (P6). Con él se validan en LFS las tarjetas del punto ciego. Sustituye al `test_insim` del proyecto anterior, que cubría ~50 paquetes recibidos y ~16 enviados con comandos de chat          bloqueado por: W2 y el resto de W3
+  *Precisado en S9:* lo ejecuta el agente, que abre LFS y lo cierra con `/exit` por InSim (permisos
+  en `PROTOCOL.md`). Se hace con el LFS recién reinstalado (U5). Se comprueba si OutSim y montar una
+  carrera con IA se pueden configurar con comandos durante la partida; si hace falta tocar
+  `cfg.txt`, se pide permiso cambio a cambio.
 
 ## Aplicaciones aparte: lo que la biblioteca debe permitir (requisitos)
 > Decidido con el usuario en S1. **Aquí solo hay texto: el código de estas aplicaciones vive en sus
@@ -108,3 +139,8 @@ cámara libre, que necesita streamer-project) y anotar cada incomodidad como tar
   de la especificación.
 - Las demás aplicaciones (control de IA, registrador de eventos) — después de W6, cada una en su
   proyecto (sus requisitos, en «Aplicaciones aparte»).
+- **InSim por UDP** (aparcado en S9 para pensarlo con calma). El usuario cree que debería ser
+  configurable, con TCP por defecto y `MCI`/`NLP` por UDP (`UDPPort` del `IS_ISI`). Ninguna
+  aplicación de la lista lo necesita hoy.
+- **Relay de InSim** (`isrelay.lfs.net`, paquetes `IR_*`) para conectar a servidores remotos
+  (aparcado en S9): ninguna aplicación de la lista lo usa.

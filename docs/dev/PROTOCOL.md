@@ -56,7 +56,10 @@ la rama por defecto) y en cada push que cambie la especificación.
 **Punto ciego (lo que el agente no puede comprobar).**
 - **Que funcione en el LFS real**: que el juego acepte los paquetes y haga lo esperado (cámara,
   botones, mensajes, IA…). El LFS falso de los tests solo comprueba lo que el agente cree que hace
-  LFS.
+  LFS. *Precisado en S9:* el agente puede abrir LFS y conectarse, así que comprueba él mismo lo que
+  se ve como paquetes (que LFS acepta lo enviado, qué contesta y que todo lo recibido se lee bien).
+  Queda en el punto ciego **lo que se ve en pantalla** (cómo quedan los botones, si la cámara se
+  mueve bien).
 - **Que la API sea cómoda**: el criterio del usuario al escribir una aplicación con ella.
 - **Que se instale bien en otro equipo** con `pip install lfs-insim`, cuando se publique.
 
@@ -69,12 +72,18 @@ comprobar, y al revés.
 `ai_control` grabados a mano. Nunca se borran, mueven ni reescriben sin permiso explícito del
 usuario. Además, `C:\Users\pasca\proyectos\_archivo_AP_LFS_InSim\settings_local.py` (la
 configuración local antigua, que puede contener la contraseña de administrador de LFS) está fuera
-del repositorio y no se borra. Y nada dentro de `C:\LFS` se modifica: solo se lee.
+del repositorio y no se borra. Igual que la **copia de los setups y las skins de LFS**
+(`setups`, `skins` y `skins_dds` de `C:\LFS\data`), hecha en S9 antes de reinstalar el juego en
+`C:\Users\pasca\proyectos\_archivo_AP_LFS_InSim\LFS_backup_2026-10-12`. Y nada dentro de `C:\LFS`
+se modifica: solo se lee (lo que el propio LFS escriba al usarlo no cuenta).
 
 **Autorizado sin preguntar:** hacer commit y push en `dev`; corregir la identidad de git del
 repositorio (solo en local); descargar la especificación oficial de lfs.net; leer
-`C:\LFS\docs\OutSimPack.txt`.
-**Siempre con permiso:** merge o push a `main`; borrar archivos, ramas o etiquetas; force-push;
+`C:\LFS\docs\OutSimPack.txt`; **abrir `C:\LFS\LFS.exe` para las pruebas y cerrarlo** (desde S9), con
+estas condiciones: nunca si ya hay un LFS abierto (el usuario puede estar jugando), solo se cierra
+el que abrió el agente, y se cierra con `/exit` enviado por InSim, sin matar el proceso.
+**Siempre con permiso:** cambiar `C:\LFS\cfg.txt`, cambio a cambio, diciendo qué línea y por qué y
+guardando antes una copia (antes, probar si se puede hacer con un comando durante la partida); merge o push a `main`; borrar archivos, ramas o etiquetas; force-push;
 publicar en PyPI o TestPyPI; crear tags de versión o releases; cambiar la configuración del
 repositorio en GitHub; instalar software en el sistema; modificar cualquier cosa dentro de
 `C:\LFS`. El repositorio es **público**: todo lo que se sube a GitHub lo puede ver cualquiera.
