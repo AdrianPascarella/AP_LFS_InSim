@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Especificación oficial descargada de lfs.net (W1.4): no se versiona
+spec/cache/
+
+# Editores y sistema
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
