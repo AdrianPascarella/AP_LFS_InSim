@@ -1,6 +1,18 @@
 # 📓 Diario — AP_LFS_InSim (lfs_insim)
 <!-- Solo se añade, lo más nuevo arriba. Una entrada por sesión. -->
 
+## S13 — 2026-10-13 — W5 detallada
+
+**Inicio:** la sesión arrancó en `main`; el usuario pidió cambiar a `dev` (hecho, pull al día).
+
+**Decisiones del usuario:** documentación en `README.md` + `docs/` en Markdown (sin MkDocs/Sphinx
+por ahora); publicación con Trusted Publishing desde GitHub Actions; estado Alpha para 0.1.0.
+
+**Hecho:** W5 detallada en `PLAN.md` (W5.1–W5.6). Aún no se ha tocado código. Anticipada la tarjeta
+U6 (cuentas y publicador en TestPyPI/PyPI), que se abre al llegar a W5.4.
+
+**Siguiente:** W5.1, README real.
+
 ## S12 — 2026-10-12 — Primera prueba con el LFS real (W3.1, primera pasada)
 
 **Inicio:** según el protocolo; control de inicio en verde, 0 acciones del usuario pendientes.

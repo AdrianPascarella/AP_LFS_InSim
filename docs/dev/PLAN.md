@@ -196,9 +196,30 @@ contra el LFS falso y, al final (W4.7), contra el LFS real, que maneja el agente
   con todos los escapados de InSim.txt y `who.py` imprimiendo `#773 A.Pascarella`.
   hecho en S12 → LOG.md S12 (nombre confirmado; la tabla, de InSim.NET: no está en InSim.txt)
 
-## W5 — Publicación   📋 ESBOZADA
+## W5 — Publicación   🔜 DETALLADA (S13), sin empezar
 **Objetivo:** documentación pública, versión 0.1.0 en TestPyPI y después en PyPI, y prueba de
 instalación en otro equipo (punto ciego).
+
+**Decisiones del usuario (S13):** documentación en `README.md` + páginas `.md` en `docs/` (sin
+MkDocs/Sphinx por ahora); publicación con Trusted Publishing desde GitHub Actions (sin tokens);
+estado `Development Status :: 3 - Alpha`. Todo lo público, en inglés.
+
+- [ ] **W5.1** — **README real** (hoy dice «rewrite in progress»): instalación, ejemplo corto,
+  qué cubre (InSim, OutSim, OutGauge), enlaces a `docs/` y a `examples/`. *Acepta:* el ejemplo del
+  README se ejecuta tal cual (comprobado por un test).
+- [ ] **W5.2** — **Guía en `docs/`** (inglés): empezar, paquetes y eventos, comandos, `request`,
+  `Roster`, texto y colores, OutSim/OutGauge. *Acepta:* cada fragmento de código está probado o
+  sale de `examples/`; ningún enlace roto.
+- [ ] **W5.3** — **Empaquetado 0.1.0:** versión, classifier Alpha, `CHANGELOG.md`, `py.typed` en el
+  wheel. *Acepta:* `python -m build` y `twine check` en verde; el wheel se instala en un venv
+  limpio y `import lfs_insim` funciona.
+- [ ] **W5.4** — **Workflow de publicación** (`publish.yml`, Trusted Publishing: TestPyPI con
+  lanzamiento manual, PyPI al publicar un release). 🙋 *U6:* el usuario crea las cuentas y registra
+  el publicador en TestPyPI y PyPI.
+- [ ] **W5.5** — **Prueba de instalación** desde TestPyPI en un entorno limpio, ejecutando
+  `hello.py` (punto ciego: idealmente en otro equipo del usuario).
+- [ ] **W5.6** — **Etiqueta `v0.1.0` y release en GitHub, y publicación en PyPI.** Crear tags y
+  publicar piden permiso explícito en el momento.
 
 ## W6 — Primera aplicación aparte   📋 ESBOZADA
 **Objetivo:** escribir, en un proyecto separado, la primera aplicación real con la biblioteca (la

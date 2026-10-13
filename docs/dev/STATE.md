@@ -6,13 +6,12 @@
 > ejemplos en `examples/`, probados en cada push y comprobados en el LFS real. Decisiones en
 > `API_DESIGN.md`. El agente maneja LFS con `tests/lfs_screen.ps1`, que no envía nada si LFS no
 > está delante (PROTOCOL §13). `cfg.txt` está restaurado: OutSim/OutGauge en vivo pide permiso.
-> **▶️ SIGUIENTE: detallar W5 (publicación) con el usuario** antes de tocar nada: documentación
-> pública y 0.1.0 en TestPyPI y PyPI (publicar y crear tags pide permiso). `_connection.py` va por
+> **▶️ SIGUIENTE: W5.1 (README real)** — W5 quedó detallada en S13 (`PLAN.md`): docs en Markdown,
+> Trusted Publishing, Alpha. Publicar y crear tags pide permiso. `_connection.py` va por
 > ~405 líneas: lo próximo que crezca, en un módulo propio.
 
 ## Dónde estamos
-Fase siguiente: **W5 — Publicación**, por detallar con el usuario. W2, W3 y W4 están hechas
-enteras. Prueba en vivo: `tests/live_lfs.py` (cómo ejecutarla, en su docstring).
+Fase siguiente: **W5 — Publicación**, detallada y sin empezar. W2, W3 y W4 están hechas enteras. Prueba en vivo: `tests/live_lfs.py` (cómo ejecutarla, en su docstring).
 
 - **Cómo se genera:** `.venv/Scripts/python scripts/generate_packets.py` lee
   `spec/cache/InSim.txt` y `spec/cache/OutSimPack.txt` (con `scripts/spec_parser.py`) y las
