@@ -36,7 +36,16 @@ entorno `pypi`). Ambos con `id-token: write` y `pypa/gh-action-pypi-publish@rele
 El YAML se comprobó con un parser; no hay forma de probarlo sin las cuentas. Abierta la tarjeta
 **U6** (cuentas y publicador en los dos índices), que bloquea W5.5 y W5.6.
 
-**Siguiente:** el usuario hace U6; después W5.5.
+**Intento de hacer U6 desde el navegador (a petición del usuario):** no hay herramientas de
+Chrome en la sesión (ni `mcp__claude-in-chrome__*` ni el navegador integrado). El usuario ejecutó
+`/chrome` (sin salida visible) y `claude -chrome` (error: la opción es `--chrome`, con dos
+guiones). Reintentado dos veces, sin herramientas. Pendiente para la siguiente sesión: arrancar con
+`claude --chrome --continue` (Chrome abierto y extensión instalada) y comprobar `/chrome`. Aun
+conectado, la creación de cuentas, el correo y el 2FA los hace el usuario; el agente solo rellena
+los formularios del «pending publisher» con la sesión ya iniciada. Si no conecta, U6 sigue siendo
+manual. Nada se ha hecho en TestPyPI ni PyPI.
+
+**Siguiente:** U6 (por el navegador o a mano); después W5.5.
 
 ## S12 — 2026-10-12 — Primera prueba con el LFS real (W3.1, primera pasada)
 

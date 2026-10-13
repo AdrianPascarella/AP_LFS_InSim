@@ -6,7 +6,9 @@
 > ejemplos en `examples/`, probados en cada push y comprobados en el LFS real. Decisiones en
 > `API_DESIGN.md`. El agente maneja LFS con `tests/lfs_screen.ps1`, que no envía nada si LFS no
 > está delante (PROTOCOL §13). `cfg.txt` está restaurado: OutSim/OutGauge en vivo pide permiso.
-> **▶️ SIGUIENTE: el usuario hace U6** (cuentas y publicador en TestPyPI/PyPI); después W5.5
+> **▶️ SIGUIENTE: U6** (cuentas y publicador en TestPyPI/PyPI): el usuario quiere que el agente la
+> haga por el navegador, pero en S13 no había herramientas de Chrome: arrancar con
+> `claude --chrome --continue` y comprobar; si no conecta, la hace él a mano. Después W5.5
 > (instalar desde TestPyPI) y W5.6. W5.1–W5.4 hechas en S13: versión 0.1.0 sin publicar y
 > `publish.yml` en `dev` (aún sin ejecutar nunca). Docs en Markdown, Trusted Publishing, Alpha. Publicar y crear tags pide permiso. `_connection.py` va por
 > ~405 líneas: lo próximo que crezca, en un módulo propio.
