@@ -90,6 +90,9 @@ visibles en el chat, solo para usuarios autorizados). Opinión del agente:
   cualquiera (`prefix="."`); separar el de `IS_ISI` del de los comandos solo haría falta para comandos visibles
   siendo anfitrión. **Hay que probarlo antes en real** (cómo se ve nuestra propia conexión como invitado, si
   `TINY_NCN` responde, qué UCID y flags llegan). Abierta U10 para decidir.
+**U10 cerrada** (el usuario: «para la primera aplicación necesitaremos esto [...] continuaremos mejorando la
+biblioteca [...] en la siguiente sesión»): W9 esbozada en `PLAN.md`, antes de W6; se detalla al empezar S19.
+**Cierre de S18:** W8 cerrada, 0.4.0 en PyPI, P9 resuelto, 0 acciones pendientes.
 
 ## S17 — 2026-10-13 — Revisión de W7.7 y W7.8: solo los subtipos que LFS envía
 

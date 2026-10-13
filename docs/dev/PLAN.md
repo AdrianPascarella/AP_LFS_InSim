@@ -329,13 +329,23 @@ equivalencia pasa en todas las formas para todos los paquetes; `verify` y el CI 
 **Criterios de aceptación:** cada tarea con tests (en rojo antes del código), guía y CHANGELOG; `verify` y el
 CI en verde; ningún módulo por encima del aviso de tamaño.
 
+## W9 — InSim en un servidor ajeno (como invitado)   📋 ESBOZADA en S18 · va antes de W6 (U10)
+**Objetivo:** usar la biblioteca conectada a un LFS que es invitado en un servidor ajeno, con comandos de
+chat con un prefijo visible que solo ejecutan los usuarios autorizados (normalmente nosotros). La primera
+aplicación (W6) lo necesita (el usuario, S18).
+**Punto de partida** (propuesta del agente, `LOG.md` S18; a detallar con el usuario al empezar):
+- Ya funciona: los comandos se reconocen por el texto del `IS_MSO` (probado como invitado en U8).
+- Falta: `reply()` como invitado (LFS rechaza `IS_MTC`: `IS_MSL`); saber si somos anfitrión o invitado
+  (`IS_ISM.Host`) y quién es este ordenador (`Command.local`); por defecto, como invitado, solo comandos
+  locales y `allow=` para abrir; qué significa `admin=True` fuera de nuestro servidor.
+- [ ] **W9.0** — Prueba en real como invitado (servidor «testing» del usuario, con permiso): UCID y flags de
+  nuestra conexión, `TINY_NCN`, `IS_ISM`, qué `UserType` llega con cada prefijo. Sin esto no se diseña.
+
 ## W6 — Primera aplicación aparte   📋 ESBOZADA
 **Objetivo:** escribir, en un proyecto separado, la primera aplicación real con la biblioteca (la
 cámara libre, que necesita streamer-project) y anotar cada incomodidad como tarea de la biblioteca.
 
 ## Ideas (aparcadas, sin compromiso)
-- **InSim en un servidor ajeno (invitado)** — pedido por el usuario en S18: comandos con un prefijo visible,
-  solo para usuarios autorizados (normalmente nosotros). Propuesta del agente en `LOG.md` S18; decisión en U10.
 - **Ayudante de botones** (de escribir `examples/buttons.py`, S12): hay que repartir los `ClickID` a
   mano, guardar el estado en globales y reenviar el botón entero para cambiar su texto. Llevadero
   en un ejemplo; se diseña cuando la aplicación de botones o la de IA lo pida (decidido en S12).

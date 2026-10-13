@@ -6,8 +6,8 @@
 > **`lfs-insim 0.4.0` está publicado en PyPI** (S18, release `v0.4.0`): W8.2 (comandos con tipos, ayuda, grupos,
 > permisos), W8.3 (unidades), W8.4 (`insim.watch()`), listas cortas de `IS_REO`/`IS_HCP` (U9) y el arreglo de P9.
 > Probado en LFS real antes de publicar (U8). Antes, 0.3.0 y 0.2.0 (S16–S17).
-> **▶️ SIGUIENTE: decidir con el usuario los comandos como invitado** (U10): propuesta del agente en `LOG.md` S18
-> (W9 «InSim en un servidor ajeno»). Si no, W6 (primera aplicación).
+> **▶️ SIGUIENTE: W9 (InSim como invitado en un servidor ajeno)**, decidida en S18 (U10) antes de W6: detallarla
+> con el usuario y empezar por W9.0, la prueba en real como invitado (pedir permiso). Ver `PLAN.md`, W9.
 > **Receta de una versión nueva:** versión y CHANGELOG en
 > `dev`; `verify` en verde; avance rápido de `dev` a `main`; `gh release create vX.Y.Z --target main`
 > (el tag debe ser `v<version>`); aprobar el entorno `pypi` (pedirlo cada vez; con permiso, el agente lo aprueba
@@ -17,7 +17,7 @@
 > módulo propio (los comandos de W8.2, en `_commands.py`). Ver `USER_ACTIONS.md`.
 
 ## Dónde estamos
-Fase activa: **W8** (abierta en S17); W8 hecha y 0.4.0 publicado; siguiente: U10 (comandos como invitado) o W6.
+Fase activa: **W9** (esbozada en S18, por detallar); W8 hecha y 0.4.0 publicado en S18.
 
 - **Cómo se genera:** `.venv/Scripts/python scripts/generate_packets.py` lee
   `spec/cache/InSim.txt` y `spec/cache/OutSimPack.txt` (con `scripts/spec_parser.py`) y las
@@ -44,7 +44,7 @@ El proyecto anterior está en la rama `refactor/estabilizacion` y en las etiquet
 consulta, no se copia.
 
 ## Lo que te espera
-1 acción pendiente: U10 (decidir; no bloquea) → `USER_ACTIONS.md`.
+Ninguna acción pendiente (U8, U9 y U10 cerradas en S18) → `USER_ACTIONS.md`.
 
 ## Tests inestables (arreglados en S14)
 `tests/test_every.py` fallaba a veces solo en el Windows del CI (3.12 y 3.13). Causa comprobada: en
