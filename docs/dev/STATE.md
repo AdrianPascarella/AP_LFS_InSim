@@ -6,7 +6,8 @@
 > **`lfs-insim 0.3.0` está publicado en PyPI** (S17, release `v0.3.0`; antes 0.2.0 en S16).
 > **W7 está hecha entera** (W7.7, S16: `@insim.on.IS_TINY(TINY.MPE)`; W7.8, S17: solo los subtipos que LFS envía,
 > generados en `_subtypes.py`; en `dev` sin publicar: CHANGELOG «Unreleased»).
-> **▶️ SIGUIENTE: W8.3** (unidades). W8.0, W8.1, 0.3.0 y W8.2 (comandos; sin publicar, CHANGELOG «Unreleased») hechas en S17. W8 abierta
+> **▶️ SIGUIENTE: W8.4** (`order="before"` público). W8.0, W8.1, 0.3.0, W8.2 (comandos) y W8.3 (unidades) hechas en S17;
+> W8.2 y W8.3 sin publicar (CHANGELOG «Unreleased»; antes de 0.4.0, probarlas en LFS real). W8 abierta
 > y detallada con el usuario en S17 (`PLAN.md`, W8): botones fuera, comandos por anotaciones, permisos
 > `admin=True` / `allow=`. W7.7, W7.8 y el CHANGELOG «Unreleased» esperan a la
 > siguiente versión: se publican con lo próximo que se añada.
@@ -19,7 +20,7 @@
 > módulo propio (los comandos de W8.2, en `_commands.py`). Ver `USER_ACTIONS.md`.
 
 ## Dónde estamos
-Fase activa: **W8** (abierta en S17); W8.0, W8.1, 0.3.0 y W8.2 hechas; siguiente: W8.3.
+Fase activa: **W8** (abierta en S17); W8.0–W8.3 y 0.3.0 hechas; siguiente: W8.4.
 
 - **Cómo se genera:** `.venv/Scripts/python scripts/generate_packets.py` lee
   `spec/cache/InSim.txt` y `spec/cache/OutSimPack.txt` (con `scripts/spec_parser.py`) y las

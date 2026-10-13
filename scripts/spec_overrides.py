@@ -55,6 +55,13 @@ TEXT_STARTS: dict[str, str] = {
 # specification does not give: packet -> class in src/lfs_insim/packets/_extras.py.
 EXTRAS: dict[str, str] = {
     "IS_MSO": "MSOText",  # .text: what the user typed (W4.1)
+    # Units (W8.3), with the scales the comments of InSim.txt give
+    "CompCar": "CompCarUnits",  # .x_m, .speed_kmh, .heading_deg...
+    "CarContact": "ContactUnits",  # 16 = 1 m, 128 = 180 degrees
+    "CarContOBJ": "ContactUnits",
+    "IS_CON": "ClosingSpeed",  # .closing_speed_mps
+    "IS_OBH": "ClosingSpeed",
+    "OutGaugePack": "GaugeUnits",  # .speed_kmh, .speed_mph
 }
 
 # Variable-size packets whose last field is an array: packet -> (array field, counter field).

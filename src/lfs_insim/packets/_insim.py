@@ -1855,7 +1855,7 @@ class IS_NLP(InfoPacket):
 
 
 @dataclass(kw_only=True)
-class CompCar(Structure):
+class CompCar(_x.CompCarUnits, Structure):
     """Car info in 28 bytes - there is an array of these in the MCI (below)"""
 
     Node: int = 0
@@ -1934,7 +1934,7 @@ class IS_MCI(InfoPacket):
 
 
 @dataclass(kw_only=True)
-class CarContact(Structure):
+class CarContact(_x.ContactUnits, Structure):
     """16 bytes: one car in a contact - two of these in the IS_CON (below)"""
 
     PLID: int = 0
@@ -1993,7 +1993,7 @@ class CarContact(Structure):
 
 
 @dataclass(kw_only=True)
-class IS_CON(InfoPacket):
+class IS_CON(_x.ClosingSpeed, InfoPacket):
     """CONtact - between two cars (A and B are sorted by PLID) (info: LFS sends it)"""
 
     ReqI: int = 0
@@ -2024,7 +2024,7 @@ class IS_CON(InfoPacket):
 
 
 @dataclass(kw_only=True)
-class CarContOBJ(Structure):
+class CarContOBJ(_x.ContactUnits, Structure):
     """8 bytes: car in a contact with an object"""
 
     Direction: int = 0
@@ -2054,7 +2054,7 @@ class CarContOBJ(Structure):
 
 
 @dataclass(kw_only=True)
-class IS_OBH(InfoPacket):
+class IS_OBH(_x.ClosingSpeed, InfoPacket):
     """OBject Hit - car hit an autocross object or an unknown object (info: LFS sends it)"""
 
     ReqI: int = 0

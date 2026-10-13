@@ -315,7 +315,8 @@ equivalencia pasa en todas las formas para todos los paquetes; `verify` y el CI 
   en PyPI**) → LOG.md S17
 - [x] **W8.2** — Comandos con tipos, ayuda y grupos (A1) y permisos (A2), en su propio módulo — hecho en S17
   (sin publicar; sin probar en LFS real: antes de 0.4.0) → LOG.md S17
-- [ ] **W8.3** — Unidades: `lfs_insim.units` (funciones puras) y propiedades en los paquetes por `_extras.py` (A5)
+- [x] **W8.3** — Unidades: `lfs_insim.units` (funciones puras) y propiedades en los paquetes por `_extras.py` (A5)
+  — hecho en S17 (solo las escalas que InSim.txt da; sin probar en LFS real: antes de 0.4.0) → LOG.md S17
 - [ ] **W8.4** — Hacer pública la forma en que `Roster` ve los paquetes antes y después de los manejadores
   (`order="before"`)
 - [ ] **W8.5** — Tests de `LEGADO.md` §3: enviar `IS_REO`, `IS_HCP` e `IS_IPB`; orden al reconectar (P22);

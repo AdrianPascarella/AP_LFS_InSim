@@ -126,6 +126,23 @@ Escrita en `PROTOCOL.md` §15: con permiso para publicar, el agente aprueba él 
   real** (teclear `!speed abc` en el chat): antes de publicar 0.4.0. Los administradores remotos solo se pueden
   ver en un servidor con otra persona: punto ciego.
 
+**W8.3 hecha** (el usuario: «Sí, sigue con W8.3»). **Solo las escalas que InSim.txt da** (§15, Scawen manda):
+`CompCar` y `Vec` (65536 = 1 m; Speed 32768 = 100 m/s; Direction/Heading 32768 = 180°; AngVel 16384 = 360°/s,
+y la NOTE 3, 8192 = 180°/s, dice lo mismo), `CarContact`/`CarContOBJ` (16 = 1 m; Speed en m/s; ángulos byte,
+128 = 180°), `SpClose` de `IS_CON`/`IS_OBH` (12 bits bajos, 10 = 1 m/s) y `OutGaugePack.Speed` (m/s). **Fuera**,
+por no tener escala en la especificación: H/P/R de `IS_CPP` y `ObjectInfo` del autocross (su escala está en el
+formato de archivo de layout, no en InSim.txt).
+- `lfs_insim.units`: funciones puras de ida y vuelta (`to_metres`/`from_metres`, `speed_to_mps`/`mps_to_speed`,
+  `angle_to_degrees`/`degrees_to_angle` con vuelta a 0–65535, `angvel_to_degrees`/`degrees_to_angvel`,
+  `mps_to_kmh`, `kmh_to_mps`, `mps_to_mph`, `mph_to_mps`; 1 mph = 0,44704 m/s exacto).
+- Propiedades de solo lectura por `EXTRAS` (`CompCarUnits`, `ContactUnits`, `ClosingSpeed`, `GaugeUnits` en
+  `_extras.py`); `Vec` las lleva directamente (es escrita a mano) y además `Vec.from_metres()` para enviar.
+  Nombres: `x_m`, `speed_mps`, `speed_kmh`, `speed_mph`, `direction_deg`, `heading_deg`, `angvel_dps`,
+  `closing_speed_mps`. Los campos siguen siendo los números de LFS (lo que se envía).
+- **Rojo primero:** `tests/test_units.py` (11) falló al importar antes del código. `verify` PASS, 515 tests.
+  Página nueva `docs/units.md` (enlazada en `docs/README.md`) y CHANGELOG «Unreleased». **Sin probar en LFS real**
+  (comparar `CompCar.speed_kmh` con `OutGaugePack.speed_kmh` con un coche en pista): antes de 0.4.0.
+
 ## S16 — 2026-10-13 — W7.6: equivalencia, tabla de direcciones, guía en forma canónica y 0.2.0
 
 **Inicio:** identidad git correcta (`AdrianPascarella`, gmail); `verify` PASS antes de tocar nada.

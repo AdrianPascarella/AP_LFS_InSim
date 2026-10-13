@@ -7,6 +7,9 @@
   the usage and the docstring's first line. A function of only the `Command` works as before.
 - `on_command(..., admin=True)` (LFS admins and the host) and `allow=` (your own rule).
 - `insim.command_group("aic")`: `!aic start`, `!aic stop`; `!aic` alone lists them.
+- Units: `car.speed_kmh`, `car.x_m`, `car.heading_deg`... on `CompCar`, `Vec`, the contacts of
+  `IS_CON` / `IS_OBH` / `IS_HLV` and `OutGaugePack`, and `lfs_insim.units` with the conversions
+  both ways (`Vec.from_metres()` to send a position). See [Units](docs/units.md).
 
 ## 0.3.0
 

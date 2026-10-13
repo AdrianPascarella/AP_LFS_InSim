@@ -7,13 +7,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from lfs_insim.packets import _codec as _c
+from lfs_insim.packets import _extras as _x
 from lfs_insim.packets._structure import Structure
 
 __all__ = ["OutGaugePack"]
 
 
 @dataclass(kw_only=True)
-class OutGaugePack(Structure):
+class OutGaugePack(_x.GaugeUnits, Structure):
     """OutGaugePack"""
 
     Time: int = 0
