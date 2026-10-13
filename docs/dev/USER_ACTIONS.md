@@ -1,12 +1,20 @@
 # 🙋 Tus acciones — AP_LFS_InSim (lfs_insim)
-> **0 pendientes** · actualizado en S18
+> **1 pendiente** · actualizado en S18 · U10 (decidir; no bloquea nada)
 >
 > Todo lo de aquí necesita tus manos o tu criterio: el agente no puede hacerlo o no puede
 > comprobarlo. **Nunca editas este archivo**: cuéntale el resultado al agente y él cerrará la tarjeta.
 
 ## ⏳ Pendientes
 
-_Ninguna._
+### U10 — Comandos en un servidor donde no somos el anfitrión          ⏳ · bloquea: nada · abierta en S18
+**Tipo:** decidir          **Tiempo:** ~5 min
+**Por qué:** pediste poder usar el InSim como invitado, con comandos solo para usuarios autorizados. La
+propuesta del agente (en el chat y en `LOG.md` S18) sería una fase W9 antes o junto a W6.
+**Pasos:**
+  1. Leer la propuesta y decir: abrir W9 tal cual, con cambios, o dejarlo para más adelante.
+**Resultado esperado:** W9 en `PLAN.md` con la forma elegida.
+**Señales de fallo:** no aplica (es una decisión).
+**Si falla, dime:** no aplica.
 
 ## ✅ Cerradas (recientes; el registro completo está en LOG.md)
 - **U8** — Probar W8.2–W8.4 en LFS real: cerrada por el usuario («U8 cerrada») con los resultados de S18 (comandos, unidades 1,002, `watch()`; P9 arreglado) (2026-10-13, S18).

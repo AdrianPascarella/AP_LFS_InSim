@@ -68,6 +68,29 @@ se tocó `cfg.txt` ni se cerró LFS. Script en el scratchpad (`live_w8.py`, `pro
   que tocar `cfg.txt`); la derivada de posiciones es una comprobación independiente.
 **Verificación:** `verify` PASS.
 
+**U8 cerrada** (el usuario: «U8 cerrada, publica 0.4.0»).
+**Publicado 0.4.0:** versión y CHANGELOG (con P9) en `dev`; `verify` PASS; wheel y sdist construidos en un venv de
+herramientas del scratchpad, `twine check` PASSED, instalado en un venv limpio desde `site-packages`. CI `verify`
+en verde (run 38433009468); avance rápido de `dev` a `main` (`cb118e6`); release `v0.4.0` (pre-release, notas del
+CHANGELOG). `gh release create` con la cuenta activa (`Veloik-adrian`) falló por el permiso `workflow`; se hizo
+con `GH_TOKEN` de `AdrianPascarella`, como dice la receta. Entorno `pypi` aprobado por el agente (§15); `publish`
+en verde (run 38433230722); `pip install lfs-insim==0.4.0` en un venv limpio: 0.4.0, `watch`, `IS_REO` corto OK.
+
+**Pregunta del usuario: comandos como invitado en un servidor ajeno** (prefijo distinto del del anfitrión,
+visibles en el chat, solo para usuarios autorizados). Opinión del agente:
+- **Ya funciona a medias:** los comandos se reconocen por el texto del `IS_MSO`, no por el prefijo de `IS_ISI` ni
+  por `UserType`; en la primera pasada de U8, como invitado, `!speed 80 Bob` llegó y se ejecutó (UCID 1).
+- **Falla:** (1) las respuestas: `reply()` usa `IS_MTC`, que LFS rechaza a un invitado; (2) `admin=True` mira si
+  LFS marca al usuario como admin *del servidor*, que en un servidor ajeno no es «nosotros»; (3) como invitado
+  llega el chat de todos: sin restricción, cualquiera que teclee el prefijo ejecuta el comando.
+- **Propuesta (W9):** la biblioteca sabe si es anfitrión o invitado (`IS_ISM`/`TINY_ISM`, `Host`) y quién es «este
+  ordenador» (`Command.local`); como invitado, por defecto solo responde a los comandos locales (seguro por
+  defecto) y `allow=` abre a otros (p. ej. por nombre de usuario); `reply()` como invitado va por `IS_MSL` (solo lo
+  ves tú) y no puede contestar en privado a otros (`say()` público, o aviso en el log). El prefijo ya puede ser
+  cualquiera (`prefix="."`); separar el de `IS_ISI` del de los comandos solo haría falta para comandos visibles
+  siendo anfitrión. **Hay que probarlo antes en real** (cómo se ve nuestra propia conexión como invitado, si
+  `TINY_NCN` responde, qué UCID y flags llegan). Abierta U10 para decidir.
+
 ## S17 — 2026-10-13 — Revisión de W7.7 y W7.8: solo los subtipos que LFS envía
 
 **Inicio:** `session_start_check` PASS (rama, identidad, pull, plantilla v3); `verify` PASS (477) antes de tocar nada.

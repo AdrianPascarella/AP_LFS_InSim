@@ -324,7 +324,7 @@ equivalencia pasa en todas las formas para todos los paquetes; `verify` y el CI 
   tormenta de reconexión (P24) — hecho en S18: `tests/test_fixed_lists.py` nuevo; P22 y P24 ya estaban fijados
   (comprobado con mutaciones) → LOG.md S18
 - [x] U9 (listas cortas rellenas con ceros, S18) · U8 probada en LFS real (S18; P9 encontrado y arreglado)
-- [ ] **Publicar 0.4.0** (W8.2–W8.5, U9, P9) con el visto bueno de U8 y permiso del usuario
+- [x] **Publicar 0.4.0** (W8.2–W8.5, U9, P9) — publicado en S18 → LOG.md S18
 
 **Criterios de aceptación:** cada tarea con tests (en rojo antes del código), guía y CHANGELOG; `verify` y el
 CI en verde; ningún módulo por encima del aviso de tamaño.
@@ -334,6 +334,8 @@ CI en verde; ningún módulo por encima del aviso de tamaño.
 cámara libre, que necesita streamer-project) y anotar cada incomodidad como tarea de la biblioteca.
 
 ## Ideas (aparcadas, sin compromiso)
+- **InSim en un servidor ajeno (invitado)** — pedido por el usuario en S18: comandos con un prefijo visible,
+  solo para usuarios autorizados (normalmente nosotros). Propuesta del agente en `LOG.md` S18; decisión en U10.
 - **Ayudante de botones** (de escribir `examples/buttons.py`, S12): hay que repartir los `ClickID` a
   mano, guardar el estado en globales y reenviar el botón entero para cambiar su texto. Llevadero
   en un ejemplo; se diseña cuando la aplicación de botones o la de IA lo pida (decidido en S12).

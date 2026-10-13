@@ -3,17 +3,11 @@
 > y tiene la API de alto nivel (`@insim.on.IS_NPL`, `insim.send.IS_MST(...)`, `received` / `sent`,
 > `await insim.request(...)`, `Roster`, `say()` / `command()`, `on_command`, `text.plain()`), cuatro
 > ejemplos y `docs/packets.md` (tabla generada).
-> **`lfs-insim 0.3.0` está publicado en PyPI** (S17, release `v0.3.0`): lleva W7.7, W7.8 (subtipos) y W8.1
-> (`errors="raise"`, `on_disconnect`, `reconnected`, `Colour`). Antes, 0.2.0 en S16.
-> **En `dev` sin publicar** (CHANGELOG «Unreleased»): W8.2 (comandos con tipos, ayuda, grupos, permisos), W8.3
-> (unidades) y W8.4 (`insim.watch(before=, after=)`, decidido con el usuario en S18; `Roster` ya solo usa API
-> pública; `InSimPacket` exportado en `lfs_insim.packets`). Antes de publicarlas como 0.4.0, probarlas en LFS real (teclear `!speed abc`; comparar
-> `CompCar.speed_kmh` con OutGauge con un coche en pista): pide permiso para abrir LFS.
-> **▶️ SIGUIENTE: 0.4.0.** U9 hecha (listas cortas rellenas con ceros). U8 probada en LFS real y en verde (comandos,
-> unidades 1,002, `watch()`); encontró y arregló P9. Falta el visto bueno del usuario a U8 y su permiso para
-> publicar (receta abajo; construir el wheel y probarlo, como en 0.2.0/0.3.0). Después, W6 (primera aplicación).
-> W8 abierta y detallada con el usuario en S17 (`PLAN.md`, W8): botones fuera, comandos por anotaciones,
-> permisos `admin=True` / `allow=`.
+> **`lfs-insim 0.4.0` está publicado en PyPI** (S18, release `v0.4.0`): W8.2 (comandos con tipos, ayuda, grupos,
+> permisos), W8.3 (unidades), W8.4 (`insim.watch()`), listas cortas de `IS_REO`/`IS_HCP` (U9) y el arreglo de P9.
+> Probado en LFS real antes de publicar (U8). Antes, 0.3.0 y 0.2.0 (S16–S17).
+> **▶️ SIGUIENTE: decidir con el usuario los comandos como invitado** (U10): propuesta del agente en `LOG.md` S18
+> (W9 «InSim en un servidor ajeno»). Si no, W6 (primera aplicación).
 > **Receta de una versión nueva:** versión y CHANGELOG en
 > `dev`; `verify` en verde; avance rápido de `dev` a `main`; `gh release create vX.Y.Z --target main`
 > (el tag debe ser `v<version>`); aprobar el entorno `pypi` (pedirlo cada vez; con permiso, el agente lo aprueba
@@ -23,7 +17,7 @@
 > módulo propio (los comandos de W8.2, en `_commands.py`). Ver `USER_ACTIONS.md`.
 
 ## Dónde estamos
-Fase activa: **W8** (abierta en S17); W8 hecha; siguiente: visto bueno de U8 y publicar 0.4.0.
+Fase activa: **W8** (abierta en S17); W8 hecha y 0.4.0 publicado; siguiente: U10 (comandos como invitado) o W6.
 
 - **Cómo se genera:** `.venv/Scripts/python scripts/generate_packets.py` lee
   `spec/cache/InSim.txt` y `spec/cache/OutSimPack.txt` (con `scripts/spec_parser.py`) y las
@@ -50,7 +44,7 @@ El proyecto anterior está en la rama `refactor/estabilizacion` y en las etiquet
 consulta, no se copia.
 
 ## Lo que te espera
-1 acción pendiente: U8 (🚧 bloquea 0.4.0; prueba hecha, falta el visto bueno) → `USER_ACTIONS.md`.
+1 acción pendiente: U10 (decidir; no bloquea) → `USER_ACTIONS.md`.
 
 ## Tests inestables (arreglados en S14)
 `tests/test_every.py` fallaba a veces solo en el Windows del CI (3.12 y 3.13). Causa comprobada: en
