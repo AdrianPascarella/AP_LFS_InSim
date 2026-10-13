@@ -8,7 +8,7 @@
 > está delante (PROTOCOL §13). `cfg.txt` está restaurado: OutSim/OutGauge en vivo pide permiso.
 > **▶️ SIGUIENTE: W5.6** — etiqueta `v0.1.0`, release en GitHub y publicación en PyPI (el entorno
 > `pypi` pide tu clic de revisor). W5.5 hecha en S14: `lfs-insim 0.1.0` está en TestPyPI y se instaló
-> en un venv limpio. **`main` está al día con `dev` desde S14** (hizo falta: `workflow_dispatch` solo
+> en un venv limpio; `hello.py` con ese paquete probado con LFS en vivo. **`main` está al día con `dev` desde S14** (hizo falta: `workflow_dispatch` solo
 > funciona con el workflow en la rama por defecto). Publicar y crear tags pide permiso.
 > `_connection.py` va por ~405 líneas: lo próximo que crezca, en un módulo propio. Ver `USER_ACTIONS.md`.
 

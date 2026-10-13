@@ -16,6 +16,13 @@ el workflow en la rama por defecto; entorno `pypi` creado en GitHub con el usuar
 y espera a LFS con el mensaje esperado. **No probado:** con LFS en vivo desde el paquete instalado ni en
 otro equipo (punto ciego sigue abierto). Los índices no permiten resubir 0.1.0 con otro contenido.
 
+**Prueba en vivo del paquete instalado (S14):** abierto LFS (permiso de S9), Un Jugador en Blackwood
+(la primera vez genera la ruta de la IA, ~3 min), `/insim=29999`, `examples/hello.py` ejecutado con el
+`lfs-insim 0.1.0` de TestPyPI en el venv limpio: imprimió `Connected to LFS 0.8C31, InSim 10` y, al
+escribir `!hello` en el chat, LFS mostró «Hello from Python». LFS cerrado con `/exit`. Una vez la
+protección de `lfs_screen.ps1` saltó (el usuario usaba otra ventana): no se envió nada y se esperó.
+Sigue sin probarse en otro equipo.
+
 **Pendiente:** W5.6. 
 **Tests de `every`:** arreglados. Causa: el reloj de `time.monotonic()` en Windows <3.13 (~15 ms);
 tests con `perf_counter`. Verificado solo en 3.14 local; lo confirma el CI.
