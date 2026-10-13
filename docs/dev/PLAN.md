@@ -313,7 +313,8 @@ equivalencia pasa en todas las formas para todos los paquetes; `verify` y el CI 
   `@insim.on_disconnect` y saber si una conexión es una reconexión (A3). Después, publicar 0.3.0
   — hecho en S17 (`insim.reconnected`; `Colour` y `coloured()`; `^8` comprobado en LFS real; **0.3.0 publicado
   en PyPI**) → LOG.md S17
-- [ ] **W8.2** — Comandos con tipos, ayuda y grupos (A1) y permisos (A2), en su propio módulo
+- [x] **W8.2** — Comandos con tipos, ayuda y grupos (A1) y permisos (A2), en su propio módulo — hecho en S17
+  (sin publicar; sin probar en LFS real: antes de 0.4.0) → LOG.md S17
 - [ ] **W8.3** — Unidades: `lfs_insim.units` (funciones puras) y propiedades en los paquetes por `_extras.py` (A5)
 - [ ] **W8.4** — Hacer pública la forma en que `Roster` ve los paquetes antes y después de los manejadores
   (`order="before"`)

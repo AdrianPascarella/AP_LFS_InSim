@@ -60,21 +60,62 @@ Text fields are `str`. They keep LFS's `^` codes; see [text](roster-and-text.md#
 
 ### Chat commands
 
-With a `prefix`, `@insim.on_command("kick")` is called for `!kick Bob` with a `Command`:
+With a `prefix`, `@insim.on_command("speed")` is called for `!speed 80` with a `Command` first.
+The parameters after it are the words typed, converted to their annotation:
 
 ```python
 from lfs_insim import Command
 
 
-@insim.on_command("kick")
-def kick(command: Command) -> None:
-    # command.name == "kick", command.args == ("Bob",)
+@insim.on_command("speed")
+def speed(command: Command, kmh: int, who: str = "all") -> None:
+    """Set the speed limit."""
+    # !speed 80 Bob -> kmh == 80, who == "Bob"
     # command.ucid: the connection that typed it; command.plid: its player (0 if none)
-    command.reply(f"Kicking {', '.join(command.args)}")  # only the sender sees this
+    command.reply(f"Limit for {who}: {kmh} km/h")  # only the sender sees this
 ```
 
-Names are matched in any case. Commands are hidden from the other users. A command with no
-function is left alone, since it may be meant for another program.
+Arguments can be `str` (no annotation means `str`), `int` or `float`; a default makes one
+optional, and `*words: str` takes all the remaining ones. Words that do not fit are answered with
+the usage, and the function is not called:
+
+```text
+!speed abc   ->  !speed: kmh must be a whole number, not 'abc'. Use: !speed <kmh> [who]
+!speed ?     ->  !speed <kmh> [who]: Set the speed limit.
+```
+
+A function that takes only the `Command` gets whatever was typed in `command.args`, unchecked.
+
+**Who may use it.** `admin=True` keeps a command for LFS admins and the host (UCID 0). `allow` is
+a function of the `Command` for your own rule; the others are told they may not use it:
+
+```python
+@insim.on_command("kick", admin=True)
+def kick(command: Command, name: str) -> None: ...
+
+
+@insim.on_command("boost", allow=lambda command: command.ucid in {3, 5})
+def boost(command: Command) -> None: ...
+```
+
+**Groups.** Several commands under one name: `!aic start 3`, `!aic stop`. `!aic` alone lists
+them. `admin` and `allow` on the group apply to all of its commands.
+
+```python
+aic = insim.command_group("aic", admin=True)
+
+
+@aic.on_command("start")
+def start(command: Command, plid: int) -> None:
+    """Start driving a car."""
+
+
+@aic.on_command("stop")
+def stop(command: Command) -> None: ...
+```
+
+Register commands before running. Names are matched in any case. Commands are hidden from the
+other users. A command with no function is left alone, since it may be meant for another program.
 
 ### On connection, and on a rhythm
 

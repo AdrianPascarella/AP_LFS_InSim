@@ -490,6 +490,10 @@ Si no está claro si una instrucción es permanente o puntual, **se pregunta**.
   sustituye a una anterior. Si una fuente suya choca con la especificación, se dice y se investiga,
   sin elegir en silencio. Al usarla se cita dónde la dijo (hilo o versión) en el código o en
   `spec_overrides.py`, y en `LOG.md`.
+- **2026-10-13 (S17) — El agente aprueba él mismo el entorno `pypi`.** Al publicar 0.3.0 el usuario dijo
+  «Hazlo tú directamente» y, preguntado si era solo esa vez: «Vale siempre». Publicar una versión sigue
+  necesitando su permiso expreso; una vez dado, el agente aprueba el despliegue al entorno `pypi` por la API
+  (receta en `STATE.md`) sin pedirle que entre en GitHub, y comprueba después la instalación desde PyPI.
 
 ## §16 — Mantener vivo el sistema
 - **La configuración no está congelada.** Cuando cambie la realidad (un comando de verificación

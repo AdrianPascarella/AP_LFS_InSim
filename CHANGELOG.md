@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Chat commands take their arguments from the function: `def speed(command, kmh: int, who: str =
+  "all")` for `!speed 80`. Words that do not fit are answered with the usage, and `!speed ?` with
+  the usage and the docstring's first line. A function of only the `Command` works as before.
+- `on_command(..., admin=True)` (LFS admins and the host) and `allow=` (your own rule).
+- `insim.command_group("aic")`: `!aic start`, `!aic stop`; `!aic` alone lists them.
+
 ## 0.3.0
 
 - `@insim.on_disconnect`: called when a connection ends (LFS closed, lost, or you closed), once

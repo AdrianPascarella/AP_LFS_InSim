@@ -100,6 +100,31 @@ entorno). `publish` en verde; instalado desde PyPI en un venv limpio: 0.3.0, `co
 `reconnected` y el rechazo de `TINY.NCN`; PyPI lista 0.3.0, 0.2.0 y 0.1.0.
 **Tropiezo de comunicación:** el agente lanzó una espera de hasta 10 minutos sin decir antes qué tenía que hacer el
 usuario en GitHub; el usuario la cortó. Al pedir una aprobación, explicar primero dónde y qué pulsar.
+**Instrucción permanente (§15):** preguntado si «Hazlo tú directamente» valía siempre: «Vale siempre, guárdalo».
+Escrita en `PROTOCOL.md` §15: con permiso para publicar, el agente aprueba él mismo el entorno `pypi`.
+
+**W8.2 hecha** (el usuario: «sigue con W8.2»). Diseño del agente dentro de lo decidido al abrir W8:
+- **Argumentos = parámetros tras el `Command`**, convertidos por su anotación (`str`, sin anotación también;
+  `int`, `float`); con valor por defecto, opcional; `*resto`, las palabras que quedan. Otro tipo, un parámetro
+  solo por nombre sin valor por defecto, o ningún parámetro: `TypeError` al registrar. Una función de solo el
+  `Command` (o `print`, `list.append`) funciona como antes: cualquier palabra, sin comprobar.
+- **Palabras que no encajan:** se contesta solo a quien lo escribió («!speed: kmh must be a whole number, not
+  'abc'. Use: !speed <kmh> [who]», «… is missing», «too many words») y la función no se llama; no es un error
+  del programa (no se registra ni cuenta para `errors="raise"`). **`!speed ?`** → uso y primera línea del
+  docstring (el de un builtin no se usa).
+- **Permisos:** `admin=True` deja al host (UCID 0) y a quien LFS marca `Admin` en `IS_NCN`; para saberlo,
+  `Commands` crea un `Roster` interno la primera vez que hace falta (otro `Roster` del usuario pide lo mismo dos
+  veces: inofensivo). Sin datos aún, se niega (lo seguro). `allow=función(Command) -> bool`; si falla, cuenta
+  como error de manejador y se niega. Respuestas: «!kick is only for admins», «You may not use !boost».
+- **Grupos:** `insim.command_group("aic", admin=, allow=)` → `CommandGroup.on_command("start")`; `command.name`
+  es «aic start»; los límites del grupo y del comando se suman. `!aic` (o `!aic ?`) lista los comandos; con uno
+  que no existe, lo dice y los lista (el grupo es nuestro, así que sí se contesta).
+- Todo en `_commands.py` (297 líneas); `_dispatch` solo llama a `Commands.handle`. `_connection.py`: 462.
+- **Rojo primero:** `tests/test_commands_typed.py` (10 tests) falló antes del código (9 de 10). Un test estaba mal
+  (suponía que un comando `async` acaba antes que uno `def`): se corrigió para no depender del orden, dicho aquí.
+  `verify` PASS, 502 tests; 10/10 repeticiones. Guía (`insim.md`) y CHANGELOG «Unreleased». **Sin probar en LFS
+  real** (teclear `!speed abc` en el chat): antes de publicar 0.4.0. Los administradores remotos solo se pueden
+  ver en un servidor con otra persona: punto ciego.
 
 ## S16 — 2026-10-13 — W7.6: equivalencia, tabla de direcciones, guía en forma canónica y 0.2.0
 
