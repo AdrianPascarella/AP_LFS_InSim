@@ -43,6 +43,25 @@ todas sus utilidades (como ya hacía el proyecto en su versión antigua)». Aná
 («Plugins»), tareas W10.0–W10.10 en `PLAN.md`, P10 en `DIAGNOSIS.md`.
 **Verificación:** sin cambios de código; solo documentación de trabajo. Control de cierre al final.
 
+**Pregunta del usuario: ¿un plugin y un InSim son lo mismo?** El agente: en la jerga de LFS sí («un InSim» es
+un programa); en la biblioteca, no: `InSim` es la conexión (la tubería) y un plugin es la lógica que se
+engancha a ella; un programa = una conexión + uno o varios plugins (como `InSimClient` e `InSimApp` antes).
+
+**W10.1 hecha** (el usuario: «Sigue con W10.0 y W10.1»; W10.0 espera a que diga si puede abrirse LFS).
+- **Rojo primero:** `tests/test_plugins.py` (8 tests) falló entero antes del código; P10 reproducido: con
+  `Roster(insim)` y un comando, `TINY_ISM` pedido dos veces.
+- `insim.use(Tipo, **opciones)` (`_plugins.py`): una instancia por tipo y por `InSim`; sin opciones u otras
+  iguales, la misma; otras distintas → `ValueError`. Los comandos usan `use(Roster)`.
+- **Decisión del agente al escribirlo:** el primer intento llamaba a `insim._plugins` desde `Roster`, y el test
+  existente `test_roster_uses_only_the_public_api` (S18) se puso en rojo con razón: `Roster` debe escribirse
+  solo con la API pública, como un plugin de fuera. No se tocó el test; se añadió **`lfs_insim.Plugin`**, clase
+  base pública cuyo `__init__` registra el plugin (crear un segundo directamente → `ValueError`). *Descartado:*
+  `insim.adopt()` público. `use()` sigue aceptando cualquier clase. API pública nueva: `Plugin` y `use()`.
+- Mutación «`Plugin` sin registrar»: 3 tests en rojo; restaurada. CHANGELOG «Unreleased». La guía sigue con
+  `Roster(insim)`, que funciona: se reescribe en W10.8.
+- **Verificación:** `verify` PASS (555 tests). Aviso: `_connection.py` **504 líneas** (límite 500): lo bajará
+  W10.2, al sacar los comandos de `InSim`.
+
 ## S19 — 2026-10-13 — W9: comandos como invitado en un servidor ajeno
 
 **Inicio:** `session_start_check` PASS (rama, identidad, pull, plantilla v3). Documentos y realidad coinciden

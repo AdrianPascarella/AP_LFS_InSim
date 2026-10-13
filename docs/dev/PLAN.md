@@ -366,9 +366,10 @@ se queda en conectar, recibir y enviar. Pedido por el usuario en S20; diseño en
 propuesto en S20); por qué y descartes, en `LOG.md` S20. Se detalla tarea a tarea al empezar.
 - [ ] **W10.0** — Prueba en real: ¿acepta LFS varios programas InSim a la vez en el mismo puerto? Cambia la
   guía (cuándo combinar en un proceso y cuándo conexiones aparte), no el diseño.
-- [ ] **W10.1** — Test en rojo de P10 (dos `Roster` con comandos) y `insim.use(Plugin, **opciones)`: una
+- [x] **W10.1** — Test en rojo de P10 (dos `Roster` con comandos) y `insim.use(Plugin, **opciones)`: una
   instancia por tipo y por `InSim`, con su tipo; crear un segundo directamente da error; opciones distintas en
   un segundo `use()` dan error. `Roster` pasa a ser un plugin (`insim.use(Roster)`).
+  hecho en S20 → LOG.md S20
 - [ ] **W10.2** — Comandos como plugin propio (`insim.use(Commands, prefix="!")`, que hace `use(Roster)`):
   salen de `InSim`. **Cambio incompatible**: `@insim.on_command` e `insim.command_group` pasan a
   `commands.on_command` / `commands.command_group`, sin atajo en `InSim` (decidido en S20).

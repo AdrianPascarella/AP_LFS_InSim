@@ -350,9 +350,10 @@ cam = insim.use(FreeCam, speed=2)           # una aplicación de otro proyecto, 
 @commands.on_command("who")
 def who(cmd): ...
 
-class FreeCam:                              # un plugin: una clase que recibe el insim
+class FreeCam(Plugin):                      # un plugin: una clase que recibe el insim
     flags = ISF.MCI                         # lo que necesita en el IS_ISI
     def __init__(self, insim, *, speed=1):
+        super().__init__(insim)             # lo registra: un segundo FreeCam(insim) da error
         self.roster = insim.use(Roster)     # comparte el estado; fija el orden
         insim.on_connect(self._start)
     async def _start(self):
@@ -362,6 +363,11 @@ class FreeCam:                              # un plugin: una clase que recibe el
   (con su tipo, para el editor). Opciones distintas en otra llamada → error. Crear un plugin directamente
   cuando ya hay uno de ese tipo → error que remite a `use()` (así no puede haber dos `Roster`, P10). Dos
   conexiones distintas tienen cada una los suyos.
+- **`lfs_insim.Plugin`, clase base pública** (añadida en S20 al escribir W10.1): su `__init__(insim)` registra
+  el plugin, así que crear un segundo del mismo tipo directamente da error. Hacía falta porque `Roster` solo
+  puede usar la API pública (test `test_roster_uses_only_the_public_api`), igual que un plugin de fuera.
+  `use()` acepta cualquier clase; sin heredar de `Plugin` solo se pierde ese error. *Descartado:* un
+  `insim.adopt()` público (una función más que nadie debería llamar a mano).
 - **El núcleo no conoce a ningún plugin.** Los comandos salen de `InSim` a su propio plugin, que usa `Roster`
   (lo necesita para saber quién es este ordenador, si somos invitados y quién es admin). *Descartado:*
   comandos dentro de `Roster` (propuesto por el usuario: el registrador o la cámara quieren `Roster` sin

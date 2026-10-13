@@ -14,6 +14,7 @@ from lfs_insim import _requests
 from lfs_insim._commands import Allow, CommandGroup, CommandHandler, Commands, GuestCommands
 from lfs_insim._events import P
 from lfs_insim._handlers import Errors, Handlers, StopsOnError
+from lfs_insim._plugins import Plugins, T
 from lfs_insim._shortcuts import On, Send
 from lfs_insim._stream import PacketStream
 from lfs_insim.packets import (
@@ -97,6 +98,7 @@ class InSim(StopsOnError):
         )
         self._isi.pack()  # fail now, not when connecting, if a name is too long
         self._handlers = Handlers(errors, self._fail)
+        self._plugins = Plugins(self)
         self._commands = Commands(prefix, self._make_roster, guest_commands)
         self._requests = _requests.Requests()
         self._connect_handlers: list[ConnectHandler] = []
@@ -167,10 +169,16 @@ class InSim(StopsOnError):
         """
         return self._commands.group(name, admin, allow, prefix)
 
+    def use(self, plugin: type[T], /, **options: Any) -> T:
+        """The plugin of this type, made the first time with this InSim and the options:
+        `roster = insim.use(Roster)`. Later calls give the same one; other options raise ValueError.
+        """
+        return self._plugins.use(plugin, options)
+
     def _make_roster(self) -> Any:
         from lfs_insim.state import Roster  # state imports this module
 
-        return Roster(self)
+        return self.use(Roster)
 
     def on_connect(self, handler: ConnectHandler) -> ConnectHandler:
         """Decorator: call the function (no arguments) after every connection and reconnection.

@@ -8,8 +8,9 @@
 > **`lfs-insim 0.5.0` está publicado en PyPI** (S19, release `v0.5.0`): comandos como invitado y prefijo propio
 > por comando (W9). Antes, 0.4.0 (S18: W8) y 0.3.0 y 0.2.0 (S16–S17).
 > **▶️ SIGUIENTE: W10, plugins** (`insim.use(Roster)`, comandos como plugin propio, nada pedido dos veces,
-> `ready()`, flags por plugin, `ClickID`). Empezar por **W10.0** (¿varios InSim en el mismo puerto? prueba en
-> real) y **W10.1** (test en rojo de P10, después `use()`). Tareas en `PLAN.md`; diseño en `API_DESIGN.md`
+> `ready()`, flags por plugin, `ClickID`). **W10.1 hecha** (`use()`, `Plugin`, P10 resuelto). Siguen **W10.0**
+> (¿varios InSim en el mismo puerto? prueba en real; preguntar antes de abrir LFS) y **W10.2** (comandos como
+> plugin; bajará `_connection.py`, hoy 504 líneas, aviso). Tareas en `PLAN.md`; diseño en `API_DESIGN.md`
 > («Plugins»); por qué, en `LOG.md` S20. **W6 espera a W10**; su alcance ya está decidido (en `PLAN.md`).
 > **Receta de una versión nueva:** versión y CHANGELOG en
 > `dev`; `verify` en verde; avance rápido de `dev` a `main`; `gh release create vX.Y.Z --target main`

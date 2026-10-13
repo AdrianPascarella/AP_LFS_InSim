@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Plugins: `insim.use(Type, **options)` gives the one instance of a plugin for that connection,
+  made the first time; `lfs_insim.Plugin` is their base class. Making a second one of the same
+  type directly raises `ValueError`.
+- `Roster` is a plugin: `roster = insim.use(Roster)` (`Roster(insim)` still works, once). The chat
+  commands now share it instead of making a second roster that asked LFS for everyone again.
+
 ## 0.5.0
 
 - Chat commands as a guest in someone else's server: only this computer may use them unless

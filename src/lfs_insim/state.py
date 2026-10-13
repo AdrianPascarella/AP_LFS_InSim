@@ -27,6 +27,7 @@ from dataclasses import dataclass, field
 from types import MappingProxyType
 
 from lfs_insim._connection import InSim
+from lfs_insim._plugins import Plugin
 from lfs_insim.packets import (
     IS_CNL,
     IS_CPR,
@@ -78,10 +79,13 @@ class Player:
     """In the garage (IS_PLP): still in the race, not on track, until it leaves the pits."""
 
 
-class Roster:
-    """The connections and players of LFS, by UCID and PLID. Create it before running insim."""
+class Roster(Plugin):
+    """The connections and players of LFS, by UCID and PLID: `roster = insim.use(Roster)`,
+    before running insim. One per InSim, shared with the commands and every other plugin.
+    """
 
     def __init__(self, insim: InSim) -> None:
+        super().__init__(insim)
         self._insim = insim
         self._connections: dict[int, Connection] = {}
         self._players: dict[int, Player] = {}
