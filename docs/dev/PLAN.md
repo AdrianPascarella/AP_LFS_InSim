@@ -204,7 +204,7 @@ instalación en otro equipo (punto ciego).
 MkDocs/Sphinx por ahora); publicación con Trusted Publishing desde GitHub Actions (sin tokens);
 estado `Development Status :: 3 - Alpha`. Todo lo público, en inglés.
 
-- [ ] **W5.1** — **README real** (hoy dice «rewrite in progress»): instalación, ejemplo corto,
+- [x] **W5.1** — **README real** (hoy dice «rewrite in progress»): instalación, ejemplo corto,
   qué cubre (InSim, OutSim, OutGauge), enlaces a `docs/` y a `examples/`. *Acepta:* el ejemplo del
   README se ejecuta tal cual (comprobado por un test).
 - [ ] **W5.2** — **Guía en `docs/`** (inglés): empezar, paquetes y eventos, comandos, `request`,
