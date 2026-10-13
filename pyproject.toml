@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lfs-insim"
-version = "0.0.0"
+version = "0.1.0"
 description = "A Python library for the Live for Speed InSim protocol (InSim, OutSim, OutGauge)."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -13,7 +13,7 @@ license-files = ["LICENSE"]
 authors = [{ name = "Adrian Pascarella" }]
 keywords = ["live for speed", "lfs", "insim", "outsim", "outgauge", "racing", "simulator"]
 classifiers = [
-    "Development Status :: 1 - Planning",
+    "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
@@ -35,6 +35,10 @@ Issues = "https://github.com/AdrianPascarella/AP_LFS_InSim/issues"
 # ruff is pinned to a minor version: the generated packets go through `ruff format`, and a new
 # release could change them (and turn `spec` and `verify` red) without any change of ours.
 dev = ["ruff>=0.17,<0.18", "mypy", "pytest"]
+
+[tool.hatch.build.targets.sdist]
+# Working notes and agent instructions stay out of the public package.
+exclude = ["CLAUDE.md", "docs/dev", ".github"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/lfs_insim"]

@@ -23,7 +23,13 @@ ejecuta (necesitaría LFS). Se quitó una línea de `cfg.txt` (`OutGauge Delay`)
 respaldar con nada del repositorio. Lo que **no** está comprobado en el LFS real: los fragmentos
 nuevos de la guía que no vienen de `examples/` (solo se comprobó que compilan).
 
-**Siguiente:** W5.3, empaquetado 0.1.0.
+**W5.3 hecha:** `pyproject.toml` en 0.1.0 y Alpha, `CHANGELOG.md`. `python -m build` y
+`twine check` en verde (wheel y sdist). El wheel lleva `py.typed` y la licencia; se instaló en un
+venv limpio (fuera del repositorio): `import lfs_insim` da 0.1.0 y `examples/hello.py` carga. El
+sdist llevaba `CLAUDE.md`, `docs/dev` y `.github`: excluidos en `[tool.hatch.build.targets.sdist]`.
+Nada subido a ningún índice.
+
+**Siguiente:** W5.4, workflow de publicación (Trusted Publishing); abre la tarjeta U6.
 
 ## S12 — 2026-10-12 — Primera prueba con el LFS real (W3.1, primera pasada)
 

@@ -1,12 +1,13 @@
 # 📍 Estado — AP_LFS_InSim (lfs_insim)
-> Actualizado: 2026-10-13 (S13): W5.1 y W5.2 hechas; **W3 y W4 hechas enteras (S12).** La biblioteca está validada en el
+> Actualizado: 2026-10-13 (S13): W5.1–W5.3 hechas; **W3 y W4 hechas enteras (S12).** La biblioteca está validada en el
 > LFS real (InSim, OutGauge, OutSim y `OutSimPack2`; `tests/live_lfs.py`), y tiene la API de alto
 > nivel: `IS_MSO.text`, `await insim.request(IS_X)` / `request_all`, `Roster` (`lfs_insim.state`),
 > `insim.say()` / `command()`, `@insim.on_command("hello")`, `lfs_insim.text.plain()` y cuatro
 > ejemplos en `examples/`, probados en cada push y comprobados en el LFS real. Decisiones en
 > `API_DESIGN.md`. El agente maneja LFS con `tests/lfs_screen.ps1`, que no envía nada si LFS no
 > está delante (PROTOCOL §13). `cfg.txt` está restaurado: OutSim/OutGauge en vivo pide permiso.
-> **▶️ SIGUIENTE: W5.3 (empaquetado 0.1.0)** — W5.1 y W5.2 (README y guía) hechas en S13; docs en Markdown,
+> **▶️ SIGUIENTE: W5.4 (workflow de publicación; abre U6 para el usuario)** — W5.1–W5.3 hechas en S13
+> (versión ya en 0.1.0, sin publicar); docs en Markdown,
 > Trusted Publishing, Alpha. Publicar y crear tags pide permiso. `_connection.py` va por
 > ~405 líneas: lo próximo que crezca, en un módulo propio.
 

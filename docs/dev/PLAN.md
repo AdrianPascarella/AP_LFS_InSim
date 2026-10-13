@@ -212,9 +212,10 @@ estado `Development Status :: 3 - Alpha`. Todo lo público, en inglés.
   `Roster`, texto y colores, OutSim/OutGauge. *Acepta:* cada fragmento de código está probado o
   sale de `examples/`; ningún enlace roto. hecho en S13 → LOG.md S13 (`tests/test_docs.py`: los
   bloques son Python válido, sus `import` existen y los enlaces no están rotos; no se ejecutan)
-- [ ] **W5.3** — **Empaquetado 0.1.0:** versión, classifier Alpha, `CHANGELOG.md`, `py.typed` en el
+- [x] **W5.3** — **Empaquetado 0.1.0:** versión, classifier Alpha, `CHANGELOG.md`, `py.typed` en el
   wheel. *Acepta:* `python -m build` y `twine check` en verde; el wheel se instala en un venv
-  limpio y `import lfs_insim` funciona.
+  limpio y `import lfs_insim` funciona. hecho en S13 → LOG.md S13 (sdist sin `CLAUDE.md`,
+  `docs/dev` ni `.github`)
 - [ ] **W5.4** — **Workflow de publicación** (`publish.yml`, Trusted Publishing: TestPyPI con
   lanzamiento manual, PyPI al publicar un release). 🙋 *U6:* el usuario crea las cuentas y registra
   el publicador en TestPyPI y PyPI.
