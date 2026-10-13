@@ -9,7 +9,8 @@ from ipaddress import IPv4Address
 
 from lfs_insim.packets import _codec as _c
 from lfs_insim.packets import _extras as _x
-from lfs_insim.packets._codec import InSimPacket, Structure
+from lfs_insim.packets._codec import Structure
+from lfs_insim.packets._directions import BothWaysPacket, InfoPacket, InstructionPacket
 from lfs_insim.packets._enums import ISP
 from lfs_insim.packets._types import Vec, Vector
 
@@ -97,8 +98,8 @@ __all__ = [
 
 
 @dataclass(kw_only=True)
-class IS_ISI(InSimPacket):
-    """InSim Init - packet to initialise the InSim system"""
+class IS_ISI(InstructionPacket):
+    """InSim Init - packet to initialise the InSim system (instruction: your program sends it)"""
 
     ReqI: int = 0
     """If non-zero LFS will send an IS_VER packet"""
@@ -141,8 +142,8 @@ class IS_ISI(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_TINY(InSimPacket):
-    """General purpose 4 byte packet"""
+class IS_TINY(BothWaysPacket):
+    """General purpose 4 byte packet (both ways: LFS sends it, and your program may send it)"""
 
     ReqI: int = 0
     """0 unless it is an info request or a reply to an info request"""
@@ -160,8 +161,8 @@ class IS_TINY(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_SMALL(InSimPacket):
-    """General purpose 8 byte packet"""
+class IS_SMALL(BothWaysPacket):
+    """General purpose 8 byte packet (both ways: LFS sends it, and your program may send it)"""
 
     ReqI: int = 0
     """0 unless it is an info request or a reply to an info request"""
@@ -183,8 +184,8 @@ class IS_SMALL(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_TTC(InSimPacket):
-    """General purpose 8 byte packet (Target To Connection)"""
+class IS_TTC(InstructionPacket):
+    """General purpose 8 byte packet (Target To Connection) (instruction: your program sends it)"""
 
     ReqI: int = 0
     """0 unless it is an info request or a reply to an info request"""
@@ -216,8 +217,8 @@ class IS_TTC(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_VER(InSimPacket):
-    """VERsion"""
+class IS_VER(InfoPacket):
+    """VERsion (info: LFS sends it)"""
 
     ReqI: int = 0
     """ReqI as received in the request packet"""
@@ -245,8 +246,8 @@ class IS_VER(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_STA(InSimPacket):
-    """STAte"""
+class IS_STA(InfoPacket):
+    """STAte (info: LFS sends it)"""
 
     ReqI: int = 0
     """ReqI if replying to a request packet"""
@@ -317,8 +318,8 @@ class IS_STA(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_SFP(InSimPacket):
-    """State Flags Pack"""
+class IS_SFP(InstructionPacket):
+    """State Flags Pack (instruction: your program sends it)"""
 
     ReqI: int = 0
     """0"""
@@ -342,8 +343,8 @@ class IS_SFP(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_MOD(InSimPacket):
-    """MODe: send to LFS to change screen mode"""
+class IS_MOD(InstructionPacket):
+    """MODe: send to LFS to change screen mode (instruction: your program sends it)"""
 
     ReqI: int = 0
     """0"""
@@ -374,8 +375,8 @@ class IS_MOD(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_MSO(_x.MSOText, InSimPacket):
-    """MSg Out - system messages and user messages - variable size"""
+class IS_MSO(_x.MSOText, InfoPacket):
+    """MSg Out - system messages and user messages - variable size (info: LFS sends it)"""
 
     ReqI: int = 0
     """0"""
@@ -416,8 +417,8 @@ class IS_MSO(_x.MSOText, InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_III(InSimPacket):
-    """InsIm Info - /i message from user to host's InSim - variable size"""
+class IS_III(InfoPacket):
+    """InsIm Info - /i message from user to host's InSim - variable size (info: LFS sends it)"""
 
     ReqI: int = 0
     """0"""
@@ -446,8 +447,8 @@ class IS_III(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_ACR(InSimPacket):
-    """Admin Command Report - a user typed an admin command - variable size"""
+class IS_ACR(InfoPacket):
+    """Admin Command Report - a user typed an admin command - variable size (info: LFS sends it)"""
 
     ReqI: int = 0
     """0"""
@@ -479,8 +480,8 @@ class IS_ACR(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_MST(InSimPacket):
-    """MSg Type - send to LFS to type message or command"""
+class IS_MST(InstructionPacket):
+    """MSg Type - send to LFS to type message or command (instruction: your program sends it)"""
 
     ReqI: int = 0
     """0"""
@@ -499,8 +500,8 @@ class IS_MST(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_MSX(InSimPacket):
-    """MSg eXtended - like MST but longer (not for commands)"""
+class IS_MSX(InstructionPacket):
+    """MSg eXtended - like MST but longer (not for commands) (instruction: your program sends it)"""
 
     ReqI: int = 0
     """0"""
@@ -519,8 +520,8 @@ class IS_MSX(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_MSL(InSimPacket):
-    """MSg Local - message to appear on local computer only"""
+class IS_MSL(InstructionPacket):
+    """MSg Local - message to appear on local computer only (instruction: your program sends it)"""
 
     ReqI: int = 0
     """0"""
@@ -542,8 +543,11 @@ class IS_MSL(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_MTC(InSimPacket):
-    """Msg To Connection - hosts only - send to a connection / a player / all"""
+class IS_MTC(InstructionPacket):
+    """
+    Msg To Connection - hosts only - send to a connection / a player / all (instruction: your
+    program sends it)
+    """
 
     ReqI: int = 0
     """0"""
@@ -575,8 +579,8 @@ class IS_MTC(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_SCH(InSimPacket):
-    """Single CHaracter"""
+class IS_SCH(InstructionPacket):
+    """Single CHaracter (instruction: your program sends it)"""
 
     ReqI: int = 0
     """0"""
@@ -601,8 +605,8 @@ class IS_SCH(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_ISM(InSimPacket):
-    """InSim Multi"""
+class IS_ISM(InfoPacket):
+    """InSim Multi (info: LFS sends it)"""
 
     ReqI: int = 0
     """usually 0 / or if a reply: ReqI as received in the TINY_ISM"""
@@ -628,8 +632,8 @@ class IS_ISM(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_VTN(InSimPacket):
-    """VoTe Notify"""
+class IS_VTN(InfoPacket):
+    """VoTe Notify (info: LFS sends it)"""
 
     ReqI: int = 0
     """0"""
@@ -654,8 +658,8 @@ class IS_VTN(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_PLC(InSimPacket):
-    """PLayer Cars"""
+class IS_PLC(InstructionPacket):
+    """PLayer Cars (instruction: your program sends it)"""
 
     ReqI: int = 0
     """0"""
@@ -696,8 +700,8 @@ class CarHCP(Structure):
 
 
 @dataclass(kw_only=True)
-class IS_HCP(InSimPacket):
-    """HandiCaPs"""
+class IS_HCP(InstructionPacket):
+    """HandiCaPs (instruction: your program sends it)"""
 
     ReqI: int = 0
     """0"""
@@ -739,8 +743,8 @@ class PlayerHCap(Structure):
 
 
 @dataclass(kw_only=True)
-class IS_PLH(InSimPacket):
-    """PLayer Handicaps - variable size"""
+class IS_PLH(BothWaysPacket):
+    """PLayer Handicaps - variable size (both ways: LFS sends it, and your program may send it)"""
 
     ReqI: int = 0
     """0 unless this is a reply to a TINY_PLH request"""
@@ -759,8 +763,8 @@ class IS_PLH(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_RST(InSimPacket):
-    """Race STart"""
+class IS_RST(InfoPacket):
+    """Race STart (info: LFS sends it)"""
 
     ReqI: int = 0
     """0 unless this is a reply to an TINY_RST request"""
@@ -825,8 +829,8 @@ class IS_RST(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_NCN(InSimPacket):
-    """New ConN"""
+class IS_NCN(InfoPacket):
+    """New ConN (info: LFS sends it)"""
 
     ReqI: int = 0
     """0 unless this is a reply to a TINY_NCN request"""
@@ -865,8 +869,8 @@ class IS_NCN(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_NCI(InSimPacket):
-    """New Conn Info - sent on host only if an admin password has been set"""
+class IS_NCI(InfoPacket):
+    """New Conn Info - sent on host only if an admin password has been set (info: LFS sends it)"""
 
     ReqI: int = 0
     """0 unless this is a reply to a TINY_NCI request"""
@@ -901,8 +905,8 @@ class IS_NCI(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_SLC(InSimPacket):
-    """SeLected Car - sent when a connection selects a car (empty if no car)"""
+class IS_SLC(InfoPacket):
+    """SeLected Car - sent when a connection selects a car (empty if no car) (info: LFS sends it)"""
 
     ReqI: int = 0
     """0 unless this is a reply to a TINY_SLC request"""
@@ -924,8 +928,8 @@ class IS_SLC(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_MAL(InSimPacket):
-    """Mods ALlowed - variable size"""
+class IS_MAL(BothWaysPacket):
+    """Mods ALlowed - variable size (both ways: LFS sends it, and your program may send it)"""
 
     ReqI: int = 0
     """0 unless this is a reply to a TINY_MAL request"""
@@ -954,8 +958,8 @@ class IS_MAL(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_IPB(InSimPacket):
-    """IP Bans - variable size"""
+class IS_IPB(BothWaysPacket):
+    """IP Bans - variable size (both ways: LFS sends it, and your program may send it)"""
 
     ReqI: int = 0
     """0 unless this is a reply to a TINY_IPB request"""
@@ -978,8 +982,8 @@ class IS_IPB(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_CIM(InSimPacket):
-    """Conn Interface Mode"""
+class IS_CIM(InfoPacket):
+    """Conn Interface Mode (info: LFS sends it)"""
 
     ReqI: int = 0
     """0"""
@@ -1010,8 +1014,8 @@ class IS_CIM(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_CNL(InSimPacket):
-    """ConN Leave"""
+class IS_CNL(InfoPacket):
+    """ConN Leave (info: LFS sends it)"""
 
     ReqI: int = 0
     """0"""
@@ -1039,8 +1043,8 @@ class IS_CNL(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_CPR(InSimPacket):
-    """Conn Player Rename"""
+class IS_CPR(InfoPacket):
+    """Conn Player Rename (info: LFS sends it)"""
 
     ReqI: int = 0
     """0"""
@@ -1066,8 +1070,8 @@ class IS_CPR(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_NPL(InSimPacket):
-    """New PLayer joining race (if PLID already exists, then leaving pits)"""
+class IS_NPL(InfoPacket):
+    """New PLayer joining race (if PLID already exists, then leaving pits) (info: LFS sends it)"""
 
     ReqI: int = 0
     """0 unless this is a reply to an TINY_NPL request"""
@@ -1162,8 +1166,8 @@ class IS_NPL(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_PLP(InSimPacket):
-    """PLayer Pits (go to settings - stays in player list)"""
+class IS_PLP(InfoPacket):
+    """PLayer Pits (go to settings - stays in player list) (info: LFS sends it)"""
 
     ReqI: int = 0
     """0"""
@@ -1181,8 +1185,8 @@ class IS_PLP(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_PLL(InSimPacket):
-    """PLayer Leave race (spectate - removed from player list)"""
+class IS_PLL(InfoPacket):
+    """PLayer Leave race (spectate - removed from player list) (info: LFS sends it)"""
 
     ReqI: int = 0
     """0"""
@@ -1200,8 +1204,8 @@ class IS_PLL(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_CRS(InSimPacket):
-    """Car ReSet"""
+class IS_CRS(InfoPacket):
+    """Car ReSet (info: LFS sends it)"""
 
     ReqI: int = 0
     """0"""
@@ -1219,8 +1223,8 @@ class IS_CRS(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_LAP(InSimPacket):
-    """LAP time"""
+class IS_LAP(InfoPacket):
+    """LAP time (info: LFS sends it)"""
 
     ReqI: int = 0
     """0"""
@@ -1267,8 +1271,8 @@ class IS_LAP(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_SPX(InSimPacket):
-    """SPlit X time"""
+class IS_SPX(InfoPacket):
+    """SPlit X time (info: LFS sends it)"""
 
     ReqI: int = 0
     """0"""
@@ -1310,8 +1314,8 @@ class IS_SPX(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_PIT(InSimPacket):
-    """PIT stop (stop at pit garage)"""
+class IS_PIT(InfoPacket):
+    """PIT stop (stop at pit garage) (info: LFS sends it)"""
 
     ReqI: int = 0
     """0"""
@@ -1359,8 +1363,8 @@ class IS_PIT(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_PSF(InSimPacket):
-    """Pit Stop Finished"""
+class IS_PSF(InfoPacket):
+    """Pit Stop Finished (info: LFS sends it)"""
 
     ReqI: int = 0
     """0"""
@@ -1383,8 +1387,8 @@ class IS_PSF(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_PLA(InSimPacket):
-    """Pit LAne"""
+class IS_PLA(InfoPacket):
+    """Pit LAne (info: LFS sends it)"""
 
     ReqI: int = 0
     """0"""
@@ -1409,8 +1413,8 @@ class IS_PLA(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_CCH(InSimPacket):
-    """Camera CHange"""
+class IS_CCH(InfoPacket):
+    """Camera CHange (info: LFS sends it)"""
 
     ReqI: int = 0
     """0"""
@@ -1435,8 +1439,8 @@ class IS_CCH(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_PEN(InSimPacket):
-    """PENalty (given or cleared)"""
+class IS_PEN(InfoPacket):
+    """PENalty (given or cleared) (info: LFS sends it)"""
 
     ReqI: int = 0
     """0"""
@@ -1467,8 +1471,8 @@ class IS_PEN(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_TOC(InSimPacket):
-    """Take Over Car"""
+class IS_TOC(InfoPacket):
+    """Take Over Car (info: LFS sends it)"""
 
     ReqI: int = 0
     """0"""
@@ -1496,8 +1500,8 @@ class IS_TOC(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_FLG(InSimPacket):
-    """FLaG (yellow or blue flag changed)"""
+class IS_FLG(InfoPacket):
+    """FLaG (yellow or blue flag changed) (info: LFS sends it)"""
 
     ReqI: int = 0
     """0"""
@@ -1528,8 +1532,8 @@ class IS_FLG(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_PFL(InSimPacket):
-    """Player FLags (help flags changed)"""
+class IS_PFL(InfoPacket):
+    """Player FLags (help flags changed) (info: LFS sends it)"""
 
     ReqI: int = 0
     """0"""
@@ -1552,8 +1556,8 @@ class IS_PFL(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_FIN(InSimPacket):
-    """FINished race notification (not a final result - use IS_RES)"""
+class IS_FIN(InfoPacket):
+    """FINished race notification (not a final result - use IS_RES) (info: LFS sends it)"""
 
     ReqI: int = 0
     """0"""
@@ -1597,8 +1601,8 @@ class IS_FIN(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_RES(InSimPacket):
-    """RESult (qualify or confirmed finish)"""
+class IS_RES(InfoPacket):
+    """RESult (qualify or confirmed finish) (info: LFS sends it)"""
 
     ReqI: int = 0
     """0 unless this is a reply to a TINY_RES request"""
@@ -1670,8 +1674,11 @@ class IS_RES(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_REO(InSimPacket):
-    """REOrder (when race restarts after qualifying)"""
+class IS_REO(BothWaysPacket):
+    """
+    REOrder (when race restarts after qualifying) (both ways: LFS sends it, and your program may
+    send it)
+    """
 
     ReqI: int = 0
     """0 unless this is a reply to an TINY_REO request"""
@@ -1718,8 +1725,11 @@ class ObjectInfo(Structure):
 
 
 @dataclass(kw_only=True)
-class IS_JRR(InSimPacket):
-    """Join Request Reply - send one of these back to LFS in response to a join request"""
+class IS_JRR(InstructionPacket):
+    """
+    Join Request Reply - send one of these back to LFS in response to a join request
+    (instruction: your program sends it)
+    """
 
     ReqI: int = 0
     """0"""
@@ -1751,8 +1761,8 @@ class IS_JRR(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_AXI(InSimPacket):
-    """AutoX Info"""
+class IS_AXI(InfoPacket):
+    """AutoX Info (info: LFS sends it)"""
 
     ReqI: int = 0
     """0 unless this is a reply to an TINY_AXI request"""
@@ -1783,8 +1793,8 @@ class IS_AXI(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_AXO(InSimPacket):
-    """AutoX Object"""
+class IS_AXO(InfoPacket):
+    """AutoX Object (info: LFS sends it)"""
 
     ReqI: int = 0
     """0"""
@@ -1825,8 +1835,8 @@ class NodeLap(Structure):
 
 
 @dataclass(kw_only=True)
-class IS_NLP(InSimPacket):
-    """Node and Lap Packet - variable size"""
+class IS_NLP(InfoPacket):
+    """Node and Lap Packet - variable size (info: LFS sends it)"""
 
     ReqI: int = 0
     """0 unless this is a reply to an TINY_NLP request"""
@@ -1901,8 +1911,11 @@ class CompCar(Structure):
 
 
 @dataclass(kw_only=True)
-class IS_MCI(InSimPacket):
-    """Multi Car Info - if more than MCI_MAX_CARS in race then more than one is sent"""
+class IS_MCI(InfoPacket):
+    """
+    Multi Car Info - if more than MCI_MAX_CARS in race then more than one is sent (info: LFS
+    sends it)
+    """
 
     ReqI: int = 0
     """0 unless this is a reply to an TINY_MCI request"""
@@ -1980,8 +1993,8 @@ class CarContact(Structure):
 
 
 @dataclass(kw_only=True)
-class IS_CON(InSimPacket):
-    """CONtact - between two cars (A and B are sorted by PLID)"""
+class IS_CON(InfoPacket):
+    """CONtact - between two cars (A and B are sorted by PLID) (info: LFS sends it)"""
 
     ReqI: int = 0
     """0"""
@@ -2041,8 +2054,8 @@ class CarContOBJ(Structure):
 
 
 @dataclass(kw_only=True)
-class IS_OBH(InSimPacket):
-    """OBject Hit - car hit an autocross object or an unknown object"""
+class IS_OBH(InfoPacket):
+    """OBject Hit - car hit an autocross object or an unknown object (info: LFS sends it)"""
 
     ReqI: int = 0
     """0"""
@@ -2093,8 +2106,11 @@ class IS_OBH(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_HLV(InSimPacket):
-    """Hot Lap Validity - off track / hit wall / speeding in pits / out of bounds"""
+class IS_HLV(InfoPacket):
+    """
+    Hot Lap Validity - off track / hit wall / speeding in pits / out of bounds (info: LFS sends
+    it)
+    """
 
     ReqI: int = 0
     """0"""
@@ -2125,8 +2141,8 @@ class IS_HLV(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_SET(InSimPacket):
-    """SETup"""
+class IS_SET(InfoPacket):
+    """SETup (info: LFS sends it)"""
 
     ReqI: int = 0
     """0"""
@@ -2163,8 +2179,8 @@ class IS_SET(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_UCO(InSimPacket):
-    """User Control Object"""
+class IS_UCO(InfoPacket):
+    """User Control Object (info: LFS sends it)"""
 
     ReqI: int = 0
     """0"""
@@ -2200,8 +2216,11 @@ class IS_UCO(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_CSC(InSimPacket):
-    """Car State Changed - reports a change in a car's state (currently start or stop)"""
+class IS_CSC(InfoPacket):
+    """
+    Car State Changed - reports a change in a car's state (currently start or stop) (info: LFS
+    sends it)
+    """
 
     ReqI: int = 0
     """0"""
@@ -2232,8 +2251,8 @@ class IS_CSC(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_OCO(InSimPacket):
-    """Object COntrol"""
+class IS_OCO(InstructionPacket):
+    """Object COntrol (instruction: your program sends it)"""
 
     ReqI: int = 0
     """0"""
@@ -2264,8 +2283,11 @@ class IS_OCO(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_AXM(InSimPacket):
-    """AutoX Multiple objects - variable size"""
+class IS_AXM(BothWaysPacket):
+    """
+    AutoX Multiple objects - variable size (both ways: LFS sends it, and your program may send
+    it)
+    """
 
     ReqI: int = 0
     """0 unless this is a reply to a TINY_AXM request"""
@@ -2316,8 +2338,8 @@ class AIInputVal(Structure):
 
 
 @dataclass(kw_only=True)
-class IS_AIC(InSimPacket):
-    """AI Control - variable size"""
+class IS_AIC(InstructionPacket):
+    """AI Control - variable size (instruction: your program sends it)"""
 
     ReqI: int = 0
     """Optional - returned in any immediate response e.g. reply to CS_SEND_AI_INFO"""
@@ -2373,8 +2395,8 @@ class OSMain(Structure):
 
 
 @dataclass(kw_only=True)
-class IS_AII(InSimPacket):
-    """AI Info"""
+class IS_AII(InfoPacket):
+    """AI Info (info: LFS sends it)"""
 
     ReqI: int = 0
     """ReqI from the SMALL_AII request packet"""
@@ -2423,8 +2445,11 @@ class IS_AII(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_SCC(InSimPacket):
-    """Set Car Camera - Simplified camera packet (not free view mode)"""
+class IS_SCC(InstructionPacket):
+    """
+    Set Car Camera - Simplified camera packet (not free view mode) (instruction: your program
+    sends it)
+    """
 
     ReqI: int = 0
     """0"""
@@ -2449,8 +2474,11 @@ class IS_SCC(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_CPP(InSimPacket):
-    """Cam Pos Pack - Full camera packet (in car OR free view mode)"""
+class IS_CPP(BothWaysPacket):
+    """
+    Cam Pos Pack - Full camera packet (in car OR free view mode) (both ways: LFS sends it, and
+    your program may send it)
+    """
 
     ReqI: int = 0
     """instruction: 0 / or reply: ReqI as received in the TINY_SCP"""
@@ -2501,8 +2529,8 @@ class IS_CPP(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_RIP(InSimPacket):
-    """Replay Information Packet"""
+class IS_RIP(BothWaysPacket):
+    """Replay Information Packet (both ways: LFS sends it, and your program may send it)"""
 
     ReqI: int = 0
     """request: non-zero / reply: same value returned"""
@@ -2545,8 +2573,8 @@ class IS_RIP(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_SSH(InSimPacket):
-    """ScreenSHot"""
+class IS_SSH(BothWaysPacket):
+    """ScreenSHot (both ways: LFS sends it, and your program may send it)"""
 
     ReqI: int = 0
     """request: non-zero / reply: same value returned"""
@@ -2572,8 +2600,11 @@ class IS_SSH(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_BFN(InSimPacket):
-    """Button FunctioN - delete buttons / receive button requests"""
+class IS_BFN(BothWaysPacket):
+    """
+    Button FunctioN - delete buttons / receive button requests (both ways: LFS sends it, and
+    your program may send it)
+    """
 
     ReqI: int = 0
     """0"""
@@ -2607,8 +2638,11 @@ class IS_BFN(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_BTN(InSimPacket):
-    """BuTtoN - button header - followed by 0 to 240 characters"""
+class IS_BTN(InstructionPacket):
+    """
+    BuTtoN - button header - followed by 0 to 240 characters (instruction: your program sends
+    it)
+    """
 
     ReqI: int = 0
     """non-zero (returned in IS_BTC and IS_BTT packets)"""
@@ -2666,8 +2700,8 @@ class IS_BTN(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_BTC(InSimPacket):
-    """BuTton Click - sent back when user clicks a button"""
+class IS_BTC(InfoPacket):
+    """BuTton Click - sent back when user clicks a button (info: LFS sends it)"""
 
     ReqI: int = 0
     """ReqI as received in the IS_BTN"""
@@ -2698,8 +2732,8 @@ class IS_BTC(InSimPacket):
 
 
 @dataclass(kw_only=True)
-class IS_BTT(InSimPacket):
-    """BuTton Type - sent back when user types into a text entry button"""
+class IS_BTT(InfoPacket):
+    """BuTton Type - sent back when user types into a text entry button (info: LFS sends it)"""
 
     ReqI: int = 0
     """ReqI as received in the IS_BTN"""

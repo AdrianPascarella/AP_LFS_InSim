@@ -242,6 +242,13 @@ def plain_columns(struct: Struct, struct_names: set[str]) -> list[Column]:
     return result
 
 
+# Direction in InSim.txt -> base class (packets/_directions.py) and words for the docstring.
+DIRECTION_BASES = {
+    "info": ("InfoPacket", "info: LFS sends it"),
+    "instruction": ("InstructionPacket", "instruction: your program sends it"),
+    "both ways": ("BothWaysPacket", "both ways: LFS sends it, and your program may send it"),
+}
+
 MODULE_DOCS = {
     "_insim": "InSim packets and the structures inside them.",
     "_outsim": "OutSim packets: OutSimPack, and OutSimPack2 with the parts chosen in OutSim Opts.",
@@ -255,6 +262,7 @@ def emit_structs(
     enums: list[EnumClass],
     local_enums: list[EnumClass],
     header: str,
+    directions: dict[str, str],
 ) -> str:
     """A module of structs. `local_enums` are defined in it (they come from the same file)."""
     isp = {member_name("ISP", m.name) for c in enums if c.name == "ISP" for m in c.members}
@@ -263,8 +271,10 @@ def emit_structs(
     for struct in structs:
         is_packet = struct.name.startswith("IS_")
         cols = columns(struct, names)
+        doc = struct.comment or struct.name
         if is_packet:
-            base = "InSimPacket"
+            base, sentence = DIRECTION_BASES[directions[struct.name]]
+            doc = f"{doc} ({sentence})"
         elif any(c.codec.startswith("_c.When(") for c in cols):
             base = "OptionalParts"
         else:
@@ -272,7 +282,7 @@ def emit_structs(
         extra = overrides.EXTRAS.get(struct.name)
         parents = f"_x.{extra}, {base}" if extra else base
         body.append(f"\n\n@dataclass(kw_only=True)\nclass {struct.name}({parents}):\n")
-        body.append(docstring(struct.comment or struct.name, "    "))
+        body.append(docstring(doc, "    "))
         for col in cols:
             if col.annotation is not None:
                 body.append(f"\n    {col.name}: {col.annotation} = {col.default}\n")
@@ -298,12 +308,14 @@ def emit_structs(
     out.append("from lfs_insim.packets import _codec as _c\n")
     if "(_x." in text:
         out.append("from lfs_insim.packets import _extras as _x\n")
-    bases = [
-        b
-        for b in ("InSimPacket", "OptionalParts", "Structure")
-        if re.search(rf"[(,] ?{b}\):", text)
-    ]
-    out.append(f"from lfs_insim.packets._codec import {', '.join(bases)}\n")
+    bases = [b for b in ("OptionalParts", "Structure") if re.search(rf"[(,] ?{b}\):", text)]
+    if bases:
+        out.append(f"from lfs_insim.packets._codec import {', '.join(bases)}\n")
+    packet_bases = sorted(
+        {b for b, _ in DIRECTION_BASES.values() if re.search(rf"[(,] ?{b}\):", text)}
+    )
+    if packet_bases:
+        out.append(f"from lfs_insim.packets._directions import {', '.join(packet_bases)}\n")
     used = [c.name for c in enums if re.search(rf"\b{c.name}\.", text) and c not in local_enums]
     if used:
         out.append(f"from lfs_insim.packets._enums import {', '.join(used)}\n")
@@ -385,7 +397,9 @@ def generate() -> tuple[dict[Path, str], list[Path]]:
     files = {
         PACKAGE_DIR / "_enums.py": emit_enums(enums, header),
         **{
-            PACKAGE_DIR / f"{module}.py": emit_structs(module, by_module[module], enums, [], header)
+            PACKAGE_DIR / f"{module}.py": emit_structs(
+                module, by_module[module], enums, [], header, directions
+            )
             for module in ("_insim", "_outgauge")
         },
     }
@@ -398,10 +412,11 @@ def generate() -> tuple[dict[Path, str], list[Path]]:
             raise SpecError(f"classes in both InSim.txt and OutSimPack.txt: {sorted(clash)}")
         by_module["_outsim"] += outsim.structs.values()
         files[PACKAGE_DIR / "_outsim.py"] = emit_structs(
-            "_outsim", by_module["_outsim"], enums, outsim_enums, header
+            "_outsim", by_module["_outsim"], enums, outsim_enums, header, directions
         )
         modules = {
             "_codec": ["PacketError"],
+            "_directions": sorted(base for base, _ in DIRECTION_BASES.values()),
             "_enums": sorted(c.name for c in enums),
             **{module: sorted(s.name for s in structs) for module, structs in by_module.items()},
             "_types": ["Vec", "Vector"],

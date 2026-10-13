@@ -27,6 +27,7 @@ from lfs_insim.packets import (
     PacketError,
 )
 from lfs_insim.packets._codec import InSimPacket
+from lfs_insim.packets._directions import InfoPacket, InstructionPacket, direction_error
 
 log = logging.getLogger("lfs_insim")
 
@@ -40,7 +41,7 @@ packet every 30 s, and itself closes a connection that is silent for 70 s (InSim
 RETRY_DELAYS = (1.0, 2.0, 4.0, 8.0, 10.0)
 """Seconds between attempts to reach LFS; the last one repeats for as long as LFS is away."""
 
-P = TypeVar("P", bound=InSimPacket)
+P = TypeVar("P", bound=InfoPacket)
 Handler = Callable[[P], None] | Callable[[P], Awaitable[None]]
 ConnectHandler = Callable[[], None] | Callable[[], Awaitable[None]]
 PacketWatcher = Callable[[InSimPacket], None]
@@ -107,7 +108,10 @@ class InSim:
 
         The function may be `def` (it runs at once, so it should be quick) or `async def` (it
         runs as a task and may await). An exception in it is logged and does not stop the others.
+        Only packets that LFS sends ("info" or "both ways" in InSim.txt): others raise TypeError.
         """
+        if not (isinstance(packet_type, type) and issubclass(packet_type, InfoPacket)):
+            raise TypeError(direction_error(packet_type, InfoPacket))
 
         def register(handler: Handler[P]) -> Handler[P]:
             self._handlers.add(packet_type, handler)
@@ -161,8 +165,15 @@ class InSim:
     def connected(self) -> bool:
         return self._writer is not None
 
-    def send(self, *packets: InSimPacket) -> None:
-        """Send packets to LFS. Raises ConnectionError if there is no connection."""
+    def send(self, *packets: InstructionPacket) -> None:
+        """Send packets to LFS. Raises ConnectionError if there is no connection.
+
+        Only packets that a program sends ("instruction" or "both ways" in InSim.txt): others
+        raise TypeError.
+        """
+        for packet in packets:
+            if not isinstance(packet, InstructionPacket):
+                raise TypeError(direction_error(type(packet), InstructionPacket))
         if self._writer is None:
             raise ConnectionError("not connected to LFS")
         self._writer.write(b"".join(packet.pack() for packet in packets))

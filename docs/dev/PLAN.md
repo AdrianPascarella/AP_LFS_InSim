@@ -263,10 +263,10 @@ abreviaturas, ni nombres como cadena, ni `on_IS_XXX`); (4) los `both ways` está
 - [x] **W7.1** — El generador lee la dirección de cada paquete (`info` / `instruction` / `both ways`)
   del `enum` ISP de `InSim.txt`; comprobar cómo trata los comentarios de casos raros (`REO`: «info
   or instruction»). Test contra la especificación — hecho en S15 → LOG.md S15
-- [ ] **W7.2** — Clases base por dirección (`InfoPacket`, `InstructionPacket`, `BothWays`) y línea
+- [x] **W7.2** — Clases base por dirección (`InfoPacket`, `InstructionPacket`, `BothWays`) y línea
   «Dirección» en el docstring de cada clase; `on()` y `send()` tipados para aceptar solo lo que
   corresponde (error de mypy/editor) y con error claro en ejecución (`on(IS_MST)`: «es una
-  instrucción: la envías tú»)
+  instrucción: la envías tú») — hecho en S15 → LOG.md S15
 - [ ] **W7.3** — Módulos `received` y `sent` (re-exportan las mismas clases, no copias)
 - [ ] **W7.4** — ~~Métodos `on_IS_XXX` y `send_IS_XXX` generados, en un mixin~~ (cambiado en S15):
   objetos `on` y `send` generados con un atributo por paquete, en un archivo propio (`_events.py`)

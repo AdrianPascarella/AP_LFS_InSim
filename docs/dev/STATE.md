@@ -6,9 +6,10 @@
 > ejemplos en `examples/`, probados en cada push y comprobados en el LFS real. Decisiones en
 > `API_DESIGN.md`. El agente maneja LFS con `tests/lfs_screen.ps1`, que no envía nada si LFS no
 > está delante (PROTOCOL §13). `cfg.txt` está restaurado: OutSim/OutGauge en vivo pide permiso.
-> **▶️ SIGUIENTE: W7.2** (clases base por dirección y `on()`/`send()` tipados). W7 se rehízo en S15:
-> `@insim.on.IS_NPL` y `insim.send.IS_MST(...)` en vez de `on_IS_XXX`; ver `PLAN.md`. La dirección ya
-> la da `scripts/spec_directions.py` (`packet_directions(spec)`), que el generador comprueba pero aún no usa.
+> **▶️ SIGUIENTE: W7.3** (módulos `received` y `sent`). W7 se rehízo en S15: `@insim.on.IS_NPL` e
+> `insim.send.IS_MST(...)` en vez de `on_IS_XXX`; ver `PLAN.md`. W7.1–W7.2 hechas: cada paquete hereda
+> de `InfoPacket` / `InstructionPacket` / `BothWaysPacket` (`packets/_directions.py`, dirección leída por
+> `scripts/spec_directions.py`), y `on()` / `send()` rechazan lo que no toca, en mypy y en ejecución.
 > Después W8 (mejoras del proyecto anterior, `LEGADO.md`) y W6 (primera aplicación aparte).
 > `lfs-insim 0.1.0` está **publicado en PyPI** (S14, release `v0.1.0`). **Receta de una versión nueva:**
 > subir `version` en `pyproject.toml` y añadir la sección a `CHANGELOG.md` en `dev`; `verify` en verde;

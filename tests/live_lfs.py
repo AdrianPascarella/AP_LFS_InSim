@@ -48,6 +48,7 @@ from lfs_insim.packets import (
     TINY,
 )
 from lfs_insim.packets._codec import InSimPacket, Structure, unpack_insim
+from lfs_insim.packets._directions import InstructionPacket
 
 REPORTS = Path(__file__).resolve().parent / "live_reports"
 
@@ -171,11 +172,11 @@ class _LogHandler(logging.Handler):
         self.recorder.emit(record)
 
 
-def sent_packets() -> list[InSimPacket]:
-    requests: list[InSimPacket] = [
+def sent_packets() -> list[InstructionPacket]:
+    requests: list[InstructionPacket] = [
         IS_TINY(ReqI=FIRST_REQI + i, SubT=sub) for i, sub in enumerate(REQUESTS)
     ]
-    messages: list[InSimPacket] = [
+    messages: list[InstructionPacket] = [
         IS_MSL(Msg="lfs_insim live test: IS_MSL (local message)"),
         IS_MSX(Msg="lfs_insim live test: IS_MSX ^1red ^2green ^7white"),
         IS_MST(Msg="lfs_insim live test: IS_MST áéí ñ ü € Ωλ"),
@@ -225,7 +226,7 @@ def describe(packet: Structure | None) -> dict[str, Any]:
     return plain
 
 
-def report(recorder: Recorder, sent: list[InSimPacket], ver_seen: bool) -> dict[str, Any]:
+def report(recorder: Recorder, sent: list[InstructionPacket], ver_seen: bool) -> dict[str, Any]:
     insim = [item for item in recorder.received if item.source == "InSim"]
     by_reqi = {item.raw[2] for item in insim}  # ReqI is the third byte
     answered = {sub.name: (FIRST_REQI + i) in by_reqi for i, sub in enumerate(REQUESTS)}

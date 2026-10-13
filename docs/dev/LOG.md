@@ -68,6 +68,24 @@ formato, que no está documentado aparte), comprobada con `git hash-object`: 27 
 Anotado en PROTOCOL («Lo que nunca se debe perder») y en PLAN (requisito de la aplicación de control de
 IA). La memoria del agente ya no habla de commits de mapas en este repo, que ya no los tiene.
 
+**W7.2 hecha** (el usuario dijo «Procede»): `src/lfs_insim/packets/_directions.py`, escrito a mano y
+aparte porque `_codec.py` ya pasa de 500 líneas, con `InfoPacket`, `InstructionPacket` y
+`BothWaysPacket` (este hereda de los dos) y el texto de los errores. El nombre `BothWaysPacket`, no el
+`BothWays` del plan, es por coherencia con los otros dos. El generador da a cada `IS_` la base de su dirección
+y añade al docstring «(info: LFS sends it)», «(instruction: your program sends it)» o «(both ways: …)».
+Las tres clases se exportan desde `lfs_insim.packets`. En `_connection.py`, el `TypeVar` de `on()`,
+`request()` y `request_all()` pasa a `bound=InfoPacket`, y `send()` recibe `InstructionPacket`; los
+dos comprueban también en ejecución, con un `TypeError` que dice quién envía el paquete (`send()` lo
+comprueba antes de mirar la conexión). **Cambio de API pública:** `send()` de un paquete info y `on()`
+de una instrucción ya fallan (CHANGELOG en W7.6).
+Tests: `tests/test_directions.py` (bases contra la especificación, docstrings, errores en ejecución y un
+test que lanza mypy estricto sobre un fragmento y espera error justo en `on(IS_MST)` y `send(IS_NPL())`).
+Vistos en **rojo** con el `_connection.py` anterior (3 de 6 fallaron). **Tests cambiados (§5), con motivo:** `test_packets.py`
+recorre lo que exporta `lfs_insim.packets` y tomaba las tres bases por paquetes (sin `_TYPE` ni
+`_LAYOUT`); se excluyen de esa enumeración, igual que ya se excluía `Structure`, sin tocar ninguna
+comprobación. `tests/live_lfs.py`: la lista de enviados pasa a `list[InstructionPacket]` (mypy).
+Verificación: `verify` PASS, 337 tests.
+
 ## S14 — 2026-10-13 — U6 por el navegador
 
 **Hecho:** Chrome conectó (en S13 no). Con el usuario haciendo cuentas, verificación de correo y 2FA

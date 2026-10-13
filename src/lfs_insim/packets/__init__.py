@@ -4,6 +4,7 @@
 """InSim, OutSim and OutGauge packets, with the names of the specification."""
 
 from lfs_insim.packets._codec import PacketError
+from lfs_insim.packets._directions import BothWaysPacket, InfoPacket, InstructionPacket
 from lfs_insim.packets._enums import (
     AIFLAGS,
     BFN,
@@ -275,10 +276,13 @@ __all__ = [
     "VIEW",
     "VOTE",
     "AIInputVal",
+    "BothWaysPacket",
     "CarContOBJ",
     "CarContact",
     "CarHCP",
     "CompCar",
+    "InfoPacket",
+    "InstructionPacket",
     "NodeLap",
     "OSMain",
     "ObjectInfo",

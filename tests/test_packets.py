@@ -36,6 +36,7 @@ from lfs_insim.packets import (
 )
 from lfs_insim.packets import _codec as c
 from lfs_insim.packets._codec import InSimPacket, OptionalParts, Structure, unpack_insim
+from lfs_insim.packets._directions import BothWaysPacket, InfoPacket, InstructionPacket
 
 CACHE = Path(__file__).resolve().parent.parent / "spec" / "cache"
 # OutSim and OutGauge: no Size field, so their sizes are checked one by one below.
@@ -50,7 +51,9 @@ OUTSIDE_INSIM = {
 CLASSES = [
     cls
     for cls in vars(packets).values()
-    if isinstance(cls, type) and issubclass(cls, Structure) and cls not in (Structure,)
+    if isinstance(cls, type)
+    and issubclass(cls, Structure)
+    and cls not in (Structure, InfoPacket, InstructionPacket, BothWaysPacket)  # bases, not packets
 ]
 PACKETS = [cls for cls in CLASSES if issubclass(cls, InSimPacket)]
 _counter = itertools.count(1)
