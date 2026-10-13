@@ -3,7 +3,7 @@
 from importlib.metadata import version as _version
 
 from lfs_insim import received, sent
-from lfs_insim._commands import Command
+from lfs_insim._commands import Command, Commands
 from lfs_insim._connection import InSim
 from lfs_insim._plugins import Plugin
 from lfs_insim._run import run
@@ -13,6 +13,7 @@ __version__ = _version("lfs-insim")
 
 __all__ = [
     "Command",
+    "Commands",
     "InSim",
     "OutGauge",
     "OutSim",

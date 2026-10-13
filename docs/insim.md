@@ -60,14 +60,17 @@ Text fields are `str`. They keep LFS's `^` codes; see [text](roster-and-text.md#
 
 ### Chat commands
 
-With a `prefix`, `@insim.on_command("speed")` is called for `!speed 80` with a `Command` first.
-The parameters after it are the words typed, converted to their annotation:
+Chat commands are a plugin: `commands = insim.use(Commands)`. With a prefix (`InSim(prefix="!")`,
+or `insim.use(Commands, prefix="!")`), `@commands.on_command("speed")` is called for `!speed 80`
+with a `Command` first. The parameters after it are the words typed, converted to their annotation:
 
 ```python
-from lfs_insim import Command
+from lfs_insim import Command, Commands
+
+commands = insim.use(Commands)
 
 
-@insim.on_command("speed")
+@commands.on_command("speed")
 def speed(command: Command, kmh: int, who: str = "all") -> None:
     """Set the speed limit."""
     # !speed 80 Bob -> kmh == 80, who == "Bob"
@@ -90,11 +93,11 @@ A function that takes only the `Command` gets whatever was typed in `command.arg
 a function of the `Command` for your own rule; the others are told they may not use it:
 
 ```python
-@insim.on_command("kick", admin=True)
+@commands.on_command("kick", admin=True)
 def kick(command: Command, name: str) -> None: ...
 
 
-@insim.on_command("boost", allow=lambda command: command.ucid in {3, 5})
+@commands.on_command("boost", allow=lambda command: command.ucid in {3, 5})
 def boost(command: Command) -> None: ...
 ```
 
@@ -102,7 +105,7 @@ def boost(command: Command) -> None: ...
 them. `admin` and `allow` on the group apply to all of its commands.
 
 ```python
-aic = insim.command_group("aic", admin=True)
+aic = commands.command_group("aic", admin=True)
 
 
 @aic.on_command("start")
@@ -123,11 +126,11 @@ character, not a letter or digit. `!who` and `.who` can then be two different co
 `InSim()` needs no prefix if every command brings its own.
 
 ```python
-@insim.on_command("who", prefix=".")
+@commands.on_command("who", prefix=".")
 def who(command: Command) -> None: ...
 
 
-admin_tools = insim.command_group("adm", prefix="#", admin=True)  # #adm kick Bob, #adm ...
+admin_tools = commands.command_group("adm", prefix="#", admin=True)  # #adm kick Bob, #adm ...
 ```
 
 As host, LFS hides from the others only the messages that start with the `InSim`'s prefix: a
@@ -137,7 +140,7 @@ command with another one is seen by everyone.
 your program still gets the chat, but it is not the host, so things change:
 
 - Only this computer may use your commands; what others type is ignored, without an answer.
-  `InSim(prefix="!", guest_commands="everyone")` lets everyone in, and `allow` still applies.
+  `insim.use(Commands, guest_commands="everyone")` lets everyone in, and `allow` still applies.
 - `admin=True` means this computer only: the server's admins are not yours.
 - Commands are not hidden: everyone in the server sees `!speed 80`. To keep one to yourself,
   type `/o !speed 80`: only your InSim sees it.

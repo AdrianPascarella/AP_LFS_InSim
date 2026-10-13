@@ -3,12 +3,13 @@
 LFS must be listening for InSim: type /insim=29999 in LFS first.
 """
 
-from lfs_insim import Command, InSim, received
+from lfs_insim import Command, Commands, InSim, received
 from lfs_insim.state import Roster
 from lfs_insim.text import plain
 
 insim = InSim(name="who", prefix="!")
-roster = Roster(insim)  # asks LFS for everyone on each connection, then keeps up to date
+commands = insim.use(Commands)
+roster = insim.use(Roster)  # asks LFS for everyone on each connection, then keeps up to date
 
 
 @insim.on.IS_NPL
@@ -25,7 +26,7 @@ def left(packet: received.IS_PLL) -> None:
     print(f"{plain(player.name)} left the race")
 
 
-@insim.on_command("who")
+@commands.on_command("who")
 def who(command: Command) -> None:
     if not roster.players:
         command.reply("Nobody is in the race")

@@ -340,7 +340,7 @@ se escribe llega como `MSO.USER`, con prefijo o sin él, y lo ve todo el servido
 ```python
 from lfs_insim import InSim
 from lfs_insim.state import Roster
-from lfs_insim.commands import Commands     # ubicación exacta, por decidir en W10.2
+from lfs_insim import Commands              # decidido en W10.2: junto a Command
 
 insim = InSim("cam", "")
 commands = insim.use(Commands, prefix="!")  # por dentro, insim.use(Roster)
@@ -378,6 +378,11 @@ class FreeCam(Plugin):                      # o una clase, si aporta herencia, o
   comandos dentro de `Roster` (propuesto por el usuario: el registrador o la cámara quieren `Roster` sin
   comandos, y `Roster` dejaría de ser solo «quién es quién»); dejar `insim.on_command` como atajo (el núcleo
   volvería a depender de los comandos). Cambio incompatible, aceptable en 0.x.
+  *Precisado en W10.2:* `insim.use(Commands, prefix=None, guest_commands="local")`; sin `prefix`, el del
+  `IS_ISI` (`InSim(prefix=)`, que se queda en `InSim` porque es del `IS_ISI`: LFS oculta esos mensajes como
+  anfitrión). `Commands` se engancha con `insim.on(IS_MSO)`; usa por dentro `insim._handlers` (llamar a las
+  funciones con la política de errores) y el prefijo del `IS_ISI`: son de la biblioteca, no ejemplo para
+  plugins de fuera.
 - **Nada se pide dos veces:** una instancia por tipo, y dos `request()` iguales a la vez comparten un solo
   `IS_TINY`.
 - **`ready()`** en los plugins con estado: los `on_connect` arrancan a la vez y uno puede leer el estado antes

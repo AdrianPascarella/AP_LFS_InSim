@@ -6,7 +6,7 @@ from collections.abc import Awaitable, Callable
 import pytest
 from fake_lfs import FakeLFS
 
-from lfs_insim import Command, InSim
+from lfs_insim import Command, Commands, InSim
 from lfs_insim.packets import IS_MSO, IS_MTC, IS_NCN, IS_TINY, MSO, TINY
 
 
@@ -45,9 +45,10 @@ async def replies(lfs: FakeLFS, count: int) -> list[str]:
 
 def test_arguments_are_converted_to_the_annotated_types() -> None:
     insim = InSim(prefix="!")
+    commands = insim.use(Commands)
     got: list[tuple[object, ...]] = []
 
-    @insim.on_command("speed")
+    @commands.on_command("speed")
     def speed(command: Command, kmh: int, ratio: float, who: str = "all") -> None:
         got.append((command.name, kmh, ratio, who))
 
@@ -61,13 +62,14 @@ def test_arguments_are_converted_to_the_annotated_types() -> None:
 
 def test_a_rest_parameter_takes_the_remaining_words() -> None:
     insim = InSim(prefix="!")
+    commands = insim.use(Commands)
     got: list[tuple[object, ...]] = []
 
-    @insim.on_command("tell")
+    @commands.on_command("tell")
     async def tell(command: Command, who: str, *words: str) -> None:
         got.append((who, words))
 
-    @insim.on_command("sum")
+    @commands.on_command("sum")
     def total(command: Command, *numbers: int) -> None:
         got.append((sum(numbers),))
 
@@ -83,9 +85,10 @@ def test_a_rest_parameter_takes_the_remaining_words() -> None:
 
 def test_bad_arguments_get_the_usage_and_the_function_is_not_called() -> None:
     insim = InSim(prefix="!")
+    commands = insim.use(Commands)
     called: list[int] = []
 
-    @insim.on_command("speed")
+    @commands.on_command("speed")
     def speed(command: Command, kmh: int, who: str = "all") -> None:
         """Set the speed limit.
 
@@ -112,9 +115,10 @@ def test_bad_arguments_get_the_usage_and_the_function_is_not_called() -> None:
 
 def test_a_float_argument_says_number() -> None:
     insim = InSim(prefix="!")
-    insim.on_command("ratio")(lambda command, value: None)
+    commands = insim.use(Commands)
+    commands.on_command("ratio")(lambda command, value: None)
 
-    @insim.on_command("scale")
+    @commands.on_command("scale")
     def scale(command: Command, value: float, *rest: int) -> None: ...
 
     async def test(lfs: FakeLFS) -> None:
@@ -130,13 +134,14 @@ def test_a_float_argument_says_number() -> None:
 
 def test_a_function_with_only_the_command_works_as_before() -> None:
     insim = InSim(prefix="!")
+    commands = insim.use(Commands)
     got: list[tuple[str, ...]] = []
 
-    @insim.on_command("kick")
+    @commands.on_command("kick")
     def kick(command: Command) -> None:
         got.append(command.args)
 
-    insim.on_command("log")(print)  # builtins too
+    commands.on_command("log")(print)  # builtins too
 
     async def test(lfs: FakeLFS) -> None:
         await lfs.send(typed("!kick Bob now please"), typed("!log anything"))
@@ -148,16 +153,17 @@ def test_a_function_with_only_the_command_works_as_before() -> None:
 
 def test_unsupported_signatures_fail_when_registered() -> None:
     insim = InSim(prefix="!")
+    commands = insim.use(Commands)
     with pytest.raises(TypeError, match="speed: kmh is a list; command arguments are str, int"):
 
-        @insim.on_command("speed")
+        @commands.on_command("speed")
         def speed(command: Command, kmh: list[int]) -> None: ...
 
     with pytest.raises(TypeError, match="needs a first parameter for the Command"):
-        insim.on_command("empty")(lambda: None)
+        commands.on_command("empty")(lambda: None)
     with pytest.raises(TypeError, match="go: who must have a default"):
 
-        @insim.on_command("go")
+        @commands.on_command("go")
         def go(command: Command, *, who: str) -> None: ...
 
 
@@ -166,7 +172,8 @@ def test_unsupported_signatures_fail_when_registered() -> None:
 
 def test_a_group_has_subcommands_and_lists_them() -> None:
     insim = InSim(prefix="!")
-    aic = insim.command_group("aic")
+    commands = insim.use(Commands)
+    aic = commands.command_group("aic")
     got: list[tuple[str, int]] = []
 
     @aic.on_command("start")
@@ -198,17 +205,18 @@ def test_a_group_has_subcommands_and_lists_them() -> None:
 
 def test_group_names_are_checked() -> None:
     insim = InSim(prefix="!")
-    insim.on_command("aic")(print)
+    commands = insim.use(Commands)
+    commands.on_command("aic")(print)
     with pytest.raises(ValueError, match="already"):
-        insim.command_group("AIC")
-    group = insim.command_group("ai")
+        commands.command_group("AIC")
+    group = commands.command_group("ai")
     group.on_command("start")(print)
     with pytest.raises(ValueError, match="already"):
         group.on_command("start")
     with pytest.raises(ValueError, match="already"):
-        insim.on_command("ai")
+        commands.on_command("ai")
     with pytest.raises(ValueError, match="need a prefix"):
-        InSim().command_group("aic")
+        InSim().use(Commands).command_group("aic")
 
 
 # Permissions
@@ -222,9 +230,10 @@ def test_admin_commands_are_for_lfs_admins_and_the_host() -> None:
         IS_NCN(UCID=4, UName="ann", PName="Ann", Admin=0),
     ]
     insim = InSim(prefix="!")
+    commands = insim.use(Commands)
     kicked: list[tuple[int, str]] = []
 
-    @insim.on_command("kick", admin=True)
+    @commands.on_command("kick", admin=True)
     def kick(command: Command, name: str) -> None:
         kicked.append((command.ucid, name))
 
@@ -244,14 +253,15 @@ def test_admin_commands_are_for_lfs_admins_and_the_host() -> None:
 
 def test_allow_decides_who_may_use_a_command() -> None:
     insim = InSim(prefix="!")
+    commands = insim.use(Commands)
     trusted = {5}
     got: list[int] = []
 
-    @insim.on_command("boost", allow=lambda command: command.ucid in trusted)
+    @commands.on_command("boost", allow=lambda command: command.ucid in trusted)
     def boost(command: Command) -> None:
         got.append(command.ucid)
 
-    group = insim.command_group("race", allow=lambda command: command.ucid != 6)
+    group = commands.command_group("race", allow=lambda command: command.ucid != 6)
 
     @group.on_command("end", allow=lambda command: command.ucid != 7)
     def end(command: Command) -> None:

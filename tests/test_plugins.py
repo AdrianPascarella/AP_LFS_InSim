@@ -10,7 +10,7 @@ from collections.abc import Callable
 import pytest
 from fake_lfs import FakeLFS
 
-from lfs_insim import Command, InSim
+from lfs_insim import Command, Commands, InSim
 from lfs_insim.packets import IS_ISM, IS_NCN, IS_TINY, TINY
 from lfs_insim.state import Roster
 
@@ -99,6 +99,14 @@ def test_a_function_that_gives_nothing_is_used_once() -> None:
     assert calls == [insim]
 
 
+def test_the_commands_are_a_plugin_not_part_of_insim() -> None:
+    insim = InSim(prefix="!")
+    assert not hasattr(insim, "on_command")
+    assert not hasattr(insim, "command_group")
+    assert isinstance(insim.use(Commands), Commands)
+    assert insim.use(Commands) is insim.use(Commands)
+
+
 def test_commands_and_your_own_roster_ask_lfs_once() -> None:
     """P10: the commands made a Roster of their own, so LFS was asked for everyone twice."""
 
@@ -107,9 +115,10 @@ def test_commands_and_your_own_roster_ask_lfs_once() -> None:
             lfs.replies[TINY.ISM] = [IS_ISM(Host=1, HName="mine")]
             lfs.replies[TINY.NCN] = [IS_NCN(UCID=0, PName="Me", Total=1)]
             insim = InSim(port=lfs.port, prefix="!")
-            roster = Roster(insim)
+            roster = Roster(insim)  # made directly, as before W10
+            commands = insim.use(Commands)
 
-            @insim.on_command("who")
+            @commands.on_command("who")
             def who(command: Command) -> None:
                 pass
 

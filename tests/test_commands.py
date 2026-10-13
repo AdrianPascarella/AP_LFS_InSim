@@ -1,4 +1,4 @@
-"""Chat commands (W4.5): @insim.on_command("hello") for "!hello", against the fake LFS."""
+"""Chat commands (W4.5): @commands.on_command("hello") for "!hello", against the fake LFS."""
 
 import asyncio
 import logging
@@ -7,7 +7,7 @@ from collections.abc import Awaitable, Callable
 import pytest
 from fake_lfs import FakeLFS
 
-from lfs_insim import Command, InSim
+from lfs_insim import Command, Commands, InSim
 from lfs_insim.packets import IS_MSO, IS_MTC, MSO
 
 
@@ -36,9 +36,10 @@ async def _until(condition: Callable[[], object], timeout: float = 2.0) -> None:
 
 def test_a_command_reaches_its_function() -> None:
     insim = InSim(prefix="!")
+    commands = insim.use(Commands)
     received: list[Command] = []
 
-    @insim.on_command("hello")
+    @commands.on_command("hello")
     def hello(command: Command) -> None:
         received.append(command)
 
@@ -54,8 +55,9 @@ def test_a_command_reaches_its_function() -> None:
 
 def test_arguments_are_split_and_the_name_ignores_case() -> None:
     insim = InSim(prefix="!")
+    commands = insim.use(Commands)
     received: list[Command] = []
-    insim.on_command("kick")(received.append)
+    commands.on_command("kick")(received.append)
 
     async def test(lfs: FakeLFS, insim: InSim) -> None:
         await lfs.send(typed("!KICK  Bob   now"))
@@ -67,8 +69,9 @@ def test_arguments_are_split_and_the_name_ignores_case() -> None:
 
 def test_reply_answers_only_who_typed_it() -> None:
     insim = InSim(prefix="!")
+    commands = insim.use(Commands)
 
-    @insim.on_command("hello")
+    @commands.on_command("hello")
     def hello(command: Command) -> None:
         command.reply("Hello, Bob")
 
@@ -82,9 +85,10 @@ def test_reply_answers_only_who_typed_it() -> None:
 
 def test_async_commands_can_wait() -> None:
     insim = InSim(prefix="!")
+    commands = insim.use(Commands)
     done: list[str] = []
 
-    @insim.on_command("slow")
+    @commands.on_command("slow")
     async def slow(command: Command) -> None:
         await asyncio.sleep(0.01)
         done.append(command.args[0])
@@ -98,9 +102,10 @@ def test_async_commands_can_wait() -> None:
 
 def test_what_is_not_a_known_command_is_left_alone(caplog: pytest.LogCaptureFixture) -> None:
     insim = InSim(prefix="!")
+    commands = insim.use(Commands)
     received: list[Command] = []
     messages: list[IS_MSO] = []
-    insim.on_command("hello")(received.append)
+    commands.on_command("hello")(received.append)
     insim.on(IS_MSO)(messages.append)
 
     async def test(lfs: FakeLFS, insim: InSim) -> None:
@@ -124,13 +129,14 @@ def test_a_failing_command_is_logged_and_others_still_work(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     insim = InSim(prefix="!")
+    commands = insim.use(Commands)
     received: list[Command] = []
 
-    @insim.on_command("broken")
+    @commands.on_command("broken")
     def broken(command: Command) -> None:
         raise RuntimeError("bug in a command")
 
-    insim.on_command("hello")(received.append)
+    commands.on_command("hello")(received.append)
 
     async def test(lfs: FakeLFS, insim: InSim) -> None:
         await lfs.send(typed("!broken"), typed("!hello"))
@@ -142,11 +148,12 @@ def test_a_failing_command_is_logged_and_others_still_work(
 
 def test_commands_need_a_prefix_and_a_good_name() -> None:
     with pytest.raises(ValueError, match="need a prefix"):
-        InSim().on_command("hello")
+        InSim().use(Commands).on_command("hello")
     insim = InSim(prefix="!")
-    insim.on_command("hello")(print)
+    commands = insim.use(Commands)
+    commands.on_command("hello")(print)
     with pytest.raises(ValueError, match="already"):
-        insim.on_command("HELLO")
+        commands.on_command("HELLO")
     for name in ("", "two words", "!hello"):
         with pytest.raises(ValueError, match="name"):
-            insim.on_command(name)
+            commands.on_command(name)

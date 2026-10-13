@@ -11,7 +11,6 @@ from types import TracebackType
 from typing import Any, Self, cast
 
 from lfs_insim import _requests
-from lfs_insim._commands import Allow, CommandGroup, CommandHandler, Commands, GuestCommands
 from lfs_insim._events import P
 from lfs_insim._handlers import Errors, Handlers, StopsOnError
 from lfs_insim._plugins import Plugins, T
@@ -20,7 +19,6 @@ from lfs_insim._stream import PacketStream
 from lfs_insim.packets import (
     IS_ISI,
     IS_MSL,
-    IS_MSO,
     IS_MST,
     IS_MSX,
     IS_MTC,
@@ -66,7 +64,6 @@ class InSim(StopsOnError):
         flags: int = 0,
         interval_ms: int = 0,
         prefix: str = "",
-        guest_commands: GuestCommands = "local",
         errors: Errors = "log",
     ) -> None:
         """Prepare the connection; nothing is sent until it is opened.
@@ -76,9 +73,8 @@ class InSim(StopsOnError):
         host, port: where LFS listens (`/insim 29999` in LFS opens the port).
         flags: ISF options, e.g. `ISF.MCI | ISF.LOCAL`.
         interval_ms: time between IS_MCI or IS_NLP packets (0 = none).
-        prefix: the special host message prefix character, e.g. "!".
-        guest_commands: who may use the chat commands while LFS is a guest in someone else's
-            server: "local" (the default), only this computer; "everyone", anyone, with allow=.
+        prefix: the special host message prefix character, e.g. "!": as host, LFS hides what
+            users type starting with it from the others. The chat commands use it by default.
         errors: what happens when a handler fails. "log" (the default): the error is logged and
             everything goes on. "raise", for development: the first error closes the connection
             and is raised again by `run()`, `wait_closed()` and `async with`.
@@ -99,7 +95,6 @@ class InSim(StopsOnError):
         self._isi.pack()  # fail now, not when connecting, if a name is too long
         self._handlers = Handlers(errors, self._fail)
         self._plugins = Plugins(self)
-        self._commands = Commands(prefix, self._make_roster, guest_commands)
         self._requests = _requests.Requests()
         self._connect_handlers: list[ConnectHandler] = []
         self._disconnect_handlers: list[ConnectHandler] = []
@@ -130,55 +125,11 @@ class InSim(StopsOnError):
         LFS sends.
         """
 
-    def on_command(
-        self,
-        name: str,
-        *,
-        prefix: str | None = None,
-        admin: bool = False,
-        allow: Allow | None = None,
-    ) -> Callable[[CommandHandler], CommandHandler]:
-        """Decorator: call the function when someone types the prefix and this name in the chat.
-
-        With `InSim(prefix="!")`, `@insim.on_command("kick")` is called for "!kick Bob" with a
-        Command first: `command.reply("...")` answers only who typed it. The parameters after it
-        are the words typed, converted to their annotation (str, int or float; a `*rest` takes
-        the remaining ones): `def kick(command: Command, name: str, minutes: int = 5)`. Words
-        that do not fit are answered with the usage, and "!kick ?" with the usage and the first
-        line of the docstring. A function of only the Command gets any words in `command.args`.
-
-        admin=True: only LFS admins and the host (UCID 0) may use it. allow: a function of the
-        Command that says who else may not (False). The name is matched in any case. `def` or
-        `async def`, as for `on()`; the IS_MSO still reaches the IS_MSO handlers. A command
-        without a function is left alone (it may be for another program). prefix: one of its own
-        (".") instead of the InSim's; as host, LFS hides only the InSim's from the others.
-        """
-        return self._commands.register(name, admin, allow, prefix=prefix)
-
-    def command_group(
-        self,
-        name: str,
-        *,
-        prefix: str | None = None,
-        admin: bool = False,
-        allow: Allow | None = None,
-    ) -> CommandGroup:
-        """Commands under one name: `aic = insim.command_group("aic")`, then
-        `@aic.on_command("start")` for "!aic start". "!aic" alone lists them. prefix, admin and
-        allow apply to every command of the group, as in on_command.
-        """
-        return self._commands.group(name, admin, allow, prefix)
-
     def use(self, plugin: Callable[..., T], /, **options: Any) -> T:
         """A plugin (a class or a function), called the first time with this InSim and the options:
         `roster = insim.use(Roster)`. Later calls give the same; other options raise ValueError.
         """
         return self._plugins.use(plugin, options)
-
-    def _make_roster(self) -> Any:
-        from lfs_insim.state import Roster  # state imports this module
-
-        return self.use(Roster)
 
     def on_connect(self, handler: ConnectHandler) -> ConnectHandler:
         """Decorator: call the function (no arguments) after every connection and reconnection.
@@ -495,8 +446,6 @@ class InSim(StopsOnError):
             self._handlers.call(before, (packet,), f"{type(packet).__name__} (before handlers)")
         self._requests.deliver(packet)
         self._handlers.dispatch(packet)
-        if isinstance(packet, IS_MSO):
-            self._commands.handle(packet, self._handlers, self.say)
         # After the handlers, and after the first step of the async ones: their tasks were
         # scheduled first, so until their first await they still see the state before the packet.
         loop = asyncio.get_running_loop()

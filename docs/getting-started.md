@@ -22,9 +22,10 @@ Port 29999 is the default of `InSim`. If LFS has an admin password, pass it as
 ## A first program
 
 ```python
-from lfs_insim import Command, InSim, received
+from lfs_insim import Command, Commands, InSim, received
 
 insim = InSim(name="hello", prefix="!")
+commands = insim.use(Commands)
 
 
 @insim.on.IS_VER
@@ -32,7 +33,7 @@ def connected(packet: received.IS_VER) -> None:
     print(f"Connected to LFS {packet.Version}, InSim {packet.InSimVer}")
 
 
-@insim.on_command("hello")
+@commands.on_command("hello")
 def hello(command: Command) -> None:
     command.reply("Hello from Python")
 
@@ -48,7 +49,8 @@ if __name__ == "__main__":
   any packet: `IS_NPL` (a player joins), `IS_LAP`, `IS_BTC` (a button click)... Type `insim.on.`
   in your editor and it lists them; `received.IS_VER` is the type of the argument. The full list,
   with what each packet is, is [Packets by direction](packets.md).
-- `@insim.on_command("hello")` calls the function when someone types `!hello`.
+- `insim.use(Commands)` adds chat commands to the connection (it is a plugin), and
+  `@commands.on_command("hello")` calls the function when someone types `!hello`.
 - `insim.run()` connects and dispatches packets until Ctrl+C. If LFS is not running yet, or
   closes, it keeps trying again.
 

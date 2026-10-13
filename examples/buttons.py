@@ -4,10 +4,11 @@ remove them.
 LFS must be listening for InSim: type /insim=29999 in LFS first.
 """
 
-from lfs_insim import Command, InSim, received
+from lfs_insim import Command, Commands, InSim, received
 from lfs_insim.packets import BFN, IS_BTN, ISB
 
 insim = InSim(name="buttons", prefix="!")
+commands = insim.use(Commands)
 
 CLICK_ME, TYPE_HERE = 1, 2  # ClickID: each button of this program needs its own (0 to 239)
 clicks = 0
@@ -43,12 +44,12 @@ def show(ucid: int) -> None:
     )
 
 
-@insim.on_command("buttons")
+@commands.on_command("buttons")
 def buttons(command: Command) -> None:
     show(command.ucid)
 
 
-@insim.on_command("hide")
+@commands.on_command("hide")
 def hide(command: Command) -> None:
     insim.send.IS_BFN(SubT=BFN.CLEAR, UCID=command.ucid)
 

@@ -381,9 +381,10 @@ W10.8).
   hecho en S20 → LOG.md S20
 - [x] **W10.11** — `use()` acepta funciones (`insim.use(freecam)`), con el tipo correcto para el editor.
   hecho en S20 → LOG.md S20
-- [ ] **W10.2** — Comandos como plugin propio (`insim.use(Commands, prefix="!")`, que hace `use(Roster)`):
+- [x] **W10.2** — Comandos como plugin propio (`insim.use(Commands, prefix="!")`, que hace `use(Roster)`):
   salen de `InSim`. **Cambio incompatible**: `@insim.on_command` e `insim.command_group` pasan a
   `commands.on_command` / `commands.command_group`, sin atajo en `InSim` (decidido en S20).
+  hecho en S20 → LOG.md S20
 - [ ] **W10.3** — Peticiones sin duplicar: dos `request()` iguales a la vez → un solo `IS_TINY`, la misma
   respuesta a los dos.
 - [ ] **W10.4** — `await roster.ready()`: la foto inicial completa (hoy los `on_connect` arrancan a la vez y un

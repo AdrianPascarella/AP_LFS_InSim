@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Breaking:** chat commands are a plugin. `commands = insim.use(Commands)`, then
+  `@commands.on_command(...)` and `commands.command_group(...)`; `InSim` no longer has
+  `on_command` or `command_group`. `guest_commands=` moves from `InSim` to
+  `insim.use(Commands, guest_commands=...)`. Their prefix is the `InSim`'s by default, or
+  `insim.use(Commands, prefix="!")`.
 - Plugins: `insim.use(Type, **options)` gives the one instance of a plugin for that connection,
   made the first time. A plugin is a function or a class that takes the InSim; `lfs_insim.Plugin`
   is the base class for the second kind, and making a second one of the same type directly raises

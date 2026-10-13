@@ -6,18 +6,19 @@ import pytest
 from fake_lfs import FakeLFS
 from test_commands_typed import _until, replies, run, typed
 
-from lfs_insim import Command, InSim
+from lfs_insim import Command, Commands, InSim
 
 
 def test_a_command_may_have_its_own_prefix() -> None:
     insim = InSim(prefix="!")
+    commands = insim.use(Commands)
     got: list[str] = []
 
-    @insim.on_command("who", prefix=".")
+    @commands.on_command("who", prefix=".")
     def dot_who(command: Command) -> None:
         got.append("." + command.name)
 
-    @insim.on_command("who")
+    @commands.on_command("who")
     def bang_who(command: Command) -> None:
         got.append("!" + command.name)
 
@@ -32,7 +33,8 @@ def test_a_command_may_have_its_own_prefix() -> None:
 
 def test_a_group_has_one_prefix_for_all_its_commands() -> None:
     insim = InSim(prefix="!")
-    aic = insim.command_group("aic", prefix=".")
+    commands = insim.use(Commands)
+    aic = commands.command_group("aic", prefix=".")
     got: list[str] = []
 
     @aic.on_command("start")
@@ -56,12 +58,13 @@ def test_a_group_has_one_prefix_for_all_its_commands() -> None:
 
 def test_the_answers_show_the_command_s_own_prefix() -> None:
     insim = InSim(prefix="!")
+    commands = insim.use(Commands)
 
-    @insim.on_command("kick", prefix=".")
+    @commands.on_command("kick", prefix=".")
     def kick(command: Command, name: str) -> None:
         """Kick someone."""
 
-    @insim.on_command("boost", prefix=".", allow=lambda command: False)
+    @commands.on_command("boost", prefix=".", allow=lambda command: False)
     def boost(command: Command) -> None: ...
 
     async def test(lfs: FakeLFS) -> None:
@@ -75,8 +78,9 @@ def test_the_answers_show_the_command_s_own_prefix() -> None:
 
 def test_without_a_prefix_in_insim_each_command_brings_its_own() -> None:
     insim = InSim()
+    commands = insim.use(Commands)
     got: list[str] = []
-    insim.on_command("who", prefix="!")(lambda command: got.append(command.name))
+    commands.on_command("who", prefix="!")(lambda command: got.append(command.name))
 
     async def test(lfs: FakeLFS) -> None:
         await lfs.send(typed("!who"))
@@ -87,18 +91,19 @@ def test_without_a_prefix_in_insim_each_command_brings_its_own() -> None:
 
 def test_prefixes_and_names_are_checked() -> None:
     with pytest.raises(ValueError, match="need a prefix"):
-        InSim().on_command("who")
+        InSim().use(Commands).on_command("who")
     insim = InSim(prefix="!")
+    commands = insim.use(Commands)
     for prefix in ("", "!!", " ", "a"):
         with pytest.raises(ValueError, match="prefix"):
-            insim.on_command("who", prefix=prefix)
+            commands.on_command("who", prefix=prefix)
         with pytest.raises(ValueError, match="prefix"):
-            insim.command_group("aic", prefix=prefix)
+            commands.command_group("aic", prefix=prefix)
     with pytest.raises(ValueError, match="name"):
-        insim.on_command(".who", prefix=".")
-    insim.on_command("who", prefix=".")(print)
+        commands.on_command(".who", prefix=".")
+    commands.on_command("who", prefix=".")(print)
     with pytest.raises(ValueError, match="already"):
-        insim.on_command("WHO", prefix=".")
+        commands.on_command("WHO", prefix=".")
     with pytest.raises(ValueError, match="already"):
-        insim.command_group("who", prefix=".")
-    insim.on_command("who")(print)  # "!who" is another command
+        commands.command_group("who", prefix=".")
+    commands.on_command("who")(print)  # "!who" is another command

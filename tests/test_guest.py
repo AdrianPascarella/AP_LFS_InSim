@@ -13,7 +13,7 @@ from typing import TypeVar
 import pytest
 from fake_lfs import FakeLFS
 
-from lfs_insim import Command, InSim
+from lfs_insim import Command, Commands, InSim
 from lfs_insim.packets import (
     IS_ISM,
     IS_MSL,
@@ -155,15 +155,16 @@ def test_a_connection_known_only_from_its_player_is_not_this_computer() -> None:
 
 
 def commands(**options: str) -> tuple[InSim, list[Command]]:
-    insim = InSim(prefix="!", **options)  # type: ignore[arg-type]
+    insim = InSim(prefix="!")
+    chat = insim.use(Commands, **options)
     got: list[Command] = []
 
-    @insim.on_command("who")
+    @chat.on_command("who")
     def who(command: Command) -> None:
         got.append(command)
         command.reply("Here")
 
-    @insim.on_command("kick", admin=True)
+    @chat.on_command("kick", admin=True)
     def kick(command: Command) -> None:
         got.append(command)
 
@@ -217,9 +218,10 @@ def test_as_guest_admin_commands_are_only_for_this_computer() -> None:
 
 
 def test_allow_still_applies_to_everyone_else() -> None:
-    insim = InSim(prefix="!", guest_commands="everyone")
+    insim = InSim(prefix="!")
+    commands = insim.use(Commands, guest_commands="everyone")
     got: list[int] = []
-    insim.on_command("boost", allow=lambda command: command.ucid != 3)(
+    commands.on_command("boost", allow=lambda command: command.ucid != 3)(
         lambda command: got.append(command.ucid)
     )
 
@@ -263,4 +265,4 @@ def test_as_host_commands_work_as_before() -> None:
 
 def test_guest_commands_is_checked() -> None:
     with pytest.raises(ValueError, match="guest_commands"):
-        InSim(prefix="!", guest_commands="friends")  # type: ignore[arg-type]
+        InSim(prefix="!").use(Commands, guest_commands="friends")

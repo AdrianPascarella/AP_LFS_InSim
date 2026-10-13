@@ -1,4 +1,4 @@
-"""Chat commands such as "!hello" (used by InSim.on_command and InSim.command_group).
+"""Chat commands such as "!hello": the Commands plugin, `commands = insim.use(Commands)`.
 
 With a prefix in IS_ISI, LFS sends what users type starting with it as IS_MSO (MSO_PREFIX, and
 hidden from the other users). The command is the word after the prefix, in any case; the words
@@ -6,8 +6,9 @@ after it are its arguments.
 
 As a guest in someone else's server, LFS sends what anyone types, prefix or not, and everyone sees
 it; "/o !who" reaches only this computer's InSim. Then only this computer may use the commands,
-unless InSim(guest_commands="everyone"); admin commands are only for this computer; and replies go
-to this computer as IS_MSL, and to anyone else in the public chat (a guest cannot send IS_MTC).
+unless insim.use(Commands, guest_commands="everyone"); admin commands are only for this
+computer; and replies go to this computer as IS_MSL, and to anyone else in the public chat (a
+guest cannot send IS_MTC).
 
 A command or a group may have a prefix of its own (`on_command("who", prefix=".")`); LFS hides
 only the messages with the prefix of IS_ISI, so as host the others are seen by everyone.
@@ -26,10 +27,15 @@ import inspect
 import typing
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import Any, Literal, get_args
+from typing import TYPE_CHECKING, Any, Literal, get_args
 
 from lfs_insim._handlers import Handlers
+from lfs_insim._plugins import Plugin
 from lfs_insim.packets import IS_MSO, MSO
+from lfs_insim.state import Roster
+
+if TYPE_CHECKING:
+    from lfs_insim._connection import InSim
 
 CommandHandler = Callable[..., None] | Callable[..., Awaitable[None]]
 Allow = Callable[["Command"], bool]
@@ -166,8 +172,8 @@ class _Group:
 
 
 class CommandGroup:
-    """Commands under one name: `aic = insim.command_group("aic")`, then `@aic.on_command("start")`
-    for "!aic start". "!aic" alone lists them."""
+    """Commands under one name: `aic = commands.command_group("aic")`, then
+    `@aic.on_command("start")` for "!aic start". "!aic" alone lists them."""
 
     def __init__(self, commands: Commands, group: _Group) -> None:
         self._commands = commands
@@ -176,33 +182,89 @@ class CommandGroup:
     def on_command(
         self, name: str, *, admin: bool = False, allow: Allow | None = None
     ) -> Callable[[CommandHandler], CommandHandler]:
-        """Decorator: a command of this group, as InSim.on_command; the group's prefix and limits
+        """Decorator: a command of this group, as Commands.on_command; the group's prefix and limits
         apply too."""
         return self._commands.register(name, admin, allow, self._group)
 
 
-class Commands:
-    """The command functions of an InSim, by name."""
+class Commands(Plugin):
+    """Chat commands: `commands = insim.use(Commands)`, then `@commands.on_command("hello")`.
+
+    It shares the InSim's Roster (insim.use(Roster)), to know who is this computer, whether LFS is
+    a guest and who is an admin.
+    """
 
     def __init__(
-        self, prefix: str, make_roster: Callable[[], Any], guest_commands: GuestCommands
+        self,
+        insim: InSim,
+        *,
+        prefix: str | None = None,
+        guest_commands: GuestCommands = "local",
     ) -> None:
+        """prefix: the commands' prefix, e.g. "!"; by default the InSim's (`InSim(prefix="!")`),
+        which LFS hides from the others as host.
+        guest_commands: who may use the commands while LFS is a guest in someone else's server:
+        "local" (the default), only this computer; "everyone", anyone, with allow=.
+        """
         if guest_commands not in get_args(GuestCommands):
             raise ValueError(f'guest_commands is "local" or "everyone", not {guest_commands!r}')
-        self.prefix = prefix
+        super().__init__(insim)
+        isi_prefix = chr(insim._isi.Prefix) if insim._isi.Prefix else ""
+        self.prefix = isi_prefix if prefix is None else self._prefix(prefix)
         self.guest_commands = guest_commands
-        self._make_roster = make_roster
-        self._roster: Any = None  # a Roster, made with the first command: who is who
+        self._insim = insim
+        self._roster = insim.use(Roster)
         # by prefix, then by name: "!who" and ".who" are two commands
         self._by_name: dict[str, dict[str, _Entry]] = {}
         self._groups: dict[str, dict[str, _Group]] = {}
+        insim.on(IS_MSO)(self._handle)
+
+    def on_command(
+        self,
+        name: str,
+        *,
+        prefix: str | None = None,
+        admin: bool = False,
+        allow: Allow | None = None,
+    ) -> Callable[[CommandHandler], CommandHandler]:
+        """Decorator: call the function when someone types the prefix and this name in the chat.
+
+        `@commands.on_command("kick")` is called for "!kick Bob" with a Command first:
+        `command.reply("...")` answers only who typed it. The parameters after it are the words
+        typed, converted to their annotation (str, int or float; a `*rest` takes the remaining
+        ones): `def kick(command: Command, name: str, minutes: int = 5)`. Words that do not fit
+        are answered with the usage, and "!kick ?" with the usage and the first line of the
+        docstring. A function of only the Command gets any words in `command.args`.
+
+        admin=True: only LFS admins and the host (UCID 0) may use it. allow: a function of the
+        Command that says who else may not (False). The name is matched in any case. `def` or
+        `async def`, as for `insim.on()`; the IS_MSO still reaches the IS_MSO handlers. A command
+        without a function is left alone (it may be for another program). prefix: one of its own
+        (".") instead of the Commands'; as host, LFS hides only the InSim's from the others.
+        """
+        return self.register(name, admin, allow, prefix=prefix)
+
+    def command_group(
+        self,
+        name: str,
+        *,
+        prefix: str | None = None,
+        admin: bool = False,
+        allow: Allow | None = None,
+    ) -> CommandGroup:
+        """Commands under one name: `aic = commands.command_group("aic")`, then
+        `@aic.on_command("start")` for "!aic start". "!aic" alone lists them. prefix, admin and
+        allow apply to every command of the group, as in on_command.
+        """
+        return self.group(name, admin, allow, prefix)
 
     def _prefix(self, prefix: str | None) -> str:
         """The prefix to use (the InSim's if None); ValueError if there is none or it is bad."""
         if prefix is None:
             if not self.prefix:
                 raise ValueError(
-                    "chat commands need a prefix: InSim(prefix='!') or on_command(..., prefix='!')"
+                    "chat commands need a prefix: InSim(prefix='!'), "
+                    "insim.use(Commands, prefix='!') or on_command(..., prefix='!')"
                 )
             return self.prefix
         if len(prefix) != 1 or prefix.isspace() or prefix.isalnum():
@@ -242,7 +304,6 @@ class Commands:
             entry = _Entry(full, prefix, handler, _params(full, handler), doc, admin, limits)
             entries = self._by_name.setdefault(prefix, {}) if group is None else group.entries
             entries[key] = entry
-            self._need_roster()
             return handler
 
         return add
@@ -254,12 +315,7 @@ class Commands:
         key = self._check(name, prefix)
         group = _Group(key, prefix, admin, () if allow is None else (allow,))
         self._groups.setdefault(prefix, {})[key] = group
-        self._need_roster()
         return CommandGroup(self, group)
-
-    def _need_roster(self) -> None:
-        if self._roster is None:
-            self._roster = self._make_roster()
 
     def _is_local(self, ucid: int) -> bool:
         local = self._roster.local
@@ -275,13 +331,9 @@ class Commands:
         connection = self._roster.connections.get(ucid)
         return connection is not None and bool(connection.admin)
 
-    def handle(
-        self,
-        packet: IS_MSO,
-        handlers: Handlers,
-        say: Callable[..., None],
-    ) -> None:
+    def _handle(self, packet: IS_MSO) -> None:
         """Run the command in this message, if it is one of ours; otherwise do nothing."""
+        handlers, say = self._insim._handlers, self._insim.say
         if packet.UserType == MSO.SYSTEM:
             return
         text = packet.text

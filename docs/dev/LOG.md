@@ -62,6 +62,29 @@ engancha a ella; un programa = una conexión + uno o varios plugins (como `InSim
 - **Verificación:** `verify` PASS (555 tests). Aviso: `_connection.py` **504 líneas** (límite 500): lo bajará
   W10.2, al sacar los comandos de `InSim`.
 
+**Duda del usuario sobre herencia** (AIControl → AITraffic, AIDrift, combinados con `Roster`): el agente explicó
+que heredar da dos copias de AIControl que se pisan los coches; para combinar, componer (AIControl como
+servicio con `use()`). **Y sobre scripts como los ejemplos:** sin tocarlos se combinan con `run(a.insim,
+b.insim)` (conexiones separadas, sin estado compartido); para compartir, el script dentro de una función
+(un plugin puede ser una función). El usuario pidió el plan formal y lo aceptó: «Acepto el plan, procede».
+Orden y criterios en `PLAN.md` (W10.11 nueva).
+
+**W10.11 hecha:** `use()` acepta funciones (`Callable[..., T]`). Rojo: los dos tests nuevos pasaban en
+ejecución pero mypy los rechazaba (`expected "type[Roster]"`); con la firma nueva, verdes. `verify` PASS.
+
+**W10.2 hecha:** `Commands` es un plugin público (`from lfs_insim import Commands`;
+`insim.use(Commands, prefix=None, guest_commands="local")`, que hace `use(Roster)` y se engancha a `IS_MSO`).
+`InSim` pierde `on_command`, `command_group`, `guest_commands` y `_make_roster` (`_connection.py` 504 → 454).
+- **Tests cambiados, por el cambio de API (no para que pasen):** los de comandos (`test_commands*.py`,
+  `test_command_prefixes.py`, `test_guest.py`) migrados con un script del scratchpad: `commands =
+  insim.use(Commands)` y `commands.on_command`; `guest_commands` pasa a `use(Commands, ...)`. Rojo antes del
+  código (no podían importar `Commands`), más un test nuevo: `InSim` ya no tiene `on_command`.
+- **Un test se reordenó con motivo:** la migración puso `use(Commands)` antes de `Roster(insim)` en el test de
+  P10, y el `Roster` directo pasó a ser el segundo (el error diseñado). Se devolvió al orden original. **Trampa
+  para usuarios:** `use(Commands)` y después `Roster(insim)` da ese error; la guía enseña `insim.use(Roster)`.
+- Ejemplos, README, `getting-started.md`, `insim.md` y `roster-and-text.md` con la forma nueva; CHANGELOG
+  «Breaking». `verify` PASS (558 tests), sin avisos de tamaño.
+
 ## S19 — 2026-10-13 — W9: comandos como invitado en un servidor ajeno
 
 **Inicio:** `session_start_check` PASS (rama, identidad, pull, plantilla v3). Documentos y realidad coinciden
