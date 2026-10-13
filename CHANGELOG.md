@@ -13,6 +13,8 @@
   `ValueError`.
 - The same `request()` or `request_all()` made while one waits is sent once, and both get the
   answer, unless something has arrived from LFS in between (it may have changed the answer).
+- `insim.need(flags=..., interval_ms=...)`: what a plugin needs in `IS_ISI`, added to the rest
+  (flags added up, the shortest interval kept). Asked for while connected, from the next connection.
 - `await roster.ready()` waits until the roster has the whole picture of the connection.
 - `Roster` is a plugin: `roster = insim.use(Roster)` (`Roster(insim)` still works, once). The chat
   commands now share it instead of making a second roster that asked LFS for everyone again.

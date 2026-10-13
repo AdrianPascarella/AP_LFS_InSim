@@ -131,6 +131,20 @@ class InSim(StopsOnError):
         """
         return self._plugins.use(plugin, options)
 
+    def need(self, *, flags: int = 0, interval_ms: int = 0) -> None:
+        """What a plugin needs in IS_ISI, added to what InSim() and other plugins asked for:
+        `insim.need(flags=ISF.MCI, interval_ms=100)`. Flags are added up; of the intervals, the
+        shortest is kept (0 asks for none). LFS reads them on connecting: asked for later, they
+        count from the next connection (a warning says so).
+        """
+        if interval_ms < 0:
+            raise ValueError(f"interval_ms must be 0 or more, not {interval_ms}")
+        self._isi.Flags |= flags
+        if interval_ms and (not self._isi.Interval or interval_ms < self._isi.Interval):
+            self._isi.Interval = interval_ms
+        if self._supervisor is not None:
+            log.warning("IS_ISI options asked for while connected count from the next connection")
+
     def on_connect(self, handler: ConnectHandler) -> ConnectHandler:
         """Decorator: call the function (no arguments) after every connection and reconnection.
 

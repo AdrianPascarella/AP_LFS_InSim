@@ -105,6 +105,12 @@ llegar `IS_ISM` sin `ReqI` o `TINY_MPE`. Rojo primero: 3 tests.
   mutación da rojo.
 - Guía (`roster-and-text.md`), CHANGELOG. `verify` PASS. `test_roster.py` tarda ~11 s (las esperas de 1 s).
 
+**W10.5 hecha:** `insim.need(flags=..., interval_ms=...)` (nombre elegido por el agente: lo que un plugin
+necesita de LFS; se puede cambiar antes de publicar). Suma flags al `IS_ISI`, guarda el intervalo más corto
+distinto de 0, `ValueError` si es negativo, y avisa si la conexión ya está en marcha (cuenta desde la
+siguiente, porque se reenvía `self._isi` al reconectar). Rojo primero: `tests/test_needs.py` (5 tests).
+`verify` PASS (573 tests). La guía de plugins va en W10.8.
+
 ## S19 — 2026-10-13 — W9: comandos como invitado en un servidor ajeno
 
 **Inicio:** `session_start_check` PASS (rama, identidad, pull, plantilla v3). Documentos y realidad coinciden

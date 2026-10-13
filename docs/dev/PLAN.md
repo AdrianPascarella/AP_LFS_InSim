@@ -389,7 +389,7 @@ W10.8).
   respuesta a los dos. hecho en S20 → LOG.md S20
 - [x] **W10.4** — `await roster.ready()`: la foto inicial completa (hoy los `on_connect` arrancan a la vez y un
   plugin puede leer `roster.players` vacío). Cada plugin con estado ofrece lo mismo. hecho en S20 → LOG.md S20
-- [ ] **W10.5** — Cada plugin pide sus flags de `IS_ISI` y su intervalo con una llamada al `insim` (vale para
+- [x] **W10.5** — Cada plugin pide sus flags de `IS_ISI` y su intervalo con una llamada al `insim` (vale para
   funciones y clases); se juntan antes de conectar (flags con OR; intervalo, el más corto). Un plugin añadido con la conexión abierta → aviso.
 - [ ] **W10.6** — Choques entre plugins detectados en `use()`: mismo comando y prefijo; reparto de rangos de
   `ClickID` para los botones.
