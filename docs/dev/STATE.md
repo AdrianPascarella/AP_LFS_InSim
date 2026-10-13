@@ -1,13 +1,16 @@
 # 📍 Estado — AP_LFS_InSim (lfs_insim)
-> Actualizado: 2026-10-13 (S19): **W9 hecha** (comandos como invitado, probados en el LFS real; prefijo propio por comando, W9.7;
+> Actualizado: 2026-10-13 (S20): **W10 (plugins) esbozada y puesta antes de W6**, a petición del usuario; sin
+> código todavía. En S19: **W9 hecha** (comandos como invitado, probados en el LFS real; prefijo propio por comando, W9.7;
 > **publicado como 0.5.0**). Antes, en S18: **W7 y W8 hechas**. La biblioteca está validada en el LFS real
 > y tiene la API de alto nivel (`@insim.on.IS_NPL`, `insim.send.IS_MST(...)`, `received` / `sent`,
 > `await insim.request(...)`, `Roster`, `say()` / `command()`, `on_command`, `text.plain()`), cuatro
 > ejemplos y `docs/packets.md` (tabla generada).
 > **`lfs-insim 0.5.0` está publicado en PyPI** (S19, release `v0.5.0`): comandos como invitado y prefijo propio
 > por comando (W9). Antes, 0.4.0 (S18: W8) y 0.3.0 y 0.2.0 (S16–S17).
-> **▶️ SIGUIENTE: W6, la primera aplicación aparte** (la cámara libre, para streamer-project): detallarla con el
-> usuario al empezar. W9 en `PLAN.md`; decisiones en `API_DESIGN.md` («invitado», «prefijo propio»).
+> **▶️ SIGUIENTE: W10, plugins** (`insim.use(Roster)`, comandos como plugin propio, nada pedido dos veces,
+> `ready()`, flags por plugin, `ClickID`). Empezar por **W10.0** (¿varios InSim en el mismo puerto? prueba en
+> real) y **W10.1** (test en rojo de P10, después `use()`). Tareas en `PLAN.md`; diseño en `API_DESIGN.md`
+> («Plugins»); por qué, en `LOG.md` S20. **W6 espera a W10**; su alcance ya está decidido (en `PLAN.md`).
 > **Receta de una versión nueva:** versión y CHANGELOG en
 > `dev`; `verify` en verde; avance rápido de `dev` a `main`; `gh release create vX.Y.Z --target main`
 > (el tag debe ser `v<version>`); aprobar el entorno `pypi` (pedirlo cada vez; con permiso, el agente lo aprueba
@@ -17,7 +20,7 @@
 > módulo propio (los comandos de W8.2, en `_commands.py`). Ver `USER_ACTIONS.md`.
 
 ## Dónde estamos
-Fase activa: **W6** (esbozada, por detallar). W9 hecha y 0.5.0 publicado en S19.
+Fase activa: **W10** (esbozada en S20; se detalla tarea a tarea). W6 detrás. W9 hecha y 0.5.0 publicado en S19.
 
 - **Cómo se genera:** `.venv/Scripts/python scripts/generate_packets.py` lee
   `spec/cache/InSim.txt` y `spec/cache/OutSimPack.txt` (con `scripts/spec_parser.py`) y las

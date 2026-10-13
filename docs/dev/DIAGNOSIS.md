@@ -115,3 +115,13 @@ generadas, y las ideas de la conexión (reconexión, errores aislados por maneja
 - **Impacto:** raro (hacen falta dos paquetes juntos), pero `watch()` iba a publicarse prometiendo ese orden.
 - Resuelto (S18): `await asyncio.sleep(0)` tras cada paquete en `_read`; tests en `test_watch.py` y
   `test_roster.py`.
+
+### P10 — Con comandos y un `Roster` propio hay dos `Roster`   [ABIERTO: se arregla en W10.1]
+- **Evidencia:** S20, leyendo el código: los comandos crean su propio `Roster` a escondidas
+  (`InSim._make_roster`, llamado por `Commands._need_roster`) y no ven el que crea el usuario con
+  `Roster(insim)`. Resultado: dos instancias, y cada conexión pide `TINY_NCN`, `TINY_NPL` y `TINY_ISM` dos veces
+  y guarda dos copias del mismo estado. Ningún test lo comprueba. Sin reproducir todavía con el LFS falso.
+- **Impacto:** tráfico doble al conectar y estado duplicado; no da resultados erróneos (las dos copias siguen
+  los mismos paquetes). Señal de que `InSim` depende de `Roster` sin que se vea.
+- **Acción:** W10.1 (`insim.use()`: una instancia por tipo) y W10.2 (los comandos, plugin propio que usa
+  `use(Roster)`); test en rojo primero.

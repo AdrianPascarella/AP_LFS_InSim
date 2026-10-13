@@ -1,6 +1,48 @@
 # 📓 Diario — AP_LFS_InSim (lfs_insim)
 <!-- Solo se añade, lo más nuevo arriba. Una entrada por sesión. -->
 
+## S20 — 2026-10-13 — W6 decidida y aparcada; W10 (plugins) esbozada antes
+
+**Inicio:** `session_start_check` PASS (rama, identidad, pull, plantilla v3). Documentos y realidad coinciden
+(último commit `ec5ccee`, árbol limpio). 1 acción del usuario pendiente, opcional (U11).
+
+**W6, decidida con el usuario** (las dos recomendadas por el agente): la cámara libre vive **dentro de
+streamer-project** (`tools/`, instala `lfs-insim` desde PyPI; *descartado* un repositorio propio: un proyecto
+más con su protocolo, para un único usuario de la cámara); primera versión **repetición + plano guionizado**
+(`IS_RIP`, `IS_SCC`, `IS_CPP`; *descartados* solo seguir en directo, que no cubre lo que pide streamer-project,
+y todo desde el principio, por P4). Contexto: su W9 en streamer-project; en `C:\LFS\data\mpr` no hay
+repeticiones (U36 de allí). Al ir a anotarlo, el usuario: «Pero aún no!!» y «Antes quiero que miremos otra
+cosa». No se había cambiado nada.
+
+**Plugins (W10), idea del usuario:** «Sigue sin cuadrarme la idea de que lo de Roster venga ya directo
+incrustado sin más… sería mejor que sea un insim que ya trae la biblioteca y que se pueda cargar sin más
+todas sus utilidades (como ya hacía el proyecto en su versión antigua)». Análisis del agente, con el código:
+- `Roster` ya era opcional, pero **los comandos crean el suyo a escondidas** (`InSim._make_roster`): con un
+  `Roster` propio hay dos y se pide todo dos veces → **P10**. Los flags del `IS_ISI` solo se fijan en
+  `InSim(flags=)`, así que un módulo no puede declarar lo que necesita. Los `on_connect` arrancan a la vez.
+- Del proyecto anterior (`insim_app.py`, `insim_loader.py`, `users_management`) se rescata la idea (módulos
+  que declaran sus flags y comparten estado) y **se descarta el mecanismo** (manifiestos, carga por carpetas,
+  `get_insim("nombre")` sin tipo, versiones entre módulos): fue parte de P4.
+- El usuario: «Me encaja… que se pudiese utilizar Roster o AIControl o FreeCam de forma completamente
+  independiente o que se puedan combinar en un solo insim compartiendo todo el estado… piensa en otras
+  cosas». El agente añadió: peticiones iguales compartidas, `ready()`, flags e intervalo por plugin, opciones
+  en `use()`, choques de comandos y de `ClickID`, `on_close`, arranque solo, kit de pruebas público.
+- Preguntado si su idea era correcta, el agente: sí (patrón de los *Cogs* de discord.py, *blueprints* de
+  Flask), con dos matices: la dependencia de `Roster` existe (los comandos la necesitan; se hace explícita) y
+  del proyecto antiguo vale la idea, no el cargador.
+- **Discrepancia resuelta:** el usuario propuso que los comandos vinieran dentro del plugin `Roster`. El
+  agente recomendó **un plugin `Commands` propio que hace `use(Roster)`** (el registrador o la cámara quieren
+  `Roster` sin comandos; `Roster` seguiría siendo solo «quién es quién»), sin atajo en `InSim`. Cambio
+  incompatible (`@insim.on_command` desde 0.4.0), aceptable en 0.x. El usuario preguntó si eso duplicaría
+  `Roster`: no, `use()` da una instancia por tipo; y crear uno directamente con otro ya en uso dará error.
+  El usuario: «Sí, anótalo todo como W10».
+- **Abierto:** si LFS acepta varios programas InSim en el mismo puerto (el agente cree que sí, sin comprobar)
+  → W10.0.
+
+**Decisiones:** W10 antes de W6, porque FreeCam será el primer plugin de fuera. Diseño en `API_DESIGN.md`
+(«Plugins»), tareas W10.0–W10.10 en `PLAN.md`, P10 en `DIAGNOSIS.md`.
+**Verificación:** sin cambios de código; solo documentación de trabajo. Control de cierre al final.
+
 ## S19 — 2026-10-13 — W9: comandos como invitado en un servidor ajeno
 
 **Inicio:** `session_start_check` PASS (rama, identidad, pull, plantilla v3). Documentos y realidad coinciden

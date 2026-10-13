@@ -359,9 +359,43 @@ aplicación (W6) lo necesita (el usuario, S18).
   el usuario en S19 antes de publicar. hecho en S19 → LOG.md S19
 - [x] **W9.6** — Publicar 0.5.0 (con permiso del usuario), antes de empezar W6. hecho en S19 → LOG.md S19
 
-## W6 — Primera aplicación aparte   📋 ESBOZADA
+## W10 — Plugins: `Roster`, comandos y aplicaciones, solos o combinados   📋 ESBOZADA (S20) · va antes de W6
+**Objetivo:** que `Roster`, los comandos y las aplicaciones (FreeCam, AIControl…) sean plugins que se usan
+solos o combinados en un mismo `InSim`, compartiendo estado y sin pedir nada dos veces. El núcleo (`InSim`)
+se queda en conectar, recibir y enviar. Pedido por el usuario en S20; diseño en `API_DESIGN.md` («Plugins»,
+propuesto en S20); por qué y descartes, en `LOG.md` S20. Se detalla tarea a tarea al empezar.
+- [ ] **W10.0** — Prueba en real: ¿acepta LFS varios programas InSim a la vez en el mismo puerto? Cambia la
+  guía (cuándo combinar en un proceso y cuándo conexiones aparte), no el diseño.
+- [ ] **W10.1** — Test en rojo de P10 (dos `Roster` con comandos) y `insim.use(Plugin, **opciones)`: una
+  instancia por tipo y por `InSim`, con su tipo; crear un segundo directamente da error; opciones distintas en
+  un segundo `use()` dan error. `Roster` pasa a ser un plugin (`insim.use(Roster)`).
+- [ ] **W10.2** — Comandos como plugin propio (`insim.use(Commands, prefix="!")`, que hace `use(Roster)`):
+  salen de `InSim`. **Cambio incompatible**: `@insim.on_command` e `insim.command_group` pasan a
+  `commands.on_command` / `commands.command_group`, sin atajo en `InSim` (decidido en S20).
+- [ ] **W10.3** — Peticiones sin duplicar: dos `request()` iguales a la vez → un solo `IS_TINY`, la misma
+  respuesta a los dos.
+- [ ] **W10.4** — `await roster.ready()`: la foto inicial completa (hoy los `on_connect` arrancan a la vez y un
+  plugin puede leer `roster.players` vacío). Cada plugin con estado ofrece lo mismo.
+- [ ] **W10.5** — Cada plugin declara sus flags de `IS_ISI` y su intervalo; se juntan antes de conectar (flags
+  con OR; intervalo, el más corto). Un plugin añadido con la conexión abierta → aviso.
+- [ ] **W10.6** — Choques entre plugins detectados en `use()`: mismo comando y prefijo; reparto de rangos de
+  `ClickID` para los botones.
+- [ ] **W10.7** — `on_close` por plugin (guardar lo suyo) y log y errores con el nombre del plugin.
+- [ ] **W10.8** — Guía: escribir un plugin, usarlo solo (`python -m ...`) o combinado; ejemplos y README al día.
+- [ ] **W10.9** — Kit de pruebas público (`lfs_insim.testing`, el LFS falso) para probar plugins de otros
+  proyectos (streamer-project, FreeCam). API pública nueva: se diseña al llegar.
+- [ ] **W10.10** — Publicar (0.6.0, con permiso del usuario).
+**Fuera, a propósito:** manifiestos, carga por carpetas, buscar plugins por nombre, versiones entre plugins y
+activar o desactivar con el programa en marcha (el cargador del proyecto anterior, P4).
+
+## W6 — Primera aplicación aparte   📋 ESBOZADA · espera a W10
 **Objetivo:** escribir, en un proyecto separado, la primera aplicación real con la biblioteca (la
 cámara libre, que necesita streamer-project) y anotar cada incomodidad como tarea de la biblioteca.
+**Decidido con el usuario en S20:** vive **dentro de streamer-project** (un módulo en `tools/`, que instala
+`lfs-insim` desde PyPI); la primera versión es **repetición + plano guionizado** (cargar un `.mpr` con
+`IS_RIP`, saltar a un instante, coche y vista con `IS_SCC`, y una cámara libre que va de un punto a otro con
+`IS_CPP`). Será un plugin de W10 (`FreeCam`). En `C:\LFS\data\mpr` no hay repeticiones todavía (U36 de
+streamer-project).
 
 ## Ideas (aparcadas, sin compromiso)
 - **Ayudante de botones** (de escribir `examples/buttons.py`, S12): hay que repartir los `ClickID` a

@@ -336,6 +336,52 @@ se escribe llega como `MSO.USER`, con prefijo o sin él, y lo ve todo el servido
 - Como anfitrión, LFS solo oculta los mensajes con el prefijo de `IS_ISI`; los otros los ve todo el servidor
   (documentado). Como invitado da igual: se ve todo salvo con `/o`.
 
+## Plugins (W10; idea del usuario y diseño del agente, aceptado en S20; se precisa al escribirlo)
+```python
+from lfs_insim import InSim
+from lfs_insim.state import Roster
+from lfs_insim.commands import Commands     # ubicación exacta, por decidir en W10.2
+
+insim = InSim("cam", "")
+commands = insim.use(Commands, prefix="!")  # por dentro, insim.use(Roster)
+roster = insim.use(Roster)                  # el mismo que usan los comandos
+cam = insim.use(FreeCam, speed=2)           # una aplicación de otro proyecto, igual
+
+@commands.on_command("who")
+def who(cmd): ...
+
+class FreeCam:                              # un plugin: una clase que recibe el insim
+    flags = ISF.MCI                         # lo que necesita en el IS_ISI
+    def __init__(self, insim, *, speed=1):
+        self.roster = insim.use(Roster)     # comparte el estado; fija el orden
+        insim.on_connect(self._start)
+    async def _start(self):
+        await self.roster.ready()           # la foto inicial, completa
+```
+- **`insim.use(Tipo, **opciones)`**: una instancia por tipo y por `InSim`; la segunda llamada devuelve la misma
+  (con su tipo, para el editor). Opciones distintas en otra llamada → error. Crear un plugin directamente
+  cuando ya hay uno de ese tipo → error que remite a `use()` (así no puede haber dos `Roster`, P10). Dos
+  conexiones distintas tienen cada una los suyos.
+- **El núcleo no conoce a ningún plugin.** Los comandos salen de `InSim` a su propio plugin, que usa `Roster`
+  (lo necesita para saber quién es este ordenador, si somos invitados y quién es admin). *Descartado:*
+  comandos dentro de `Roster` (propuesto por el usuario: el registrador o la cámara quieren `Roster` sin
+  comandos, y `Roster` dejaría de ser solo «quién es quién»); dejar `insim.on_command` como atajo (el núcleo
+  volvería a depender de los comandos). Cambio incompatible, aceptable en 0.x.
+- **Nada se pide dos veces:** una instancia por tipo, y dos `request()` iguales a la vez comparten un solo
+  `IS_TINY`.
+- **`ready()`** en los plugins con estado: los `on_connect` arrancan a la vez y uno puede leer el estado antes
+  de que llegue la respuesta.
+- **Flags e intervalo declarados por el plugin**, juntados antes de conectar (flags con OR; intervalo, el más
+  corto). Añadido con la conexión abierta → aviso (LFS solo los lee en el `IS_ISI`).
+- **Choques detectados en `use()`:** mismo comando con el mismo prefijo; rangos de `ClickID` repartidos por
+  la biblioteca para que dos plugins con botones no se pisen.
+- **`on_close` por plugin** y log con el nombre del plugin.
+- **Solo o combinado:** el paquete de una aplicación trae su arranque (`python -m freecam`: crea un `InSim`,
+  hace `use(FreeCam)` y lo ejecuta); el código del plugin es el mismo.
+- *Descartado* (el cargador del proyecto anterior, P4): manifiestos `insim.json`, carga por carpetas, buscar
+  plugins por nombre (`get_insim("...")`, sin tipo), versiones entre plugins, activar o desactivar en marcha.
+
 ## Abierto (se decide más adelante, no ahora)
 - Agrupar manejadores en módulos (lo que hacía `InSimApp` con varias aplicaciones a la vez): si
   hiciera falta, algo como el `APIRouter` de FastAPI. Solo si una aplicación real lo pide.
+  → Decidido en S20: plugins (sección anterior, W10).
