@@ -3,11 +3,10 @@
 > y tiene la API de alto nivel (`@insim.on.IS_NPL`, `insim.send.IS_MST(...)`, `received` / `sent`,
 > `await insim.request(...)`, `Roster`, `say()` / `command()`, `on_command`, `text.plain()`), cuatro
 > ejemplos y `docs/packets.md` (tabla generada). U7 cerrada: el usuario vio las listas en su VS Code.
-> La versión de `dev` es **0.2.0, sin publicar** (CHANGELOG listo).
-> **▶️ SIGUIENTE (decide el usuario):** (a) publicar 0.2.0 (receta abajo; pide permiso expreso);
-> (b) W7.7, subtipos de `IS_TINY` / `IS_SMALL` (`@insim.on.IS_TINY(TINY.MPE)`), que se decide con él;
+> **`lfs-insim 0.2.0` está publicado en PyPI** (S16, release `v0.2.0`, `main` = `dev`).
+> **▶️ SIGUIENTE (decide el usuario):** (b) W7.7, subtipos de `IS_TINY` / `IS_SMALL` (`@insim.on.IS_TINY(TINY.MPE)`), que se decide con él;
 > (c) abrir W8 (mejoras del proyecto anterior, `LEGADO.md`) o W6 (primera aplicación aparte).
-> `lfs-insim 0.1.0` está publicado en PyPI. **Receta de una versión nueva:** versión y CHANGELOG en
+> **Receta de una versión nueva:** versión y CHANGELOG en
 > `dev`; `verify` en verde; avance rápido de `dev` a `main`; `gh release create vX.Y.Z --target main`
 > (el tag debe ser `v<version>`); aprobar el entorno `pypi` (pedirlo cada vez). Una versión publicada
 > no se puede resubir. `_connection.py` va por ~405 líneas y `_codec.py` pasa de 500 (aviso de

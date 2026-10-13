@@ -33,6 +33,10 @@ aprobar entorno `pypi`) exige permiso expreso del usuario.
 - **`cfg.txt`:** copia en `_archivo_AP_LFS_InSim\cfg_backup_2026-10-13_S16_prerelease.txt`; restaurado
   idéntico a la copia (byte a byte, CRLF). LFS cerrado por InSim (`/exit`).
 
+**Publicado (el usuario: «Publica»):** CI en verde; avance rápido de `dev` a `main`; release `v0.2.0` (pre-release);
+entorno `pypi` aprobado; `publish` en verde; PyPI lista 0.1.0 y 0.2.0, e instalado desde PyPI en un venv limpio
+devuelve 0.2.0 con `on.` y `send.`.
+
 **Tropiezo:** un `sed` con `&` estropeó `spec_directions.py`; restaurado con git y reaplicado. Las
 barras invertidas en la entrada de Bash se pierden: para ellas, usar Edit.
 
