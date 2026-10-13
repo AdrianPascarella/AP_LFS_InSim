@@ -258,3 +258,14 @@ def test_unknown_ids_are_ignored() -> None:
         await _until(lambda: 4 in roster.players)
 
     run(test, connections=(host(),))
+
+
+def test_a_ucid_reused_at_once_keeps_the_new_connection() -> None:
+    # Someone leaves and someone else gets the same UCID in the same TCP read (S18).
+    async def test(lfs: FakeLFS, insim: InSim, roster: Roster) -> None:
+        await lfs.send(IS_CNL(UCID=3, Total=1), IS_NCN(UCID=3, UName="new", PName="New", Total=2))
+        await _until(lambda: 3 not in roster.connections or roster.connections[3].username == "new")
+        await asyncio.sleep(0.05)
+        assert roster.connections[3].username == "new"
+
+    run(test, connections=(host(), guest()))

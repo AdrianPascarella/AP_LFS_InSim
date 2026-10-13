@@ -105,3 +105,13 @@ generadas, y las ideas de la conexión (reconexión, errores aislados por maneja
   size byte and mod info» de lfs.net, primer post de Scawen (InSim 9). Confirma la regla de los
   tres bytes alfanuméricos y el orden de bytes de Intel. Su ejemplo (`_A3` = mod `33415F`; `XRZ` =
   coche oficial, quizá futuro) está ya en los tests.
+
+### P9 — Dos paquetes en la misma lectura TCP se adelantaban al `after` del primero   [RESUELTO en S18]
+- **Evidencia:** S18, prueba en LFS real (U8): 1 error de orden en `watch()` en ~5400 `IS_MCI`. `after` se
+  programa con `call_soon`; `_read` despachaba seguidos todos los paquetes de un `read()`, así que el `before`
+  y los manejadores del segundo corrían antes del `after` del primero. Con `Roster`: `IS_CNL(UCID=3)` + `IS_NCN`
+  que reutiliza el UCID 3 en la misma lectura → el `before` del NCN tocaba la conexión vieja y el `after` del
+  CNL la borraba: la conexión nueva desaparecía. Reproducido con el LFS falso (dos tests en rojo).
+- **Impacto:** raro (hacen falta dos paquetes juntos), pero `watch()` iba a publicarse prometiendo ese orden.
+- Resuelto (S18): `await asyncio.sleep(0)` tras cada paquete en `_read`; tests en `test_watch.py` y
+  `test_roster.py`.

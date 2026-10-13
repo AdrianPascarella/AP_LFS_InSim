@@ -110,3 +110,38 @@ def test_a_failing_watcher_follows_errors_raise() -> None:
 def test_roster_uses_only_the_public_api() -> None:
     source = (Path(__file__).parents[1] / "src" / "lfs_insim" / "state.py").read_text("utf-8")
     assert re.findall(r"\b_?insim\._\w+", source) == []
+
+
+def test_packets_read_together_are_still_seen_one_after_the_other() -> None:
+    # Found with the real LFS (S18): two packets in one TCP read ran the second's before and
+    # handlers ahead of the first's after.
+    async def main() -> None:
+        async with FakeLFS() as lfs:
+            insim = InSim(port=lfs.port)
+            seen: list[str] = []
+
+            def before(packet: InSimPacket) -> None:
+                if isinstance(packet, IS_TINY) and packet.ReqI:
+                    seen.append(f"before {packet.ReqI}")
+
+            def after(packet: InSimPacket) -> None:
+                if isinstance(packet, IS_TINY) and packet.ReqI:
+                    seen.append(f"after {packet.ReqI}")
+
+            insim.watch(before=before, after=after)
+
+            @insim.on.IS_TINY
+            async def handler(packet: IS_TINY) -> None:
+                if packet.ReqI:
+                    seen.append(f"handler {packet.ReqI}")
+                    await asyncio.sleep(0.05)
+
+            async with insim:
+                await lfs.wait_connected()
+                await lfs.send(IS_TINY(ReqI=7), IS_TINY(ReqI=8))  # one write
+                async with asyncio.timeout(2):
+                    while len(seen) < 6:
+                        await asyncio.sleep(0.01)
+            assert seen == ["before 7", "handler 7", "after 7", "before 8", "handler 8", "after 8"]
+
+    asyncio.run(main())

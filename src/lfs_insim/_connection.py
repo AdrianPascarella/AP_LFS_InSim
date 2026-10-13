@@ -413,6 +413,9 @@ class InSim(StopsOnError):
                     break
                 for packet in stream.feed(data):
                     self._dispatch(packet)
+                    # Let this packet's async handlers take their first step and its after
+                    # watchers run before the next packet read in the same chunk.
+                    await asyncio.sleep(0)
         except PacketError as error:
             log.error("closing the connection to LFS: %s", error)
         except TimeoutError:
