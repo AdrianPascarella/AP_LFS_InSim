@@ -159,6 +159,11 @@ plugin.
 - `DEL_BTN` no se ha visto en el LFS real (la pantalla es punto ciego; LFS está en un servidor público del
   usuario): va en U12, opcional. `verify` PASS (588 tests). **Pedido al usuario: U12.**
 
+**Cierre de S20:** W10 hecha salvo W10.10 (publicar 0.6.0: pide permiso expreso; el agente recomienda U12
+antes, por si cambian nombres). CI `verify` en verde en todos los commits de la sesión. 2 acciones del
+usuario pendientes, ninguna bloquea: U12 y U11. LFS del usuario sigue abierto con InSim en el 29999 (no lo
+abrió el agente).
+
 ## S19 — 2026-10-13 — W9: comandos como invitado en un servidor ajeno
 
 **Inicio:** `session_start_check` PASS (rama, identidad, pull, plantilla v3). Documentos y realidad coinciden
