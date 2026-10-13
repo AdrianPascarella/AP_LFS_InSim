@@ -105,3 +105,8 @@
   el ayudante de botones o la primera aplicación (W6) la piden.
 - Pendiente de decidir: forma de las anotaciones de los comandos (A1), y si la tabla de direcciones
   va en la documentación pública (propuesta: sí).
+
+## 6. Decidido con el usuario (S17, al abrir W8)
+- A1 por anotaciones de tipo; A2 con `admin=True` y `allow=función`; A4 fuera de W8 (fase propia con la
+  aplicación de botones delante); 0.3.0 tras W8.1. La tabla de direcciones ya es pública (`docs/packets.md`, S16).
+  Detalle en `PLAN.md`, W8.

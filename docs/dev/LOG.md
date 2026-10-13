@@ -30,6 +30,13 @@ la especificación) falló antes del código.
 **Tropiezos:** (1) el agente metió por error un `git stash` en un comando; se deshizo al momento con
 `git stash pop`, sin pérdida. (2) Otra vez barras invertidas en un script por Bash (§13): se pasó a Edit.
 
+**W8 abierta** (el usuario: «Abre W8»). El agente propuso dividirla en W8.0–W8.5 (`PLAN.md`) y el usuario
+eligió las cuatro recomendaciones: **botones (A4) fuera de W8**, en una fase propia con la aplicación
+delante (diseñarlos a ciegas produjo el `map_ui.py` de 3.000 líneas); **argumentos de comando por
+anotaciones de tipo** (no una lista en el decorador, que repite la firma); **permisos con `admin=True` y
+`allow=función`** (no una lista de usuarios ni roles); **0.3.0 tras W8.1** (versiones pequeñas, no una grande
+al final). W8.0 va primero: `_codec.py` ya pasa del aviso de tamaño y `_connection.py` va a crecer.
+
 ## S16 — 2026-10-13 — W7.6: equivalencia, tabla de direcciones, guía en forma canónica y 0.2.0
 
 **Inicio:** identidad git correcta (`AdrianPascarella`, gmail); `verify` PASS antes de tocar nada.

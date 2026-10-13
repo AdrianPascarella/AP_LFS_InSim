@@ -292,12 +292,33 @@ abreviaturas, ni nombres como cadena, ni `on_IS_XXX`); (4) los `both ways` está
 procede; `@insim.on(IS_MST)` sale en rojo en mypy y falla con un mensaje claro; el test de
 equivalencia pasa en todas las formas para todos los paquetes; `verify` y el CI en verde.
 
-## W8 — Mejoras rescatadas del proyecto anterior   📋 ESBOZADA (S14)
-Lista y razones en `docs/dev/LEGADO.md`; el orden propuesto está en su §4: `errors="raise"` y colores
-para enviar, `on_disconnect`, comandos con tipos/ayuda/grupos y permisos, unidades y, la mayor, el
-ayudante de botones. Además: hacer pública la capacidad de `Roster` de ver los paquetes antes/después
-de los manejadores (`order="before"`), y tres comprobaciones de tests (enviar `IS_REO`/`IS_HCP`/
-`IS_IPB`, orden en la reconexión, tormenta de reconexión). Se detalla al abrirla, con el usuario.
+## W8 — Mejoras rescatadas del proyecto anterior   🔜 EN CURSO (S17) · esbozada en S14, detallada con el usuario en S17
+**Objetivo:** lo que el proyecto anterior hacía bien y la biblioteca aún no hace (lista y razones en
+`docs/dev/LEGADO.md`, con sus IDs A1–A7).
+
+**Decisiones (usuario, S17; todas las recomendadas por el agente):**
+- **El ayudante de botones (A4) queda fuera de W8:** fase propia, diseñada con la aplicación de botones
+  delante (después de W6 o con ella), no a ciegas.
+- **Argumentos de comando por anotaciones de tipo:** `def speed(cmd: Command, kmh: int, who: str = "all")`;
+  se validan y convierten solos, y la ayuda (`!speed ?`) sale de la firma y de la docstring.
+- **Permisos:** `on_command(..., admin=True)` (marca de administrador de LFS) y `allow=función` para
+  reglas propias. Sin sistema de roles.
+- **Versión 0.3.0 tras W8.1** (con W7.7 y W7.8 dentro); después, versiones pequeñas.
+- Los puntos B de `LEGADO.md` esperan a que los pida la primera aplicación (W6).
+
+- [ ] **W8.0** — Partir `packets/_codec.py` (525 líneas, más de las 500 del aviso) y preparar `_connection.py`
+  (407) para lo que va a crecer; sin cambiar nada de lo que se ve (red de seguridad, §5)
+- [ ] **W8.1** — `InSim(errors="raise")` (A6); colores para enviar en `lfs_insim.text` (A7);
+  `@insim.on_disconnect` y saber si una conexión es una reconexión (A3). Después, publicar 0.3.0
+- [ ] **W8.2** — Comandos con tipos, ayuda y grupos (A1) y permisos (A2), en su propio módulo
+- [ ] **W8.3** — Unidades: `lfs_insim.units` (funciones puras) y propiedades en los paquetes por `_extras.py` (A5)
+- [ ] **W8.4** — Hacer pública la forma en que `Roster` ve los paquetes antes y después de los manejadores
+  (`order="before"`)
+- [ ] **W8.5** — Tests de `LEGADO.md` §3: enviar `IS_REO`, `IS_HCP` e `IS_IPB`; orden al reconectar (P22);
+  tormenta de reconexión (P24)
+
+**Criterios de aceptación:** cada tarea con tests (en rojo antes del código), guía y CHANGELOG; `verify` y el
+CI en verde; ningún módulo por encima del aviso de tamaño.
 
 ## W6 — Primera aplicación aparte   📋 ESBOZADA
 **Objetivo:** escribir, en un proyecto separado, la primera aplicación real con la biblioteca (la

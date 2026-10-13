@@ -6,9 +6,9 @@
 > **`lfs-insim 0.2.0` está publicado en PyPI** (S16, release `v0.2.0`).
 > **W7 está hecha entera** (W7.7, S16: `@insim.on.IS_TINY(TINY.MPE)`; W7.8, S17: solo los subtipos que LFS envía,
 > generados en `_subtypes.py`; en `dev` sin publicar: CHANGELOG «Unreleased»).
-> **▶️ SIGUIENTE: abrir W8** (mejoras del proyecto anterior; lista y orden propuesto en `LEGADO.md` §4; se detalla con el
-> usuario al abrirla, no antes). El usuario eligió W8 antes que W6 (el agente recomendó W6 primero para que la
-> aplicación real decidiera el orden de W8; queda como alternativa). W7.7, W7.8 y el CHANGELOG «Unreleased» esperan a la
+> **▶️ SIGUIENTE: W8.0** (partir `_codec.py` y preparar `_connection.py`), luego W8.1 y publicar 0.3.0. W8 abierta
+> y detallada con el usuario en S17 (`PLAN.md`, W8): botones fuera, comandos por anotaciones, permisos
+> `admin=True` / `allow=`. W7.7, W7.8 y el CHANGELOG «Unreleased» esperan a la
 > siguiente versión: se publican con lo próximo que se añada.
 > **Receta de una versión nueva:** versión y CHANGELOG en
 > `dev`; `verify` en verde; avance rápido de `dev` a `main`; `gh release create vX.Y.Z --target main`
@@ -17,7 +17,7 @@
 > `verify`): lo próximo que crezca, en un módulo propio. Ver `USER_ACTIONS.md`.
 
 ## Dónde estamos
-Fase activa: ninguna (W7 hecha entera; W7.8 en S17); lo siguiente es abrir **W8**.
+Fase activa: **W8** (abierta en S17); siguiente tarea, W8.0.
 
 - **Cómo se genera:** `.venv/Scripts/python scripts/generate_packets.py` lee
   `spec/cache/InSim.txt` y `spec/cache/OutSimPack.txt` (con `scripts/spec_parser.py`) y las
