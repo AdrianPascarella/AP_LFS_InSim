@@ -15,6 +15,24 @@ pasados a `@insim.on.IS_X` / `insim.send.IS_X(...)` con `received.IS_X`; `insim.
 donde se envían varios. (4) `CHANGELOG.md` 0.2.0 y `version = "0.2.0"`.
 **Verificación:** `verify` PASS, 474 tests. **Sin publicar:** subir 0.2.0 a PyPI (merge a `main`, release,
 aprobar entorno `pypi`) exige permiso expreso del usuario.
+**Pruebas previas a publicar 0.2.0 (S16, con permiso del usuario para abrir LFS, manejarlo y tocar `cfg.txt`):**
+- **El wheel, no el código fuente:** `build` → `lfs_insim-0.2.0` (wheel y sdist); `twine check` PASSED;
+  instalado en un venv limpio (Python 3.14), con `py.typed`, `received`, `sent`, `_events` y
+  `_shortcuts` dentro. Un script de usuario con `@insim.on.IS_VER`, `insim.send.IS_MST(...)` y
+  `insim.send(sent.IS_TINY(...))` contra un LFS falso por TCP: OK; `mypy --strict` sobre él: sin errores.
+- **LFS 0.8C31 real, con el wheel:** `live_lfs.py` con InSim, OutGauge (853) y `OutSimPack2` (853, Opts
+  `1ff`): 0 paquetes ilegibles, 0 reescritos distintos, 0 avisos. `hello.py` («Hello from Python»),
+  `who.py` (lista a los AI), `buttons.py` (clic → «Clicked 1 times», cuadro de texto con título → «You
+  typed: prueba 0.2.0», `!hide` los quita) y `gauge.py` («0 km/h at 722 rpm (4 in the race)»): todos
+  vistos en la captura.
+- **Tropiezos:** (1) `/insim=29999` tecleado desde Git Bash llegó a LFS como `C:/Program Files/Git/insim=29999`
+  (la cicatriz de §13 ya existía: no usar Bash para teclear comandos de LFS; PowerShell, y comprobar el
+  puerto antes de seguir). (2) El usuario rechazó una ejecución a medias y quedó un `python` suelto
+  ocupando los puertos UDP: se paró. (3) OutSim no mandaba nada mientras el usuario miraba a los AI:
+  solo manda la física del coche que conduces tú (OutGauge sí, del que se ve).
+- **`cfg.txt`:** copia en `_archivo_AP_LFS_InSim\cfg_backup_2026-10-13_S16_prerelease.txt`; restaurado
+  idéntico a la copia (byte a byte, CRLF). LFS cerrado por InSim (`/exit`).
+
 **Tropiezo:** un `sed` con `&` estropeó `spec_directions.py`; restaurado con git y reaplicado. Las
 barras invertidas en la entrada de Bash se pierden: para ellas, usar Edit.
 
