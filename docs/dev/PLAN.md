@@ -220,8 +220,8 @@ estado `Development Status :: 3 - Alpha`. Todo lo público, en inglés.
   lanzamiento manual, PyPI al publicar un release). 🙋 *U6:* el usuario crea las cuentas y registra
   el publicador en TestPyPI y PyPI. U6 hecha en S14. Hecho en S13 → LOG.md S13: escrito y con el YAML validado, pero
   **sin ejecutar nunca**; su primera ejecución real es W5.5, y hasta entonces no se sabe si funciona.
-- [ ] **W5.5** — **Prueba de instalación** desde TestPyPI en un entorno limpio, ejecutando
-  `hello.py` (punto ciego: idealmente en otro equipo del usuario).
+- [x] **W5.5** — **Prueba de instalación** desde TestPyPI en un entorno limpio, ejecutando
+  `hello.py` (punto ciego: idealmente en otro equipo del usuario). Hecha en S14 en este equipo: ver LOG.
 - [ ] **W5.6** — **Etiqueta `v0.1.0` y release en GitHub, y publicación en PyPI.** Crear tags y
   publicar piden permiso explícito en el momento.
 

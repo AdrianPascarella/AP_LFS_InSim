@@ -9,8 +9,14 @@ confirmación previa, el *pending publisher* de `lfs-insim` en TestPyPI (entorno
 (entorno `pypi`): `AdrianPascarella/AP_LFS_InSim`, `publish.yml`. Comprobado releyendo ambas páginas.
 **U6 cerrada.**
 
-**Pendiente:** W5.5 (primera ejecución real de `publish.yml` en TestPyPI) y W5.6. Opcional: entorno
-`pypi` en GitHub con revisor obligatorio. 
+**W5.5 hecha:** `dev` fusionado en `main` (avance rápido, con permiso) porque `workflow_dispatch` exige
+el workflow en la rama por defecto; entorno `pypi` creado en GitHub con el usuario de revisor. Lanzado
+`publish.yml` (run 38371844831): `build` y `testpypi` en verde, `pypi` omitido. Instalado
+`lfs-insim==0.1.0` desde TestPyPI en un venv limpio (Python 3.14, Windows): importa, y `hello.py` arranca
+y espera a LFS con el mensaje esperado. **No probado:** con LFS en vivo desde el paquete instalado ni en
+otro equipo (punto ciego sigue abierto). Los índices no permiten resubir 0.1.0 con otro contenido.
+
+**Pendiente:** W5.6. 
 **Tests de `every`:** arreglados. Causa: el reloj de `time.monotonic()` en Windows <3.13 (~15 ms);
 tests con `perf_counter`. Verificado solo en 3.14 local; lo confirma el CI.
 
