@@ -3,10 +3,10 @@
 import asyncio
 
 import pytest
-from fake_lfs import FakeLFS
 from test_commands_typed import _until, replies, run, typed
 
 from lfs_insim import Command, Commands, InSim
+from lfs_insim.testing import FakeLFS
 
 
 def test_a_command_may_have_its_own_prefix() -> None:

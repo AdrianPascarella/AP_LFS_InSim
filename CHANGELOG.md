@@ -20,6 +20,8 @@
   keeps.
 - When LFS closes the connection before answering `IS_ISI`, the warning also names the other cause
   seen: 8 InSim programs already connected (LFS's limit).
+- `lfs_insim.testing.FakeLFS`: a fake LFS to test a program or a plugin without the game. See
+  [Testing without LFS](docs/testing.md).
 - `await roster.ready()` waits until the roster has the whole picture of the connection.
 - `Roster` is a plugin: `roster = insim.use(Roster)` (`Roster(insim)` still works, once). The chat
   commands now share it instead of making a second roster that asked LFS for everyone again.

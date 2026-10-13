@@ -400,8 +400,8 @@ W10.8).
 - [ ] **W10.8** — Guía: escribir un plugin, usarlo solo (`python -m ...`) o combinado; ejemplos y README al día.
   Ejemplos en forma de función; heredar o componer (con el ejemplo de IA del usuario: AIControl, AITraffic,
   AIDrift); varios programas con `run()`.
-- [ ] **W10.9** — Kit de pruebas público (`lfs_insim.testing`, el LFS falso) para probar plugins de otros
-  proyectos (streamer-project, FreeCam). API pública nueva: se diseña al llegar.
+- [x] **W10.9** — Kit de pruebas público (`lfs_insim.testing`, el LFS falso) para probar plugins de otros
+  proyectos (streamer-project, FreeCam). API pública nueva: se diseña al llegar. hecho en S20 → LOG.md S20
 - [ ] **W10.10** — Publicar (0.6.0, con permiso del usuario).
 **Fuera, a propósito:** manifiestos, carga por carpetas, buscar plugins por nombre, versiones entre plugins y
 activar o desactivar con el programa en marcha (el cargador del proyecto anterior, P4).

@@ -6,11 +6,11 @@ import asyncio
 from ipaddress import IPv4Address
 
 import pytest
-from fake_lfs import FakeLFS
 
 from lfs_insim import InSim
 from lfs_insim.packets import IS_HCP, IS_IPB, IS_PIT, IS_REO, CarHCP, PacketError
 from lfs_insim.packets._structure import unpack_insim
+from lfs_insim.testing import FakeLFS
 
 REO = IS_REO(ReqI=1, NumP=3, PLID=[5, 2, 9] + [0] * 45)
 HCP = IS_HCP(ReqI=1, Info=[CarHCP(H_Mass=10, H_TRes=20)] + [CarHCP() for _ in range(31)])

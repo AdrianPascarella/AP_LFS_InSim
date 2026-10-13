@@ -6,10 +6,10 @@ import threading
 from collections.abc import Callable
 
 import pytest
-from fake_lfs import FakeLFS
 
 from lfs_insim import InSim, OutGauge, text
 from lfs_insim.packets import IS_ISI, IS_TINY, OutGaugePack
+from lfs_insim.testing import FakeLFS
 from lfs_insim.text import Colour
 
 FAST = (0.01, 0.02, 0.05)

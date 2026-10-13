@@ -8,7 +8,6 @@ import time
 from collections.abc import Callable
 
 import pytest
-from fake_lfs import FakeLFS
 
 from lfs_insim import InSim, OutGauge, OutSim, run
 from lfs_insim.packets import (
@@ -21,6 +20,7 @@ from lfs_insim.packets import (
     OutSimPack,
     OutSimPack2,
 )
+from lfs_insim.testing import FakeLFS
 
 
 def send(port: int, *datagrams: bytes) -> None:

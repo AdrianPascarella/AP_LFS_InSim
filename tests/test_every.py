@@ -6,10 +6,10 @@ from collections.abc import Awaitable, Callable
 from itertools import pairwise
 
 import pytest
-from fake_lfs import FakeLFS
 
 from lfs_insim import InSim
 from lfs_insim.packets import IS_MST, IS_TINY, IS_VER, TINY
+from lfs_insim.testing import FakeLFS
 
 
 def run(test: Callable[[FakeLFS], Awaitable[None]]) -> None:

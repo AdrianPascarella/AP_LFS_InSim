@@ -135,6 +135,16 @@ en el scratchpad (`probe_multi.py`), **sin enviar nada al chat**:
 - **P11:** el aviso de la biblioteca culpaba a la contraseña; ahora nombra también el límite. Rojo primero.
 - `verify` PASS (581 tests). InSim queda escuchando en el 29999 del LFS del usuario.
 
+**W10.9 hecha** (el usuario: «te doy mi sí»; se hizo antes que W10.8 para que la guía pueda contar cómo probar
+un plugin). `tests/fake_lfs.py` → `src/lfs_insim/testing.py` con `git mv` (se conserva el historial; es un
+traslado, no un borrado). `assert` → `RuntimeError`; docstrings para usuarios. Rojo primero: los tests, con el
+import nuevo, no se podían recoger. Guía nueva `docs/testing.md`, cuyo ejemplo ejecuta `tests/test_testing.py`.
+- **Dos errores del primer ejemplo, vistos al releerlo antes de probarlo:** esperaba `IS_MST` (la respuesta a
+  este ordenador es `IS_MSL`) y usaba `async def test_...` (necesita pytest-asyncio, que no es dependencia).
+- **Cicatriz nueva (§13):** `ruff format docs` formateó el Python de cuatro `.md` (`API_DESIGN.md`,
+  `insim.md`, `units.md`, `roster-and-text.md`); restaurados desde git, porque sus únicos cambios eran de ruff.
+- `verify` PASS (585 tests).
+
 ## S19 — 2026-10-13 — W9: comandos como invitado en un servidor ajeno
 
 **Inicio:** `session_start_check` PASS (rama, identidad, pull, plantilla v3). Documentos y realidad coinciden

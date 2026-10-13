@@ -5,10 +5,10 @@ import re
 from pathlib import Path
 
 import pytest
-from fake_lfs import FakeLFS
 
 from lfs_insim import InSim
 from lfs_insim.packets import IS_TINY, InSimPacket
+from lfs_insim.testing import FakeLFS
 
 FAST = (0.01, 0.02, 0.05)
 

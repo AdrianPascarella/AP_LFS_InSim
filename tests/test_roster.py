@@ -5,7 +5,6 @@ import logging
 from collections.abc import Awaitable, Callable
 
 import pytest
-from fake_lfs import FakeLFS
 
 from lfs_insim import InSim
 from lfs_insim.packets import (
@@ -21,6 +20,7 @@ from lfs_insim.packets import (
     TINY,
 )
 from lfs_insim.state import Roster
+from lfs_insim.testing import FakeLFS
 
 FAST = (0.01, 0.02, 0.05)
 AI = 2  # PType bit 1

@@ -5,7 +5,8 @@
 3. [Who is who, and text](roster-and-text.md): `Roster`, your own state with `watch()`, and how LFS text (colours, escapes) arrives.
 4. [OutSim and OutGauge](outsim-outgauge.md): the UDP data, alone or together with InSim.
 5. [Units](units.md): positions, speeds and angles in metres, km/h and degrees.
-6. [Packets by direction](packets.md): which packets LFS sends, which your program sends, and which go both ways.
+6. [Testing without LFS](testing.md): `lfs_insim.testing.FakeLFS`, to test a program or a plugin without the game.
+7. [Packets by direction](packets.md): which packets LFS sends, which your program sends, and which go both ways.
 
 Runnable programs are in [`examples/`](../examples). Every packet class and field is named as in
 the official [InSim.txt](https://www.lfs.net/programmer/insim) specification (`IS_NPL.PName`,

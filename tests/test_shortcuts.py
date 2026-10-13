@@ -5,11 +5,11 @@ import re
 import textwrap
 from pathlib import Path
 
-from fake_lfs import FakeLFS
 from mypy import api as mypy_api
 
 from lfs_insim import InSim, received, sent
 from lfs_insim.packets import IS_ISI, IS_MST, IS_NPL, IS_TINY, TINY
+from lfs_insim.testing import FakeLFS
 
 
 def test_on_and_send_list_the_packets_of_their_direction() -> None:

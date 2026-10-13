@@ -8,11 +8,11 @@ import asyncio
 from collections.abc import Callable
 
 import pytest
-from fake_lfs import FakeLFS
 
 from lfs_insim import Command, Commands, InSim
 from lfs_insim.packets import IS_ISM, IS_NCN, IS_TINY, TINY
 from lfs_insim.state import Roster
+from lfs_insim.testing import FakeLFS
 
 
 class Camera:

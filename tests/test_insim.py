@@ -6,10 +6,10 @@ import threading
 from collections.abc import Awaitable, Callable
 
 import pytest
-from fake_lfs import FakeLFS
 
 from lfs_insim import InSim
 from lfs_insim.packets import IS_ISI, IS_MSO, IS_MST, IS_TINY, IS_VER, ISF, TINY
+from lfs_insim.testing import FakeLFS
 
 
 def run(test: Callable[[FakeLFS], Awaitable[None]], **options: str) -> None:

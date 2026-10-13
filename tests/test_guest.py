@@ -11,7 +11,6 @@ from collections.abc import Awaitable, Callable
 from typing import TypeVar
 
 import pytest
-from fake_lfs import FakeLFS
 
 from lfs_insim import Command, Commands, InSim
 from lfs_insim.packets import (
@@ -27,6 +26,7 @@ from lfs_insim.packets import (
     TINY,
 )
 from lfs_insim.state import Roster
+from lfs_insim.testing import FakeLFS
 
 REMOTE = 4  # IS_NCN.Flags bit 2
 P = TypeVar("P")

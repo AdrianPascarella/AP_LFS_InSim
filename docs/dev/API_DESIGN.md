@@ -414,6 +414,10 @@ class FreeCam(Plugin):                      # o una clase, si aporta herencia, o
   y comparte estado; conexiones aparte, aislamiento. Va en la guía (W10.8).
 - **Solo o combinado:** el paquete de una aplicación trae su arranque (`python -m freecam`: crea un `InSim`,
   hace `use(FreeCam)` y lo ejecuta); el código del plugin es el mismo.
+- **Kit de pruebas** (W10.9, aceptado por el usuario en S20: «te doy mi sí»): `lfs_insim.testing.FakeLFS`, el
+  LFS falso de los tests tal cual (`replies`, `send()`, `wait_for()`, `drop()`…), con `RuntimeError` en vez de
+  `assert` para el mal uso. Amplía D6: `lfs_insim.testing` es público. *Descartado por ahora:* ayudantes para
+  escribir chat o jugadores (`lfs.type(...)`): sin un caso real que los pida.
 - *Descartado* (el cargador del proyecto anterior, P4): manifiestos `insim.json`, carga por carpetas, buscar
   plugins por nombre (`get_insim("...")`, sin tipo), versiones entre plugins, activar o desactivar en marcha.
 

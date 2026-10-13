@@ -7,7 +7,6 @@ from pathlib import Path
 from types import ModuleType
 
 import pytest
-from fake_lfs import FakeLFS
 
 from lfs_insim.packets import (
     BFN,
@@ -26,6 +25,7 @@ from lfs_insim.packets import (
     TINY,
     OutGaugePack,
 )
+from lfs_insim.testing import FakeLFS
 
 EXAMPLES = Path(__file__).resolve().parent.parent / "examples"
 

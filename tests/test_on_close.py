@@ -5,10 +5,10 @@ import asyncio
 import logging
 
 import pytest
-from fake_lfs import FakeLFS
 
 from lfs_insim import InSim
 from lfs_insim.packets import IS_VER
+from lfs_insim.testing import FakeLFS
 
 
 def test_on_close_runs_once_after_the_last_disconnection() -> None:

@@ -5,10 +5,10 @@ import time
 from collections.abc import Awaitable, Callable
 
 import pytest
-from fake_lfs import FakeLFS
 
 from lfs_insim import InSim
 from lfs_insim.packets import IS_MSO, IS_NCI, IS_NPL, IS_RES, IS_STA, IS_TINY, IS_VER, TINY
+from lfs_insim.testing import FakeLFS
 
 QUIET = 0.2  # request_all's wait for more answers, short for the tests
 

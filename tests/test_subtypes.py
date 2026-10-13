@@ -7,13 +7,13 @@ from pathlib import Path
 
 import pytest
 import spec_parser
-from fake_lfs import FakeLFS
 from mypy import api as mypy_api
 from spec_directions import subtype_directions
 
 from lfs_insim import InSim, packets, received
 from lfs_insim._subtypes import SUBTYPES
 from lfs_insim.packets import IS_ISI, IS_NPL, IS_SMALL, IS_TINY, SMALL, TINY
+from lfs_insim.testing import FakeLFS
 
 CACHE = Path(__file__).resolve().parent.parent / "spec" / "cache"
 

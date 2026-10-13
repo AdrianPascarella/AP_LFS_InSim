@@ -445,6 +445,10 @@ Formas en que este equipo o sus herramientas ya han dañado o pueden dañar el t
   el puerto 29999 responde antes de seguir; si el usuario puede estar usando el equipo, preguntar
   antes de manejar LFS; y nunca probar la protección con un clic o una tecla de verdad.
 
+- **`ruff format` sobre una carpeta formatea también el Python de los `.md`** (visto en S20: `ruff format
+  docs` cambió los bloques de código de `API_DESIGN.md`, `insim.md`, `units.md` y `roster-and-text.md`; se
+  restauraron desde git). **Regla:** `ruff format` solo con archivos `.py` concretos o rutas de `CHECKED_PATHS`.
+
 - **Equipo nuevo, identidad equivocada** (visto en S15): en el segundo equipo el repo no tenía
   identidad local y S13–S14 publicaron 16 commits con el correo del trabajo, porque no se ejecutó el
   control de inicio (§3.2). No se reescribió el historial; `.mailmap` los unifica en `git log`.

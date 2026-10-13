@@ -1,6 +1,21 @@
-"""A fake LFS for the tests (W3.3): an InSim TCP server on 127.0.0.1 that behaves like LFS.
+"""A fake LFS, to test a program or a plugin without the game: an InSim server on 127.0.0.1.
 
-It does only what InSim.txt says LFS does, so the connection code can be tested without the game:
+    import asyncio
+    from lfs_insim import InSim
+    from lfs_insim.packets import IS_MSO, IS_MST, IS_NCN, TINY
+    from lfs_insim.testing import FakeLFS
+
+    async def test_hello() -> None:
+        async with FakeLFS() as lfs:
+            lfs.replies[TINY.NCN] = [IS_NCN(UCID=0, PName="Me", Total=1)]
+            insim = InSim(port=lfs.port, prefix="!")
+            insim.use(my_plugin)
+            async with insim:
+                await lfs.wait_connected()
+                await lfs.send(IS_MSO(UCID=0, UserType=1, TextStart=5, Msg="Me : !hello"))
+                assert (await lfs.wait_for(IS_MST)).Msg == "..."
+
+It does only what InSim.txt says LFS does, and what was seen in the real game:
 
 - after IS_ISI with a non-zero ReqI, it sends IS_VER;
 - TINY_VER is answered with IS_VER, TINY_PING with TINY_REPLY (same ReqI);
@@ -9,11 +24,12 @@ It does only what InSim.txt says LFS does, so the connection code can be tested 
 - with `keepalive`, it sends a blank IS_TINY (TINY_NONE) every `keepalive` seconds;
 - with `timeout`, it closes the connection when nothing arrives for that long (LFS: 70 s).
 
-Assumed, not in InSim.txt (checked against the real LFS in W3.1): a wrong admin password closes
-the connection without an answer.
+Seen in the real LFS, not in InSim.txt: a wrong admin password closes the connection without an
+answer. It takes one program at a time (the real LFS takes up to 8).
 
 Every packet it receives is kept in `received`; `send()` sends to the connected program, and
-`drop()` cuts the connection as if LFS had crashed.
+`drop()` cuts the connection as if LFS had crashed. Anything else LFS would do (players joining,
+chat) the test sends itself, as the packets LFS would send.
 """
 
 from __future__ import annotations
@@ -63,11 +79,14 @@ class FakeLFS:
 
     @property
     def port(self) -> int:
-        assert self._port, "the fake LFS has never been started"
+        """The port it listens on: `InSim(port=lfs.port)`."""
+        if not self._port:
+            raise RuntimeError("the fake LFS has never been started")
         return self._port
 
     @property
     def connected(self) -> bool:
+        """Whether a program is connected now."""
         return self._writer is not None
 
     async def __aenter__(self) -> Self:
@@ -97,14 +116,16 @@ class FakeLFS:
             await server.wait_closed()  # waits for every connection it accepted to end
 
     async def send(self, *packets: InSimPacket) -> None:
-        """Send packets to the connected program."""
-        assert self._writer is not None, "no program is connected"
+        """Send packets to the connected program, as LFS would."""
+        if self._writer is None:
+            raise RuntimeError("no program is connected")
         self._writer.write(b"".join(packet.pack() for packet in packets))
         await self._writer.drain()
 
     async def send_raw(self, data: bytes) -> None:
         """Send bytes as they are: half packets, broken ones..."""
-        assert self._writer is not None, "no program is connected"
+        if self._writer is None:
+            raise RuntimeError("no program is connected")
         self._writer.write(data)
         await self._writer.drain()
 
@@ -139,6 +160,7 @@ class FakeLFS:
             await self._changed.wait_for(lambda: self.connections >= connections and self.connected)
 
     async def wait_disconnected(self, timeout: float = 2.0) -> None:
+        """Wait until no program is connected."""
         async with asyncio.timeout(timeout), self._changed:
             await self._changed.wait_for(lambda: not self.connected)
 
@@ -203,8 +225,7 @@ class FakeLFS:
         )
 
     async def _keep_alive(self, writer: asyncio.StreamWriter) -> None:
-        assert self.keepalive is not None
         while self._writer is writer:
-            await asyncio.sleep(self.keepalive)
+            await asyncio.sleep(self.keepalive or 0)
             if self._writer is writer:
                 await self.send(IS_TINY(ReqI=0, SubT=TINY.NONE))
