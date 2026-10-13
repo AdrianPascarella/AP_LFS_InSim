@@ -82,6 +82,12 @@ del repositorio y no se borra. Igual que la **copia de los setups y las skins de
 (`setups`, `skins` y `skins_dds` de `C:\LFS\data`), hecha en S9 antes de reinstalar el juego en
 `C:\Users\pasca\proyectos\_archivo_AP_LFS_InSim\LFS_backup_2026-10-12`. Y nada dentro de `C:\LFS`
 se modifica: solo se lee (lo que el propio LFS escriba al usarlo no cuenta).
+**Los mapas freeroam de `ai_control`** (S15, petición del usuario: «me costó mucho tiempo hacerlos»,
+para reutilizarlos en la aplicación de control de IA): `insims/ai_control/nav_modes/freeroam/maps/*.json`
+y sus `*_rendered.png`, en la rama `refactor/estabilizacion` y, en una versión distinta y anterior de
+`south_city.json`, en la etiqueta `archivo/fix/radar-false-positive-behind`. Copia extra, comprobada
+contra git, en `C:\Users\Adrian\Projects\_archivo_AP_LFS_InSim\mapas_ai_control\` (segundo equipo,
+con su `LEEME.md`), que no se borra.
 
 **Autorizado sin preguntar:** hacer commit y push en `dev`; corregir la identidad de git del
 repositorio (solo en local); descargar la especificación oficial de lfs.net; leer

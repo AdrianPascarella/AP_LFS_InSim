@@ -56,6 +56,18 @@ Verificación: `verify` PASS, 331 tests, ninguno saltado (aquí están la especi
 **Documentos:** `PLAN.md` (W7 rehecha, lo antiguo tachado), `PROTOCOL.md` (segundo equipo y una
 cicatriz nueva en §13), `STATE.md` (decía «W5 sin empezar», desfasado) y la línea de U6.
 
+**El usuario confirmó** que en S14 dio permiso para el merge a `main` y para aprobar el despliegue en
+PyPI: la auditoría queda sin dudas abiertas.
+
+**Mapas freeroam de `ai_control`:** el usuario no quiere perderlos («me costó mucho tiempo hacerlos»)
+por si se reutilizan. Comprobado que están en GitHub: rama `refactor/estabilizacion` (4 mapas y sus
+renders; `south_city.json` de 3,2 MB, último cambio `e1240d5`) y etiqueta
+`archivo/fix/radar-false-positive-behind`, con otra versión, anterior, de `south_city.json` (241 KB).
+Copia extra fuera del repo con `git archive`, de la carpeta `freeroam/` entera (el código define el
+formato, que no está documentado aparte), comprobada con `git hash-object`: 27 de 27 archivos idénticos.
+Anotado en PROTOCOL («Lo que nunca se debe perder») y en PLAN (requisito de la aplicación de control de
+IA). La memoria del agente ya no habla de commits de mapas en este repo, que ya no los tiene.
+
 ## S14 — 2026-10-13 — U6 por el navegador
 
 **Hecho:** Chrome conectó (en S13 no). Con el usuario haciendo cuentas, verificación de correo y 2FA
