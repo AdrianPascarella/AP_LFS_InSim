@@ -13,6 +13,7 @@
 > aprobar el entorno `pypi` (el usuario lo autorizó en S14 para 0.1.0; pedirlo cada vez). Una versión
 > publicada no se puede resubir. `main` está al día con `dev`. `_connection.py` va por ~405 líneas:
 > lo próximo que crezca, en un módulo propio. Ver `USER_ACTIONS.md`.
+> **Pendiente de decidir con el usuario:** `docs/dev/LEGADO.md` (qué rescatar del proyecto anterior).
 
 ## Dónde estamos
 Fase siguiente: **W5 — Publicación**, detallada y sin empezar. W2, W3 y W4 están hechas enteras. Prueba en vivo: `tests/live_lfs.py` (cómo ejecutarla, en su docstring).
