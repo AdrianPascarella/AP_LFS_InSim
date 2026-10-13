@@ -1,5 +1,5 @@
 # 📍 Estado — AP_LFS_InSim (lfs_insim)
-> Actualizado: 2026-10-13 (S18): **W7 entera y W8.0–W8.4 hechas.** La biblioteca está validada en el LFS real
+> Actualizado: 2026-10-13 (S18): **W7 y W8 hechas** (W8.5 en S18; CI en verde). La biblioteca está validada en el LFS real
 > y tiene la API de alto nivel (`@insim.on.IS_NPL`, `insim.send.IS_MST(...)`, `received` / `sent`,
 > `await insim.request(...)`, `Roster`, `say()` / `command()`, `on_command`, `text.plain()`), cuatro
 > ejemplos y `docs/packets.md` (tabla generada).
@@ -9,8 +9,8 @@
 > (unidades) y W8.4 (`insim.watch(before=, after=)`, decidido con el usuario en S18; `Roster` ya solo usa API
 > pública; `InSimPacket` exportado en `lfs_insim.packets`). Antes de publicarlas como 0.4.0, probarlas en LFS real (teclear `!speed abc`; comparar
 > `CompCar.speed_kmh` con OutGauge con un coche en pista): pide permiso para abrir LFS.
-> **▶️ SIGUIENTE: W8.5** (tests de `LEGADO.md` §3: enviar `IS_REO`, `IS_HCP`, `IS_IPB`; orden al reconectar, P22;
-> tormenta de reconexión, P24). Después, prueba en LFS real (con permiso) y 0.4.0.
+> **▶️ SIGUIENTE: 0.4.0.** Antes: U9 (¿rellenar con ceros las listas cortas de `IS_REO`/`IS_HCP`? si sí, se hace
+> antes de publicar) y U8 (probar W8.2–W8.4 en LFS real, con permiso). Después, W6 (primera aplicación).
 > W8 abierta y detallada con el usuario en S17 (`PLAN.md`, W8): botones fuera, comandos por anotaciones,
 > permisos `admin=True` / `allow=`.
 > **Receta de una versión nueva:** versión y CHANGELOG en
@@ -22,7 +22,7 @@
 > módulo propio (los comandos de W8.2, en `_commands.py`). Ver `USER_ACTIONS.md`.
 
 ## Dónde estamos
-Fase activa: **W8** (abierta en S17); W8.0–W8.4 y 0.3.0 hechas; siguiente: W8.5.
+Fase activa: **W8** (abierta en S17); W8 hecha; siguiente: U9, U8 y publicar 0.4.0.
 
 - **Cómo se genera:** `.venv/Scripts/python scripts/generate_packets.py` lee
   `spec/cache/InSim.txt` y `spec/cache/OutSimPack.txt` (con `scripts/spec_parser.py`) y las
@@ -49,7 +49,7 @@ El proyecto anterior está en la rama `refactor/estabilizacion` y en las etiquet
 consulta, no se copia.
 
 ## Lo que te espera
-Ninguna acción pendiente (U7 cerrada en S16) → `USER_ACTIONS.md`.
+2 acciones pendientes: U8 (🚧 bloquea 0.4.0) y U9 (decidir) → `USER_ACTIONS.md`.
 
 ## Tests inestables (arreglados en S14)
 `tests/test_every.py` fallaba a veces solo en el Windows del CI (3.12 y 3.13). Causa comprobada: en

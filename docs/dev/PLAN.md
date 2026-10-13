@@ -292,7 +292,7 @@ abreviaturas, ni nombres como cadena, ni `on_IS_XXX`); (4) los `both ways` está
 procede; `@insim.on(IS_MST)` sale en rojo en mypy y falla con un mensaje claro; el test de
 equivalencia pasa en todas las formas para todos los paquetes; `verify` y el CI en verde.
 
-## W8 — Mejoras rescatadas del proyecto anterior   🔜 EN CURSO (S17) · esbozada en S14, detallada con el usuario en S17
+## W8 — Mejoras rescatadas del proyecto anterior   ✅ HECHA en S18 · esbozada en S14, detallada con el usuario en S17
 **Objetivo:** lo que el proyecto anterior hacía bien y la biblioteca aún no hace (lista y razones en
 `docs/dev/LEGADO.md`, con sus IDs A1–A7).
 
@@ -320,8 +320,10 @@ equivalencia pasa en todas las formas para todos los paquetes; `verify` y el CI 
 - [x] **W8.4** — Hacer pública la forma en que `Roster` ve los paquetes antes y después de los manejadores
   (`order="before"`) — hecho en S18 como `insim.watch(before=, after=)` (forma elegida por el usuario; sin
   publicar) → LOG.md S18
-- [ ] **W8.5** — Tests de `LEGADO.md` §3: enviar `IS_REO`, `IS_HCP` e `IS_IPB`; orden al reconectar (P22);
-  tormenta de reconexión (P24)
+- [x] **W8.5** — Tests de `LEGADO.md` §3: enviar `IS_REO`, `IS_HCP` e `IS_IPB`; orden al reconectar (P22);
+  tormenta de reconexión (P24) — hecho en S18: `tests/test_fixed_lists.py` nuevo; P22 y P24 ya estaban fijados
+  (comprobado con mutaciones) → LOG.md S18
+- [ ] **Publicar 0.4.0** (W8.2–W8.5) tras probar en LFS real (U8) y, si se elige, tras U9
 
 **Criterios de aceptación:** cada tarea con tests (en rojo antes del código), guía y CHANGELOG; `verify` y el
 CI en verde; ningún módulo por encima del aviso de tamaño.

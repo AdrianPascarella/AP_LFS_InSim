@@ -27,6 +27,21 @@ CHANGELOG «Unreleased»; `API_DESIGN.md` al día.
 **Verificación:** `verify` PASS, 520 tests. `_connection.py` va por 479 líneas (aviso en 500).
 **Visto de paso:** `HAND_WRITTEN` en `scripts/generate_packets.py` no lo usa nadie (código muerto); no se tocó.
 
+**W8.5 hecha** (el usuario: «Sí, sigue con W8.5»). **W8 cerrada.**
+- **P21 (`IS_REO`, `IS_HCP`, `IS_IPB`):** funcionaban; faltaba un test que los nombrara. `tests/test_fixed_lists.py`:
+  bytes exactos según InSim.txt, ida y vuelta, envío al LFS falso y recepción desde él (los dos son «both
+  ways»). Pasaron a la primera (el código ya era correcto), así que se mutó el codec `IPv4` (bytes al revés):
+  2 tests en rojo; restaurado.
+- **Encontrado:** una lista corta (`IS_REO(PLID=[5, 2, 9])`) da `PacketError: expected 48 items, got 3`. Claro
+  pero incómodo; rellenar con ceros cambia la API → **U9** para el usuario, no se tocó.
+- **P22 y P24 ya estaban fijados**, demostrado con mutaciones: limpiar el `Roster` *después* de pedir el estado
+  pone en rojo 5 tests de `test_roster.py`; reiniciar siempre la espera (`if True:` en vez de
+  `if self._accepted:`) pone en rojo `test_lfs_closing_at_once_is_reported_and_slows_down`. No se duplicaron;
+  se añadió a cada test un comentario con la lección que fija.
+- Sin cambios para el usuario: ni guía ni CHANGELOG.
+**Verificación:** `verify` PASS (525 tests); CI `verify` en verde en `dev` (run 38424412941).
+**Pedido al usuario:** U8 (permiso para probar en LFS real antes de 0.4.0) y U9 (decidir las listas cortas).
+
 ## S17 — 2026-10-13 — Revisión de W7.7 y W7.8: solo los subtipos que LFS envía
 
 **Inicio:** `session_start_check` PASS (rama, identidad, pull, plantilla v3); `verify` PASS (477) antes de tocar nada.
