@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.4.0
 
 - Chat commands take their arguments from the function: `def speed(command, kmh: int, who: str =
   "all")` for `!speed 80`. Words that do not fit are answered with the usage, and `!speed ?` with
@@ -17,6 +17,10 @@
 - `IS_REO(NumP=3, PLID=[5, 2, 9])` and `IS_HCP(Info=[...])` with fewer items than the packet holds:
   the rest is filled with zeros (no player, no handicap) when sent. Other fixed lists, like
   `Tyres`, must still be complete.
+- Packets that arrive together are handled one after the other: a packet's `async def` handlers
+  take their first step, and `Roster` and `watch(after=)` see it, before the next packet. Before,
+  a connection that left and a new one with the same UCID, read at once, could vanish from
+  `Roster`.
 
 ## 0.3.0
 
