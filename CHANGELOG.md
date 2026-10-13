@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.5.0
 
 - Chat commands as a guest in someone else's server: only this computer may use them unless
   `InSim(guest_commands="everyone")`; `admin=True` means this computer; `command.reply()` answers
