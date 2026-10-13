@@ -1,24 +1,14 @@
 # 📍 Estado — AP_LFS_InSim (lfs_insim)
-> Actualizado: 2026-10-12 (S12): **W3 hecha entera.** W3.1 validó la biblioteca en el LFS real:
-> InSim (menú y carrera con IA y coche mod), OutGauge, OutSim y `OutSimPack2`, sin un solo fallo
-> de lectura. Encontró y arregló un error: `OutGaugePack.Car` lleva el SkinID de un mod. El agente
-> maneja LFS sin el usuario con `tests/lfs_screen.ps1` (PROTOCOL §13). `cfg.txt` está restaurado:
-> para repetir OutSim/OutGauge en vivo hay que pedir permiso de nuevo. Tests en verde.
-> **W4 detallada con el usuario en S12** (7 tareas en `PLAN.md`; decisiones en `API_DESIGN.md`).
-> W4.1 hecha: `IS_MSO.text`, con un mecanismo para añadir propiedades escritas a mano a los
-> paquetes generados (`packets/_extras.py` + `spec_overrides.EXTRAS`). W4.2 hecha:
-> `await insim.request(IS_STA)` y `request_all(IS_NPL)` (`_requests.py`). W4.3 hecha: `Roster`
-> en `lfs_insim.state` (decisiones en `API_DESIGN.md`). W4.4 hecha: `insim.say()` e
-> `insim.command()`. W4.5 hecha: `@insim.on_command("hello")` (`_commands.py`; el nombre
-> cambió por un choque con `insim.command()`, falta que el usuario lo vea).
-> W4.6 hecha: `examples/` (`hello`, `who`, `gauge`, `buttons`), probados en `test_examples.py`.
-> W4.7 hecha: los cuatro, bien en el LFS real; `say(to=0)` pasó a `IS_MSL` (LFS rechaza `IS_MTC`
-> en un jugador). `cfg.txt` restaurado.
-> W4.8 hecha: `lfs_insim.text.plain()`. **W4 hecha entera** (nombres `on_command` y `plain`
-> confirmados por el usuario).
+> Actualizado: 2026-10-13 (S12): **W3 y W4 hechas enteras.** La biblioteca está validada en el
+> LFS real (InSim, OutGauge, OutSim y `OutSimPack2`; `tests/live_lfs.py`), y tiene la API de alto
+> nivel: `IS_MSO.text`, `await insim.request(IS_X)` / `request_all`, `Roster` (`lfs_insim.state`),
+> `insim.say()` / `command()`, `@insim.on_command("hello")`, `lfs_insim.text.plain()` y cuatro
+> ejemplos en `examples/`, probados en cada push y comprobados en el LFS real. Decisiones en
+> `API_DESIGN.md`. El agente maneja LFS con `tests/lfs_screen.ps1`, que no envía nada si LFS no
+> está delante (PROTOCOL §13). `cfg.txt` está restaurado: OutSim/OutGauge en vivo pide permiso.
 > **▶️ SIGUIENTE: detallar W5 (publicación) con el usuario** antes de tocar nada: documentación
-> pública, 0.1.0 en TestPyPI y PyPI (publicar y crear tags pide permiso). `_connection.py` va por
-> ~405 líneas.
+> pública y 0.1.0 en TestPyPI y PyPI (publicar y crear tags pide permiso). `_connection.py` va por
+> ~405 líneas: lo próximo que crezca, en un módulo propio.
 
 ## Dónde estamos
 Fase siguiente: **W5 — Publicación**, por detallar con el usuario. W2, W3 y W4 están hechas
