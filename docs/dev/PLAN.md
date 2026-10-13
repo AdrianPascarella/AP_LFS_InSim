@@ -268,10 +268,11 @@ abreviaturas, ni nombres como cadena, ni `on_IS_XXX`); (4) los `both ways` está
   corresponde (error de mypy/editor) y con error claro en ejecución (`on(IS_MST)`: «es una
   instrucción: la envías tú») — hecho en S15 → LOG.md S15
 - [x] **W7.3** — Módulos `received` y `sent` (re-exportan las mismas clases, no copias) — hecho en S15 → LOG.md S15
-- [ ] **W7.4** — ~~Métodos `on_IS_XXX` y `send_IS_XXX` generados, en un mixin~~ (cambiado en S15):
+- [x] **W7.4** — ~~Métodos `on_IS_XXX` y `send_IS_XXX` generados, en un mixin~~ (cambiado en S15):
   objetos `on` y `send` generados con un atributo por paquete, en un archivo propio (`_events.py`)
   para que `_connection.py` no crezca; siguen siendo invocables (`on(IS_X)`, `send(a, b)`);
-  `send.IS_XXX` con la firma del constructor (`ParamSpec`)
+  `send.IS_XXX` con la firma del constructor (`ParamSpec`) — hecho en S15 → LOG.md S15; cómo se ve
+  en el editor, pendiente de U7
 - [ ] **W7.5** — OutSim y OutGauge: `on.OutSimPack`, `on.OutSimPack2`, `on.OutGaugePack` y su entrada
   en `received`. Las de OutSim solo se regeneran en este equipo (`OutSimPack.txt`, P3); el CI sigue
   saltándose esa parte

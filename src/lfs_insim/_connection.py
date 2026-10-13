@@ -8,11 +8,13 @@ import functools
 import logging
 from collections.abc import Awaitable, Callable
 from types import TracebackType
-from typing import Self, TypeVar, cast
+from typing import Self, cast
 
 from lfs_insim import _requests
 from lfs_insim._commands import Command, CommandHandler, Commands
+from lfs_insim._events import P
 from lfs_insim._handlers import Handlers
+from lfs_insim._shortcuts import On, Send
 from lfs_insim._stream import PacketStream
 from lfs_insim.packets import (
     IS_ISI,
@@ -27,7 +29,7 @@ from lfs_insim.packets import (
     PacketError,
 )
 from lfs_insim.packets._codec import InSimPacket
-from lfs_insim.packets._directions import InfoPacket, InstructionPacket, direction_error
+from lfs_insim.packets._directions import InstructionPacket
 
 log = logging.getLogger("lfs_insim")
 
@@ -41,8 +43,6 @@ packet every 30 s, and itself closes a connection that is silent for 70 s (InSim
 RETRY_DELAYS = (1.0, 2.0, 4.0, 8.0, 10.0)
 """Seconds between attempts to reach LFS; the last one repeats for as long as LFS is away."""
 
-P = TypeVar("P", bound=InfoPacket)
-Handler = Callable[[P], None] | Callable[[P], Awaitable[None]]
 ConnectHandler = Callable[[], None] | Callable[[], Awaitable[None]]
 PacketWatcher = Callable[[InSimPacket], None]
 
@@ -50,7 +50,7 @@ PacketWatcher = Callable[[InSimPacket], None]
 class InSim:
     """A connection to LFS over InSim (TCP).
 
-    Register handlers with `@insim.on(IS_XXX)`, then call `insim.run()`. From code that already
+    Register handlers with `@insim.on.IS_XXX`, then call `insim.run()`. From code that already
     runs an asyncio event loop, use `async with insim:` instead. Both keep the connection up: if
     LFS is not running yet, or closes, they try again until `close()` (or Ctrl+C).
     """
@@ -102,22 +102,20 @@ class InSim:
         self._silence_timeout = SILENCE_TIMEOUT
         self._retry_delays: tuple[float, ...] = RETRY_DELAYS
         self._watchers: list[tuple[PacketWatcher, PacketWatcher]] = []
+        self.on = On(self._handlers.add)
+        """Handlers: `@insim.on.IS_NPL` (the editor lists what LFS sends), or `@insim.on(IS_NPL)`.
 
-    def on(self, packet_type: type[P]) -> Callable[[Handler[P]], Handler[P]]:
-        """Decorator: call the function with every packet of this type that LFS sends.
-
-        The function may be `def` (it runs at once, so it should be quick) or `async def` (it
-        runs as a task and may await). An exception in it is logged and does not stop the others.
-        Only packets that LFS sends ("info" or "both ways" in InSim.txt): others raise TypeError.
+        The function gets the packet; it may be `def` (it runs at once, so it should be quick) or
+        `async def` (it runs as a task and may await). An exception in it is logged and does not
+        stop the others. Packets that LFS never sends raise TypeError.
         """
-        if not (isinstance(packet_type, type) and issubclass(packet_type, InfoPacket)):
-            raise TypeError(direction_error(packet_type, InfoPacket))
+        self.send = Send(self._write)
+        """Send: `insim.send.IS_MST(Msg="hi")` (the editor lists what a program sends), or
+        `insim.send(IS_MST(Msg="hi"), ...)` for packets already built, several at once.
 
-        def register(handler: Handler[P]) -> Handler[P]:
-            self._handlers.add(packet_type, handler)
-            return handler
-
-        return register
+        Raises ConnectionError if there is no connection, and TypeError for packets that only
+        LFS sends.
+        """
 
     def on_command(self, name: str) -> Callable[[CommandHandler], CommandHandler]:
         """Decorator: call the function when someone types the prefix and this name in the chat.
@@ -165,15 +163,7 @@ class InSim:
     def connected(self) -> bool:
         return self._writer is not None
 
-    def send(self, *packets: InstructionPacket) -> None:
-        """Send packets to LFS. Raises ConnectionError if there is no connection.
-
-        Only packets that a program sends ("instruction" or "both ways" in InSim.txt): others
-        raise TypeError.
-        """
-        for packet in packets:
-            if not isinstance(packet, InstructionPacket):
-                raise TypeError(direction_error(type(packet), InstructionPacket))
+    def _write(self, packets: tuple[InstructionPacket, ...]) -> None:
         if self._writer is None:
             raise ConnectionError("not connected to LFS")
         self._writer.write(b"".join(packet.pack() for packet in packets))

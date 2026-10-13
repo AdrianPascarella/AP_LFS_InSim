@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import re
 
+from generate_enums import docstring
 from spec_parser import Enum, Spec, SpecError
 
 DIRECTIONS = ("info", "instruction", "both ways")
@@ -64,6 +65,43 @@ DIRECTION_MODULES = {
         "lfs_insim.received.",
     ),
 }
+
+
+SHORTCUT_CLASSES = {
+    # class: (base, attribute type, module of its packets, docstring)
+    "On": (
+        "Receive",
+        "Receiver",
+        "received",
+        "Register handlers: `@insim.on.IS_NPL` lists only the packets that LFS sends.\n\n"
+        "    `@insim.on(IS_NPL)` does the same.",
+    ),
+    "Send": (
+        "Transmit",
+        "Sender",
+        "sent",
+        "Send packets: `insim.send.IS_MST(Msg=...)` lists only the packets a program sends.\n\n"
+        "    `insim.send(IS_MST(Msg=...))` does the same, and sends several at once.",
+    ),
+}
+
+
+def emit_shortcuts(directions: dict[str, str], docs: dict[str, str], header: str) -> str:
+    """lfs_insim/_shortcuts.py: insim.on.IS_XXX and insim.send.IS_XXX, one attribute per packet."""
+    out = [
+        header,
+        '"""The attributes of insim.on and insim.send: one per packet (see lfs_insim._events)."""',
+        "\n\nfrom __future__ import annotations\n\n",
+        "from lfs_insim._events import Receive, Receiver, Sender, Transmit\n",
+        f"from lfs_insim.packets import {', '.join(sorted(directions))}\n",
+    ]
+    for name, (base, attribute, module, doc) in SHORTCUT_CLASSES.items():
+        wanted = DIRECTION_MODULES[module][0]
+        out.append(f'\n\nclass {name}({base}):\n    """{doc}\n    """\n')
+        for packet in sorted(p for p, direction in directions.items() if direction in wanted):
+            out.append(f"\n    {packet} = {attribute}({packet})\n")
+            out.append(docstring(docs[packet], "    "))
+    return "".join(out)
 
 
 def emit_direction_module(module: str, directions: dict[str, str], header: str) -> str:

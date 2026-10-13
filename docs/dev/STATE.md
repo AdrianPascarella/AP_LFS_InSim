@@ -6,9 +6,11 @@
 > ejemplos en `examples/`, probados en cada push y comprobados en el LFS real. Decisiones en
 > `API_DESIGN.md`. El agente maneja LFS con `tests/lfs_screen.ps1`, que no envía nada si LFS no
 > está delante (PROTOCOL §13). `cfg.txt` está restaurado: OutSim/OutGauge en vivo pide permiso.
-> **▶️ SIGUIENTE: W7.4** (objetos `on` y `send` con un atributo por paquete; prototipo de tipos en LOG
-> S15). W7 se rehízo en S15: `@insim.on.IS_NPL` e `insim.send.IS_MST(...)` en vez de `on_IS_XXX`; ver
-> `PLAN.md`. W7.3 hecha: `lfs_insim.received` / `sent`, generados. W7.1–W7.2 hechas: cada paquete hereda
+> **▶️ SIGUIENTE: W7.5** (OutSim y OutGauge: `@gauge.on.OutGaugePack`, y entrada en `received`).
+> W7.6 espera a **U7** (que el usuario lo vea en su VS Code). W7 se rehízo en S15: `@insim.on.IS_NPL`
+> e `insim.send.IS_MST(...)` en vez de `on_IS_XXX`; ver `PLAN.md`. W7.4 hecha: `insim.on` / `insim.send`
+> son objetos (`_events.py` a mano, `_shortcuts.py` generado). W7.3 hecha: `lfs_insim.received` /
+> `sent`, generados. W7.1–W7.2 hechas: cada paquete hereda
 > de `InfoPacket` / `InstructionPacket` / `BothWaysPacket` (`packets/_directions.py`, dirección leída por
 > `scripts/spec_directions.py`), y `on()` / `send()` rechazan lo que no toca, en mypy y en ejecución.
 > Después W8 (mejoras del proyecto anterior, `LEGADO.md`) y W6 (primera aplicación aparte).

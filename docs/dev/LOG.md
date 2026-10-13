@@ -96,6 +96,26 @@ mismas clases (no copias), completos según la base, los `both ways` en los dos,
 existe. Visto en **rojo** quitando `IS_TINY` de `received.py` a mano (el test y `--check` lo detectan).
 Verificación: `verify` PASS, 339 tests.
 
+**W7.4 hecha:** `insim.on` e `insim.send` dejan de ser métodos y son atributos de instancia
+(`On` / `Send`), invocables como antes. Lógica a mano en `src/lfs_insim/_events.py`: `Receive` y
+`Transmit` (bases invocables, con la comprobación de dirección que W7.2 puso en `_connection.py`) y
+los descriptores `Receiver` (devuelve el decorador tipado para ese paquete) y `Sender` (copia con
+`ParamSpec` la firma del constructor; la función devuelta lleva el nombre y la ayuda del paquete).
+Atributos generados en `src/lfs_insim/_shortcuts.py` (`emit_shortcuts` en `spec_directions.py`): 54
+en `On` y 27 en `Send`, cada uno con la descripción de la especificación como docstring de atributo
+(Pylance la enseña). `_connection.py` queda con `_write()` (la conexión) y pasa a 407 líneas; `P` se
+importa de `_events`. **Cambio de API pública:** `insim.on` / `insim.send` ya no son métodos (llamarlos
+funciona igual). Tests: `tests/test_shortcuts.py`, de extremo a extremo con el LFS falso (las formas
+llegan a LFS y al manejador) y mypy estricto sobre un fragmento: errores justo en el manejador de otro
+paquete (mypy lo marca en la línea del decorador), `on.IS_MST`, `Msg=3`, un campo inexistente y
+`send.IS_NPL`, y `send.IS_MST` revelado como `def (*, ReqI: int =, Msg: str =)`. Visto en **rojo**
+haciendo que `send.IS_XXX` construyera sin enviar. Dos expectativas mías estaban mal y se corrigieron
+(el test, no el código): la línea del error del decorador, y esperar `IS_VER` con `lfs.wait_for()`,
+que solo ve lo que envía el programa. Verificación: `verify` PASS, 343 tests. Pyright no está
+instalado como herramienta (instalarlo pide permiso); cómo lo ve Pylance → **U7** abierta (validar,
+bloquea W7.6). Tropiezo con la cicatriz de los heredocs (§13) al escribir U7: el script no llegó a
+ejecutarse y se hizo con Edit.
+
 ## S14 — 2026-10-13 — U6 por el navegador
 
 **Hecho:** Chrome conectó (en S13 no). Con el usuario haciendo cuentas, verificación de correo y 2FA
