@@ -29,7 +29,14 @@ venv limpio (fuera del repositorio): `import lfs_insim` da 0.1.0 y `examples/hel
 sdist llevaba `CLAUDE.md`, `docs/dev` y `.github`: excluidos en `[tool.hatch.build.targets.sdist]`.
 Nada subido a ningún índice.
 
-**Siguiente:** W5.4, workflow de publicación (Trusted Publishing); abre la tarjeta U6.
+**W5.4 hecha (escrita, no ejecutada):** `.github/workflows/publish.yml`. Job `build` (comprueba que
+el tag sea `v<versión>` en los releases, construye, `twine check`, sube `dist`); job `testpypi`
+(lanzamiento manual, entorno `testpypi`, `skip-existing`); job `pypi` (al publicar un release,
+entorno `pypi`). Ambos con `id-token: write` y `pypa/gh-action-pypi-publish@release/v1`, sin tokens.
+El YAML se comprobó con un parser; no hay forma de probarlo sin las cuentas. Abierta la tarjeta
+**U6** (cuentas y publicador en los dos índices), que bloquea W5.5 y W5.6.
+
+**Siguiente:** el usuario hace U6; después W5.5.
 
 ## S12 — 2026-10-12 — Primera prueba con el LFS real (W3.1, primera pasada)
 

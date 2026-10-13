@@ -6,9 +6,9 @@
 > ejemplos en `examples/`, probados en cada push y comprobados en el LFS real. Decisiones en
 > `API_DESIGN.md`. El agente maneja LFS con `tests/lfs_screen.ps1`, que no envía nada si LFS no
 > está delante (PROTOCOL §13). `cfg.txt` está restaurado: OutSim/OutGauge en vivo pide permiso.
-> **▶️ SIGUIENTE: W5.4 (workflow de publicación; abre U6 para el usuario)** — W5.1–W5.3 hechas en S13
-> (versión ya en 0.1.0, sin publicar); docs en Markdown,
-> Trusted Publishing, Alpha. Publicar y crear tags pide permiso. `_connection.py` va por
+> **▶️ SIGUIENTE: el usuario hace U6** (cuentas y publicador en TestPyPI/PyPI); después W5.5
+> (instalar desde TestPyPI) y W5.6. W5.1–W5.4 hechas en S13: versión 0.1.0 sin publicar y
+> `publish.yml` en `dev` (aún sin ejecutar nunca). Docs en Markdown, Trusted Publishing, Alpha. Publicar y crear tags pide permiso. `_connection.py` va por
 > ~405 líneas: lo próximo que crezca, en un módulo propio.
 
 ## Dónde estamos
@@ -38,7 +38,7 @@ El proyecto anterior está en la rama `refactor/estabilizacion` y en las etiquet
 consulta, no se copia.
 
 ## Lo que te espera
-**0 acciones pendientes** → `USER_ACTIONS.md`.
+**1 acción pendiente** (U6, bloquea W5.5 y W5.6) → `USER_ACTIONS.md`.
 
 ## Restricciones ahora mismo
 - En este equipo solo hay Python 3.14. Las demás versiones las comprueba el CI.

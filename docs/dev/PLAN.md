@@ -216,9 +216,10 @@ estado `Development Status :: 3 - Alpha`. Todo lo público, en inglés.
   wheel. *Acepta:* `python -m build` y `twine check` en verde; el wheel se instala en un venv
   limpio y `import lfs_insim` funciona. hecho en S13 → LOG.md S13 (sdist sin `CLAUDE.md`,
   `docs/dev` ni `.github`)
-- [ ] **W5.4** — **Workflow de publicación** (`publish.yml`, Trusted Publishing: TestPyPI con
+- [x] **W5.4** — **Workflow de publicación** (`publish.yml`, Trusted Publishing: TestPyPI con
   lanzamiento manual, PyPI al publicar un release). 🙋 *U6:* el usuario crea las cuentas y registra
-  el publicador en TestPyPI y PyPI.
+  el publicador en TestPyPI y PyPI. hecho en S13 → LOG.md S13: escrito y con el YAML validado, pero
+  **sin ejecutar nunca**; su primera ejecución real es W5.5, y hasta entonces no se sabe si funciona.
 - [ ] **W5.5** — **Prueba de instalación** desde TestPyPI en un entorno limpio, ejecutando
   `hello.py` (punto ciego: idealmente en otro equipo del usuario).
 - [ ] **W5.6** — **Etiqueta `v0.1.0` y release en GitHub, y publicación en PyPI.** Crear tags y
