@@ -1,27 +1,10 @@
 # 🙋 Tus acciones — AP_LFS_InSim (lfs_insim)
-> **2 pendientes (ninguna bloquea)** · actualizado en S20 · orden: U12 (antes o después de publicar 0.6.0) → U11 cuando haya alguien más en tu servidor
+> **1 pendiente (no bloquea)** · actualizado en S21 · U11 cuando haya alguien más en tu servidor
 >
 > Todo lo de aquí necesita tus manos o tu criterio: el agente no puede hacerlo o no puede
 > comprobarlo. **Nunca editas este archivo**: cuéntale el resultado al agente y él cerrará la tarjeta.
 
 ## ⏳ Pendientes
-
-### U12 — Probar si escribir y combinar plugins te resulta cómodo          ⏳ · bloquea: nada · abierta en S20
-**Tipo:** validar          **Tiempo:** ~20 min, con LFS abierto
-**Por qué:** que la API sea cómoda es el punto ciego del agente (W10, criterio de aceptación). Todo lo demás
-está probado con tests y en el LFS real; esto solo lo puedes juzgar tú.
-**Pasos:**
-  1. En el repo, rama `dev` (el commit «W10.8» o posterior), lee `docs/plugins.md`.
-  2. Escribe un plugin pequeño tuyo como función (por ejemplo, un comando `!hola` o algo que imprima cuando
-     alguien entra), siguiendo la guía.
-  3. Ejecútalo solo (`.venv/Scripts/python tu_plugin.py`) y después junto a los ejemplos, como hace
-     `examples/together.py` (cópialo y añade tu plugin).
-  4. Opcional: `!buttons` y `!hide` de `together.py`, para ver que los botones salen y se quitan (usa `/o !buttons`
-     si estás en un servidor ajeno, para que no lo vean los demás).
-**Resultado esperado:** te sale sin pelearte con la biblioteca, solo y combinado, sin tocar el plugin.
-**Señales de fallo:** algo que tuviste que adivinar, un error que no entendiste, o que combinar te obligó a
-cambiar tu plugin.
-**Si falla, dime:** qué intentabas, qué escribiste y qué te pareció raro o largo; vale con la impresión general.
 
 ### U11 — Probar que, como invitado, los comandos de otra persona se ignoran          ⏳ · bloquea: nada · abierta en S19
 **Tipo:** validar          **Tiempo:** ~5 min, con una segunda persona en tu servidor «testing»
@@ -37,6 +20,7 @@ falso lo cubren; esto confirma en el juego que un desconocido no puede usar tus 
 **Si falla, dime:** qué escribió, qué vio cada uno y, si puedes, si su conexión salía como remota.
 
 ## ✅ Cerradas (recientes; el registro completo está en LOG.md)
+- **U12** — Probar si escribir y combinar plugins es cómodo: descartada por el usuario («No lo haré… ya iremos viendo si es cómodo o no a medida que avancemos») (2026-10-14, S21).
 - **U10** — Comandos como invitado: W9 antes de W6, porque la primera aplicación los necesita; se detalla en la próxima sesión (2026-10-13, S18).
 - **U8** — Probar W8.2–W8.4 en LFS real: cerrada por el usuario («U8 cerrada») con los resultados de S18 (comandos, unidades 1,002, `watch()`; P9 arreglado) (2026-10-13, S18).
 - **U9** — Listas cortas en `IS_REO` / `IS_HCP`: «Sigamos tu recomendación» → se rellenan con ceros (2026-10-13, S18).

@@ -1,6 +1,18 @@
 # 📓 Diario — AP_LFS_InSim (lfs_insim)
 <!-- Solo se añade, lo más nuevo arriba. Una entrada por sesión. -->
 
+## S21 — 2026-10-14 — U12 descartada
+
+**Inicio:** `session_start_check` PASS (rama, identidad, pull, plantilla v3). Documentos y realidad coinciden
+(último commit `7225c9e`, árbol limpio), salvo un desajuste: «Lo que te espera» de `STATE.md` decía 1 pendiente
+(U11) y `USER_ACTIONS.md` tenía 2 (U12, U11). Corregido.
+
+**U12 cerrada sin hacer** (el usuario: «No lo haré, borra esta targeta. Ya iremos viendo si es comodo o no a
+medida que avancemos»). La comodidad de la API de plugins sigue siendo punto ciego: se juzgará al escribir
+plugins reales (W6, FreeCam). Consecuencia: W10.10 (publicar 0.6.0) ya no espera a U12; sigue pidiendo permiso
+expreso. Si FreeCam pide cambiar nombres (`need()`, `reserve_click_ids()`, `on_close`) después de publicar,
+será un cambio incompatible en 0.7.0 (aceptable en 0.x).
+
 ## S20 — 2026-10-13 — W6 decidida y aparcada; W10 (plugins) esbozada antes
 
 **Inicio:** `session_start_check` PASS (rama, identidad, pull, plantilla v3). Documentos y realidad coinciden
