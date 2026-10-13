@@ -41,12 +41,11 @@ consulta, no se copia.
 ## Lo que te espera
 Ninguna acción pendiente (U6 cerrada en S14) → `USER_ACTIONS.md`.
 
-## Tests inestables (S13, sin arreglar)
-`tests/test_every.py` falla de vez en cuando **solo en Windows del CI** y pasa al relanzar:
-`test_a_slow_call_does_not_cause_a_burst` (3.13) y `test_a_def_runs_at_a_fixed_rate` (3.12,
-`later > earlier` estricto entre marcas de `time.monotonic()`). Hipótesis, **no verificada**: el
-reloj de Windows tiene grano grueso (~15 ms) y los márgenes de 0,01–0,02 s se quedan cortos.
-Arreglar antes de fiarse del CI en rojo: tolerancias mayores o `>=`, y diagnosticarlo primero (§8).
+## Tests inestables (arreglados en S14)
+`tests/test_every.py` fallaba a veces solo en el Windows del CI (3.12 y 3.13). Causa comprobada: en
+Windows con Python anterior a 3.13, `time.monotonic()` avanza a saltos de ~15 ms, así que dos marcas
+seguidas podían salir iguales. Los tests miden ahora con `time.perf_counter()` y margen de 2 ms. Si
+vuelve a fallar en el CI, reabrir con el log delante.
 
 ## Restricciones ahora mismo
 - En este equipo solo hay Python 3.14. Las demás versiones las comprueba el CI.

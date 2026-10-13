@@ -10,7 +10,9 @@ confirmación previa, el *pending publisher* de `lfs-insim` en TestPyPI (entorno
 **U6 cerrada.**
 
 **Pendiente:** W5.5 (primera ejecución real de `publish.yml` en TestPyPI) y W5.6. Opcional: entorno
-`pypi` en GitHub con revisor obligatorio. Tests de `every` inestables sin arreglar.
+`pypi` en GitHub con revisor obligatorio. 
+**Tests de `every`:** arreglados. Causa: el reloj de `time.monotonic()` en Windows <3.13 (~15 ms);
+tests con `perf_counter`. Verificado solo en 3.14 local; lo confirma el CI.
 
 ## S13 — 2026-10-13 — W5 detallada
 

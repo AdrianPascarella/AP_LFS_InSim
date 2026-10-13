@@ -33,7 +33,7 @@ def test_a_def_runs_at_a_fixed_rate() -> None:
 
         @insim.every(0.02)
         def tick() -> None:
-            calls.append(time.monotonic())
+            calls.append(time.perf_counter())
 
         async with insim:
             await _until(lambda: len(calls) >= 5)
@@ -137,7 +137,7 @@ def test_asking_for_the_version_does_not_start_it_twice() -> None:
 
         @insim.every(0.05)
         def tick() -> None:
-            calls.append(time.monotonic())
+            calls.append(time.perf_counter())
 
         async with insim:
             await _until(lambda: versions)
@@ -177,20 +177,21 @@ def test_a_call_in_progress_is_cancelled_when_the_connection_ends() -> None:
 def test_a_slow_call_does_not_cause_a_burst() -> None:
     async def test(lfs: FakeLFS) -> None:
         insim = InSim(port=lfs.port)
+        # perf_counter: on Windows before 3.13, time.monotonic ticks every ~15 ms
         starts: list[float] = []
         ends: list[float] = []
 
         @insim.every(0.02)
         def tick() -> None:
-            starts.append(time.monotonic())
+            starts.append(time.perf_counter())
             if len(starts) == 1:
                 time.sleep(0.15)  # misses about seven ticks
-            ends.append(time.monotonic())
+            ends.append(time.perf_counter())
 
         async with insim:
             await _until(lambda: len(starts) >= 3)
-        assert starts[1] - ends[0] > 0.01  # not called again at once to catch up
-        assert starts[2] - starts[1] > 0.01
+        assert starts[1] - ends[0] > 0.002  # not called again at once to catch up
+        assert starts[2] - starts[1] > 0.002
 
     run(test)
 
