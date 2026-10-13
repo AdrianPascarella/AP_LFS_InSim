@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- `@insim.on.IS_TINY(TINY.MPE)` and `@insim.on.IS_SMALL(SMALL.STP, SMALL.RTP)`: the function is
+  called only for those subtypes. `@insim.on.IS_TINY` alone still gets all of them.
+  `insim.on(IS_TINY, TINY.MPE)` is the same. Checked by the type checker and when run.
+
 ## 0.2.0
 
 - `@insim.on.IS_NPL` and `insim.send.IS_MST(Msg=...)`: the editor lists only the packets LFS sends

@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from lfs_insim._events import Receive, Receiver, Sender, Transmit
+from lfs_insim._events import Receive, Receiver, Sender, SubReceiver, Transmit
 from lfs_insim.packets import (
     IS_ACR,
     IS_AIC,
@@ -76,6 +76,8 @@ from lfs_insim.packets import (
     IS_UCO,
     IS_VER,
     IS_VTN,
+    SMALL,
+    TINY,
 )
 
 
@@ -220,7 +222,7 @@ class On(Receive):
     IS_SLC = Receiver(IS_SLC)
     """SeLected Car - sent when a connection selects a car (empty if no car)"""
 
-    IS_SMALL = Receiver(IS_SMALL)
+    IS_SMALL = SubReceiver(IS_SMALL, SMALL)
     """General purpose 8 byte packet"""
 
     IS_SPX = Receiver(IS_SPX)
@@ -232,7 +234,7 @@ class On(Receive):
     IS_STA = Receiver(IS_STA)
     """STAte"""
 
-    IS_TINY = Receiver(IS_TINY)
+    IS_TINY = SubReceiver(IS_TINY, TINY)
     """General purpose 4 byte packet"""
 
     IS_TOC = Receiver(IS_TOC)

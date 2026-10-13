@@ -26,6 +26,24 @@ Type `insim.on.` and the editor lists the packets LFS sends. Annotating the argu
 list, with the direction of each packet, is [Packets by direction](packets.md). The long form
 `@insim.on(IS_NPL)` does exactly the same.
 
+`IS_TINY` and `IS_SMALL` are general purpose packets with a subtype (`SubT`). To receive only
+some of them, name them:
+
+```python
+from lfs_insim.packets import SMALL, TINY
+
+
+@insim.on.IS_TINY(TINY.MPE)                      # only this subtype
+def multiplayer_ended(packet: received.IS_TINY) -> None: ...
+
+
+@insim.on.IS_SMALL(SMALL.STP, SMALL.RTP)         # or any of several
+def timing(packet: received.IS_SMALL) -> None: ...
+```
+
+Without names (`@insim.on.IS_TINY`) the function gets every subtype. A subtype of the other
+packet, or of a packet without subtypes, is an error in the editor and a `TypeError` when run.
+
 Text fields are `str`. They keep LFS's `^` codes; see [text](roster-and-text.md#text).
 
 ### Chat commands

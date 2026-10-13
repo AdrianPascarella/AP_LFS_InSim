@@ -16,15 +16,26 @@ class Handlers:
     """The handlers of each packet type, and the tasks of the `async def` ones still running."""
 
     def __init__(self) -> None:
-        self._by_type: dict[type[Any], list[Callable[..., Any]]] = {}
+        # (handler, subtypes): subtypes is None, or the SubT values that the handler wants
+        self._by_type: dict[type[Any], list[tuple[Callable[..., Any], frozenset[int] | None]]] = {}
         self._tasks: set[asyncio.Task[None]] = set()
 
-    def add(self, packet_type: type[Any], handler: Callable[..., Any]) -> None:
-        self._by_type.setdefault(packet_type, []).append(handler)
+    def add(
+        self,
+        packet_type: type[Any],
+        handler: Callable[..., Any],
+        subtypes: frozenset[int] | None = None,
+    ) -> None:
+        self._by_type.setdefault(packet_type, []).append((handler, subtypes))
 
     def dispatch(self, packet: Any) -> None:
-        """Call every handler of the packet's type, in the order they were registered."""
-        for handler in self._by_type.get(type(packet), []):
+        """Call every handler of the packet's type, in the order they were registered.
+
+        A handler registered for some subtypes (SubT) is skipped for the others.
+        """
+        for handler, subtypes in self._by_type.get(type(packet), []):
+            if subtypes is not None and packet.SubT not in subtypes:
+                continue
             self.call(handler, (packet,), type(packet).__name__)
 
     def call(self, handler: Callable[..., Any], args: tuple[Any, ...], event: str) -> None:

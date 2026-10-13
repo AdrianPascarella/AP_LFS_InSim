@@ -30,7 +30,7 @@ def test_a_packet_is_where_its_direction_says(name: str) -> None:
 
 @pytest.mark.parametrize("name", [n for n in NAMES if issubclass(getattr(packets, n), InfoPacket)])
 def test_on_attribute_and_call_register_the_same_handler(name: str) -> None:
-    cls = getattr(packets, name)
+    cls: type[InfoPacket] = getattr(packets, name)
     insim = InSim()
 
     def handler(packet: object) -> None: ...
@@ -38,7 +38,7 @@ def test_on_attribute_and_call_register_the_same_handler(name: str) -> None:
     getattr(insim.on, name)(handler)
     insim.on(cls)(handler)
     insim.on(getattr(received, name))(handler)
-    assert insim._handlers._by_type == {cls: [handler, handler, handler]}
+    assert insim._handlers._by_type == {cls: [(handler, None)] * 3}
 
 
 @pytest.mark.parametrize("name", UDP)

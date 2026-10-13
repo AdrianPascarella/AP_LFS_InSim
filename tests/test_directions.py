@@ -50,7 +50,7 @@ def test_on_refuses_a_packet_that_lfs_never_sends() -> None:
     with pytest.raises(TypeError, match="IS_MST is an instruction: LFS never sends it"):
         insim.on(IS_MST)  # type: ignore[type-var]
     with pytest.raises(TypeError, match="not a packet class"):
-        insim.on(IS_NPL())  # type: ignore[arg-type]
+        insim.on(IS_NPL())  # type: ignore[call-overload]
     with pytest.raises(TypeError, match=r"by UDP, not InSim: use OutGauge \(`@gauge\.on\.OutGa"):
         insim.on(received.OutGaugePack)  # type: ignore[type-var]
     insim.on(IS_NPL)(print)

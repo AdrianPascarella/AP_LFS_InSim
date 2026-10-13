@@ -87,20 +87,28 @@ SHORTCUT_CLASSES = {
 }
 
 
+# Packets whose SubT comes from an enum: `insim.on.IS_TINY(TINY.MPE)` (lfs_insim/_events.py).
+SUBTYPE_ENUMS = {"IS_SMALL": "SMALL", "IS_TINY": "TINY"}
+
+
 def emit_shortcuts(directions: dict[str, str], docs: dict[str, str], header: str) -> str:
     """lfs_insim/_shortcuts.py: insim.on.IS_XXX and insim.send.IS_XXX, one attribute per packet."""
+    imported = sorted([*directions, *SUBTYPE_ENUMS.values()])
     out = [
         header,
         '"""The attributes of insim.on and insim.send: one per packet (see lfs_insim._events)."""',
         "\n\nfrom __future__ import annotations\n\n",
-        "from lfs_insim._events import Receive, Receiver, Sender, Transmit\n",
-        f"from lfs_insim.packets import {', '.join(sorted(directions))}\n",
+        "from lfs_insim._events import Receive, Receiver, Sender, SubReceiver, Transmit\n",
+        f"from lfs_insim.packets import {', '.join(imported)}\n",
     ]
     for name, (base, attribute, module, doc) in SHORTCUT_CLASSES.items():
         wanted = DIRECTION_MODULES[module][0]
         out.append(f'\n\nclass {name}({base}):\n    """{doc}\n    """\n')
         for packet in sorted(p for p, direction in directions.items() if direction in wanted):
-            out.append(f"\n    {packet} = {attribute}({packet})\n")
+            if attribute == "Receiver" and packet in SUBTYPE_ENUMS:
+                out.append(f"\n    {packet} = SubReceiver({packet}, {SUBTYPE_ENUMS[packet]})\n")
+            else:
+                out.append(f"\n    {packet} = {attribute}({packet})\n")
             out.append(docstring(docs[packet], "    "))
     return "".join(out)
 

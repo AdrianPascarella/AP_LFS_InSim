@@ -3,9 +3,9 @@
 > y tiene la API de alto nivel (`@insim.on.IS_NPL`, `insim.send.IS_MST(...)`, `received` / `sent`,
 > `await insim.request(...)`, `Roster`, `say()` / `command()`, `on_command`, `text.plain()`), cuatro
 > ejemplos y `docs/packets.md` (tabla generada). U7 cerrada: el usuario vio las listas en su VS Code.
-> **`lfs-insim 0.2.0` está publicado en PyPI** (S16, release `v0.2.0`, `main` = `dev`).
-> **▶️ SIGUIENTE (decide el usuario):** (b) W7.7, subtipos de `IS_TINY` / `IS_SMALL` (`@insim.on.IS_TINY(TINY.MPE)`), que se decide con él;
-> (c) abrir W8 (mejoras del proyecto anterior, `LEGADO.md`) o W6 (primera aplicación aparte).
+> **`lfs-insim 0.2.0` está publicado en PyPI** (S16, release `v0.2.0`).
+> **W7 está hecha entera** (W7.7, S16: `@insim.on.IS_TINY(TINY.MPE)`, en `dev` sin publicar: CHANGELOG «Unreleased»).
+> **▶️ SIGUIENTE (decide el usuario):** abrir W8 (mejoras del proyecto anterior, `LEGADO.md`) o W6 (primera aplicación aparte).
 > **Receta de una versión nueva:** versión y CHANGELOG en
 > `dev`; `verify` en verde; avance rápido de `dev` a `main`; `gh release create vX.Y.Z --target main`
 > (el tag debe ser `v<version>`); aprobar el entorno `pypi` (pedirlo cada vez). Una versión publicada
@@ -13,7 +13,7 @@
 > `verify`): lo próximo que crezca, en un módulo propio. Ver `USER_ACTIONS.md`.
 
 ## Dónde estamos
-Fase activa: **W7 — Dirección de los paquetes y atajos generados** (W7.1–W7.6 hechas; falta W7.7). W1–W5 están hechas enteras. Prueba en vivo: `tests/live_lfs.py` (cómo ejecutarla, en su docstring).
+Fase activa: ninguna (W7 hecha entera en S16; falta elegir W8 o W6).
 
 - **Cómo se genera:** `.venv/Scripts/python scripts/generate_packets.py` lee
   `spec/cache/InSim.txt` y `spec/cache/OutSimPack.txt` (con `scripts/spec_parser.py`) y las

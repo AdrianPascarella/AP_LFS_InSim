@@ -37,6 +37,17 @@ aprobar entorno `pypi`) exige permiso expreso del usuario.
 entorno `pypi` aprobado; `publish` en verde; PyPI lista 0.1.0 y 0.2.0, e instalado desde PyPI en un venv limpio
 devuelve 0.2.0 con `on.` y `send.`.
 
+**W7.7 hecha (decidida con el usuario antes de escribir):** `@insim.on.IS_TINY(TINY.MPE)` y
+`@insim.on.IS_SMALL(SMALL.STP, SMALL.RTP)`, solo al recibir (enviar ya se lee bien); `on.IS_TINY` sin
+paréntesis sigue recibiendo todos; `on(IS_TINY, TINY.MPE)` es la forma larga. Sin LFS real (acordado:
+la lógica no toca bytes). **Rojo primero:** 3 tests de `tests/test_subtypes.py` fallaron antes del
+código. Implementación: `Handlers` guarda `(manejador, subtipos)` y salta los que no tocan
+(`_handlers.py`); `Receive.__call__` con sobrecargas y `SubReceiver` / `Subtyped` en `_events.py`; el
+generador emite `SubReceiver(IS_TINY, TINY)` (`SUBTYPE_ENUMS`). Tropiezos: las sobrecargas
+`*subtypes` se solapaban con la genérica (mypy `overload-overlap`): ahora piden al menos un subtipo;
+las barras invertidas en un script en línea otra vez (usar Edit). `verify` PASS, 477 tests. **Sin
+publicar** (CHANGELOG «Unreleased»; la versión sigue en 0.2.0).
+
 **Tropiezo:** un `sed` con `&` estropeó `spec_directions.py`; restaurado con git y reaplicado. Las
 barras invertidas en la entrada de Bash se pierden: para ellas, usar Edit.
 
