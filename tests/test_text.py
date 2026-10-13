@@ -6,7 +6,7 @@ import pytest
 
 from lfs_insim.packets import IS_BTN, IS_MSO, IS_MST, ISP, LID, MSO
 from lfs_insim.packets._text import decode, encode
-from lfs_insim.text import strip_colours
+from lfs_insim.text import plain, strip_colours
 
 
 @pytest.mark.parametrize(
@@ -89,6 +89,22 @@ def test_text_limit_counts_bytes_after_encoding() -> None:
 )
 def test_strip_colours(text: str, plain: str) -> None:
     assert strip_colours(text) == plain
+
+
+@pytest.mark.parametrize(
+    ("text", "readable"),
+    [
+        ("^4^h773 ^7A.Pascarella", "#773 A.Pascarella"),  # a real name, seen in W4.7 (S12)
+        ("^v^a^c^d^s^q^t^l^r^h^^", '|*:\\/?"<>#^'),  # every escape (as in InSim.NET's table)
+        ("^^1", "^1"),  # a caret and a 1, not a colour
+        ("^^^1x", "^x"),  # a caret, then red
+        ("^8name^9 ^:x", "name x"),
+        ("^zunknown ^", "^zunknown ^"),  # unknown codes and a lone caret stay
+        ("Ελλάδα", "Ελλάδα"),
+    ],
+)
+def test_plain_is_text_as_lfs_shows_it(text: str, readable: str) -> None:
+    assert plain(text) == readable
 
 
 def test_mso_text_start_is_an_index_into_the_str() -> None:

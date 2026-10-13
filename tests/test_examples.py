@@ -78,7 +78,7 @@ def test_who(capsys: pytest.CaptureFixture[str]) -> None:
         async with FakeLFS() as lfs:
             lfs.replies[TINY.NCN] = [IS_NCN(UCID=0, Total=2), IS_NCN(UCID=2, UName="bob", Total=2)]
             lfs.replies[TINY.NPL] = [
-                IS_NPL(PLID=1, UCID=2, PName="^1Bob", CName="XFG", NumP=2),
+                IS_NPL(PLID=1, UCID=2, PName="^1^h1 Bob", CName="XFG", NumP=2),
                 IS_NPL(PLID=2, UCID=0, PType=2, PName="AI 1", CName="FBM", NumP=2),
             ]
             example.insim.port = lfs.port
@@ -89,13 +89,13 @@ def test_who(capsys: pytest.CaptureFixture[str]) -> None:
                 replies = [(await lfs.wait_for(IS_MSL)).Msg for _ in range(2)]
                 await lfs.send(IS_PLL(PLID=1))
                 await _until(lambda: 1 not in example.roster.players)
-        assert replies == ["^1Bob^8: XFG", "AI 1^8: FBM (AI)"]
+        assert replies == ["^1^h1 Bob^8: XFG", "AI 1^8: FBM (AI)"]
 
     asyncio.run(main())
     out = capsys.readouterr().out
-    assert "Bob (human, XFG) is on track, from bob" in out
+    assert "#1 Bob (human, XFG) is on track, from bob" in out  # plain(): ^h is #
     assert "AI 1 (AI, FBM) is on track, from this computer" in out
-    assert "Bob left the race" in out
+    assert "#1 Bob left the race" in out
 
 
 def test_gauge() -> None:
