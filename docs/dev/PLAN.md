@@ -355,6 +355,8 @@ aplicación (W6) lo necesita (el usuario, S18).
 - [x] **W9.4** — Comandos por `/o` (`MSO.O`, solo los ve el InSim local), con el mismo prefijo: test y guía.
 - [x] **W9.5** — Guía, docstrings, CHANGELOG, `API_DESIGN.md`; prueba en real como invitado (validar).
   hecho en S19 → LOG.md S19 (falta, opcional, el comando de otra persona: U11)
+- [x] **W9.7** — Prefijo propio por comando o grupo (`prefix=` en `on_command` y `command_group`), pedido por
+  el usuario en S19 antes de publicar. hecho en S19 → LOG.md S19
 - [ ] **W9.6** — Publicar 0.5.0 (con permiso del usuario), antes de empezar W6.
 
 ## W6 — Primera aplicación aparte   📋 ESBOZADA

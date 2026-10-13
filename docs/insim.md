@@ -118,6 +118,21 @@ Register commands before running. Names are matched in any case. Commands are hi
 other users. A command with no function is left alone, since it may be meant for another program.
 `command.local` says whether it was typed on this computer.
 
+**A prefix of their own.** A command or a group may use another prefix than the `InSim`'s: one
+character, not a letter or digit. `!who` and `.who` can then be two different commands, and
+`InSim()` needs no prefix if every command brings its own.
+
+```python
+@insim.on_command("who", prefix=".")
+def who(command: Command) -> None: ...
+
+
+admin_tools = insim.command_group("adm", prefix="#", admin=True)  # #adm kick Bob, #adm ...
+```
+
+As host, LFS hides from the others only the messages that start with the `InSim`'s prefix: a
+command with another one is seen by everyone.
+
 **As a guest in someone else's server.** When your LFS has joined a server that is not yours,
 your program still gets the chat, but it is not the host, so things change:
 

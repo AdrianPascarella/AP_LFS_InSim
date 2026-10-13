@@ -326,6 +326,16 @@ se escribe llega como `MSO.USER`, con prefijo o sin él, y lo ve todo el servido
 - `Command.local`; `roster.guest` y `roster.local`. Los comandos crean siempre su propio `Roster`
   (antes solo con `admin=True`), porque sin él no se sabe quién es este ordenador.
 
+## Un prefijo propio por comando o grupo (W9.7, S19; pedido por el usuario, diseño del agente)
+- `on_command(..., prefix=".")` y `command_group(..., prefix=".")`; los comandos de un grupo usan el del grupo;
+  sin `prefix=`, el de `InSim`. `InSim()` sin prefijo vale si cada comando trae el suyo.
+- Un carácter que no sea letra, dígito ni espacio (como el de `IS_ISI`). *Descartado:* prefijos de varios
+  caracteres (ambigüedad entre `!` y `!!`; nadie los ha pedido).
+- Los nombres son únicos por prefijo: `!who` y `.who` son dos comandos. Ayuda, uso y negativas muestran el
+  prefijo de cada comando.
+- Como anfitrión, LFS solo oculta los mensajes con el prefijo de `IS_ISI`; los otros los ve todo el servidor
+  (documentado). Como invitado da igual: se ve todo salvo con `/o`.
+
 ## Abierto (se decide más adelante, no ahora)
 - Agrupar manejadores en módulos (lo que hacía `InSimApp` con varias aplicaciones a la vez): si
   hiciera falta, algo como el `APIRouter` de FastAPI. Solo si una aplicación real lo pide.

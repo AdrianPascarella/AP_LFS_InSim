@@ -7,6 +7,9 @@
   you with `IS_MSL` (LFS refuses `IS_MTC` from a guest) and anyone else in the public chat;
   `/o !command` keeps a command to yourself. `Command.local` says whether this computer typed it.
   See [As a guest](docs/insim.md#chat-commands).
+- `on_command(..., prefix=".")` and `command_group(..., prefix=".")`: a prefix of their own
+  instead of the `InSim`'s, so `!who` and `.who` can be different commands. See
+  [Chat commands](docs/insim.md#chat-commands).
 - `roster.guest` and `roster.local` (this computer's connection). Programs with chat commands now
   always have a roster of their own.
 - `Roster` no longer logs an error when the connection closes while it asks LFS for everyone.

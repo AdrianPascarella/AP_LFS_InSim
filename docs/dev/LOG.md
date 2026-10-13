@@ -50,6 +50,19 @@ público; `/o` cuenta como comando con el mismo prefijo.
 **Verificación:** `verify` PASS (542 tests). `_connection.py` 485 líneas (aviso en 500), `_commands.py` 328.
 **Pedido al usuario:** U11 (opcional).
 
+**W9.7, pedida por el usuario tras el cierre** («¿se podría que un comando o grupo inicie por un prefijo en
+concreto?»). El agente explicó que no (un prefijo por `InSim`) y recomendó dejarlo en «Ideas»; el usuario: «Hazlo
+como W9.7 antes de publicar». Diseño del agente (detalle y descartes en `API_DESIGN.md`): `prefix=` en
+`on_command` y `command_group`, un carácter que no sea letra, dígito ni espacio; nombres únicos por prefijo;
+`InSim()` sin prefijo vale si cada comando trae el suyo. Internamente, `_by_name`/`_groups` por prefijo y luego
+por nombre; `_Entry` y `_Group` guardan su prefijo, así que ayuda, uso y negativas muestran el suyo.
+**Rojo primero:** `tests/test_command_prefixes.py` (5 tests) falló entero antes del código. Un test estaba mal
+(esperaba por `IS_MTC` la respuesta a la UCID 0, que va por `IS_MSL`); se cambió a otra UCID, y lo que
+comprueba sigue igual. Sin prueba en real: es solo comparar texto, cubierto por los tests.
+**Verificación:** `verify` PASS (547 tests). `_connection.py` va por **496 líneas** (aviso en 500).
+Guía, CHANGELOG, `API_DESIGN.md`. **Trampa repetida:** un heredoc largo de Python se rompió en la terminal
+(§13); se hizo con Edit.
+
 ## S18 — 2026-10-13 — W8.4: `insim.watch()` público
 
 **Inicio:** `session_start_check` PASS (rama, identidad, pull, plantilla v3); `verify` PASS antes de tocar nada.

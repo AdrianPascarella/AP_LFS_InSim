@@ -129,7 +129,12 @@ class InSim(StopsOnError):
         """
 
     def on_command(
-        self, name: str, *, admin: bool = False, allow: Allow | None = None
+        self,
+        name: str,
+        *,
+        prefix: str | None = None,
+        admin: bool = False,
+        allow: Allow | None = None,
     ) -> Callable[[CommandHandler], CommandHandler]:
         """Decorator: call the function when someone types the prefix and this name in the chat.
 
@@ -143,18 +148,24 @@ class InSim(StopsOnError):
         admin=True: only LFS admins and the host (UCID 0) may use it. allow: a function of the
         Command that says who else may not (False). The name is matched in any case. `def` or
         `async def`, as for `on()`; the IS_MSO still reaches the IS_MSO handlers. A command
-        without a function is left alone (it may be for another program).
+        without a function is left alone (it may be for another program). prefix: one of its own
+        (".") instead of the InSim's; as host, LFS hides only the InSim's from the others.
         """
-        return self._commands.register(name, admin, allow)
+        return self._commands.register(name, admin, allow, prefix=prefix)
 
     def command_group(
-        self, name: str, *, admin: bool = False, allow: Allow | None = None
+        self,
+        name: str,
+        *,
+        prefix: str | None = None,
+        admin: bool = False,
+        allow: Allow | None = None,
     ) -> CommandGroup:
         """Commands under one name: `aic = insim.command_group("aic")`, then
-        `@aic.on_command("start")` for "!aic start". "!aic" alone lists them. admin and allow
-        apply to every command of the group, as in on_command.
+        `@aic.on_command("start")` for "!aic start". "!aic" alone lists them. prefix, admin and
+        allow apply to every command of the group, as in on_command.
         """
-        return self._commands.group(name, admin, allow)
+        return self._commands.group(name, admin, allow, prefix)
 
     def _make_roster(self) -> Any:
         from lfs_insim.state import Roster  # state imports this module

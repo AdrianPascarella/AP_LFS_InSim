@@ -9,6 +9,9 @@ it; "/o !who" reaches only this computer's InSim. Then only this computer may us
 unless InSim(guest_commands="everyone"); admin commands are only for this computer; and replies go
 to this computer as IS_MSL, and to anyone else in the public chat (a guest cannot send IS_MTC).
 
+A command or a group may have a prefix of its own (`on_command("who", prefix=".")`); LFS hides
+only the messages with the prefix of IS_ISI, so as host the others are seen by everyone.
+
 The arguments are the parameters of the function after the Command: with
 `def speed(command, kmh: int, who: str = "all")`, "!speed 80" calls `speed(command, 80, "all")`.
 Words that do not fit are answered with the usage, and the function is not called; "!speed ?" is
@@ -124,17 +127,18 @@ class _Entry:
     """A command and what is needed to call it."""
 
     name: str  # "speed", or "aic start" in a group
+    prefix: str
     handler: CommandHandler
     params: list[_Param] | None
     doc: str
     admin: bool
     allow: tuple[Allow, ...]
 
-    def usage(self, prefix: str) -> str:
-        return " ".join([prefix + self.name, *(p.usage() for p in self.params or [])])
+    def usage(self) -> str:
+        return " ".join([self.prefix + self.name, *(p.usage() for p in self.params or [])])
 
-    def help(self, prefix: str) -> str:
-        return f"{self.usage(prefix)}: {self.doc}" if self.doc else self.usage(prefix)
+    def help(self) -> str:
+        return f"{self.usage()}: {self.doc}" if self.doc else self.usage()
 
     def arguments(self, words: tuple[str, ...]) -> list[Any]:
         if self.params is None:
@@ -155,6 +159,7 @@ class _Entry:
 @dataclass
 class _Group:
     name: str
+    prefix: str
     admin: bool
     allow: tuple[Allow, ...]
     entries: dict[str, _Entry] = field(default_factory=dict)
@@ -171,7 +176,8 @@ class CommandGroup:
     def on_command(
         self, name: str, *, admin: bool = False, allow: Allow | None = None
     ) -> Callable[[CommandHandler], CommandHandler]:
-        """Decorator: a command of this group, as InSim.on_command; the group's limits apply too."""
+        """Decorator: a command of this group, as InSim.on_command; the group's prefix and limits
+        apply too."""
         return self._commands.register(name, admin, allow, self._group)
 
 
@@ -187,42 +193,67 @@ class Commands:
         self.guest_commands = guest_commands
         self._make_roster = make_roster
         self._roster: Any = None  # a Roster, made with the first command: who is who
-        self._by_name: dict[str, _Entry] = {}
-        self._groups: dict[str, _Group] = {}
+        # by prefix, then by name: "!who" and ".who" are two commands
+        self._by_name: dict[str, dict[str, _Entry]] = {}
+        self._groups: dict[str, dict[str, _Group]] = {}
 
-    def _check(self, name: str, taken: dict[str, Any] | None = None) -> str:
+    def _prefix(self, prefix: str | None) -> str:
+        """The prefix to use (the InSim's if None); ValueError if there is none or it is bad."""
+        if prefix is None:
+            if not self.prefix:
+                raise ValueError(
+                    "chat commands need a prefix: InSim(prefix='!') or on_command(..., prefix='!')"
+                )
+            return self.prefix
+        if len(prefix) != 1 or prefix.isspace() or prefix.isalnum():
+            raise ValueError(f"a prefix is one character, not a letter or digit: not {prefix!r}")
+        return prefix
+
+    def _check(self, name: str, prefix: str, taken: dict[str, Any] | None = None) -> str:
         """The name as it is kept (lower case); ValueError if it cannot be a new command."""
-        if not self.prefix:
-            raise ValueError("chat commands need a prefix: InSim(prefix='!')")
         key = name.lower()
-        if not key or key.split() != [key] or key.startswith(self.prefix):
+        if not key or key.split() != [key] or key.startswith(prefix):
             raise ValueError(f"{name!r} is not a command name: one word, without the prefix")
-        names = (self._by_name.keys() | self._groups.keys()) if taken is None else taken.keys()
+        names: set[str]
+        if taken is None:
+            names = self._by_name.get(prefix, {}).keys() | self._groups.get(prefix, {}).keys()
+        else:
+            names = set(taken)
         if key in names:
-            raise ValueError(f"the command {name!r} already has a function")
+            raise ValueError(f"the command {prefix}{key} already has a function")
         return key
 
     def register(
-        self, name: str, admin: bool, allow: Allow | None, group: _Group | None = None
+        self,
+        name: str,
+        admin: bool,
+        allow: Allow | None,
+        group: _Group | None = None,
+        prefix: str | None = None,
     ) -> Callable[[CommandHandler], CommandHandler]:
         """The decorator of on_command; the name is checked now, not when the function comes."""
-        key = self._check(name, None if group is None else group.entries)
+        prefix = group.prefix if group is not None else self._prefix(prefix)
+        key = self._check(name, prefix, None if group is None else group.entries)
         full = key if group is None else f"{group.name} {key}"
 
         def add(handler: CommandHandler) -> CommandHandler:
             doc = (inspect.getdoc(handler) or "").split("\n", 1)[0] if _own_doc(handler) else ""
             limits = () if allow is None else (allow,)
-            entry = _Entry(full, handler, _params(full, handler), doc, admin, limits)
-            (self._by_name if group is None else group.entries)[key] = entry
+            entry = _Entry(full, prefix, handler, _params(full, handler), doc, admin, limits)
+            entries = self._by_name.setdefault(prefix, {}) if group is None else group.entries
+            entries[key] = entry
             self._need_roster()
             return handler
 
         return add
 
-    def group(self, name: str, admin: bool, allow: Allow | None) -> CommandGroup:
-        key = self._check(name)
-        group = _Group(key, admin, () if allow is None else (allow,))
-        self._groups[key] = group
+    def group(
+        self, name: str, admin: bool, allow: Allow | None, prefix: str | None = None
+    ) -> CommandGroup:
+        prefix = self._prefix(prefix)
+        key = self._check(name, prefix)
+        group = _Group(key, prefix, admin, () if allow is None else (allow,))
+        self._groups.setdefault(prefix, {})[key] = group
         self._need_roster()
         return CommandGroup(self, group)
 
@@ -251,12 +282,14 @@ class Commands:
         say: Callable[..., None],
     ) -> None:
         """Run the command in this message, if it is one of ours; otherwise do nothing."""
-        if not (self._by_name or self._groups) or packet.UserType == MSO.SYSTEM:
+        if packet.UserType == MSO.SYSTEM:
             return
         text = packet.text
-        if not text.startswith(self.prefix):
+        prefix = text[:1]
+        by_name, groups = self._by_name.get(prefix, {}), self._groups.get(prefix, {})
+        if not (by_name or groups):
             return
-        words = text[len(self.prefix) :].split()
+        words = text[1:].split()
         if not words:
             return
         guest = bool(self._roster.guest)
@@ -264,10 +297,10 @@ class Commands:
         if guest and not local and self.guest_commands == "local":
             return  # someone else's server: not for them, and they get no answer
         key = words[0].lower()
-        group = self._groups.get(key)
+        group = groups.get(key)
         entry: _Entry | None
         if group is None:
-            if (entry := self._by_name.get(key)) is None:
+            if (entry := by_name.get(key)) is None:
                 return  # perhaps another program's command
             name, args = key, tuple(words[1:])
             admin, allow = entry.admin, entry.allow
@@ -285,7 +318,7 @@ class Commands:
         else:  # a guest cannot send IS_MTC: this computer gets IS_MSL, anyone else the chat
             reply = functools.partial(say, to=0) if local else say
         command = Command(name, args, packet.UCID, packet.PLID, local, packet, reply)
-        shown = self.prefix + name
+        shown = prefix + name
         if admin and not self._is_admin(packet.UCID, local):
             reply(f"{shown} is only for admins")
             return
@@ -300,16 +333,16 @@ class Commands:
                     if listed
                     else (f"{shown} has no command {args[0]!r}. Its commands:")
                 )
-                for line in [first, *(e.help(self.prefix) for e in group.entries.values())]:
+                for line in [first, *(e.help() for e in group.entries.values())]:
                     reply(line)
             return
         if args == ("?",):
-            reply(entry.help(self.prefix))
+            reply(entry.help())
             return
         try:
             values = entry.arguments(args)
         except _Misuse as misuse:
-            reply(f"{shown}: {misuse}. Use: {entry.usage(self.prefix)}")
+            reply(f"{shown}: {misuse}. Use: {entry.usage()}")
             return
         handlers.call(entry.handler, (command, *values), f"command {shown}")
 

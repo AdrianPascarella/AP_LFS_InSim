@@ -1,5 +1,5 @@
 # 📍 Estado — AP_LFS_InSim (lfs_insim)
-> Actualizado: 2026-10-13 (S19): **W9 hecha** (comandos como invitado en un servidor ajeno, probados en el LFS real;
+> Actualizado: 2026-10-13 (S19): **W9 hecha** (comandos como invitado, probados en el LFS real; prefijo propio por comando, W9.7;
 > sin publicar, en CHANGELOG «Unreleased»). Antes, en S18: **W7 y W8 hechas**. La biblioteca está validada en el LFS real
 > y tiene la API de alto nivel (`@insim.on.IS_NPL`, `insim.send.IS_MST(...)`, `received` / `sent`,
 > `await insim.request(...)`, `Roster`, `say()` / `command()`, `on_command`, `text.plain()`), cuatro
@@ -14,7 +14,7 @@
 > (el tag debe ser `v<version>`); aprobar el entorno `pypi` (pedirlo cada vez; con permiso, el agente lo aprueba
 > por la API: `gh api -X POST .../actions/runs/<id>/pending_deployments -F "environment_ids[]=<id>" -f state=approved`,
 > con `GH_TOKEN` de `AdrianPascarella`). Una versión publicada
-> no se puede resubir. `_connection.py` va por 485 líneas (aviso de `verify` en 500): lo que crezca, en un
+> no se puede resubir. `_connection.py` va por 496 líneas (aviso de `verify` en 500): lo que crezca, en un
 > módulo propio (los comandos de W8.2, en `_commands.py`). Ver `USER_ACTIONS.md`.
 
 ## Dónde estamos
