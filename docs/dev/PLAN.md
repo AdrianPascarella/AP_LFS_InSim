@@ -323,7 +323,8 @@ equivalencia pasa en todas las formas para todos los paquetes; `verify` y el CI 
 - [x] **W8.5** — Tests de `LEGADO.md` §3: enviar `IS_REO`, `IS_HCP` e `IS_IPB`; orden al reconectar (P22);
   tormenta de reconexión (P24) — hecho en S18: `tests/test_fixed_lists.py` nuevo; P22 y P24 ya estaban fijados
   (comprobado con mutaciones) → LOG.md S18
-- [ ] **Publicar 0.4.0** (W8.2–W8.5) tras probar en LFS real (U8) y, si se elige, tras U9
+- [x] U9 (listas cortas rellenas con ceros, S18) · U8 probada en LFS real (S18; P9 encontrado y arreglado)
+- [ ] **Publicar 0.4.0** (W8.2–W8.5, U9, P9) con el visto bueno de U8 y permiso del usuario
 
 **Criterios de aceptación:** cada tarea con tests (en rojo antes del código), guía y CHANGELOG; `verify` y el
 CI en verde; ningún módulo por encima del aviso de tamaño.

@@ -42,6 +42,32 @@ CHANGELOG «Unreleased»; `API_DESIGN.md` al día.
 **Verificación:** `verify` PASS (525 tests); CI `verify` en verde en `dev` (run 38424412941).
 **Pedido al usuario:** U8 (permiso para probar en LFS real antes de 0.4.0) y U9 (decidir las listas cortas).
 
+**U9 cerrada** (el usuario: «Sigamos tu recomendación»). Al aplicarla, el agente acotó la recomendación: solo
+se rellenan con ceros las listas donde el cero significa «nada» (`IS_REO.PLID`, `IS_HCP.Info`); `Tyres` no (0 es
+el neumático R1). `ZERO_FILLED` en `spec_overrides.py`; `Array(..., fill=)`; el generador se para si la entrada no
+es una lista fija (comprobado). Pasarse de largo sigue siendo error. Tests en rojo antes; CHANGELOG.
+
+**U8: prueba en LFS real** (el usuario: «Probemoslo, te doy permiso»). LFS ya estaba abierto por el usuario; no
+se tocó `cfg.txt` ni se cerró LFS. Script en el scratchpad (`live_w8.py`, `probe.py`); comandos tecleados con
+`lfs_screen.ps1` desde PowerShell.
+- **Primera pasada: el usuario estaba como invitado en un servidor online** («testing»). Los comandos llegaron
+  (UCID 1) con los argumentos convertidos, pero cada respuesta salió como «IS_MTC - only for multiplayer
+  hosts»: desde un invitado LFS no acepta `IS_MTC`. Limitación de LFS, no de la biblioteca. `!aic` (admin)
+  corrió para UCID 1: LFS lo marcaba admin de ese servidor (preguntado al usuario).
+- **Segunda pasada, en la pantalla de inicio:** `!speed abc` → uso; `!speed ?` → uso y docstring; `!speed 80 Bob`
+  → «Limit for Bob: 80 km/h»; `!aic` → la lista; `!aic start 3`; `!secret` → «You may not use !secret». Todo
+  visto en la captura.
+- **P9 encontrado** (1 error de orden en ~5400 `IS_MCI`): dos paquetes en la misma lectura TCP adelantaban el
+  `before` del segundo al `after` del primero; con `Roster`, un UCID reutilizado en la misma lectura perdía la
+  conexión nueva. Dos tests en rojo; arreglo: `await asyncio.sleep(0)` tras cada paquete en `_read`.
+  `DIAGNOSIS.md` P9. Commit `d796189`.
+- **Unidades (W8.3), con el usuario conduciendo en un jugador:** `speed_kmh` frente a la velocidad derivada de
+  `x_m`/`y_m` entre `IS_MCI` seguidos: mediana 1,002 (936 muestras > 20 km/h, máx. 212 km/h). Escalas de
+  velocidad y posición confirmadas. `watch()`: 0 errores de orden en 2399 `IS_MCI`.
+- Sin probar en real: `IS_REO` / `IS_HCP` enviados (bytes cubiertos por tests). OutGauge no se comparó (habría
+  que tocar `cfg.txt`); la derivada de posiciones es una comprobación independiente.
+**Verificación:** `verify` PASS.
+
 ## S17 — 2026-10-13 — Revisión de W7.7 y W7.8: solo los subtipos que LFS envía
 
 **Inicio:** `session_start_check` PASS (rama, identidad, pull, plantilla v3); `verify` PASS (477) antes de tocar nada.
