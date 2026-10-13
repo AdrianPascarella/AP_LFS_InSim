@@ -449,7 +449,9 @@ def test_on_connect_runs_after_every_connection() -> None:
 def test_lfs_closing_at_once_is_reported_and_slows_down(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    # A wrong admin password: LFS closes the connection without IS_VER (see FakeLFS).
+    # A wrong admin password: LFS closes the connection without IS_VER (see FakeLFS). The wait
+    # must keep growing: resetting it made the previous project reconnect ~250 times in 25 s
+    # until LFS said "TCP excess" (LEGADO.md P24).
     async def test(lfs: FakeLFS) -> None:
         insim = InSim(port=lfs.port, admin_password="wrong")
         insim._retry_delays = (0.01, 0.3)

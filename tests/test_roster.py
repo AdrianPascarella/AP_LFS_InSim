@@ -192,6 +192,8 @@ def test_a_player_of_an_unknown_connection_waits_for_it() -> None:
 
 
 def test_the_state_is_rebuilt_after_reconnecting() -> None:
+    # The previous project cleared after asking again, and lost LFS's quick answer (LEGADO.md
+    # P22): clearing after request_all() makes this fail.
     async def test(lfs: FakeLFS, insim: InSim, roster: Roster) -> None:
         lfs.replies[TINY.NCN] = [host()]
         lfs.replies[TINY.NPL] = [npl(9, 0, "Host")]
