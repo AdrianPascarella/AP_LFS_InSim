@@ -309,7 +309,7 @@ def emit_structs(
         body.append(f"    _LAYOUT = (\n{layout}    )\n")
     packet_names = ", ".join(s.name for s in structs if s.name.startswith("IS_"))
     if packet_names:
-        body.append(f"\n\n_c.register({packet_names})\n")
+        body.append(f"\n\nregister({packet_names})\n")
     text = enum_classes(local_enums) + "".join(body)
     out = [header, f'"""{MODULE_DOCS[module]}"""\n\n']
     out.append("from __future__ import annotations\n\n")
@@ -323,8 +323,10 @@ def emit_structs(
     if "(_x." in text:
         out.append("from lfs_insim.packets import _extras as _x\n")
     bases = [b for b in ("OptionalParts", "Structure") if re.search(rf"[(,] ?{b}\):", text)]
+    if packet_names:
+        bases.append("register")
     if bases:
-        out.append(f"from lfs_insim.packets._codec import {', '.join(bases)}\n")
+        out.append(f"from lfs_insim.packets._structure import {', '.join(bases)}\n")
     packet_bases = sorted(
         {b for b, _ in DIRECTION_BASES.values() if re.search(rf"[(,] ?{b}\):", text)}
     )

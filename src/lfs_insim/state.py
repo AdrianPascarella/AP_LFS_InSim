@@ -34,7 +34,7 @@ from lfs_insim.packets import (
     IS_TOC,
     TINY,
 )
-from lfs_insim.packets._codec import InSimPacket
+from lfs_insim.packets._structure import InSimPacket
 
 __all__ = ["Connection", "Player", "Roster"]
 

@@ -9,9 +9,9 @@ from ipaddress import IPv4Address
 
 from lfs_insim.packets import _codec as _c
 from lfs_insim.packets import _extras as _x
-from lfs_insim.packets._codec import Structure
 from lfs_insim.packets._directions import BothWaysPacket, InfoPacket, InstructionPacket
 from lfs_insim.packets._enums import ISP
+from lfs_insim.packets._structure import Structure, register
 from lfs_insim.packets._types import Vec, Vector
 
 __all__ = [
@@ -2767,7 +2767,7 @@ class IS_BTT(InfoPacket):
     )
 
 
-_c.register(
+register(
     IS_ISI,
     IS_TINY,
     IS_SMALL,

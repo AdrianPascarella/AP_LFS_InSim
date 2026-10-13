@@ -47,8 +47,8 @@ from lfs_insim.packets import (
     ISF,
     TINY,
 )
-from lfs_insim.packets._codec import InSimPacket, Structure, unpack_insim
 from lfs_insim.packets._directions import InstructionPacket
+from lfs_insim.packets._structure import InSimPacket, Structure, unpack_insim
 
 REPORTS = Path(__file__).resolve().parent / "live_reports"
 

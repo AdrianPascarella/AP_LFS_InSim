@@ -8,7 +8,7 @@ from fake_lfs import FakeLFS
 
 from lfs_insim._stream import PacketStream
 from lfs_insim.packets import IS_ISI, IS_MST, IS_TINY, IS_VER, TINY
-from lfs_insim.packets._codec import InSimPacket
+from lfs_insim.packets._structure import InSimPacket
 
 
 class Client:

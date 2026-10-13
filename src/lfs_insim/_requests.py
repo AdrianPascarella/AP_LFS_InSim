@@ -34,7 +34,7 @@ from lfs_insim.packets import (
     IS_VER,
     TINY,
 )
-from lfs_insim.packets._codec import InSimPacket
+from lfs_insim.packets._structure import InSimPacket
 
 SINGLE: dict[type[InSimPacket], TINY] = {
     IS_VER: TINY.VER,

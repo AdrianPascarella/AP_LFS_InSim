@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from enum import IntFlag
 
 from lfs_insim.packets import _codec as _c
-from lfs_insim.packets._codec import OptionalParts, Structure
+from lfs_insim.packets._structure import OptionalParts, Structure
 from lfs_insim.packets._types import Vec, Vector
 
 __all__ = ["OSO", "OutSimInputs", "OutSimMain", "OutSimPack", "OutSimPack2", "OutSimWheel"]

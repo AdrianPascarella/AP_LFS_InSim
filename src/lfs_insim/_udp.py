@@ -12,7 +12,7 @@ from lfs_insim import packets as _p
 from lfs_insim._handlers import Handlers
 from lfs_insim._run import run
 from lfs_insim.packets import OutGaugePack, OutSimPack, OutSimPack2, PacketError
-from lfs_insim.packets._codec import Structure
+from lfs_insim.packets._structure import Structure
 
 log = logging.getLogger("lfs_insim")
 

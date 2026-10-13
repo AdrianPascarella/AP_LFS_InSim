@@ -28,8 +28,8 @@ from lfs_insim.packets import (
     TINY,
     PacketError,
 )
-from lfs_insim.packets._codec import InSimPacket
 from lfs_insim.packets._directions import InstructionPacket
+from lfs_insim.packets._structure import InSimPacket
 
 log = logging.getLogger("lfs_insim")
 

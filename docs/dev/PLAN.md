@@ -306,8 +306,9 @@ equivalencia pasa en todas las formas para todos los paquetes; `verify` y el CI 
 - **Versión 0.3.0 tras W8.1** (con W7.7 y W7.8 dentro); después, versiones pequeñas.
 - Los puntos B de `LEGADO.md` esperan a que los pida la primera aplicación (W6).
 
-- [ ] **W8.0** — Partir `packets/_codec.py` (525 líneas, más de las 500 del aviso) y preparar `_connection.py`
-  (407) para lo que va a crecer; sin cambiar nada de lo que se ve (red de seguridad, §5)
+- [x] **W8.0** — Partir `packets/_codec.py` (525 líneas, más de las 500 del aviso) y preparar `_connection.py`
+  (407) para lo que va a crecer; sin cambiar nada de lo que se ve (red de seguridad, §5) — hecho en S17:
+  `_structure.py` nuevo; `_connection.py` no se parte (lo de W8.1 va en `_handlers.py`) → LOG.md S17
 - [ ] **W8.1** — `InSim(errors="raise")` (A6); colores para enviar en `lfs_insim.text` (A7);
   `@insim.on_disconnect` y saber si una conexión es una reconexión (A3). Después, publicar 0.3.0
 - [ ] **W8.2** — Comandos con tipos, ayuda y grupos (A1) y permisos (A2), en su propio módulo

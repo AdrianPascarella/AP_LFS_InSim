@@ -37,6 +37,18 @@ anotaciones de tipo** (no una lista en el decorador, que repite la firma); **per
 `allow=función`** (no una lista de usuarios ni roles); **0.3.0 tras W8.1** (versiones pequeñas, no una grande
 al final). W8.0 va primero: `_codec.py` ya pasa del aviso de tamaño y `_connection.py` va a crecer.
 
+**W8.0 hecha (estructura, sin cambiar comportamiento; §5):** `packets/_codec.py` (525) se partió en `_codec.py`
+(codecs de campo, 425) y `_structure.py` nuevo (`Structure`, `OptionalParts`, `InSimPacket`, `register`,
+`unpack_insim`, `factory`; 108). **Movimiento demostrado:** un script comprobó que el texto de ambas partes es
+idéntico al original (solo cambian docstring e importaciones). `Nested` anota `Structure` con un import bajo
+`TYPE_CHECKING` (si no, el import sería circular). El generador importa las bases y `register` de `_structure`;
+los generados solo cambian sus importaciones. **Red en rojo:** quitar el relleno de `InSimPacket.pack` hizo
+fallar 2 tests; restaurado. `factory()` no lo usa el código, solo `test_codec.py`: se movió, no se borró
+(borrarlo quitaría un test). `_connection.py` (407) no se parte: lo de W8.1 va en `_handlers.py`; partirlo a
+ciegas sería trabajo sin motivo. `verify` PASS, 479 tests, sin aviso de tamaño.
+**Tropiezo:** `git checkout` no restaura un archivo nuevo sin seguimiento; la copia previa a la mutación lo
+salvó. Para pruebas de mutación en archivos nuevos, copia antes (o `git add` primero).
+
 ## S16 — 2026-10-13 — W7.6: equivalencia, tabla de direcciones, guía en forma canónica y 0.2.0
 
 **Inicio:** identidad git correcta (`AdrianPascarella`, gmail); `verify` PASS antes de tocar nada.

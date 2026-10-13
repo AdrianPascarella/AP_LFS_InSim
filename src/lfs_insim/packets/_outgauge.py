@@ -7,7 +7,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from lfs_insim.packets import _codec as _c
-from lfs_insim.packets._codec import Structure
+from lfs_insim.packets._structure import Structure
 
 __all__ = ["OutGaugePack"]
 

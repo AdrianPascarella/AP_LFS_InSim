@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 
 from lfs_insim.packets import ISP, PacketError
-from lfs_insim.packets._codec import InSimPacket, unpack_insim
+from lfs_insim.packets._structure import InSimPacket, unpack_insim
 
 log = logging.getLogger("lfs_insim")
 

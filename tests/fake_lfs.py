@@ -26,7 +26,7 @@ from typing import Any, Self, TypeVar, cast
 
 from lfs_insim._stream import PacketStream
 from lfs_insim.packets import IS_ISI, IS_TINY, IS_VER, TINY
-from lfs_insim.packets._codec import InSimPacket
+from lfs_insim.packets._structure import InSimPacket
 
 P = TypeVar("P", bound=InSimPacket)
 

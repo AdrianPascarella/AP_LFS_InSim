@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from lfs_insim.packets._codec import Scalar, Structure
+from lfs_insim.packets._codec import Scalar
+from lfs_insim.packets._structure import Structure
 
 
 @dataclass(kw_only=True)

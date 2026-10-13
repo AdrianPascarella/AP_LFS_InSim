@@ -6,25 +6,26 @@
 > **`lfs-insim 0.2.0` está publicado en PyPI** (S16, release `v0.2.0`).
 > **W7 está hecha entera** (W7.7, S16: `@insim.on.IS_TINY(TINY.MPE)`; W7.8, S17: solo los subtipos que LFS envía,
 > generados en `_subtypes.py`; en `dev` sin publicar: CHANGELOG «Unreleased»).
-> **▶️ SIGUIENTE: W8.0** (partir `_codec.py` y preparar `_connection.py`), luego W8.1 y publicar 0.3.0. W8 abierta
+> **▶️ SIGUIENTE: W8.1** (`errors="raise"`, colores, `on_disconnect`) y publicar 0.3.0. W8.0 hecha en S17. W8 abierta
 > y detallada con el usuario en S17 (`PLAN.md`, W8): botones fuera, comandos por anotaciones, permisos
 > `admin=True` / `allow=`. W7.7, W7.8 y el CHANGELOG «Unreleased» esperan a la
 > siguiente versión: se publican con lo próximo que se añada.
 > **Receta de una versión nueva:** versión y CHANGELOG en
 > `dev`; `verify` en verde; avance rápido de `dev` a `main`; `gh release create vX.Y.Z --target main`
 > (el tag debe ser `v<version>`); aprobar el entorno `pypi` (pedirlo cada vez). Una versión publicada
-> no se puede resubir. `_connection.py` va por ~405 líneas y `_codec.py` pasa de 500 (aviso de
-> `verify`): lo próximo que crezca, en un módulo propio. Ver `USER_ACTIONS.md`.
+> no se puede resubir. `_connection.py` va por ~407 líneas (aviso de `verify` en 500): lo que añada W8.1
+> va en `_handlers.py`, y lo que crezca, en un módulo propio. Ver `USER_ACTIONS.md`.
 
 ## Dónde estamos
-Fase activa: **W8** (abierta en S17); siguiente tarea, W8.0.
+Fase activa: **W8** (abierta en S17); W8.0 hecha; siguiente tarea, W8.1.
 
 - **Cómo se genera:** `.venv/Scripts/python scripts/generate_packets.py` lee
   `spec/cache/InSim.txt` y `spec/cache/OutSimPack.txt` (con `scripts/spec_parser.py`) y las
   excepciones de `scripts/spec_overrides.py`, y escribe en `src/lfs_insim/packets/` `_enums.py`,
   `_insim.py`, `_outsim.py`, `_outgauge.py` y `__init__.py`, que van en git y no se editan a mano.
   `--check` sale con 1 si no están al día. Los enums los construye `scripts/generate_enums.py`.
-  El núcleo escrito a mano es `packets/_codec.py`.
+  El núcleo escrito a mano es `packets/_codec.py` (los codecs de campo) y `packets/_structure.py`
+  (`Structure`, `InSimPacket`, `register`, `unpack_insim`; separado en W8.0).
 - **Si la generación se para con un error**, es a propósito: algo de la especificación no está
   cubierto. Se añade la entrada que pide en `spec_overrides.py`, nunca se salta.
 - `OutSimPack.txt` solo existe en este equipo (P3). Sin él, el generador salta `_outsim.py` y

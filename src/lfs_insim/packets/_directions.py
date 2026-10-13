@@ -7,7 +7,7 @@ packets, and the "both ways" ones are both.
 
 from __future__ import annotations
 
-from lfs_insim.packets._codec import InSimPacket
+from lfs_insim.packets._structure import InSimPacket
 
 
 class InfoPacket(InSimPacket):
