@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.6.0
 
 - **Breaking:** chat commands are a plugin. `commands = insim.use(Commands)`, then
   `@commands.on_command(...)` and `commands.command_group(...)`; `InSim` no longer has
