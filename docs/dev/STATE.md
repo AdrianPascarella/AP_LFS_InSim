@@ -12,7 +12,9 @@
 > y W10.5** (`use()`, `Plugin`, funciones como plugins, `Commands` como plugin —cambio incompatible, sin
 > publicar—, peticiones compartidas, `ready()`, `need()`). W10.6, W10.7 y W10.0 hechas (`reserve_click_ids()`,
 > `on_close`; LFS acepta hasta 8 programas InSim a la vez). W10.9 hecha
-> (`lfs_insim.testing.FakeLFS`). Sigue **W10.8** (guía de plugins y ejemplos) y después W10.10 (0.6.0).
+> (`lfs_insim.testing.FakeLFS`). W10.8 hecha (guía
+> `plugins.md`, ejemplos como plugins, `together.py`). **Falta W10.10: publicar 0.6.0, con permiso del
+> usuario** (cambio incompatible: `Commands`). U12 (comodidad) abierta.
 > Tareas en `PLAN.md`; diseño en `API_DESIGN.md`
 > («Plugins»); por qué, en `LOG.md` S20. **W6 espera a W10**; su alcance ya está decidido (en `PLAN.md`).
 > **Receta de una versión nueva:** versión y CHANGELOG en

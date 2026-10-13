@@ -3,11 +3,13 @@
 import asyncio
 import importlib.util
 import socket
+import sys
 from pathlib import Path
 from types import ModuleType
 
 import pytest
 
+from lfs_insim import InSim
 from lfs_insim.packets import (
     BFN,
     IS_BFN,
@@ -25,6 +27,7 @@ from lfs_insim.packets import (
     TINY,
     OutGaugePack,
 )
+from lfs_insim.state import Roster
 from lfs_insim.testing import FakeLFS
 
 EXAMPLES = Path(__file__).resolve().parent.parent / "examples"
@@ -51,17 +54,18 @@ async def _until(condition: object, timeout: float = 2.0) -> None:
 
 
 def test_every_example_is_tested() -> None:
-    tested = {"hello", "who", "gauge", "buttons"}
+    tested = {"hello", "who", "gauge", "buttons", "together"}
     assert {path.stem for path in EXAMPLES.glob("*.py")} == tested
 
 
 def test_hello(capsys: pytest.CaptureFixture[str]) -> None:
-    example = load("hello")
+    insim = InSim(prefix="!")
+    insim.use(load("hello").hello)
 
     async def main() -> None:
         async with FakeLFS() as lfs:
-            example.insim.port = lfs.port
-            async with example.insim:
+            insim.port = lfs.port
+            async with insim:
                 await lfs.wait_connected()
                 await lfs.send(typed("!hello", ucid=4))
                 reply = await lfs.wait_for(IS_MTC)
@@ -72,7 +76,9 @@ def test_hello(capsys: pytest.CaptureFixture[str]) -> None:
 
 
 def test_who(capsys: pytest.CaptureFixture[str]) -> None:
-    example = load("who")
+    insim = InSim(prefix="!")
+    insim.use(load("who").who)
+    roster = insim.use(Roster)  # the plugin's own
 
     async def main() -> None:
         async with FakeLFS() as lfs:
@@ -81,14 +87,14 @@ def test_who(capsys: pytest.CaptureFixture[str]) -> None:
                 IS_NPL(PLID=1, UCID=2, PName="^1^h1 Bob", CName="XFG", NumP=2),
                 IS_NPL(PLID=2, UCID=0, PType=2, PName="AI 1", CName="FBM", NumP=2),
             ]
-            example.insim.port = lfs.port
-            async with example.insim:
+            insim.port = lfs.port
+            async with insim:
                 await lfs.wait_connected()
-                await _until(lambda: len(example.roster.players) == 2)
+                await _until(lambda: len(roster.players) == 2)
                 await lfs.send(typed("!who"))
                 replies = [(await lfs.wait_for(IS_MSL)).Msg for _ in range(2)]
                 await lfs.send(IS_PLL(PLID=1))
-                await _until(lambda: 1 not in example.roster.players)
+                await _until(lambda: 1 not in roster.players)
         assert replies == ["^1^h1 Bob^8: XFG", "AI 1^8: FBM (AI)"]
 
     asyncio.run(main())
@@ -123,19 +129,22 @@ def test_gauge() -> None:
 
 
 def test_buttons() -> None:
-    example = load("buttons")
+    insim = InSim(prefix="!")
+    insim.reserve_click_ids(5)  # another plugin's: the example's buttons come after them
+    insim.use(load("buttons").buttons)
 
     async def main() -> None:
         async with FakeLFS() as lfs:
-            example.insim.port = lfs.port
-            async with example.insim:
+            insim.port = lfs.port
+            async with insim:
                 await lfs.wait_connected()
                 await lfs.send(typed("!buttons"))
                 click_me, type_here = await lfs.wait_for(IS_BTN), await lfs.wait_for(IS_BTN)
-                await lfs.send(IS_BTC(ReqI=1, ClickID=example.CLICK_ME))
+                assert (click_me.ClickID, type_here.ClickID) == (5, 6)
+                await lfs.send(IS_BTC(ReqI=1, ClickID=click_me.ClickID))
                 updated = await lfs.wait_for(IS_BTN)
                 await lfs.wait_for(IS_BTN)
-                await lfs.send(IS_BTT(ReqI=1, ClickID=example.TYPE_HERE, Text="hola"))
+                await lfs.send(IS_BTT(ReqI=1, ClickID=type_here.ClickID, Text="hola"))
                 answer = await lfs.wait_for(IS_MSL)  # UCID 0: this computer
                 await lfs.send(typed("!hide"))
                 hidden = await lfs.wait_for(IS_BFN)
@@ -143,6 +152,35 @@ def test_buttons() -> None:
         assert (type_here.TypeIn, type_here.Caption) == (20, "Your text")
         assert updated.Text == "Clicked 1 times"
         assert answer.Msg == "You typed: hola"
-        assert hidden.SubT == BFN.CLEAR
+        assert (hidden.SubT, hidden.ClickID, hidden.ClickMax) == (BFN.DEL_BTN, 5, 6)  # its own only
+
+    asyncio.run(main())
+
+
+def test_together(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.syspath_prepend(str(EXAMPLES))  # it imports hello, who and buttons, next to it
+    for name in ("hello", "who", "buttons"):
+        monkeypatch.delitem(sys.modules, name, raising=False)
+    example = load("together")
+
+    async def main() -> None:
+        async with FakeLFS() as lfs:
+            lfs.replies[TINY.NCN] = [IS_NCN(UCID=0, Total=1)]
+            example.insim.port = lfs.port
+            async with example.insim:
+                await lfs.wait_connected()
+                await lfs.send(typed("!hello"))
+                hello = await lfs.wait_for(IS_MSL)
+                await lfs.send(typed("!who"))
+                who = await lfs.wait_for(IS_MSL)
+                await lfs.send(typed("!buttons"))
+                button = await lfs.wait_for(IS_BTN)
+        assert (hello.Msg, who.Msg, button.ClickID) == (
+            "Hello from Python",
+            "Nobody is in the race",
+            0,
+        )
+        asked = [p for p in lfs.received if getattr(p, "SubT", None) == TINY.NCN]
+        assert len(asked) == 1  # one Roster for the three
 
     asyncio.run(main())

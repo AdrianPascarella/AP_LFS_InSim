@@ -26,21 +26,23 @@ game:
 ```python
 from lfs_insim import Command, Commands, InSim, received
 
-insim = InSim(name="hello", prefix="!")  # admin_password="..." if LFS has one
-commands = insim.use(Commands)
 
+def hello(insim: InSim) -> None:
+    """A plugin: `insim.use(hello)` adds it to any InSim, alone or with other plugins."""
+    commands = insim.use(Commands)
 
-@insim.on.IS_VER
-def connected(packet: received.IS_VER) -> None:
-    print(f"Connected to LFS {packet.Version}, InSim {packet.InSimVer}")
+    @insim.on.IS_VER
+    def connected(packet: received.IS_VER) -> None:
+        print(f"Connected to LFS {packet.Version}, InSim {packet.InSimVer}")
 
-
-@commands.on_command("hello")
-def hello(command: Command) -> None:
-    command.reply("Hello from Python")
+    @commands.on_command("hello")
+    def answer(command: Command) -> None:
+        command.reply("Hello from Python")
 
 
 if __name__ == "__main__":
+    insim = InSim(name="hello", prefix="!")  # admin_password="..." if LFS has one
+    insim.use(hello)
     insim.run()  # blocks until Ctrl+C; reconnects on its own if LFS restarts
 ```
 
@@ -53,12 +55,14 @@ if __name__ == "__main__":
 | Send a packet, chat or `/commands` | `insim.send.IS_XXX(...)`, `insim.say(...)`, `insim.command(...)` |
 | Ask LFS and wait for the answer | `await insim.request(IS_STA)`, `request_all(...)` |
 | Run something on a rhythm | `@insim.every(seconds)` |
-| Know who is connected and who is driving | `lfs_insim.state.Roster` |
+| Know who is connected and who is driving | `roster = insim.use(Roster)` (`lfs_insim.state`) |
+| Write a plugin, alone or with others | a function that takes the `InSim`: `insim.use(plugin)` |
+| Test without the game | `lfs_insim.testing.FakeLFS` |
 | Read car physics or the dashboard | `OutSim` and `OutGauge` |
 | Show LFS text without colour codes | `lfs_insim.text.plain(...)` |
 
-The guide is in [`docs/`](docs/README.md). Short, runnable programs are in [`examples/`](examples): `hello.py`, `who.py`, `buttons.py` and
-`gauge.py`.
+The guide is in [`docs/`](docs/README.md). Short, runnable programs are in [`examples/`](examples): `hello.py`, `who.py`, `buttons.py`,
+`gauge.py`, and `together.py`, which runs the first three in one program.
 
 ## Development
 

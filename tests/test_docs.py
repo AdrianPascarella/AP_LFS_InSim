@@ -2,6 +2,7 @@
 
 import ast
 import re
+import sys
 from pathlib import Path
 
 import pytest
@@ -24,8 +25,17 @@ def test_code_blocks_are_python_and_import_what_exists(page: Path) -> None:
     for code in re.findall(r"```python\n(.*?)```", page.read_text(encoding="utf-8"), re.DOTALL):
         tree = ast.parse(code)
         for node in tree.body:
-            if isinstance(node, ast.Import | ast.ImportFrom):
+            if isinstance(node, ast.Import | ast.ImportFrom) and _checkable(node):
                 exec(compile(ast.Module([node], []), str(page), "exec"), {})
+
+
+def _checkable(node: ast.Import | ast.ImportFrom) -> bool:
+    """Imports of lfs_insim and the standard library; not the reader's own modules (plugins.md
+    imports `hello` and `laps`, files of the reader's program)."""
+    names = (
+        [node.module or ""] if isinstance(node, ast.ImportFrom) else [a.name for a in node.names]
+    )
+    return all(n.split(".")[0] in {"lfs_insim", *sys.stdlib_module_names} for n in names)
 
 
 @pytest.mark.parametrize("page", PAGES, ids=ids(PAGES))

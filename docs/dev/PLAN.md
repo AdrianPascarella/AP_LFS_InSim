@@ -397,9 +397,9 @@ W10.8).
   `ClickID` para los botones. hecho en S20 → LOG.md S20
 - [x] **W10.7** — `on_close` por plugin (guardar lo suyo) y log y errores con el nombre del plugin.
   hecho en S20 → LOG.md S20
-- [ ] **W10.8** — Guía: escribir un plugin, usarlo solo (`python -m ...`) o combinado; ejemplos y README al día.
+- [x] **W10.8** — Guía: escribir un plugin, usarlo solo (`python -m ...`) o combinado; ejemplos y README al día.
   Ejemplos en forma de función; heredar o componer (con el ejemplo de IA del usuario: AIControl, AITraffic,
-  AIDrift); varios programas con `run()`.
+  AIDrift); varios programas con `run()`. hecho en S20 → LOG.md S20 (validación: U12)
 - [x] **W10.9** — Kit de pruebas público (`lfs_insim.testing`, el LFS falso) para probar plugins de otros
   proyectos (streamer-project, FreeCam). API pública nueva: se diseña al llegar. hecho en S20 → LOG.md S20
 - [ ] **W10.10** — Publicar (0.6.0, con permiso del usuario).

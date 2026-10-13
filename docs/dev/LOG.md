@@ -145,6 +145,20 @@ import nuevo, no se podían recoger. Guía nueva `docs/testing.md`, cuyo ejemplo
   `insim.md`, `units.md`, `roster-and-text.md`); restaurados desde git, porque sus únicos cambios eran de ruff.
 - `verify` PASS (585 tests).
 
+**W10.8 hecha:** guía `docs/plugins.md` (escribir un plugin, combinarlos, compartir, `ready()`, `need()`, botones,
+`on_close`, opciones y clases, combinar o heredar con el ejemplo de IA del usuario, hasta 8 conexiones,
+pruebas). `hello`, `who` y `buttons` pasan a ser funciones-plugin con `if __name__ == "__main__"`; `buttons` usa
+`reserve_click_ids(2)` y borra solo sus botones (`BFN.DEL_BTN` con su rango, no `BFN.CLEAR`); `gauge` se queda
+como script (mezcla OutGauge, que no es plugin de InSim). Nuevo `examples/together.py` (los tres en una
+conexión; su test comprueba un solo `TINY_NCN`). README y `getting-started.md` con el primer programa como
+plugin.
+- **Tests cambiados, con motivo:** `test_examples.py`, por la forma nueva de los ejemplos (crean el `InSim` y
+  hacen `use()`), y `test_docs.py`: ejecutaba todos los `import` de los bloques, y `plugins.md` importa módulos
+  del lector (`hello`, `laps`); ahora solo los de `lfs_insim` y de la biblioteca estándar, que es lo que
+  comprobaba (nombres de la biblioteca mal escritos).
+- `DEL_BTN` no se ha visto en el LFS real (la pantalla es punto ciego; LFS está en un servidor público del
+  usuario): va en U12, opcional. `verify` PASS (588 tests). **Pedido al usuario: U12.**
+
 ## S19 — 2026-10-13 — W9: comandos como invitado en un servidor ajeno
 
 **Inicio:** `session_start_check` PASS (rama, identidad, pull, plantilla v3). Documentos y realidad coinciden
