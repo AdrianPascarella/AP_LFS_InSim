@@ -32,12 +32,16 @@ en un venv limpio importa bien. **W5 completa.** Las versiones futuras: receta e
 **Legado:** a petición del usuario («no me acaba de gustar» algo respecto al anterior), explicada la
 biblioteca de cero y revisada a fondo `origin/refactor/estabilizacion`. Resultado: `docs/dev/LEGADO.md`
 (propuestas sin decidir: comandos con tipos/ayuda/permisos, `on_disconnect`, ayudante de botones,
-unidades, modo `errors="raise"`, colores; y tres comprobaciones de tests). Falta que el usuario diga
-qué es lo que no le gusta y qué propuestas aprueba.
+unidades, modo `errors="raise"`, colores; y tres comprobaciones de tests). El usuario aprobó «prácticamente todo»; sus reparos llevaron a W7.
 
-**Pendiente:** elegir la fase siguiente (W6 u otras mejoras). 
-**Tests de `every`:** arreglados. Causa: el reloj de `time.monotonic()` en Windows <3.13 (~15 ms);
-tests con `perf_counter`. Verificado solo en 3.14 local; lo confirma el CI.
+**Decisiones (usuario):** la pega era no saber qué paquetes se reciben, se envían o van en ambos sentidos
+(el anterior lo tenía en `docs/tutorial/` y en los `.pyi`). Se comprobó que la especificación ya marca la
+dirección (`enum` ISP). Acordado: clases base por dirección, módulos `received`/`sent`, y métodos
+`on_IS_XXX` / `send_IS_XXX` generados, con todas las formas válidas y `on_IS_XXX` canónica; también
+OutSim y OutGauge. Los plugins: `Roster` ya lo es; sin cargador. Apuntado como **W7** y **W8** en `PLAN.md`
+y en `LEGADO.md` §5. No se tocó código.
+
+**Pendiente:** abrir W7 (o elegir otra fase).
 
 ## S13 — 2026-10-13 — W5 detallada
 

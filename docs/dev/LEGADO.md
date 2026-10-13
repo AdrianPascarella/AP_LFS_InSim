@@ -89,3 +89,19 @@
 3. A5 (unidades), porque la cámara libre y la IA los necesitan.
 4. A4 (botones), el más grande: diseñarlo con la aplicación de botones delante, no a ciegas.
 5. Lo de la sección 3 (tests) en paralelo; B-x según lo pida la primera aplicación (W6).
+
+## 5. Decidido con el usuario (S14)
+- Aprobado «prácticamente todo» de las secciones 2 y 4. Se plantea como **W7** (generador: dirección y
+  atajos) y **W8** (el resto de mejoras), en `PLAN.md`.
+- **Dirección de los paquetes:** sale de la especificación (el `enum` ISP ya marca `info` /
+  `instruction` / `both ways`). No se recupera el `.pyi` del anterior: servía para los `send_ISP_*`
+  mágicos, que no vuelven; ahora son métodos reales generados.
+- **Todas las formas, canónica `on_IS_XXX`:** `@insim.on_IS_NPL`, `@insim.on(IS_NPL)` y
+  `@insim.on(received.IS_NPL)`; y lo mismo para enviar (`send_IS_XXX`, `send(...)`, `sent.`).
+  Incluye OutSim y OutGauge. Condiciones: una sola fuente, test de equivalencia, una forma en la
+  guía, sin más variantes.
+- **Plugins:** `Roster` ya es un plugin; no se recupera el cargador, los manifiestos ni el CLI. Primero
+  hacer pública su puerta (`order="before"`); una convención de clase con métodos decorados solo si
+  el ayudante de botones o la primera aplicación (W6) la piden.
+- Pendiente de decidir: forma de las anotaciones de los comandos (A1), y si la tabla de direcciones
+  va en la documentación pública (propuesta: sí).
