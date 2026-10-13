@@ -118,6 +118,12 @@ primero: 3 tests. `verify` PASS (577 tests). **Hubo un fallo mío al documentar 
 se cortó a medias y el commit salió igual (iba en otra línea, no encadenado); se completó en dos commits más.
 Desde W10.6, el script va encadenado al commit con `&&`.
 
+**W10.7 hecha:** `@insim.on_close`, al final de `_close`: después de `on_disconnect` y de cancelar los
+manejadores, una sola vez, también sin haber conectado nunca y al cancelar la tarea (lo que hace Ctrl+C en
+`run()`). Rojo primero: 2 de 4 tests (los otros dos, de caracterización: el de cancelación, escrito después
+de implementar, y el del log). **El nombre del plugin en el log ya salía**: `Handlers._failed` usa el
+`__qualname__` (`camera.<locals>.broken`); se fija con un test, sin código nuevo. `verify` PASS (581 tests).
+
 ## S19 — 2026-10-13 — W9: comandos como invitado en un servidor ajeno
 
 **Inicio:** `session_start_check` PASS (rama, identidad, pull, plantilla v3). Documentos y realidad coinciden

@@ -405,7 +405,10 @@ class FreeCam(Plugin):                      # o una clase, si aporta herencia, o
   la biblioteca para que dos plugins con botones no se pisen. *Precisado en W10.6:* el comando repetido ya lo
   detectaba `Commands` (uno compartido); `insim.reserve_click_ids(n)` da un `range` consecutivo, 240 en total
   (0–239, InSim.txt); no hay devolución (nadie la ha pedido). `BFN_CLEAR` borra los de todos: va en la guía.
-- **`on_close` por plugin** y log con el nombre del plugin.
+- **`on_close` por plugin** y log con el nombre del plugin. *Precisado en W10.7:* `@insim.on_close`, una vez al
+  cerrar (`close()`, fin de `async with` o de `run()`, Ctrl+C), después del último `on_disconnect` y con los
+  demás manejadores parados; también si LFS nunca contestó. El nombre del plugin ya salía en el log por el
+  `__qualname__` del manejador (`camera.<locals>.broken`, `FreeCam._start`): sin cambios, fijado con un test.
 - **Solo o combinado:** el paquete de una aplicación trae su arranque (`python -m freecam`: crea un `InSim`,
   hace `use(FreeCam)` y lo ejecuta); el código del plugin es el mismo.
 - *Descartado* (el cargador del proyecto anterior, P4): manifiestos `insim.json`, carga por carpetas, buscar

@@ -16,6 +16,8 @@
 - `insim.need(flags=..., interval_ms=...)`: what a plugin needs in `IS_ISI`, added to the rest
   (flags added up, the shortest interval kept). Asked for while connected, from the next connection.
 - `insim.reserve_click_ids(count)`: a range of button ClickIDs that no other plugin gets.
+- `@insim.on_close`: once, when the InSim is closed (also on Ctrl+C), for a plugin to save what it
+  keeps.
 - `await roster.ready()` waits until the roster has the whole picture of the connection.
 - `Roster` is a plugin: `roster = insim.use(Roster)` (`Roster(insim)` still works, once). The chat
   commands now share it instead of making a second roster that asked LFS for everyone again.

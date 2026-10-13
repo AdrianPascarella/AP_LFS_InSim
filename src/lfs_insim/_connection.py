@@ -98,6 +98,7 @@ class InSim(StopsOnError):
         self._requests = _requests.Requests()
         self._connect_handlers: list[ConnectHandler] = []
         self._disconnect_handlers: list[ConnectHandler] = []
+        self._close_handlers: list[ConnectHandler] = []
         self._connections = 0  # connections opened by `async with` / run(), for `reconnected`
         self._announced = False  # on_connect ran for this connection, so on_disconnect will
         self._every: list[tuple[float, ConnectHandler]] = []
@@ -167,6 +168,16 @@ class InSim(StopsOnError):
         `async def` one is awaited, also when closing.
         """
         self._disconnect_handlers.append(handler)
+        return handler
+
+    def on_close(self, handler: ConnectHandler) -> ConnectHandler:
+        """Decorator: call the function (no arguments) once, when the InSim is closed (close(),
+        the end of `async with` or of run(), Ctrl+C): the place for a plugin to save what it keeps.
+
+        After the last on_disconnect, with the other handlers stopped; an `async def` one is
+        awaited. It runs even if LFS never answered.
+        """
+        self._close_handlers.append(handler)
         return handler
 
     def watch(
@@ -340,6 +351,8 @@ class InSim(StopsOnError):
             await asyncio.gather(task, return_exceptions=True)
         await self._disconnect()
         await self._handlers.cancel(caller)
+        for handler in self._close_handlers:
+            await self._handlers.call_and_wait(handler, (), "on_close")
 
     async def wait_closed(self) -> None:
         """Wait until close() is called (or, after a bare connect(), until the connection ends).

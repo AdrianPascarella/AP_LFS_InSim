@@ -394,7 +394,8 @@ W10.8).
   añadido con la conexión abierta → aviso. hecho en S20 → LOG.md S20
 - [x] **W10.6** — Choques entre plugins detectados en `use()`: mismo comando y prefijo; reparto de rangos de
   `ClickID` para los botones. hecho en S20 → LOG.md S20
-- [ ] **W10.7** — `on_close` por plugin (guardar lo suyo) y log y errores con el nombre del plugin.
+- [x] **W10.7** — `on_close` por plugin (guardar lo suyo) y log y errores con el nombre del plugin.
+  hecho en S20 → LOG.md S20
 - [ ] **W10.8** — Guía: escribir un plugin, usarlo solo (`python -m ...`) o combinado; ejemplos y README al día.
   Ejemplos en forma de función; heredar o componer (con el ejemplo de IA del usuario: AIControl, AITraffic,
   AIDrift); varios programas con `run()`.
