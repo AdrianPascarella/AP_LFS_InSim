@@ -3,22 +3,23 @@
 > y tiene la API de alto nivel (`@insim.on.IS_NPL`, `insim.send.IS_MST(...)`, `received` / `sent`,
 > `await insim.request(...)`, `Roster`, `say()` / `command()`, `on_command`, `text.plain()`), cuatro
 > ejemplos y `docs/packets.md` (tabla generada). U7 cerrada: el usuario vio las listas en su VS Code.
-> **`lfs-insim 0.2.0` está publicado en PyPI** (S16, release `v0.2.0`).
+> **`lfs-insim 0.3.0` está publicado en PyPI** (S17, release `v0.3.0`; antes 0.2.0 en S16).
 > **W7 está hecha entera** (W7.7, S16: `@insim.on.IS_TINY(TINY.MPE)`; W7.8, S17: solo los subtipos que LFS envía,
 > generados en `_subtypes.py`; en `dev` sin publicar: CHANGELOG «Unreleased»).
-> **▶️ SIGUIENTE: publicar 0.3.0** (versión ya en `dev`; antes, comprobar en LFS real que `^8` vuelve al color
-> por defecto, con permiso para abrir LFS; publicar pide permiso), luego **W8.2** (comandos). W8.0 y W8.1 hechas en S17. W8 abierta
+> **▶️ SIGUIENTE: W8.2** (comandos con tipos, ayuda, grupos y permisos). W8.0, W8.1 y 0.3.0 hechas en S17. W8 abierta
 > y detallada con el usuario en S17 (`PLAN.md`, W8): botones fuera, comandos por anotaciones, permisos
 > `admin=True` / `allow=`. W7.7, W7.8 y el CHANGELOG «Unreleased» esperan a la
 > siguiente versión: se publican con lo próximo que se añada.
 > **Receta de una versión nueva:** versión y CHANGELOG en
 > `dev`; `verify` en verde; avance rápido de `dev` a `main`; `gh release create vX.Y.Z --target main`
-> (el tag debe ser `v<version>`); aprobar el entorno `pypi` (pedirlo cada vez). Una versión publicada
+> (el tag debe ser `v<version>`); aprobar el entorno `pypi` (pedirlo cada vez; con permiso, el agente lo aprueba
+> por la API: `gh api -X POST .../actions/runs/<id>/pending_deployments -F "environment_ids[]=<id>" -f state=approved`,
+> con `GH_TOKEN` de `AdrianPascarella`). Una versión publicada
 > no se puede resubir. `_connection.py` va por 439 líneas (aviso de `verify` en 500): lo que crezca, en un
 > módulo propio (los comandos de W8.2, en `_commands.py`). Ver `USER_ACTIONS.md`.
 
 ## Dónde estamos
-Fase activa: **W8** (abierta en S17); W8.0 y W8.1 hechas; siguiente: publicar 0.3.0 y W8.2.
+Fase activa: **W8** (abierta en S17); W8.0, W8.1 y 0.3.0 hechas; siguiente: W8.2.
 
 - **Cómo se genera:** `.venv/Scripts/python scripts/generate_packets.py` lee
   `spec/cache/InSim.txt` y `spec/cache/OutSimPack.txt` (con `scripts/spec_parser.py`) y las

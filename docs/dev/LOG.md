@@ -92,6 +92,15 @@ salvó. Para pruebas de mutación en archivos nuevos, copia antes (o `git add` p
   15/15 repeticiones de los de conexión. Con el wheel nuevo, en LFS real: `connect` y `disconnect`.
 - **`errors="raise"` en vivo:** un manejador de `IS_VER` que falla → `run()` relanza «bug on purpose (LFS 0.8C31)».
 
+**Publicado 0.3.0:** CI `verify` en verde en los 8 trabajos (3.11–3.14, Windows y Ubuntu); avance rápido de `dev` a
+`main` (`ea4edc0`); release `v0.3.0` (pre-release, notas del CHANGELOG); `publish` se paró en el entorno `pypi`.
+El usuario preguntó qué tenía que aprobar y, tras la explicación, dijo «Hazlo tú directamente»: el agente lo
+aprobó por la API (`pending_deployments`, `state=approved`, con la cuenta `AdrianPascarella`, revisora del
+entorno). `publish` en verde; instalado desde PyPI en un venv limpio: 0.3.0, `coloured`, `on_disconnect`,
+`reconnected` y el rechazo de `TINY.NCN`; PyPI lista 0.3.0, 0.2.0 y 0.1.0.
+**Tropiezo de comunicación:** el agente lanzó una espera de hasta 10 minutos sin decir antes qué tenía que hacer el
+usuario en GitHub; el usuario la cortó. Al pedir una aprobación, explicar primero dónde y qué pulsar.
+
 ## S16 — 2026-10-13 — W7.6: equivalencia, tabla de direcciones, guía en forma canónica y 0.2.0
 
 **Inicio:** identidad git correcta (`AdrianPascarella`, gmail); `verify` PASS antes de tocar nada.

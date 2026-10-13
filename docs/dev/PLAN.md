@@ -311,8 +311,8 @@ equivalencia pasa en todas las formas para todos los paquetes; `verify` y el CI 
   `_structure.py` nuevo; `_connection.py` no se parte (lo de W8.1 va en `_handlers.py`) → LOG.md S17
 - [x] **W8.1** — `InSim(errors="raise")` (A6); colores para enviar en `lfs_insim.text` (A7);
   `@insim.on_disconnect` y saber si una conexión es una reconexión (A3). Después, publicar 0.3.0
-  — hecho en S17 (`insim.reconnected`; `Colour` y `coloured()`; versión 0.3.0 en `dev`, **sin publicar**:
-  falta comprobar `^8` en LFS real y el permiso del usuario) → LOG.md S17
+  — hecho en S17 (`insim.reconnected`; `Colour` y `coloured()`; `^8` comprobado en LFS real; **0.3.0 publicado
+  en PyPI**) → LOG.md S17
 - [ ] **W8.2** — Comandos con tipos, ayuda y grupos (A1) y permisos (A2), en su propio módulo
 - [ ] **W8.3** — Unidades: `lfs_insim.units` (funciones puras) y propiedades en los paquetes por `_extras.py` (A5)
 - [ ] **W8.4** — Hacer pública la forma en que `Roster` ve los paquetes antes y después de los manejadores
