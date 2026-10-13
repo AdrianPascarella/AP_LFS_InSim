@@ -413,7 +413,7 @@ class InSim(StopsOnError):
                 else:
                     log.warning(
                         "LFS closed the connection before answering IS_ISI "
-                        "(a wrong admin password?)"
+                        "(a wrong admin password, or 8 InSim programs already connected?)"
                     )
             delay = self._retry_delays[min(failures, len(self._retry_delays) - 1)]
             failures += 1

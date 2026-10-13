@@ -373,8 +373,9 @@ compartido = componer; heredar, para variantes que no van juntas.
 verde; ningún módulo por encima del aviso; prueba del agente en el LFS real (dos plugins con un `Roster` en
 una conexión y dos programas con conexiones separadas); validación de comodidad del usuario (U12, al acabar
 W10.8).
-- [ ] **W10.0** — Prueba en real: ¿acepta LFS varios programas InSim a la vez en el mismo puerto? Cambia la
-  guía (cuándo combinar en un proceso y cuándo conexiones aparte), no el diseño.
+- [x] **W10.0** — Prueba en real: ¿acepta LFS varios programas InSim a la vez en el mismo puerto? Cambia la
+  guía (cuándo combinar en un proceso y cuándo conexiones aparte), no el diseño. hecho en S20 → LOG.md S20
+  (sí: hasta 8; P11)
 - [x] **W10.1** — Test en rojo de P10 (dos `Roster` con comandos) y `insim.use(Plugin, **opciones)`: una
   instancia por tipo y por `InSim`, con su tipo; crear un segundo directamente da error; opciones distintas en
   un segundo `use()` dan error. `Roster` pasa a ser un plugin (`insim.use(Roster)`).

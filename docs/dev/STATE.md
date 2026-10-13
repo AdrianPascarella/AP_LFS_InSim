@@ -10,9 +10,9 @@
 > **▶️ SIGUIENTE: W10, plugins** (`insim.use(Roster)`, comandos como plugin propio, nada pedido dos veces,
 > `ready()`, flags por plugin, `ClickID`). Plan aceptado en S20. **Hechas W10.1, W10.11, W10.2, W10.3, W10.4
 > y W10.5** (`use()`, `Plugin`, funciones como plugins, `Commands` como plugin —cambio incompatible, sin
-> publicar—, peticiones compartidas, `ready()`, `need()`). W10.6 y W10.7 hechas (`reserve_click_ids()`, `on_close`).
-> Sigue **W10.8** (guía y ejemplos), que necesita antes **W10.0**:
-> W10.0 (prueba en real) cuando el usuario deje abrir LFS, antes de W10.8.
+> publicar—, peticiones compartidas, `ready()`, `need()`). W10.6, W10.7 y W10.0 hechas (`reserve_click_ids()`,
+> `on_close`; LFS acepta hasta 8 programas InSim a la vez). Sigue **W10.8** (guía y ejemplos) y W10.9 (kit
+> de pruebas: propuesto `lfs_insim.testing.FakeLFS`, falta el sí del usuario).
 > Tareas en `PLAN.md`; diseño en `API_DESIGN.md`
 > («Plugins»); por qué, en `LOG.md` S20. **W6 espera a W10**; su alcance ya está decidido (en `PLAN.md`).
 > **Receta de una versión nueva:** versión y CHANGELOG en

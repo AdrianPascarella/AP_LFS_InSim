@@ -463,6 +463,8 @@ def test_lfs_closing_at_once_is_reported_and_slows_down(
     with caplog.at_level(logging.WARNING, logger="lfs_insim"):
         run(test, admin="secret")
     assert "before answering" in caplog.text
+    # Also what happens with 8 InSim programs already connected (the real LFS, S20): not a password.
+    assert "8 InSim programs" in caplog.text
 
 
 def test_close_while_waiting_for_lfs_returns_at_once() -> None:

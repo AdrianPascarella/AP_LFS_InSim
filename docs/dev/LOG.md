@@ -124,6 +124,17 @@ manejadores, una sola vez, también sin haber conectado nunca y al cancelar la t
 de implementar, y el del log). **El nombre del plugin en el log ya salía**: `Handlers._failed` usa el
 `__qualname__` (`camera.<locals>.broken`); se fija con un test, sin código nuevo. `verify` PASS (581 tests).
 
+**W10.0 hecha, en el LFS real** (el usuario: «Sí, abre LFS y haz W10.0»). LFS **ya estaba abierto** (lo abrió el
+usuario después de la comprobación del inicio), como invitado en un servidor público («Always Ride Two», 46
+conexiones): no se abrió otro ni se cerrará al final (§ Configuración: solo se cierra el que abre el agente).
+InSim se activó con `lfs_screen.ps1` (`/insim=29999`; LFS se puso delante sin problema). Sonda de solo lectura
+en el scratchpad (`probe_multi.py`), **sin enviar nada al chat**:
+- Dos programas a la vez: los dos conectan y reciben **exactamente lo mismo** (47 `IS_NCN`, 8 `IS_MSO`, 20
+  `IS_CSC`, 17 `IS_UCO`…, mismas respuestas a `TINY_VER`/`NCN`/`ISM`).
+- Diez a la vez: **aceptó 8** y cerró el 9.º y el 10.º antes de contestar al `IS_ISI`.
+- **P11:** el aviso de la biblioteca culpaba a la contraseña; ahora nombra también el límite. Rojo primero.
+- `verify` PASS (581 tests). InSim queda escuchando en el 29999 del LFS del usuario.
+
 ## S19 — 2026-10-13 — W9: comandos como invitado en un servidor ajeno
 
 **Inicio:** `session_start_check` PASS (rama, identidad, pull, plantilla v3). Documentos y realidad coinciden

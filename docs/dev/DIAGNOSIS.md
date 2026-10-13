@@ -126,3 +126,11 @@ generadas, y las ideas de la conexión (reconexión, errores aislados por maneja
 - **Acción:** W10.1 (`insim.use()`: una instancia por tipo) y W10.2 (los comandos, plugin propio que usa
   `use(Roster)`); test en rojo primero.
 - Resuelto (S20): reproducido con el LFS falso (`TINY_ISM` pedido dos veces); `insim.use()` da una instancia por tipo, `Roster` hereda de `Plugin` (se registra al crearse) y los comandos usan `use(Roster)`. `tests/test_plugins.py`: en rojo antes del código y con la mutación «`Plugin` sin registrar».
+
+### P11 — El aviso de conexión rechazada culpaba solo a la contraseña   [RESUELTO en S20]
+- **Evidencia:** S20, W10.0 en el LFS real (invitado en un servidor público): con 10 programas InSim a la vez,
+  LFS aceptó 8 y cerró el 9.º y el 10.º antes de contestar al `IS_ISI`; la biblioteca avisó «a wrong admin
+  password?», que no era la causa.
+- **Impacto:** quien combine muchos programas busca el fallo en la contraseña.
+- Resuelto (S20): el aviso nombra las dos causas («…or 8 InSim programs already connected?»). Test
+  `test_lfs_closing_at_once_is_reported_and_slows_down` ampliado, en rojo antes del cambio.

@@ -409,6 +409,9 @@ class FreeCam(Plugin):                      # o una clase, si aporta herencia, o
   cerrar (`close()`, fin de `async with` o de `run()`, Ctrl+C), después del último `on_disconnect` y con los
   demás manejadores parados; también si LFS nunca contestó. El nombre del plugin ya salía en el log por el
   `__qualname__` del manejador (`camera.<locals>.broken`, `FreeCam._start`): sin cambios, fijado con un test.
+- **Varios programas a la vez** (W10.0, comprobado en el LFS real en S20): LFS acepta **hasta 8** conexiones
+  InSim en el mismo puerto, y cada una recibe todos los paquetes. Combinar en un proceso ahorra conexiones
+  y comparte estado; conexiones aparte, aislamiento. Va en la guía (W10.8).
 - **Solo o combinado:** el paquete de una aplicación trae su arranque (`python -m freecam`: crea un `InSim`,
   hace `use(FreeCam)` y lo ejecuta); el código del plugin es el mismo.
 - *Descartado* (el cargador del proyecto anterior, P4): manifiestos `insim.json`, carga por carpetas, buscar
