@@ -6,11 +6,13 @@
 > ejemplos en `examples/`, probados en cada push y comprobados en el LFS real. Decisiones en
 > `API_DESIGN.md`. El agente maneja LFS con `tests/lfs_screen.ps1`, que no envía nada si LFS no
 > está delante (PROTOCOL §13). `cfg.txt` está restaurado: OutSim/OutGauge en vivo pide permiso.
-> **▶️ SIGUIENTE: W5.6** — etiqueta `v0.1.0`, release en GitHub y publicación en PyPI (el entorno
-> `pypi` pide tu clic de revisor). W5.5 hecha en S14: `lfs-insim 0.1.0` está en TestPyPI y se instaló
-> en un venv limpio; `hello.py` con ese paquete probado con LFS en vivo. **`main` está al día con `dev` desde S14** (hizo falta: `workflow_dispatch` solo
-> funciona con el workflow en la rama por defecto). Publicar y crear tags pide permiso.
-> `_connection.py` va por ~405 líneas: lo próximo que crezca, en un módulo propio. Ver `USER_ACTIONS.md`.
+> **▶️ SIGUIENTE:** `lfs-insim 0.1.0` está **publicado en PyPI** (S14, release `v0.1.0`). Falta elegir fase:
+> W6 (primera aplicación aparte, esbozada) o mejoras de la biblioteca. **Receta de una versión nueva:**
+> subir `version` en `pyproject.toml` y añadir la sección a `CHANGELOG.md` en `dev`; `verify` en verde;
+> avance rápido de `dev` a `main`; `gh release create vX.Y.Z --target main` (el tag debe ser `v<version>`);
+> aprobar el entorno `pypi` (el usuario lo autorizó en S14 para 0.1.0; pedirlo cada vez). Una versión
+> publicada no se puede resubir. `main` está al día con `dev`. `_connection.py` va por ~405 líneas:
+> lo próximo que crezca, en un módulo propio. Ver `USER_ACTIONS.md`.
 
 ## Dónde estamos
 Fase siguiente: **W5 — Publicación**, detallada y sin empezar. W2, W3 y W4 están hechas enteras. Prueba en vivo: `tests/live_lfs.py` (cómo ejecutarla, en su docstring).

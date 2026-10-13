@@ -23,7 +23,13 @@ escribir `!hello` en el chat, LFS mostró «Hello from Python». LFS cerrado con
 protección de `lfs_screen.ps1` saltó (el usuario usaba otra ventana): no se envió nada y se esperó.
 Sigue sin probarse en otro equipo.
 
-**Pendiente:** W5.6. 
+**W5.6 hecha:** `main` al día con `dev`; `gh release create v0.1.0` (pre-release, alpha); el workflow
+`publish.yml` (run 38373393060) construyó y esperó al revisor del entorno `pypi`. **El usuario pidió
+que el agente aprobara el despliegue** («Hazlo tú mismo»): aprobado con
+`gh api .../pending_deployments`. Publicado `lfs-insim 0.1.0` en PyPI; `pip install lfs-insim==0.1.0`
+en un venv limpio importa bien. **W5 completa.** Las versiones futuras: receta en STATE.
+
+**Pendiente:** elegir la fase siguiente (W6 u otras mejoras). 
 **Tests de `every`:** arreglados. Causa: el reloj de `time.monotonic()` en Windows <3.13 (~15 ms);
 tests con `perf_counter`. Verificado solo en 3.14 local; lo confirma el CI.
 

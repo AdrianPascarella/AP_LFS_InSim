@@ -196,7 +196,7 @@ contra el LFS falso y, al final (W4.7), contra el LFS real, que maneja el agente
   con todos los escapados de InSim.txt y `who.py` imprimiendo `#773 A.Pascarella`.
   hecho en S12 → LOG.md S12 (nombre confirmado; la tabla, de InSim.NET: no está en InSim.txt)
 
-## W5 — Publicación   🔜 DETALLADA (S13), sin empezar
+## W5 — Publicación   ✅ HECHA (S14)
 **Objetivo:** documentación pública, versión 0.1.0 en TestPyPI y después en PyPI, y prueba de
 instalación en otro equipo (punto ciego).
 
@@ -222,7 +222,7 @@ estado `Development Status :: 3 - Alpha`. Todo lo público, en inglés.
   **sin ejecutar nunca**; su primera ejecución real es W5.5, y hasta entonces no se sabe si funciona.
 - [x] **W5.5** — **Prueba de instalación** desde TestPyPI en un entorno limpio, ejecutando
   `hello.py` (punto ciego: idealmente en otro equipo del usuario). Hecha en S14 en este equipo: ver LOG.
-- [ ] **W5.6** — **Etiqueta `v0.1.0` y release en GitHub, y publicación en PyPI.** Crear tags y
+- [x] **W5.6** — **Etiqueta `v0.1.0` y release en GitHub, y publicación en PyPI.** Crear tags y
   publicar piden permiso explícito en el momento.
 
 ## W6 — Primera aplicación aparte   📋 ESBOZADA
