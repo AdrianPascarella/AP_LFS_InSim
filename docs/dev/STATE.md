@@ -6,8 +6,10 @@
 > ejemplos en `examples/`, probados en cada push y comprobados en el LFS real. Decisiones en
 > `API_DESIGN.md`. El agente maneja LFS con `tests/lfs_screen.ps1`, que no envía nada si LFS no
 > está delante (PROTOCOL §13). `cfg.txt` está restaurado: OutSim/OutGauge en vivo pide permiso.
-> **▶️ SIGUIENTE: W7.5** (OutSim y OutGauge: `@gauge.on.OutGaugePack`, y entrada en `received`).
-> W7.6 espera a **U7** (que el usuario lo vea en su VS Code). W7 se rehízo en S15: `@insim.on.IS_NPL`
+> **▶️ SIGUIENTE: U7** (que el usuario vea `insim.on.` / `insim.send.` en su VS Code) y después
+> **W7.6** (test de equivalencia, tabla de direcciones, guía y ejemplos con la forma canónica,
+> CHANGELOG y 0.2.0), que espera a U7. W7.7 (subtipos de `IS_TINY`) se decide con el usuario.
+> W7.5 hecha: `@gauge.on.OutGaugePack`, `@outsim.on.OutSimPack(2)`, y los tres en `received`. W7 se rehízo en S15: `@insim.on.IS_NPL`
 > e `insim.send.IS_MST(...)` en vez de `on_IS_XXX`; ver `PLAN.md`. W7.4 hecha: `insim.on` / `insim.send`
 > son objetos (`_events.py` a mano, `_shortcuts.py` generado). W7.3 hecha: `lfs_insim.received` /
 > `sent`, generados. W7.1–W7.2 hechas: cada paquete hereda

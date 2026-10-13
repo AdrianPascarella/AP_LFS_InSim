@@ -116,6 +116,20 @@ instalado como herramienta (instalarlo pide permiso); cómo lo ve Pylance → **
 bloquea W7.6). Tropiezo con la cicatriz de los heredocs (§13) al escribir U7: el script no llegó a
 ejecutarse y se hizo con Edit.
 
+**W7.5 hecha:** `gauge.on` y `outsim.on` son objetos (`GaugeOn`, `OutSimOn` en `_udp.py`), invocables
+como antes y con una propiedad por paquete: `@gauge.on.OutGaugePack`, `@outsim.on.OutSimPack` y
+`.OutSimPack2`. **Escritos a mano, no generados** (el plan decía generar): son tres atributos fijos,
+y propiedades tipadas evitan los descriptores genéricos. Los paquetes se nombran como `_p.X` dentro de
+esas clases para que una propiedad no tape a la clase del mismo nombre. `received` incluye
+`OutGaugePack`, `OutSimPack` y `OutSimPack2` (constante `UDP_PACKETS` en `spec_directions.py`, que el
+generador comprueba contra las especificaciones disponibles); como sus clases ya están en
+`lfs_insim.packets`, `received.py` sigue sin necesitar `OutSimPack.txt` y el CI lo comprueba entero.
+`insim.on(received.OutGaugePack)` da un error que lleva a `@gauge.on.OutGaugePack`. **Tests
+cambiados (§5), con motivo:** los de W7.3/W7.4 comparaban `received` solo con los paquetes InSim; ahora
+cuentan los tres de UDP (en `test_shortcuts.py`, `insim.on.` se compara con los `IS_` de `received`).
+Tests nuevos en `test_udp.py` y en el fragmento de mypy (manejador de otro paquete y `gauge.on.IS_NPL`).
+Visto en **rojo** cambiando el nombre de la propiedad `OutGaugePack`. Verificación: `verify` PASS, 344 tests.
+
 ## S14 — 2026-10-13 — U6 por el navegador
 
 **Hecho:** Chrome conectó (en S13 no). Con el usuario haciendo cuentas, verificación de correo y 2FA

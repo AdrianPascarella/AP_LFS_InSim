@@ -27,6 +27,11 @@ def direction_error(packet_type: object, wanted: type[InSimPacket]) -> str:
     if not isinstance(packet_type, type):
         return f"{packet_type!r} is not a packet class (IS_NPL, not IS_NPL())"
     name = packet_type.__name__
+    if name.startswith(("OutSim", "OutGauge")):
+        source, variable = (
+            ("OutGauge", "gauge") if name.startswith("OutGauge") else ("OutSim", "outsim")
+        )
+        return f"{name} comes by UDP, not InSim: use {source} (`@{variable}.on.{name}`)"
     if wanted is InfoPacket:
         if issubclass(packet_type, InstructionPacket):
             return f"{name} is an instruction: LFS never sends it, your program sends it (send)"

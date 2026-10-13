@@ -246,3 +246,37 @@ def test_a_source_runs_alone_until_closed() -> None:
     runner.start()
     runner.join(10)
     assert not runner.is_alive(), "run() did not return after close()"
+
+
+def test_the_packet_attribute_of_on_is_the_same_as_calling_it() -> None:
+    # W7.5: @gauge.on.OutGaugePack and @outsim.on.OutSimPack / .OutSimPack2.
+    options = OSO.HEADER | OSO.TIME
+
+    async def main() -> None:
+        gauge = OutGauge(port=0)
+        outsim = OutSim(port=0)
+        outsim2 = OutSim(port=0, options=options)
+        got: list[str] = []
+
+        @gauge.on.OutGaugePack
+        def dashboard(packet: OutGaugePack) -> None:
+            got.append(f"gauge {packet.Car}")
+
+        @outsim.on.OutSimPack
+        def motion(packet: OutSimPack) -> None:
+            got.append(f"outsim {packet.Time}")
+
+        @outsim2.on.OutSimPack2
+        def motion2(packet: OutSimPack2) -> None:
+            got.append(f"outsim2 {packet.Time}")
+
+        async with gauge, outsim, outsim2:
+            send(gauge.port, OutGaugePack(Car="XRT").pack())
+            send(outsim.port, OutSimPack(Time=1).pack())
+            send(outsim2.port, OutSimPack2(OSOpts=options, Time=2).pack())
+            await _until(lambda: len(got) == 3)
+        assert sorted(got) == ["gauge XRT", "outsim 1", "outsim2 2"]
+
+    asyncio.run(main())
+    with pytest.raises(TypeError, match="LFS sends OutSimPack, not OutSimPack2"):
+        _ = OutSim(port=0).on.OutSimPack2

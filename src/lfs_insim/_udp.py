@@ -8,6 +8,7 @@ from collections.abc import Awaitable, Callable
 from types import TracebackType
 from typing import Self, TypeVar
 
+from lfs_insim import packets as _p
 from lfs_insim._handlers import Handlers
 from lfs_insim._run import run
 from lfs_insim.packets import OutGaugePack, OutSimPack, OutSimPack2, PacketError
@@ -109,7 +110,7 @@ def _read_fixed(packet_type: type[Structure], data: bytes) -> Structure:
 class OutGauge(_UDPSource):
     """The dashboard data LFS sends over UDP (OutGauge lines in LFS's cfg.txt).
 
-    Register handlers with `@gauge.on(OutGaugePack)`, then call `gauge.run()`, or
+    Register handlers with `@gauge.on.OutGaugePack`, then call `gauge.run()`, or
     `run(insim, gauge)` to use it together with InSim.
     """
 
@@ -120,21 +121,8 @@ class OutGauge(_UDPSource):
         host: the address to listen on; LFS sends to the "OutGauge IP" of cfg.txt.
         """
         super().__init__(port, host)
-
-    def on(self, packet_type: type[OutGaugePack]) -> Callable[[GaugeHandler], GaugeHandler]:
-        """Decorator: call the function with every OutGaugePack.
-
-        The function may be `def` (it runs at once, so it should be quick) or `async def` (it
-        runs as a task and may await). An exception in it is logged and does not stop the others.
-        """
-        if packet_type is not OutGaugePack:
-            raise TypeError(f"OutGauge only receives OutGaugePack, not {packet_type.__name__}")
-
-        def register(handler: GaugeHandler) -> GaugeHandler:
-            self._handlers.add(packet_type, handler)
-            return handler
-
-        return register
+        self.on = GaugeOn(self._handlers)
+        """Handlers: `@gauge.on.OutGaugePack`, or `@gauge.on(OutGaugePack)`."""
 
     def _read(self, data: bytes) -> Structure:
         return _read_fixed(OutGaugePack, data)
@@ -144,8 +132,8 @@ class OutSim(_UDPSource):
     """The motion data LFS sends over UDP (OutSim lines in LFS's cfg.txt).
 
     With "OutSim Opts 0" LFS sends OutSimPack; with any other options, OutSimPack2 with only the
-    parts those options select. Register handlers with `@outsim.on(OutSimPack)` (or
-    `OutSimPack2`), then call `outsim.run()`, or `run(insim, outsim)` together with InSim.
+    parts those options select. Register handlers with `@outsim.on.OutSimPack` (or
+    `.OutSimPack2`), then call `outsim.run()`, or `run(insim, outsim)` together with InSim.
     """
 
     def __init__(self, port: int, host: str = "127.0.0.1", *, options: int = 0) -> None:
@@ -157,27 +145,77 @@ class OutSim(_UDPSource):
         """
         super().__init__(port, host)
         self.options = options
-
-    def on(self, packet_type: type[S]) -> Callable[[UDPHandler[S]], UDPHandler[S]]:
-        """Decorator: call the function with every packet LFS sends.
-
-        The function may be `def` (it runs at once, so it should be quick) or `async def` (it
-        runs as a task and may await). An exception in it is logged and does not stop the others.
-        """
-        expected = OutSimPack2 if self.options else OutSimPack
-        if packet_type is not expected:
-            raise TypeError(
-                f"with options={self.options:#x}, LFS sends {expected.__name__}, "
-                f"not {packet_type.__name__}"
-            )
-
-        def register(handler: UDPHandler[S]) -> UDPHandler[S]:
-            self._handlers.add(packet_type, handler)
-            return handler
-
-        return register
+        self.on = OutSimOn(self)
+        """Handlers: `@outsim.on.OutSimPack2` (or `.OutSimPack`), or `@outsim.on(OutSimPack2)`."""
 
     def _read(self, data: bytes) -> Structure:
         if self.options:
             return OutSimPack2.unpack(data, self.options)
         return _read_fixed(OutSimPack, data)
+
+
+class GaugeOn:
+    """Register handlers: `@gauge.on.OutGaugePack`, or `@gauge.on(OutGaugePack)`."""
+
+    def __init__(self, handlers: Handlers) -> None:
+        self._handlers = handlers
+
+    def __call__(
+        self, packet_type: type[_p.OutGaugePack]
+    ) -> Callable[[GaugeHandler], GaugeHandler]:
+        """Decorator: call the function with every OutGaugePack.
+
+        The function may be `def` (it runs at once, so it should be quick) or `async def` (it
+        runs as a task and may await). An exception in it is logged and does not stop the others.
+        """
+        if packet_type is not _p.OutGaugePack:
+            raise TypeError(f"OutGauge only receives OutGaugePack, not {packet_type.__name__}")
+
+        def register(handler: GaugeHandler) -> GaugeHandler:
+            self._handlers.add(packet_type, handler)
+            return handler
+
+        return register
+
+    @property
+    def OutGaugePack(self) -> Callable[[GaugeHandler], GaugeHandler]:
+        """The dashboard data (OutGaugePack): `@gauge.on.OutGaugePack`."""
+        return self(_p.OutGaugePack)
+
+
+class OutSimOn:
+    """Register handlers: `@outsim.on.OutSimPack2` (or `.OutSimPack`), or `@outsim.on(...)`."""
+
+    def __init__(self, source: OutSim) -> None:
+        self._source = source
+
+    def __call__(self, packet_type: type[S]) -> Callable[[UDPHandler[S]], UDPHandler[S]]:
+        """Decorator: call the function with every packet LFS sends.
+
+        The function may be `def` (it runs at once, so it should be quick) or `async def` (it
+        runs as a task and may await). An exception in it is logged and does not stop the others.
+        With "OutSim Opts 0" LFS sends OutSimPack; with other options, OutSimPack2.
+        """
+        options = self._source.options
+        expected = _p.OutSimPack2 if options else _p.OutSimPack
+        if packet_type is not expected:
+            raise TypeError(
+                f"with options={options:#x}, LFS sends {expected.__name__}, "
+                f"not {packet_type.__name__}"
+            )
+
+        def register(handler: UDPHandler[S]) -> UDPHandler[S]:
+            self._source._handlers.add(packet_type, handler)
+            return handler
+
+        return register
+
+    @property
+    def OutSimPack(self) -> Callable[[UDPHandler[_p.OutSimPack]], UDPHandler[_p.OutSimPack]]:
+        """The car's motion with "OutSim Opts 0" (OutSimPack): `@outsim.on.OutSimPack`."""
+        return self(_p.OutSimPack)
+
+    @property
+    def OutSimPack2(self) -> Callable[[UDPHandler[_p.OutSimPack2]], UDPHandler[_p.OutSimPack2]]:
+        """The car's motion with other options (OutSimPack2): `@outsim.on.OutSimPack2`."""
+        return self(_p.OutSimPack2)

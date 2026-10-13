@@ -273,9 +273,10 @@ abreviaturas, ni nombres como cadena, ni `on_IS_XXX`); (4) los `both ways` está
   para que `_connection.py` no crezca; siguen siendo invocables (`on(IS_X)`, `send(a, b)`);
   `send.IS_XXX` con la firma del constructor (`ParamSpec`) — hecho en S15 → LOG.md S15; cómo se ve
   en el editor, pendiente de U7
-- [ ] **W7.5** — OutSim y OutGauge: `on.OutSimPack`, `on.OutSimPack2`, `on.OutGaugePack` y su entrada
-  en `received`. Las de OutSim solo se regeneran en este equipo (`OutSimPack.txt`, P3); el CI sigue
-  saltándose esa parte
+- [x] **W7.5** — OutSim y OutGauge: `on.OutSimPack`, `on.OutSimPack2`, `on.OutGaugePack` y su entrada
+  en `received`. ~~Las de OutSim solo se regeneran en este equipo (`OutSimPack.txt`, P3); el CI sigue
+  saltándose esa parte~~ (escritas a mano: son tres fijas; `received.py` no necesita `OutSimPack.txt`)
+  — hecho en S15 → LOG.md S15
 - [ ] **W7.6** — Test de equivalencia (condición 1), tabla de direcciones generada en `docs/`, guía y
   ejemplos pasados a la forma canónica, `CHANGELOG.md`, versión 0.2.0 si cambia la API pública
 - [ ] **W7.7** — Aparte, decidir con el usuario: `IS_TINY` / `IS_SMALL` con subtipo (`@insim.on.IS_TINY(TINY.MPE)`)

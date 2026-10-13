@@ -16,7 +16,7 @@ def test_on_and_send_list_the_packets_of_their_direction() -> None:
     insim = InSim()
     on = {name for name in dir(type(insim.on)) if name.startswith("IS_")}
     send = {name for name in dir(type(insim.send)) if name.startswith("IS_")}
-    assert on == set(received.__all__)
+    assert on == {name for name in received.__all__ if name.startswith("IS_")}
     assert send == set(sent.__all__)
     assert "IS_MST" not in on and "IS_NPL" not in send
     assert "IS_TINY" in on and "IS_TINY" in send  # both ways
@@ -65,7 +65,7 @@ def test_every_form_reaches_lfs_and_the_handler() -> None:
 def test_the_type_checker_sees_the_fields_and_the_direction(tmp_path: Path) -> None:
     code = textwrap.dedent(
         """
-        from lfs_insim import InSim, received
+        from lfs_insim import InSim, OutGauge, received
 
         insim = InSim()
 
@@ -79,12 +79,20 @@ def test_the_type_checker_sees_the_fields_and_the_direction(tmp_path: Path) -> N
         insim.send.IS_MST(Bogus=1)
         insim.send.IS_NPL(PName="x")
         reveal_type(insim.send.IS_MST)
+        gauge = OutGauge(port=0)
+        @gauge.on.OutGaugePack
+        def dashboard(packet: received.OutGaugePack) -> None: ...
+        @gauge.on.OutGaugePack
+        def not_gauge(packet: received.OutSimPack) -> None: ...
+        gauge.on.IS_NPL
         """
     )
     source = tmp_path / "use.py"
     source.write_text(code, encoding="utf-8")
     out, _, _ = mypy_api.run([str(source), "--no-incremental", "--strict"])
     # 8: wrong packet for the handler (reported at its decorator); 10: LFS never sends IS_MST;
-    # 12: Msg is a str; 13: no such field; 14: a program never sends IS_NPL.
-    assert re.findall(r"use\.py:(\d+): error", out) == ["8", "10", "12", "13", "14"], out
+    # 12: Msg is a str; 13: no such field; 14: a program never sends IS_NPL;
+    # 19: OutGauge never sends OutSimPack; 21: nor InSim packets.
+    errors = re.findall(r"use\.py:(\d+): error", out)
+    assert errors == ["8", "10", "12", "13", "14", "19", "21"], out
     assert re.search(r'use\.py:15: note: Revealed type is "def \(\*, ReqI: .*Msg: .*\)"', out), out

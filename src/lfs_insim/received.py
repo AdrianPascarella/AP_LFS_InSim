@@ -4,7 +4,8 @@
 
 The same classes as in lfs_insim.packets (`received.IS_NPL is packets.IS_NPL`), listed
 by direction so that the editor shows only these. A packet that goes both ways is also
-in lfs_insim.sent.
+in lfs_insim.sent. OutGaugePack, OutSimPack and OutSimPack2 are here too: they come by
+UDP, for `gauge.on` and `outsim.on`.
 """
 
 from lfs_insim.packets import (
@@ -62,6 +63,9 @@ from lfs_insim.packets import (
     IS_UCO,
     IS_VER,
     IS_VTN,
+    OutGaugePack,
+    OutSimPack,
+    OutSimPack2,
 )
 
 __all__ = [
@@ -119,4 +123,7 @@ __all__ = [
     "IS_UCO",
     "IS_VER",
     "IS_VTN",
+    "OutGaugePack",
+    "OutSimPack",
+    "OutSimPack2",
 ]

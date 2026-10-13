@@ -54,7 +54,8 @@ DIRECTION_MODULES = {
         "The InSim packets that LFS sends, for `insim.on`: `@insim.on(received.IS_NPL)`.\n\n"
         "The same classes as in lfs_insim.packets (`received.IS_NPL is packets.IS_NPL`), listed\n"
         "by direction so that the editor shows only these. A packet that goes both ways is also\n"
-        "in lfs_insim.sent.",
+        "in lfs_insim.sent. OutGaugePack, OutSimPack and OutSimPack2 are here too: they come by\n"
+        "UDP, for `gauge.on` and `outsim.on`.",
     ),
     "sent": (
         ("instruction", "both ways"),
@@ -104,10 +105,17 @@ def emit_shortcuts(directions: dict[str, str], docs: dict[str, str], header: str
     return "".join(out)
 
 
+# OutSim and OutGauge are only received; they come by UDP, not through insim.on. Their classes
+# are in lfs_insim.packets whether or not OutSimPack.txt is here, so received.py never needs it.
+UDP_PACKETS = ("OutGaugePack", "OutSimPack", "OutSimPack2")
+
+
 def emit_direction_module(module: str, directions: dict[str, str], header: str) -> str:
     """lfs_insim.received or lfs_insim.sent: re-exports, written out so the editor sees them."""
     wanted, doc = DIRECTION_MODULES[module]
     names = sorted(name for name, direction in directions.items() if direction in wanted)
+    if module == "received":
+        names += UDP_PACKETS
     return (
         f'{header}"""{doc}\n"""\n\n'
         f"from lfs_insim.packets import {', '.join(names)}\n\n"

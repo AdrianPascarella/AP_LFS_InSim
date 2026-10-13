@@ -45,6 +45,7 @@ from generate_enums import (
 )
 from spec_directions import (
     DIRECTION_MODULES,
+    UDP_PACKETS,
     emit_direction_module,
     emit_shortcuts,
     packet_directions,
@@ -390,6 +391,10 @@ def generate() -> tuple[dict[Path, str], list[Path]]:
     header = f"{source}.\n{rule}"
     enums = collect_enums(insim)
     directions = packet_directions(insim)
+    udp_specs = [insim] if outsim is None else [insim, outsim]
+    missing = set(UDP_PACKETS) - {name for spec in udp_specs for name in spec.structs}
+    if missing - ({"OutSimPack", "OutSimPack2"} if outsim is None else set()):
+        raise SpecError(f"UDP_PACKETS names packets that are not in the specification: {missing}")
     packets = {name for name in insim.structs if name.startswith("IS_")}
     if packets != directions.keys():
         raise SpecError(

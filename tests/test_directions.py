@@ -51,6 +51,8 @@ def test_on_refuses_a_packet_that_lfs_never_sends() -> None:
         insim.on(IS_MST)  # type: ignore[type-var]
     with pytest.raises(TypeError, match="not a packet class"):
         insim.on(IS_NPL())  # type: ignore[arg-type]
+    with pytest.raises(TypeError, match=r"by UDP, not InSim: use OutGauge \(`@gauge\.on\.OutGa"):
+        insim.on(received.OutGaugePack)  # type: ignore[type-var]
     insim.on(IS_NPL)(print)
     insim.on(IS_TINY)(print)  # both ways
 
@@ -90,9 +92,11 @@ def test_the_type_checker_sees_the_direction(tmp_path: Path) -> None:
 def test_received_and_sent_list_the_same_classes_by_direction() -> None:
     every = [getattr(packets, name) for name in packets.__all__ if name.startswith("IS_")]
     by_name = {cls.__name__: cls for cls in every}
-    for module, base in ((received, InfoPacket), (sent, InstructionPacket)):
+    udp = {"OutGaugePack", "OutSimPack", "OutSimPack2"}  # only received, and not through insim.on
+    for module, base, extra in ((received, InfoPacket, udp), (sent, InstructionPacket, set())):
         listed = {name: getattr(module, name) for name in module.__all__}
-        assert listed == {name: cls for name, cls in by_name.items() if issubclass(cls, base)}
+        expected = {name for name, cls in by_name.items() if issubclass(cls, base)} | extra
+        assert listed.keys() == expected
         assert all(cls is getattr(packets, name) for name, cls in listed.items())  # not copies
     assert received.IS_NPL is IS_NPL and sent.IS_MST is IS_MST
     assert received.IS_TINY is sent.IS_TINY is IS_TINY  # both ways: in both
