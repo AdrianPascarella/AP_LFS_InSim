@@ -53,7 +53,7 @@ CLASSES = [
     for cls in vars(packets).values()
     if isinstance(cls, type)
     and issubclass(cls, Structure)
-    and cls not in (Structure, InfoPacket, InstructionPacket, BothWaysPacket)  # bases, not packets
+    and cls not in (Structure, InSimPacket, InfoPacket, InstructionPacket, BothWaysPacket)  # bases
 ]
 PACKETS = [cls for cls in CLASSES if issubclass(cls, InSimPacket)]
 _counter = itertools.count(1)

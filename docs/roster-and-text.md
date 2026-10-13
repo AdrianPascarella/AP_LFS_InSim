@@ -30,6 +30,36 @@ def joined(packet: received.IS_NPL) -> None:
 
 See [`examples/who.py`](../examples/who.py).
 
+### Your own state
+
+`Roster` is built on `insim.watch()`, and you can use it for state of your own. `before` sees
+every packet before the handlers, so they find the packet already counted; `after` sees it after
+them (and after the first step of the `async def` ones), so they can still look up what is about
+to go:
+
+```python
+from lfs_insim import InSim
+from lfs_insim.packets import IS_LAP, IS_PLL, InSimPacket
+
+
+class Laps:
+    def __init__(self, insim: InSim) -> None:
+        self.done: dict[int, int] = {}  # PLID to laps done
+        insim.watch(before=self._before, after=self._after)
+
+    def _before(self, packet: InSimPacket) -> None:
+        if isinstance(packet, IS_LAP):
+            self.done[packet.PLID] = packet.LapsDone
+
+    def _after(self, packet: InSimPacket) -> None:
+        if isinstance(packet, IS_PLL):
+            self.done.pop(packet.PLID, None)
+```
+
+Give one of them or both. They must be plain `def` (an `async def` is a `TypeError`): they run
+to the end before anything else happens. An error in one is handled like an error in a handler
+(`errors="log"` or `"raise"`).
+
 ## Text
 
 Text fields (`PName`, `Msg`, ...) arrive as `str`, with LFS's `^` codes kept as LFS sends them:

@@ -1,15 +1,16 @@
 # 📍 Estado — AP_LFS_InSim (lfs_insim)
-> Actualizado: 2026-10-13 (S17): **W7 entera y W8.0–W8.3 hechas.** La biblioteca está validada en el LFS real
+> Actualizado: 2026-10-13 (S18): **W7 entera y W8.0–W8.4 hechas.** La biblioteca está validada en el LFS real
 > y tiene la API de alto nivel (`@insim.on.IS_NPL`, `insim.send.IS_MST(...)`, `received` / `sent`,
 > `await insim.request(...)`, `Roster`, `say()` / `command()`, `on_command`, `text.plain()`), cuatro
 > ejemplos y `docs/packets.md` (tabla generada).
 > **`lfs-insim 0.3.0` está publicado en PyPI** (S17, release `v0.3.0`): lleva W7.7, W7.8 (subtipos) y W8.1
 > (`errors="raise"`, `on_disconnect`, `reconnected`, `Colour`). Antes, 0.2.0 en S16.
-> **En `dev` sin publicar** (CHANGELOG «Unreleased»): W8.2 (comandos con tipos, ayuda, grupos, permisos) y W8.3
-> (unidades). Antes de publicarlas como 0.4.0, probarlas en LFS real (teclear `!speed abc`; comparar
+> **En `dev` sin publicar** (CHANGELOG «Unreleased»): W8.2 (comandos con tipos, ayuda, grupos, permisos), W8.3
+> (unidades) y W8.4 (`insim.watch(before=, after=)`, decidido con el usuario en S18; `Roster` ya solo usa API
+> pública; `InSimPacket` exportado en `lfs_insim.packets`). Antes de publicarlas como 0.4.0, probarlas en LFS real (teclear `!speed abc`; comparar
 > `CompCar.speed_kmh` con OutGauge con un coche en pista): pide permiso para abrir LFS.
-> **▶️ SIGUIENTE: W8.4** (`order="before"` público): es API pública, así que **decidir su forma con el usuario
-> antes de escribir** (nombre, decorador o parámetro de `on`, qué orden se garantiza). Luego W8.5 y 0.4.0.
+> **▶️ SIGUIENTE: W8.5** (tests de `LEGADO.md` §3: enviar `IS_REO`, `IS_HCP`, `IS_IPB`; orden al reconectar, P22;
+> tormenta de reconexión, P24). Después, prueba en LFS real (con permiso) y 0.4.0.
 > W8 abierta y detallada con el usuario en S17 (`PLAN.md`, W8): botones fuera, comandos por anotaciones,
 > permisos `admin=True` / `allow=`.
 > **Receta de una versión nueva:** versión y CHANGELOG en
@@ -21,7 +22,7 @@
 > módulo propio (los comandos de W8.2, en `_commands.py`). Ver `USER_ACTIONS.md`.
 
 ## Dónde estamos
-Fase activa: **W8** (abierta en S17); W8.0–W8.3 y 0.3.0 hechas; siguiente: W8.4.
+Fase activa: **W8** (abierta en S17); W8.0–W8.4 y 0.3.0 hechas; siguiente: W8.5.
 
 - **Cómo se genera:** `.venv/Scripts/python scripts/generate_packets.py` lee
   `spec/cache/InSim.txt` y `spec/cache/OutSimPack.txt` (con `scripts/spec_parser.py`) y las

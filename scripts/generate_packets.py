@@ -451,6 +451,7 @@ def generate() -> tuple[dict[Path, str], list[Path]]:
             "_codec": ["PacketError"],
             "_directions": sorted(base for base, _ in DIRECTION_BASES.values()),
             "_enums": sorted(c.name for c in enums),
+            "_structure": ["InSimPacket"],
             **{module: sorted(s.name for s in structs) for module, structs in by_module.items()},
             "_types": ["Vec", "Vector"],
         }

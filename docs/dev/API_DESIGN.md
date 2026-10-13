@@ -257,7 +257,7 @@ sin aviso. *Por qué:* P4; una API pequeña se puede revisar entera.
 - **Orden respecto a los manejadores** (confirmado: el usuario siguió la recomendación): cuando
   alguien llega o cambia, el `Roster` se actualiza antes; cuando se va (`IS_PLL`, `IS_CNL`),
   después, programado con `call_soon` para que un manejador `async` lo encuentre aún hasta su
-  primer `await`. Por dentro, `InSim._watch(antes, después)`, privado.
+  primer `await`. Por dentro, `insim.watch(before=, after=)`, público desde W8.4 (S18).
 - **Cuándo pide el estado entero:** en cada (re)conexión y al empezar o acabar una partida
   multijugador (`IS_ISM`, `TINY_MPE`). Antes de pedirlo olvida lo que tenía (así no quedan
   conexiones de antes de un corte).

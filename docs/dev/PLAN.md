@@ -317,8 +317,9 @@ equivalencia pasa en todas las formas para todos los paquetes; `verify` y el CI 
   (sin publicar; sin probar en LFS real: antes de 0.4.0) → LOG.md S17
 - [x] **W8.3** — Unidades: `lfs_insim.units` (funciones puras) y propiedades en los paquetes por `_extras.py` (A5)
   — hecho en S17 (solo las escalas que InSim.txt da; sin probar en LFS real: antes de 0.4.0) → LOG.md S17
-- [ ] **W8.4** — Hacer pública la forma en que `Roster` ve los paquetes antes y después de los manejadores
-  (`order="before"`)
+- [x] **W8.4** — Hacer pública la forma en que `Roster` ve los paquetes antes y después de los manejadores
+  (`order="before"`) — hecho en S18 como `insim.watch(before=, after=)` (forma elegida por el usuario; sin
+  publicar) → LOG.md S18
 - [ ] **W8.5** — Tests de `LEGADO.md` §3: enviar `IS_REO`, `IS_HCP` e `IS_IPB`; orden al reconectar (P22);
   tormenta de reconexión (P24)
 

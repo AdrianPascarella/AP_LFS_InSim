@@ -10,6 +10,10 @@
 - Units: `car.speed_kmh`, `car.x_m`, `car.heading_deg`... on `CompCar`, `Vec`, the contacts of
   `IS_CON` / `IS_OBH` / `IS_HLV` and `OutGaugePack`, and `lfs_insim.units` with the conversions
   both ways (`Vec.from_metres()` to send a position). See [Units](docs/units.md).
+- `insim.watch(before=..., after=...)`: see every packet before and after the handlers, to keep
+  state of your own the way `Roster` does (it now uses only this). `InSimPacket`, the base of
+  every packet, is in `lfs_insim.packets` to annotate them. See
+  [Your own state](docs/roster-and-text.md#your-own-state).
 
 ## 0.3.0
 

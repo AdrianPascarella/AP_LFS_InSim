@@ -81,7 +81,9 @@ class Roster:
         self._connections: dict[int, Connection] = {}
         self._players: dict[int, Player] = {}
         insim.on_connect(self._refresh)
-        insim._watch(self._before, self._after)
+        insim.on(IS_ISM)(self._restarted)  # a new host or game: ask again
+        insim.on(IS_TINY, TINY.MPE)(self._restarted)
+        insim.watch(before=self._before, after=self._after)
 
     @property
     def connections(self) -> Mapping[int, Connection]:
@@ -99,6 +101,9 @@ class Roster:
         self._players.clear()
         await self._insim.request_all(IS_NCN)
         await self._insim.request_all(IS_NPL)
+
+    async def _restarted(self, packet: IS_ISM | IS_TINY) -> None:
+        await self._refresh()
 
     def _before(self, packet: InSimPacket) -> None:
         if isinstance(packet, IS_NCN):
@@ -125,10 +130,6 @@ class Roster:
             self._players.clear()
             for connection in self._connections.values():
                 connection.players.clear()
-        elif isinstance(packet, IS_ISM) or (
-            isinstance(packet, IS_TINY) and packet.SubT == TINY.MPE
-        ):
-            self._insim._handlers.call(self._refresh, (), "Roster")
 
     def _after(self, packet: InSimPacket) -> None:
         if isinstance(packet, IS_PLL):

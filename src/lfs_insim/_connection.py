@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import inspect
 import logging
 from collections.abc import Awaitable, Callable
 from types import TracebackType
@@ -107,7 +108,8 @@ class InSim(StopsOnError):
         self._accepted = False  # LFS answered IS_ISI with IS_VER on this connection
         self._silence_timeout = SILENCE_TIMEOUT
         self._retry_delays: tuple[float, ...] = RETRY_DELAYS
-        self._watchers: list[tuple[PacketWatcher, PacketWatcher]] = []
+        self._watch_before: list[PacketWatcher] = []
+        self._watch_after: list[PacketWatcher] = []
         self.on = On(self._handlers.add)
         """Handlers: `@insim.on.IS_NPL` (the editor lists what LFS sends), or `@insim.on(IS_NPL)`.
 
@@ -173,6 +175,26 @@ class InSim(StopsOnError):
         """
         self._disconnect_handlers.append(handler)
         return handler
+
+    def watch(
+        self, *, before: PacketWatcher | None = None, after: PacketWatcher | None = None
+    ) -> None:
+        """See every packet from LFS before and after the handlers: to keep state they read.
+
+        `before(packet)` runs before the answers to request() and the handlers, so they see the
+        state with the packet in it; `after(packet)` runs after the handlers (and after the first
+        step of the `async def` ones), so they still see the state from before, as Roster does
+        when someone leaves. Both must be plain `def`: they run to the end, in the order given.
+        """
+        if before is None and after is None:
+            raise TypeError("watch() needs before=, after= or both")
+        for name, watcher in (("before", before), ("after", after)):
+            if inspect.iscoroutinefunction(watcher):
+                raise TypeError(f"watch({name}=...) must be a plain def, not async def")
+        if before is not None:
+            self._watch_before.append(before)
+        if after is not None:
+            self._watch_after.append(after)
 
     @property
     def reconnected(self) -> bool:
@@ -444,7 +466,7 @@ class InSim(StopsOnError):
         elif isinstance(packet, IS_VER) and not self._accepted:
             self._accepted = True
             self._start_ticks()
-        for before, _ in self._watchers:
+        for before in self._watch_before:
             self._handlers.call(before, (packet,), f"{type(packet).__name__} (before handlers)")
         self._requests.deliver(packet)
         self._handlers.dispatch(packet)
@@ -453,9 +475,5 @@ class InSim(StopsOnError):
         # After the handlers, and after the first step of the async ones: their tasks were
         # scheduled first, so until their first await they still see the state before the packet.
         loop = asyncio.get_running_loop()
-        for _, after in self._watchers:
+        for after in self._watch_after:
             loop.call_soon(self._handlers.call, after, (packet,), type(packet).__name__)
-
-    def _watch(self, before: PacketWatcher, after: PacketWatcher) -> None:
-        """For the library's own state (Roster): see every packet before and after the handlers."""
-        self._watchers.append((before, after))

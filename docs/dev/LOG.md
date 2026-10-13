@@ -1,6 +1,32 @@
 # 📓 Diario — AP_LFS_InSim (lfs_insim)
 <!-- Solo se añade, lo más nuevo arriba. Una entrada por sesión. -->
 
+## S18 — 2026-10-13 — W8.4: `insim.watch()` público
+
+**Inicio:** `session_start_check` PASS (rama, identidad, pull, plantilla v3); `verify` PASS antes de tocar nada.
+Documentos y realidad coinciden (último commit `050f5b6`, árbol limpio). 0 acciones del usuario pendientes.
+
+**Decisión (usuario, S18; la recomendada por el agente):** W8.4 es un método aparte,
+`insim.watch(before=f, after=g)`, y no un `order=` en `on`. **Por qué:** `order=` habría tocado `on`, `on.IS_X`,
+los subtipos y sus sobrecargas de tipos, y habría dejado dos clases de manejador con reglas distintas (los
+«before» solo `def`). Un observador de todos los paquetes es justo lo que necesita un estado como `Roster`.
+Descartada también la opción de dejarla privada hasta W6.
+
+**Hecho:** `watch()` en `_connection.py` sustituye a `_watch()`: `before` y/o `after` (al menos uno; si no,
+`TypeError`), solo `def` (`async def` da `TypeError`: tienen que acabar antes de que pase nada más). Mismo orden
+que antes: `before` → respuestas de `request()` → manejadores → primer paso de los `async` → `after`. Los
+errores siguen `errors="log"/"raise"`. `Roster` usa ahora solo API pública: `watch()`, y el `_refresh` de
+`IS_ISM` y `TINY.MPE` pasa a ser un manejador normal (`insim.on(IS_ISM)`, `insim.on(IS_TINY, TINY.MPE)`) en
+vez de `insim._handlers.call` desde `_before` (ambos lanzan una tarea; el orden visto por los manejadores no
+cambia). `InSimPacket` se exporta en `lfs_insim.packets` (por el generador) para anotar los observadores;
+`test_packets.py` lo añade a las bases excluidas. Guía: «Your own state» en `docs/roster-and-text.md`;
+CHANGELOG «Unreleased»; `API_DESIGN.md` al día.
+**Rojo primero:** `tests/test_watch.py` (orden, solo uno de los dos, `TypeError`, `errors="raise"` y que
+`state.py` no use nada privado de `insim`) falló entero antes del código; el último test se comprobó contra el
+`state.py` anterior (encuentra `insim._watch` y `_insim._handlers`).
+**Verificación:** `verify` PASS, 520 tests. `_connection.py` va por 479 líneas (aviso en 500).
+**Visto de paso:** `HAND_WRITTEN` en `scripts/generate_packets.py` no lo usa nadie (código muerto); no se tocó.
+
 ## S17 — 2026-10-13 — Revisión de W7.7 y W7.8: solo los subtipos que LFS envía
 
 **Inicio:** `session_start_check` PASS (rama, identidad, pull, plantilla v3); `verify` PASS (477) antes de tocar nada.

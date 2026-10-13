@@ -149,6 +149,7 @@ from lfs_insim.packets._outsim import (
     OutSimPack2,
     OutSimWheel,
 )
+from lfs_insim.packets._structure import InSimPacket
 from lfs_insim.packets._types import Vec, Vector
 
 __all__ = [
@@ -281,6 +282,7 @@ __all__ = [
     "CarContact",
     "CarHCP",
     "CompCar",
+    "InSimPacket",
     "InfoPacket",
     "InstructionPacket",
     "NodeLap",
