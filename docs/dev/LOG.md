@@ -1,6 +1,55 @@
 # 📓 Diario — AP_LFS_InSim (lfs_insim)
 <!-- Solo se añade, lo más nuevo arriba. Una entrada por sesión. -->
 
+## S19 — 2026-10-13 — W9: comandos como invitado en un servidor ajeno
+
+**Inicio:** `session_start_check` PASS (rama, identidad, pull, plantilla v3). Documentos y realidad coinciden
+(último commit `d0d97e5`, árbol limpio). 0 acciones del usuario pendientes. El usuario: «Sigamos tu
+recomendación» → primero la prueba en real (W9.0) y después el diseño.
+
+**W9.0, prueba en real como invitado** (LFS abierto por el usuario, dentro de su servidor «testing»; sonda en el
+scratchpad, `probe_guest.py`; sin tocar `cfg.txt` ni cerrar LFS):
+- `TINY_ISM` → `IS_ISM(Host=0, HName='testing')`. `TINY_NCN` sí responde: UCID 0 = anfitrión (`Flags=4`, remoto,
+  `Admin=1`), UCID 1 = este ordenador (`AdrianPascarella`, `Flags=0`, `Admin=1`: el usuario es admin de ese
+  servidor). `TINY_NCI`: sin respuesta por InSim.
+- `hola`, `!who`, `.who` llegan los tres como `MSO.USER` (UserType 1), UCID 1, visibles para todos: el prefijo
+  de `IS_ISI` no cuenta como invitado. `/o test` → `MSO.O` (3), `TextStart=0`, `Msg='test'`, UCID 1.
+- `IS_MSL` vuelve como `IS_MSO` de sistema (UCID 0, UserType 0) y solo lo ve el usuario (confirmado por él).
+  `IS_MTC` y `TINY_NCI`: el usuario vio en pantalla «IS_MTC - only for multiplayer hosts» y «TINY_NCI - only
+  for multiplayer hosts» (solo él); por InSim no llega nada.
+- Confirmado el problema: como invitado, cualquiera del servidor ejecutaba nuestros comandos, y `admin=True`
+  dejaba pasar a los admins del servidor ajeno.
+
+**Decisiones (usuario, S19; las cuatro recomendadas por el agente; detalle y descartes en `API_DESIGN.md`):**
+como invitado, solo este ordenador usa los comandos (`InSim(guest_commands="everyone")` abre, `allow=` sigue
+filtrando); `admin=True` = solo este ordenador; `reply()` a este ordenador por `IS_MSL` y a otro por el chat
+público; `/o` cuenta como comando con el mismo prefijo.
+
+**Hecho (W9.1–W9.5):**
+- `Roster.guest` (de `IS_ISM.Host`; `TINY_MPE` lo apaga) y `Roster.local` (el UCID del `IS_NCN` sin marca de
+  remoto; una conexión creada solo por su `IS_NPL` no cuenta). `_refresh` pide `TINY_ISM` a la vez que
+  `NCN`/`NPL`; sin respuesta en 1 s → no es multijugador. Una respuesta a `TINY_ISM` (`ReqI` ≠ 0) no vuelve a
+  pedir el estado (si no, bucle).
+- Comandos: crean siempre su `Roster` (antes solo con `admin=True`); `Command.local`; como invitado, lo que no
+  es local se ignora sin contestar salvo `guest_commands="everyone"`; `reply` elige `IS_MSL` / chat público /
+  `IS_MTC` según invitado y local. `GuestCommands` en `_commands.py`; valor desconocido → `ValueError`.
+- **Defecto encontrado y arreglado:** si la conexión se cerraba mientras `Roster` pedía `NCN`/`NPL`, el
+  `ConnectionError` se registraba como error del manejador `on_connect`. Salió al hacer que los comandos tengan
+  siempre `Roster` (`test_what_is_not_a_known_command_is_left_alone` en rojo por el log). Arreglo en su origen
+  (`contextlib.suppress(ConnectionError)`: la siguiente conexión vuelve a pedir), no en el test. Test nuevo
+  `test_closing_while_asking_is_not_an_error`.
+- **Rojo primero:** `tests/test_guest.py` (12 tests) falló entero antes del código. Mutaciones, todas en rojo y
+  restauradas: sin el `suppress`; sin la guarda de `ReqI`; sin la política de invitado; `admin` como invitado
+  devolviendo `True`.
+- Guía (`docs/insim.md` «As a guest», `docs/roster-and-text.md`), CHANGELOG «Unreleased», `API_DESIGN.md`.
+- **Prueba en real (W9.5)**, con el permiso del usuario («procede»), teclea el agente con `lfs_screen.ps1`
+  (`!` como `{!}` en SendKeys): `!who` → respuesta por `IS_MSL` («guest=True local=True: host,
+  AdrianPascarella»), sin aviso de `IS_MTC`; `/o !who` → igual y sin salir en el chat; `!kick bob` (admin) →
+  «(would kick bob)»; `!who ?` → la ayuda. Visto en las capturas y en el log. Sin probar: el comando de otra
+  persona (no había nadie) → U11, opcional.
+**Verificación:** `verify` PASS (542 tests). `_connection.py` 485 líneas (aviso en 500), `_commands.py` 328.
+**Pedido al usuario:** U11 (opcional).
+
 ## S18 — 2026-10-13 — W8.4: `insim.watch()` público
 
 **Inicio:** `session_start_check` PASS (rama, identidad, pull, plantilla v3); `verify` PASS antes de tocar nada.

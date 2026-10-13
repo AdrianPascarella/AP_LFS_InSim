@@ -4,6 +4,11 @@ With a prefix in IS_ISI, LFS sends what users type starting with it as IS_MSO (M
 hidden from the other users). The command is the word after the prefix, in any case; the words
 after it are its arguments.
 
+As a guest in someone else's server, LFS sends what anyone types, prefix or not, and everyone sees
+it; "/o !who" reaches only this computer's InSim. Then only this computer may use the commands,
+unless InSim(guest_commands="everyone"); admin commands are only for this computer; and replies go
+to this computer as IS_MSL, and to anyone else in the public chat (a guest cannot send IS_MTC).
+
 The arguments are the parameters of the function after the Command: with
 `def speed(command, kmh: int, who: str = "all")`, "!speed 80" calls `speed(command, 80, "all")`.
 Words that do not fit are answered with the usage, and the function is not called; "!speed ?" is
@@ -18,13 +23,14 @@ import inspect
 import typing
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Literal, get_args
 
 from lfs_insim._handlers import Handlers
 from lfs_insim.packets import IS_MSO, MSO
 
 CommandHandler = Callable[..., None] | Callable[..., Awaitable[None]]
 Allow = Callable[["Command"], bool]
+GuestCommands = Literal["local", "everyone"]
 
 _TYPES: dict[Any, str] = {str: "text", int: "a whole number", float: "a number"}
 
@@ -41,12 +47,18 @@ class Command:
     """The connection that typed it."""
     plid: int
     """Its player, if it typed it while driving (0 if not)."""
+    local: bool
+    """Typed on this computer (UCID 0, or this computer's UCID when LFS is a guest)."""
     packet: IS_MSO
     """The IS_MSO it came in."""
     _reply: Callable[[str], None] = field(repr=False, compare=False)
 
     def reply(self, text: str) -> None:
-        """Answer only the connection that typed it (insim.say with to=its UCID)."""
+        """Answer only the connection that typed it (insim.say with to=its UCID).
+
+        As a guest, only this computer can be answered alone (IS_MSL); anyone else is answered
+        in the public chat, the only way a guest has.
+        """
         self._reply(text)
 
 
@@ -166,10 +178,15 @@ class CommandGroup:
 class Commands:
     """The command functions of an InSim, by name."""
 
-    def __init__(self, prefix: str, make_roster: Callable[[], Any]) -> None:
+    def __init__(
+        self, prefix: str, make_roster: Callable[[], Any], guest_commands: GuestCommands
+    ) -> None:
+        if guest_commands not in get_args(GuestCommands):
+            raise ValueError(f'guest_commands is "local" or "everyone", not {guest_commands!r}')
         self.prefix = prefix
+        self.guest_commands = guest_commands
         self._make_roster = make_roster
-        self._roster: Any = None  # a Roster, made once a command is only for admins
+        self._roster: Any = None  # a Roster, made with the first command: who is who
         self._by_name: dict[str, _Entry] = {}
         self._groups: dict[str, _Group] = {}
 
@@ -197,8 +214,7 @@ class Commands:
             limits = () if allow is None else (allow,)
             entry = _Entry(full, handler, _params(full, handler), doc, admin, limits)
             (self._by_name if group is None else group.entries)[key] = entry
-            if admin:
-                self._need_admins()
+            self._need_roster()
             return handler
 
         return add
@@ -207,18 +223,25 @@ class Commands:
         key = self._check(name)
         group = _Group(key, admin, () if allow is None else (allow,))
         self._groups[key] = group
-        if admin:
-            self._need_admins()
+        self._need_roster()
         return CommandGroup(self, group)
 
-    def _need_admins(self) -> None:
+    def _need_roster(self) -> None:
         if self._roster is None:
             self._roster = self._make_roster()
 
-    def _is_admin(self, ucid: int) -> bool:
+    def _is_local(self, ucid: int) -> bool:
+        local = self._roster.local
+        if local is None:  # not known yet: UCID 0 is this computer unless LFS is a guest
+            return ucid == 0 and not self._roster.guest
+        return bool(ucid == local.ucid)
+
+    def _is_admin(self, ucid: int, local: bool) -> bool:
+        if self._roster.guest:
+            return local  # the server's admins are not ours
         if ucid == 0:
             return True  # the host, or this computer
-        connection = None if self._roster is None else self._roster.connections.get(ucid)
+        connection = self._roster.connections.get(ucid)
         return connection is not None and bool(connection.admin)
 
     def handle(
@@ -236,6 +259,10 @@ class Commands:
         words = text[len(self.prefix) :].split()
         if not words:
             return
+        guest = bool(self._roster.guest)
+        local = self._is_local(packet.UCID)
+        if guest and not local and self.guest_commands == "local":
+            return  # someone else's server: not for them, and they get no answer
         key = words[0].lower()
         group = self._groups.get(key)
         entry: _Entry | None
@@ -252,10 +279,14 @@ class Commands:
             else:
                 name, args = entry.name, tuple(words[2:])
                 admin, allow = group.admin or entry.admin, group.allow + entry.allow
-        reply = functools.partial(say, to=packet.UCID)
-        command = Command(name, args, packet.UCID, packet.PLID, packet, reply)
+        reply: Callable[[str], None]
+        if not guest:
+            reply = functools.partial(say, to=packet.UCID)
+        else:  # a guest cannot send IS_MTC: this computer gets IS_MSL, anyone else the chat
+            reply = functools.partial(say, to=0) if local else say
+        command = Command(name, args, packet.UCID, packet.PLID, local, packet, reply)
         shown = self.prefix + name
-        if admin and not self._is_admin(packet.UCID):
+        if admin and not self._is_admin(packet.UCID, local):
             reply(f"{shown} is only for admins")
             return
         if not all(_allowed(check, command, handlers) for check in allow):

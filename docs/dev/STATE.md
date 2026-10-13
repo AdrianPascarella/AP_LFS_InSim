@@ -1,23 +1,24 @@
 # 📍 Estado — AP_LFS_InSim (lfs_insim)
-> Actualizado: 2026-10-13 (S18): **W7 y W8 hechas** (W8.5 en S18; CI en verde). La biblioteca está validada en el LFS real
+> Actualizado: 2026-10-13 (S19): **W9 hecha** (comandos como invitado en un servidor ajeno, probados en el LFS real;
+> sin publicar, en CHANGELOG «Unreleased»). Antes, en S18: **W7 y W8 hechas**. La biblioteca está validada en el LFS real
 > y tiene la API de alto nivel (`@insim.on.IS_NPL`, `insim.send.IS_MST(...)`, `received` / `sent`,
 > `await insim.request(...)`, `Roster`, `say()` / `command()`, `on_command`, `text.plain()`), cuatro
 > ejemplos y `docs/packets.md` (tabla generada).
 > **`lfs-insim 0.4.0` está publicado en PyPI** (S18, release `v0.4.0`): W8.2 (comandos con tipos, ayuda, grupos,
 > permisos), W8.3 (unidades), W8.4 (`insim.watch()`), listas cortas de `IS_REO`/`IS_HCP` (U9) y el arreglo de P9.
 > Probado en LFS real antes de publicar (U8). Antes, 0.3.0 y 0.2.0 (S16–S17).
-> **▶️ SIGUIENTE: W9 (InSim como invitado en un servidor ajeno)**, decidida en S18 (U10) antes de W6: detallarla
-> con el usuario y empezar por W9.0, la prueba en real como invitado (pedir permiso). Ver `PLAN.md`, W9.
+> **▶️ SIGUIENTE: W9.6, publicar 0.5.0** (pedir permiso al usuario; receta abajo) **y después W6**, la primera
+> aplicación aparte: detallarla con el usuario. W9 en `PLAN.md`; decisiones en `API_DESIGN.md` («invitado»).
 > **Receta de una versión nueva:** versión y CHANGELOG en
 > `dev`; `verify` en verde; avance rápido de `dev` a `main`; `gh release create vX.Y.Z --target main`
 > (el tag debe ser `v<version>`); aprobar el entorno `pypi` (pedirlo cada vez; con permiso, el agente lo aprueba
 > por la API: `gh api -X POST .../actions/runs/<id>/pending_deployments -F "environment_ids[]=<id>" -f state=approved`,
 > con `GH_TOKEN` de `AdrianPascarella`). Una versión publicada
-> no se puede resubir. `_connection.py` va por 462 líneas (aviso de `verify` en 500): lo que crezca, en un
+> no se puede resubir. `_connection.py` va por 485 líneas (aviso de `verify` en 500): lo que crezca, en un
 > módulo propio (los comandos de W8.2, en `_commands.py`). Ver `USER_ACTIONS.md`.
 
 ## Dónde estamos
-Fase activa: **W9** (esbozada en S18, por detallar); W8 hecha y 0.4.0 publicado en S18.
+Fase activa: **W9** (hecha en S19, falta publicarla: W9.6); después W6. W8 hecha y 0.4.0 publicado en S18.
 
 - **Cómo se genera:** `.venv/Scripts/python scripts/generate_packets.py` lee
   `spec/cache/InSim.txt` y `spec/cache/OutSimPack.txt` (con `scripts/spec_parser.py`) y las
@@ -44,7 +45,7 @@ El proyecto anterior está en la rama `refactor/estabilizacion` y en las etiquet
 consulta, no se copia.
 
 ## Lo que te espera
-Ninguna acción pendiente (U8, U9 y U10 cerradas en S18) → `USER_ACTIONS.md`.
+1 pendiente, opcional y sin bloquear nada: U11 (comando de otra persona como invitado) → `USER_ACTIONS.md`.
 
 ## Tests inestables (arreglados en S14)
 `tests/test_every.py` fallaba a veces solo en el Windows del CI (3.12 y 3.13). Causa comprobada: en

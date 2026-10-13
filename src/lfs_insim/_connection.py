@@ -11,7 +11,7 @@ from types import TracebackType
 from typing import Any, Self, cast
 
 from lfs_insim import _requests
-from lfs_insim._commands import Allow, CommandGroup, CommandHandler, Commands
+from lfs_insim._commands import Allow, CommandGroup, CommandHandler, Commands, GuestCommands
 from lfs_insim._events import P
 from lfs_insim._handlers import Errors, Handlers, StopsOnError
 from lfs_insim._shortcuts import On, Send
@@ -65,6 +65,7 @@ class InSim(StopsOnError):
         flags: int = 0,
         interval_ms: int = 0,
         prefix: str = "",
+        guest_commands: GuestCommands = "local",
         errors: Errors = "log",
     ) -> None:
         """Prepare the connection; nothing is sent until it is opened.
@@ -75,6 +76,8 @@ class InSim(StopsOnError):
         flags: ISF options, e.g. `ISF.MCI | ISF.LOCAL`.
         interval_ms: time between IS_MCI or IS_NLP packets (0 = none).
         prefix: the special host message prefix character, e.g. "!".
+        guest_commands: who may use the chat commands while LFS is a guest in someone else's
+            server: "local" (the default), only this computer; "everyone", anyone, with allow=.
         errors: what happens when a handler fails. "log" (the default): the error is logged and
             everything goes on. "raise", for development: the first error closes the connection
             and is raised again by `run()`, `wait_closed()` and `async with`.
@@ -94,7 +97,7 @@ class InSim(StopsOnError):
         )
         self._isi.pack()  # fail now, not when connecting, if a name is too long
         self._handlers = Handlers(errors, self._fail)
-        self._commands = Commands(prefix, self._make_roster)
+        self._commands = Commands(prefix, self._make_roster, guest_commands)
         self._requests = _requests.Requests()
         self._connect_handlers: list[ConnectHandler] = []
         self._disconnect_handlers: list[ConnectHandler] = []

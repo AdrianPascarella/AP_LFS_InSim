@@ -1,8 +1,10 @@
 """Who is who: lfs_insim.state.Roster (W4.3), against the fake LFS."""
 
 import asyncio
+import logging
 from collections.abc import Awaitable, Callable
 
+import pytest
 from fake_lfs import FakeLFS
 
 from lfs_insim import InSim
@@ -269,3 +271,20 @@ def test_a_ucid_reused_at_once_keeps_the_new_connection() -> None:
         assert roster.connections[3].username == "new"
 
     run(test, connections=(host(), guest()))
+
+
+def test_closing_while_asking_is_not_an_error(caplog: pytest.LogCaptureFixture) -> None:
+    # LFS says 2 connections and sends 1, so the roster is still waiting when the program closes
+    # (S19: with commands, every program with commands has a roster).
+    async def main() -> None:
+        async with FakeLFS() as lfs:
+            lfs.replies[TINY.NCN] = [host()]
+            insim = InSim(port=lfs.port)
+            Roster(insim)
+            async with insim:
+                await lfs.wait_for(IS_TINY)
+                await asyncio.sleep(0.05)
+
+    with caplog.at_level(logging.WARNING, logger="lfs_insim"):
+        asyncio.run(main())
+    assert not caplog.records

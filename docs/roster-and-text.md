@@ -26,6 +26,8 @@ def joined(packet: received.IS_NPL) -> None:
 - On every connection and reconnection it asks LFS for everyone, so it starts complete.
 - It is already up to date in your handlers: when someone arrives it is updated before them, and
   when someone leaves (`IS_PLL`, `IS_CNL`) after them, so you can still look up who is leaving.
+- `roster.guest` is `True` while your LFS is a guest in someone else's server, and
+  `roster.local` is this computer's `Connection` (UCID 0, except as a guest).
 - It is read only: change things in LFS, not in the roster.
 
 See [`examples/who.py`](../examples/who.py).

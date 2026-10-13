@@ -116,6 +116,21 @@ def stop(command: Command) -> None: ...
 
 Register commands before running. Names are matched in any case. Commands are hidden from the
 other users. A command with no function is left alone, since it may be meant for another program.
+`command.local` says whether it was typed on this computer.
+
+**As a guest in someone else's server.** When your LFS has joined a server that is not yours,
+your program still gets the chat, but it is not the host, so things change:
+
+- Only this computer may use your commands; what others type is ignored, without an answer.
+  `InSim(prefix="!", guest_commands="everyone")` lets everyone in, and `allow` still applies.
+- `admin=True` means this computer only: the server's admins are not yours.
+- Commands are not hidden: everyone in the server sees `!speed 80`. To keep one to yourself,
+  type `/o !speed 80`: only your InSim sees it.
+- `command.reply()` shows the answer only to you (`IS_MSL`). Someone else is answered in the
+  public chat, because a guest cannot write to just one connection.
+
+`Roster` tells you where you are: `roster.guest` and `roster.local` (this computer's
+connection; see [Who is who](roster-and-text.md)).
 
 ### On connection, and on a rhythm
 

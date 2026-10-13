@@ -13,10 +13,15 @@ The roster asks LFS for every connection and player on each (re)connection, and 
 packets that change them. It is up to date in every handler: when someone arrives or changes it
 is updated before the handlers run, and when someone leaves (IS_PLL, IS_CNL), after them, so a
 handler can still look up who is leaving (an `async def` one, until its first await).
+
+It also knows whether LFS is a guest in someone else's server (`roster.guest`) and which
+connection is this computer (`roster.local`).
 """
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from types import MappingProxyType
@@ -80,6 +85,8 @@ class Roster:
         self._insim = insim
         self._connections: dict[int, Connection] = {}
         self._players: dict[int, Player] = {}
+        self._guest = False
+        self._local: int | None = None  # the UCID of this computer, from its IS_NCN
         insim.on_connect(self._refresh)
         insim.on(IS_ISM)(self._restarted)  # a new host or game: ask again
         insim.on(IS_TINY, TINY.MPE)(self._restarted)
@@ -95,14 +102,46 @@ class Roster:
         """Every player in the race, by PLID (read only)."""
         return MappingProxyType(self._players)
 
+    @property
+    def guest(self) -> bool:
+        """True while LFS is a guest in someone else's server (IS_ISM with Host 0).
+
+        False in single player and as host. Only the host may answer one connection (IS_MTC),
+        and as a guest the host is UCID 0 and this computer another UCID: see `local`.
+        """
+        return self._guest
+
+    @property
+    def local(self) -> Connection | None:
+        """This computer's connection: the one LFS does not mark as remote (None until known).
+
+        UCID 0 in single player and as host; another UCID as a guest.
+        """
+        return None if self._local is None else self._connections.get(self._local)
+
     async def _refresh(self) -> None:
         """Forget everything and ask LFS again; the answers go through _before like any packet."""
         self._connections.clear()
         self._players.clear()
-        await self._insim.request_all(IS_NCN)
-        await self._insim.request_all(IS_NPL)
+        self._local = None
+        await asyncio.gather(self._ask_multiplayer(), self._ask_everyone())
+
+    async def _ask_everyone(self) -> None:
+        with contextlib.suppress(ConnectionError):  # lost or closed: the next connection asks
+            await self._insim.request_all(IS_NCN)
+            await self._insim.request_all(IS_NPL)
+
+    async def _ask_multiplayer(self) -> None:
+        try:
+            await self._insim.request(IS_ISM, timeout=1.0)  # handled by _before
+        except TimeoutError:
+            self._guest = False  # not in multiplayer: LFS does not answer
+        except ConnectionError:
+            pass  # the next connection asks again
 
     async def _restarted(self, packet: IS_ISM | IS_TINY) -> None:
+        if isinstance(packet, IS_ISM) and packet.ReqI:
+            return  # the answer to TINY_ISM, asked for by _refresh: nothing has changed
         await self._refresh()
 
     def _before(self, packet: InSimPacket) -> None:
@@ -112,6 +151,12 @@ class Roster:
             connection.name = packet.PName
             connection.admin = bool(packet.Admin)
             connection.remote = bool(packet.Flags & _REMOTE)
+            if not connection.remote:
+                self._local = packet.UCID
+        elif isinstance(packet, IS_ISM):
+            self._guest = not packet.Host
+        elif isinstance(packet, IS_TINY) and packet.SubT == TINY.MPE:
+            self._guest = False
         elif isinstance(packet, IS_NPL):
             self._joined(packet)
         elif isinstance(packet, IS_PLP):
@@ -137,6 +182,8 @@ class Roster:
                 player.connection.players.remove(player)
         elif isinstance(packet, IS_CNL):
             connection = self._connections.pop(packet.UCID, None)
+            if self._local == packet.UCID:
+                self._local = None
             for player in connection.players if connection is not None else []:
                 self._players.pop(player.plid, None)
 

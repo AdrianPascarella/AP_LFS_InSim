@@ -309,6 +309,23 @@ sin aviso. *Por qué:* P4; una API pequeña se puede revisar entera.
   11 códigos: `v a c d s q t l r h ^`), y el `^h773` → `#773` coincide con lo visto en el LFS real.
   Un código desconocido y un `^` suelto se quedan tal cual.
 
+## Comandos como invitado en un servidor ajeno (W9, S19; las cuatro decisiones, del usuario)
+Lo que hace LFS como invitado, visto en el juego real en S19: `IS_ISM` con `Host=0`; este ordenador es la
+conexión sin la marca de remoto (UCID 1 aquí) y el anfitrión es el UCID 0, con la marca de remoto; lo que
+se escribe llega como `MSO.USER`, con prefijo o sin él, y lo ve todo el servidor; `/o texto` llega como
+`MSO.O`. LFS rechaza `IS_MTC` y `TINY_NCI` («only for multiplayer hosts», solo en pantalla) y enseña
+`IS_MSL` solo a este ordenador.
+- **Quién:** como invitado, por defecto solo este ordenador; los demás se ignoran sin contestar.
+  `InSim(guest_commands="everyone")` lo abre y `allow=` sigue filtrando. *Descartado:* abrir a todos
+  (fácil dejarlo abierto sin querer) y una lista de usuarios en `InSim` (`allow=` ya lo cubre).
+- **`admin=True`:** como invitado, solo este ordenador (los admins del servidor ajeno no son los nuestros).
+- **`reply()`:** a este ordenador, `IS_MSL`; a otro, el chat público (`IS_MST`/`IS_MSX`), la única vía.
+  *Descartado:* todo por `IS_MSL` (los demás no verían las respuestas a sus comandos).
+- **`/o`:** cuenta como comando, con el mismo prefijo (`/o !who`); sin prefijo chocaría con otros
+  programas que escuchen `/o`.
+- `Command.local`; `roster.guest` y `roster.local`. Los comandos crean siempre su propio `Roster`
+  (antes solo con `admin=True`), porque sin él no se sabe quién es este ordenador.
+
 ## Abierto (se decide más adelante, no ahora)
 - Agrupar manejadores en módulos (lo que hacía `InSimApp` con varias aplicaciones a la vez): si
   hiciera falta, algo como el `APIRouter` de FastAPI. Solo si una aplicación real lo pide.

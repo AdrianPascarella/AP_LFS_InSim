@@ -329,7 +329,7 @@ equivalencia pasa en todas las formas para todos los paquetes; `verify` y el CI 
 **Criterios de aceptación:** cada tarea con tests (en rojo antes del código), guía y CHANGELOG; `verify` y el
 CI en verde; ningún módulo por encima del aviso de tamaño.
 
-## W9 — InSim en un servidor ajeno (como invitado)   📋 ESBOZADA en S18 · va antes de W6 (U10)
+## W9 — InSim en un servidor ajeno (como invitado)   ✅ HECHA en S19 (U11 opcional) · esbozada en S18, detallada en S19
 **Objetivo:** usar la biblioteca conectada a un LFS que es invitado en un servidor ajeno, con comandos de
 chat con un prefijo visible que solo ejecutan los usuarios autorizados (normalmente nosotros). La primera
 aplicación (W6) lo necesita (el usuario, S18).
@@ -338,8 +338,24 @@ aplicación (W6) lo necesita (el usuario, S18).
 - Falta: `reply()` como invitado (LFS rechaza `IS_MTC`: `IS_MSL`); saber si somos anfitrión o invitado
   (`IS_ISM.Host`) y quién es este ordenador (`Command.local`); por defecto, como invitado, solo comandos
   locales y `allow=` para abrir; qué significa `admin=True` fuera de nuestro servidor.
-- [ ] **W9.0** — Prueba en real como invitado (servidor «testing» del usuario, con permiso): UCID y flags de
+- [x] **W9.0** — Prueba en real como invitado (servidor «testing» del usuario, con permiso): UCID y flags de
   nuestra conexión, `TINY_NCN`, `IS_ISM`, qué `UserType` llega con cada prefijo. Sin esto no se diseña.
+  hecho en S19 → LOG.md S19
+**Detallada con el usuario en S19** (las cuatro recomendadas):
+- [x] **W9.1** — `Roster` sabe si LFS es invitado (`roster.guest`, de `IS_ISM.Host`; pide `TINY_ISM` al
+  conectar; `TINY_MPE` lo apaga) y qué conexión es este ordenador (sin la marca de remoto; como invitado,
+  UCID 0 es el anfitrión remoto). **Acepta:** tests con el LFS falso; un `IS_ISM` de respuesta no vuelve a
+  pedir el estado (bucle).
+- [x] **W9.2** — Comandos como invitado: por defecto solo los de este ordenador (los demás se ignoran sin
+  contestar); `InSim(guest_commands="everyone")` los abre y `allow=` sigue filtrando; `admin=True`, solo este
+  ordenador; `Command.local`. Los comandos crean siempre su `Roster`. **Acepta:** tests en rojo antes.
+- [x] **W9.3** — `reply()` como invitado: a este ordenador por `IS_MSL`; a otro, por el chat público
+  (`IS_MST`/`IS_MSX`), la única vía. **Acepta:** tests; ningún `IS_MTC` como invitado.
+  W9.1–W9.4 hechas en S19 → LOG.md S19
+- [x] **W9.4** — Comandos por `/o` (`MSO.O`, solo los ve el InSim local), con el mismo prefijo: test y guía.
+- [x] **W9.5** — Guía, docstrings, CHANGELOG, `API_DESIGN.md`; prueba en real como invitado (validar).
+  hecho en S19 → LOG.md S19 (falta, opcional, el comando de otra persona: U11)
+- [ ] **W9.6** — Publicar 0.5.0 (con permiso del usuario), antes de empezar W6.
 
 ## W6 — Primera aplicación aparte   📋 ESBOZADA
 **Objetivo:** escribir, en un proyecto separado, la primera aplicación real con la biblioteca (la
