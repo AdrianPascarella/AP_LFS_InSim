@@ -1,14 +1,13 @@
 # 📍 Estado — AP_LFS_InSim (lfs_insim)
 > Actualizado: 2026-10-13 (S19): **W9 hecha** (comandos como invitado, probados en el LFS real; prefijo propio por comando, W9.7;
-> sin publicar, en CHANGELOG «Unreleased»). Antes, en S18: **W7 y W8 hechas**. La biblioteca está validada en el LFS real
+> **publicado como 0.5.0**). Antes, en S18: **W7 y W8 hechas**. La biblioteca está validada en el LFS real
 > y tiene la API de alto nivel (`@insim.on.IS_NPL`, `insim.send.IS_MST(...)`, `received` / `sent`,
 > `await insim.request(...)`, `Roster`, `say()` / `command()`, `on_command`, `text.plain()`), cuatro
 > ejemplos y `docs/packets.md` (tabla generada).
-> **`lfs-insim 0.4.0` está publicado en PyPI** (S18, release `v0.4.0`): W8.2 (comandos con tipos, ayuda, grupos,
-> permisos), W8.3 (unidades), W8.4 (`insim.watch()`), listas cortas de `IS_REO`/`IS_HCP` (U9) y el arreglo de P9.
-> Probado en LFS real antes de publicar (U8). Antes, 0.3.0 y 0.2.0 (S16–S17).
-> **▶️ SIGUIENTE: W9.6, publicar 0.5.0** (pedir permiso al usuario; receta abajo) **y después W6**, la primera
-> aplicación aparte: detallarla con el usuario. W9 en `PLAN.md`; decisiones en `API_DESIGN.md` («invitado»).
+> **`lfs-insim 0.5.0` está publicado en PyPI** (S19, release `v0.5.0`): comandos como invitado y prefijo propio
+> por comando (W9). Antes, 0.4.0 (S18: W8) y 0.3.0 y 0.2.0 (S16–S17).
+> **▶️ SIGUIENTE: W6, la primera aplicación aparte** (la cámara libre, para streamer-project): detallarla con el
+> usuario al empezar. W9 en `PLAN.md`; decisiones en `API_DESIGN.md` («invitado», «prefijo propio»).
 > **Receta de una versión nueva:** versión y CHANGELOG en
 > `dev`; `verify` en verde; avance rápido de `dev` a `main`; `gh release create vX.Y.Z --target main`
 > (el tag debe ser `v<version>`); aprobar el entorno `pypi` (pedirlo cada vez; con permiso, el agente lo aprueba
@@ -18,7 +17,7 @@
 > módulo propio (los comandos de W8.2, en `_commands.py`). Ver `USER_ACTIONS.md`.
 
 ## Dónde estamos
-Fase activa: **W9** (hecha en S19, falta publicarla: W9.6); después W6. W8 hecha y 0.4.0 publicado en S18.
+Fase activa: **W6** (esbozada, por detallar). W9 hecha y 0.5.0 publicado en S19.
 
 - **Cómo se genera:** `.venv/Scripts/python scripts/generate_packets.py` lee
   `spec/cache/InSim.txt` y `spec/cache/OutSimPack.txt` (con `scripts/spec_parser.py`) y las

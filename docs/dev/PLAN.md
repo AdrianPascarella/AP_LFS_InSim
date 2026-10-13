@@ -357,7 +357,7 @@ aplicación (W6) lo necesita (el usuario, S18).
   hecho en S19 → LOG.md S19 (falta, opcional, el comando de otra persona: U11)
 - [x] **W9.7** — Prefijo propio por comando o grupo (`prefix=` en `on_command` y `command_group`), pedido por
   el usuario en S19 antes de publicar. hecho en S19 → LOG.md S19
-- [ ] **W9.6** — Publicar 0.5.0 (con permiso del usuario), antes de empezar W6.
+- [x] **W9.6** — Publicar 0.5.0 (con permiso del usuario), antes de empezar W6. hecho en S19 → LOG.md S19
 
 ## W6 — Primera aplicación aparte   📋 ESBOZADA
 **Objetivo:** escribir, en un proyecto separado, la primera aplicación real con la biblioteca (la

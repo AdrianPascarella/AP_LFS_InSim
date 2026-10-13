@@ -63,6 +63,14 @@ comprueba sigue igual. Sin prueba en real: es solo comparar texto, cubierto por 
 Guía, CHANGELOG, `API_DESIGN.md`. **Trampa repetida:** un heredoc largo de Python se rompió en la terminal
 (§13); se hizo con Edit.
 
+**Publicado 0.5.0 (W9.6)** (el usuario: «Sí, publica 0.5.0»). Versión y CHANGELOG en `dev` (`6da7e6d`); `verify`
+PASS; wheel y sdist construidos en un venv de herramientas en `%LOCALAPPDATA%\Temp\lfs_rel_050` (el scratchpad de
+la sesión ya no estaba), `twine check` PASSED, instalado en un venv limpio. CI `verify` en verde (run 38439273928);
+avance rápido de `dev` a `main` (`6da7e6d`); release `v0.5.0` (pre-release, notas del CHANGELOG) con `GH_TOKEN` de
+`AdrianPascarella`; entorno `pypi` aprobado por el agente (§15); `publish` en verde (run 38439502735);
+`pip install lfs-insim==0.5.0` en un venv limpio: 0.5.0, `prefix=`, `guest_commands`, `Roster.local` OK.
+**Cierre de S19:** W9 cerrada y publicada; siguiente, W6. 1 acción opcional pendiente (U11).
+
 ## S18 — 2026-10-13 — W8.4: `insim.watch()` público
 
 **Inicio:** `session_start_check` PASS (rama, identidad, pull, plantilla v3); `verify` PASS antes de tocar nada.
