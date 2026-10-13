@@ -288,3 +288,110 @@ def test_closing_while_asking_is_not_an_error(caplog: pytest.LogCaptureFixture) 
     with caplog.at_level(logging.WARNING, logger="lfs_insim"):
         asyncio.run(main())
     assert not caplog.records
+
+
+# ready() (W10.4): the on_connect of every plugin starts at once, so one may read the roster before
+# LFS has answered. `await roster.ready()` waits for the whole picture of this connection.
+
+
+def test_a_plugin_waits_for_the_roster_on_connecting() -> None:
+    seen: list[tuple[list[int], list[int]]] = []
+
+    def camera(insim: InSim) -> None:
+        roster = insim.use(Roster)
+
+        @insim.on_connect
+        async def start() -> None:
+            await roster.ready()
+            seen.append((sorted(roster.connections), sorted(roster.players)))
+
+    async def main() -> None:
+        async with FakeLFS() as lfs:
+            lfs.replies[TINY.NCN] = [host(), guest()]
+            lfs.replies[TINY.NPL] = [npl(1, 0, "Host", num_p=2), npl(2, 3, "Guest", num_p=2)]
+            insim = InSim(port=lfs.port)
+            insim._retry_delays = FAST
+            insim.use(camera)
+            async with insim:
+                await _until(lambda: seen)
+                assert seen == [([0, 3], [1, 2])]
+                lfs.replies[TINY.NCN] = [IS_NCN(UCID=0, PName="Host", Total=1)]
+                lfs.replies[TINY.NPL] = []
+                await lfs.drop()  # LFS restarts: on the next connection, the new picture
+                await _until(lambda: len(seen) == 2)
+                assert seen[1] == ([0], [])
+
+    asyncio.run(main())
+
+
+def test_ready_returns_at_once_when_the_picture_is_there() -> None:
+    async def test(lfs: FakeLFS, insim: InSim, roster: Roster) -> None:
+        await roster.ready()  # about a second: single player does not answer TINY_ISM
+        async with asyncio.timeout(0.05):
+            await roster.ready()
+
+    run(test, connections=(host(),))
+
+
+def test_ready_waits_while_the_roster_asks_again() -> None:
+    async def test(lfs: FakeLFS, insim: InSim, roster: Roster) -> None:
+        await roster.ready()
+        lfs.replies[TINY.NCN] = [host(), guest()]
+        asked_again = asyncio.Event()
+        insim.on(IS_ISM)(lambda packet: asked_again.set())
+        await lfs.send(IS_ISM(Host=1, HName="server"))  # a new host: the roster asks again
+        await asked_again.wait()
+        await roster.ready()
+        assert sorted(roster.connections) == [0, 3]
+
+    run(test, connections=(host(),))
+
+
+def test_ready_waits_after_a_reconnection_whoever_was_registered_first() -> None:
+    # A plugin whose on_connect was registered before the roster's: it runs first.
+    seen: list[list[int]] = []
+
+    async def main() -> None:
+        async with FakeLFS() as lfs:
+            lfs.replies[TINY.NCN] = [host(), guest()]
+            insim = InSim(port=lfs.port)
+            insim._retry_delays = FAST
+
+            @insim.on_connect
+            async def start() -> None:
+                await roster.ready()
+                seen.append(sorted(roster.connections))
+
+            roster = insim.use(Roster)
+            async with insim:
+                await _until(lambda: seen)
+                lfs.replies[TINY.NCN] = [IS_NCN(UCID=0, PName="Host", Total=1)]
+                await lfs.drop()
+                await _until(lambda: len(seen) == 2)
+                assert seen == [[0, 3], [0]]
+
+    asyncio.run(main())
+
+
+def test_ready_waits_after_a_new_host_whoever_was_registered_first() -> None:
+    seen: list[list[int]] = []
+
+    async def main() -> None:
+        async with FakeLFS() as lfs:
+            lfs.replies[TINY.NCN] = [host()]
+            insim = InSim(port=lfs.port)
+
+            @insim.on(IS_ISM)
+            async def new_host(packet: IS_ISM) -> None:
+                await roster.ready()
+                seen.append(sorted(roster.connections))
+
+            roster = insim.use(Roster)
+            async with insim:
+                await roster.ready()
+                lfs.replies[TINY.NCN] = [host(), guest()]
+                await lfs.send(IS_ISM(Host=1, HName="server"))
+                await _until(lambda: seen)
+                assert seen == [[0, 3]]
+
+    asyncio.run(main())

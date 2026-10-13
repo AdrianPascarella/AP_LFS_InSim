@@ -16,12 +16,14 @@ handler can still look up who is leaving (an `async def` one, until its first aw
 
 It also knows whether LFS is a guest in someone else's server (`roster.guest`) and which
 connection is this computer (`roster.local`).
+
+The on_connect functions of every plugin start at once, so one may look before LFS has answered:
+`await roster.ready()` waits until the whole picture of this connection has arrived.
 """
 
 from __future__ import annotations
 
 import asyncio
-import contextlib
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from types import MappingProxyType
@@ -91,7 +93,10 @@ class Roster(Plugin):
         self._players: dict[int, Player] = {}
         self._guest = False
         self._local: int | None = None  # the UCID of this computer, from its IS_NCN
+        self._ready = asyncio.Event()  # set when everyone has been asked for, on this connection
+        self._asking = 0  # refreshes started: only the latest may say the picture is ready
         insim.on_connect(self._refresh)
+        insim.on_disconnect(self._ready.clear)
         insim.on(IS_ISM)(self._restarted)  # a new host or game: ask again
         insim.on(IS_TINY, TINY.MPE)(self._restarted)
         insim.watch(before=self._before, after=self._after)
@@ -123,25 +128,44 @@ class Roster(Plugin):
         """
         return None if self._local is None else self._connections.get(self._local)
 
+    async def ready(self) -> None:
+        """Wait until the roster has the whole picture of this connection: every connection and
+        player, and whether LFS is a guest. At once if it has it; again after LFS changes host or
+        game (IS_ISM, TINY_MPE) and after a reconnection, until LFS has answered.
+
+        In single player LFS does not answer the guest question, so the first picture takes about
+        a second.
+        """
+        await self._ready.wait()
+
     async def _refresh(self) -> None:
         """Forget everything and ask LFS again; the answers go through _before like any packet."""
+        self._ready.clear()
+        self._asking += 1
+        asking = self._asking
         self._connections.clear()
         self._players.clear()
         self._local = None
-        await asyncio.gather(self._ask_multiplayer(), self._ask_everyone())
+        answered = await asyncio.gather(self._ask_multiplayer(), self._ask_everyone())
+        if all(answered) and asking == self._asking:
+            self._ready.set()
 
-    async def _ask_everyone(self) -> None:
-        with contextlib.suppress(ConnectionError):  # lost or closed: the next connection asks
+    async def _ask_everyone(self) -> bool:
+        try:
             await self._insim.request_all(IS_NCN)
             await self._insim.request_all(IS_NPL)
+        except ConnectionError:
+            return False  # lost or closed: the next connection asks
+        return True
 
-    async def _ask_multiplayer(self) -> None:
+    async def _ask_multiplayer(self) -> bool:
         try:
             await self._insim.request(IS_ISM, timeout=1.0)  # handled by _before
         except TimeoutError:
             self._guest = False  # not in multiplayer: LFS does not answer
         except ConnectionError:
-            pass  # the next connection asks again
+            return False  # the next connection asks again
+        return True
 
     async def _restarted(self, packet: IS_ISM | IS_TINY) -> None:
         if isinstance(packet, IS_ISM) and packet.ReqI:
@@ -159,8 +183,11 @@ class Roster(Plugin):
                 self._local = packet.UCID
         elif isinstance(packet, IS_ISM):
             self._guest = not packet.Host
+            if not packet.ReqI:
+                self._ready.clear()  # now, not when _restarted runs: ready() must not say yes
         elif isinstance(packet, IS_TINY) and packet.SubT == TINY.MPE:
             self._guest = False
+            self._ready.clear()
         elif isinstance(packet, IS_NPL):
             self._joined(packet)
         elif isinstance(packet, IS_PLP):

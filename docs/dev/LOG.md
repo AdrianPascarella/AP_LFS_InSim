@@ -94,6 +94,17 @@ tarea propia, `asyncio.shield`, cada `request_all` recibe su lista). Rojo primer
   de LFS desde que se envió (contador en `Requests.deliver`). El test no se tocó.
 - `verify` PASS (563 tests).
 
+**W10.4 hecha:** `await roster.ready()` (un `asyncio.Event`): se pone al terminar el último `_refresh` sin
+error de conexión, y se borra al empezar un `_refresh`, al desconectar y, de forma síncrona en `_before`, al
+llegar `IS_ISM` sin `ReqI` o `TINY_MPE`. Rojo primero: 3 tests.
+- **Un test nuevo mío estaba mal y se corrigió:** suponía la foto lista nada más llegar las conexiones, pero
+  en un solo jugador `TINY_ISM` no tiene respuesta y se espera 1 s (documentado en `ready()`).
+- **Dos mutaciones sobrevivieron al principio** (sin el borrado síncrono, sin el borrado al desconectar):
+  los tests registraban siempre `Roster` antes que el plugin, y así el `_refresh` borra antes. Esos borrados
+  importan cuando alguien se registra antes que `Roster`: dos tests nuevos con ese orden; con ellos, cada
+  mutación da rojo.
+- Guía (`roster-and-text.md`), CHANGELOG. `verify` PASS. `test_roster.py` tarda ~11 s (las esperas de 1 s).
+
 ## S19 — 2026-10-13 — W9: comandos como invitado en un servidor ajeno
 
 **Inicio:** `session_start_check` PASS (rama, identidad, pull, plantilla v3). Documentos y realidad coinciden
