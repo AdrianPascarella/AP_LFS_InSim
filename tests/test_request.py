@@ -141,3 +141,78 @@ def test_asking_with_the_wrong_function_is_a_type_error() -> None:
         asyncio.run(insim.request_all(IS_VER))
     with pytest.raises(TypeError, match="IS_MSO"):
         asyncio.run(insim.request(IS_MSO))
+
+
+# The same request at the same time is sent once (W10.3): plugins ask for the same on connecting.
+
+
+def _asked(lfs: FakeLFS, sub: TINY) -> list[IS_TINY]:
+    return [p for p in lfs.received if isinstance(p, IS_TINY) and p.SubT == sub]
+
+
+def test_the_same_request_all_at_the_same_time_is_sent_once() -> None:
+    async def test(lfs: FakeLFS, insim: InSim) -> None:
+        lfs.replies[TINY.NPL] = [IS_NPL(PLID=plid, NumP=2) for plid in (1, 2)]
+        first, second = await asyncio.gather(insim.request_all(IS_NPL), insim.request_all(IS_NPL))
+        assert [p.PLID for p in first] == [p.PLID for p in second] == [1, 2]
+        first.clear()  # each gets a list of its own
+        assert len(second) == 2
+        assert len(_asked(lfs, TINY.NPL)) == 1
+
+    run(test)
+
+
+def test_the_same_request_at_the_same_time_is_sent_once() -> None:
+    async def test(lfs: FakeLFS, insim: InSim) -> None:
+        lfs.replies[TINY.SST] = [IS_STA(NumP=4)]
+        first, second = await asyncio.gather(insim.request(IS_STA), insim.request(IS_STA))
+        assert first.NumP == second.NumP == 4
+        assert len(_asked(lfs, TINY.SST)) == 1
+
+    run(test)
+
+
+def test_the_same_request_later_is_sent_again() -> None:
+    async def test(lfs: FakeLFS, insim: InSim) -> None:
+        lfs.replies[TINY.SST] = [IS_STA(NumP=4)]
+        await insim.request(IS_STA)
+        await insim.request(IS_STA)
+        assert len(_asked(lfs, TINY.SST)) == 2
+
+    run(test)
+
+
+def test_a_shared_request_survives_the_first_asker_giving_up() -> None:
+    async def test(lfs: FakeLFS, insim: InSim) -> None:
+        first = asyncio.create_task(insim.request(IS_STA))
+        second = asyncio.create_task(insim.request(IS_STA))
+        tiny = await lfs.wait_for(IS_TINY)
+        assert tiny.SubT == TINY.SST
+        first.cancel()
+        await lfs.send(IS_STA(ReqI=tiny.ReqI, NumP=3))
+        assert (await second).NumP == 3
+        assert first.cancelled()
+
+    run(test)
+
+
+def test_after_news_from_lfs_the_same_request_is_sent_again() -> None:
+    # Something that arrived may have changed the answer (a new host, say): Roster asks again
+    # when IS_ISM comes, and must not get the answer to the question it asked before.
+    async def test(lfs: FakeLFS, insim: InSim) -> None:
+        news: list[IS_MSO] = []
+        insim.on(IS_MSO)(news.append)
+        first = asyncio.create_task(insim.request(IS_STA))
+        first_tiny = await lfs.wait_for(IS_TINY)
+        await lfs.send(IS_MSO(Msg="news"))
+        async with asyncio.timeout(2):
+            while not news:
+                await asyncio.sleep(0.01)
+        second = asyncio.create_task(insim.request(IS_STA))
+        second_tiny = await lfs.wait_for(IS_TINY)
+        assert second_tiny.SubT == TINY.SST
+        assert second_tiny.ReqI != first_tiny.ReqI
+        await lfs.send(IS_STA(ReqI=first_tiny.ReqI, NumP=1), IS_STA(ReqI=second_tiny.ReqI, NumP=2))
+        assert ((await first).NumP, (await second).NumP) == (1, 2)
+
+    run(test)

@@ -85,6 +85,15 @@ ejecución pero mypy los rechazaba (`expected "type[Roster]"`); con la firma nue
 - Ejemplos, README, `getting-started.md`, `insim.md` y `roster-and-text.md` con la forma nueva; CHANGELOG
   «Breaking». `verify` PASS (558 tests), sin avisos de tamaño.
 
+**W10.3 hecha:** dos `request()`/`request_all()` iguales a la vez → un solo `IS_TINY` (`Requests.shared`: una
+tarea propia, `asyncio.shield`, cada `request_all` recibe su lista). Rojo primero: 3 de 4 tests nuevos.
+- **Defecto de diseño encontrado por un test existente** (`test_starting_or_ending_multiplayer_asks_for_the_
+  state_again`, en rojo con la primera versión): al llegar `IS_ISM`, `Roster` vuelve a preguntar, y se unía a la
+  petición de `TINY_ISM` enviada antes del aviso → respuesta vieja. **Hipótesis comprobada** con una mutación:
+  sin la regla nueva, ese test y uno nuevo fallan. **Regla:** solo se comparte si no ha llegado ningún paquete
+  de LFS desde que se envió (contador en `Requests.deliver`). El test no se tocó.
+- `verify` PASS (563 tests).
+
 ## S19 — 2026-10-13 — W9: comandos como invitado en un servidor ajeno
 
 **Inicio:** `session_start_check` PASS (rama, identidad, pull, plantilla v3). Documentos y realidad coinciden

@@ -244,14 +244,19 @@ class InSim(StopsOnError):
         answer also reaches the `@insim.on` handlers. Raises TimeoutError if LFS does not answer
         within `timeout` seconds, ConnectionError if there is no connection or it is lost while
         waiting, and TypeError for a packet that LFS does not send on request, or sends in
-        several parts (those are for request_all).
+        several parts (those are for request_all). The same request made while one waits is not
+        sent again: both get its answer (or its error), within the first one's timeout.
         """
         sub = _requests.SINGLE.get(reply)
         if sub is None:
             raise TypeError(_requests.wrong_function(reply, "request"))
-        with self._requests.waiting(reply) as (req_i, waiting):
-            self.send(IS_TINY(ReqI=req_i, SubT=sub))
-            return cast(P, await _requests.answer(waiting, timeout))
+
+        async def ask() -> InSimPacket:
+            with self._requests.waiting(reply) as (req_i, waiting):
+                self.send(IS_TINY(ReqI=req_i, SubT=sub))
+                return await _requests.answer(waiting, timeout)
+
+        return cast(P, await self._requests.shared((reply, "request"), ask))
 
     async def request_all(self, reply: type[P], *, quiet: float = 0.5) -> list[P]:
         """Ask LFS for packets that come in several: `players = await insim.request_all(IS_NPL)`.
@@ -260,23 +265,28 @@ class InSim(StopsOnError):
         arrived as the packets themselves say (Total in IS_NCN, NumP in IS_NPL, NumRes in
         IS_RES), or when none has arrived for `quiet` seconds: an empty list if LFS has nothing
         to send (no results before anyone finishes, say). The answers also reach the handlers.
-        Raises ConnectionError and TypeError as request() does.
+        Raises ConnectionError and TypeError as request() does, and shares a request made at the
+        same time as request() does (each gets its own list).
         """
         entry = _requests.MULTI.get(reply)
         if entry is None:
             raise TypeError(_requests.wrong_function(reply, "request_all"))
         sub, counter = entry
-        answers: list[P] = []
-        with self._requests.waiting(reply) as (req_i, waiting):
-            self.send(IS_TINY(ReqI=req_i, SubT=sub))
-            while True:
-                try:
-                    packet = await _requests.answer(waiting, quiet)
-                except TimeoutError:
-                    return answers
-                answers.append(cast(P, packet))
-                if counter is not None and len(answers) >= getattr(packet, counter):
-                    return answers
+
+        async def ask() -> list[InSimPacket]:
+            answers: list[InSimPacket] = []
+            with self._requests.waiting(reply) as (req_i, waiting):
+                self.send(IS_TINY(ReqI=req_i, SubT=sub))
+                while True:
+                    try:
+                        packet = await _requests.answer(waiting, quiet)
+                    except TimeoutError:
+                        return answers
+                    answers.append(packet)
+                    if counter is not None and len(answers) >= getattr(packet, counter):
+                        return answers
+
+        return cast(list[P], list(await self._requests.shared((reply, "request_all"), ask)))
 
     async def connect(self) -> None:
         """Connect once and send IS_ISI; packets are then dispatched in the background.

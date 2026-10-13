@@ -2,15 +2,19 @@
 
 An info request is an IS_TINY whose ReqI LFS copies into the answer, so each request gets a
 ReqI of its own and the answers are told apart by it. ReqI 1 is left to IS_ISI (its IS_VER), and
-0 means "not an answer".
+0 means "not an answer". The same request asked again while it waits, with nothing arrived from
+LFS since it was sent, is not sent again: the askers share its answer (plugins tend to ask for
+the same on connecting). Once something has arrived, it may have changed what LFS would answer
+(a new host, say), so a new request is sent.
 """
 
 from __future__ import annotations
 
 import asyncio
 import contextlib
-from collections.abc import Iterator
+from collections.abc import Awaitable, Callable, Iterator
 from dataclasses import dataclass, field
+from typing import Any, TypeVar
 
 from lfs_insim.packets import (
     IS_AXI,
@@ -66,6 +70,8 @@ MULTI: dict[type[InSimPacket], tuple[TINY, str | None]] = {
 
 FIRST_REQI = 2
 
+T = TypeVar("T")
+
 
 @dataclass
 class Waiting:
@@ -81,6 +87,29 @@ class Requests:
     def __init__(self) -> None:
         self._waiting: dict[int, Waiting] = {}
         self._next = FIRST_REQI
+        self._shared: dict[object, tuple[asyncio.Future[Any], int]] = {}
+        self._arrived = 0  # packets from LFS so far: a shared request is only joined if unchanged
+
+    async def shared(self, key: object, ask: Callable[[], Awaitable[T]]) -> T:
+        """The answer to `ask()`, or to the same request (same key) already waiting, if nothing
+        has arrived from LFS since it was sent.
+
+        It runs as a task of its own, so one asker giving up (cancelled) does not end it for the
+        others; each gets the same answer, or the same error.
+        """
+        task, arrived = self._shared.get(key, (None, -1))
+        if task is None or arrived != self._arrived:
+            task = asyncio.ensure_future(ask())
+            self._shared[key] = (task, self._arrived)
+            task.add_done_callback(lambda done: self._finished(key, done))
+        result: T = await asyncio.shield(task)
+        return result
+
+    def _finished(self, key: object, task: asyncio.Future[Any]) -> None:
+        if self._shared.get(key, (None, 0))[0] is task:
+            del self._shared[key]
+        if not task.cancelled():
+            task.exception()  # retrieved: if every asker gave up, asyncio would complain
 
     @contextlib.contextmanager
     def waiting(self, reply: type[InSimPacket]) -> Iterator[tuple[int, Waiting]]:
@@ -94,6 +123,7 @@ class Requests:
 
     def deliver(self, packet: InSimPacket) -> None:
         """Hand a packet from LFS to the request it answers, if any."""
+        self._arrived += 1
         waiting = self._waiting.get(getattr(packet, "ReqI", 0))  # every packet has ReqI
         if waiting is not None and isinstance(packet, waiting.reply):
             waiting.answers.put_nowait(packet)

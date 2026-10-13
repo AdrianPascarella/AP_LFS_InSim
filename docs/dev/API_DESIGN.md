@@ -384,7 +384,9 @@ class FreeCam(Plugin):                      # o una clase, si aporta herencia, o
   funciones con la política de errores) y el prefijo del `IS_ISI`: son de la biblioteca, no ejemplo para
   plugins de fuera.
 - **Nada se pide dos veces:** una instancia por tipo, y dos `request()` iguales a la vez comparten un solo
-  `IS_TINY`.
+  `IS_TINY`. *Precisado en W10.3:* solo si desde que se envió no ha llegado ningún paquete de LFS (si ha
+  llegado algo, la respuesta puede haber cambiado: se pregunta otra vez); cada uno recibe su propia lista; el
+  plazo es el del primero; uno que se cancela no corta a los demás.
 - **`ready()`** en los plugins con estado: los `on_connect` arrancan a la vez y uno puede leer el estado antes
   de que llegue la respuesta.
 - **Funciones o clases** (aceptado en S20, para que un script como los ejemplos se convierta en plugin con una
