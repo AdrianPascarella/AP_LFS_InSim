@@ -42,6 +42,13 @@ consulta, no se copia.
 ## Lo que te espera
 **1 acción pendiente** (U6, bloquea W5.5 y W5.6) → `USER_ACTIONS.md`.
 
+## Tests inestables (S13, sin arreglar)
+`tests/test_every.py` falla de vez en cuando **solo en Windows del CI** y pasa al relanzar:
+`test_a_slow_call_does_not_cause_a_burst` (3.13) y `test_a_def_runs_at_a_fixed_rate` (3.12,
+`later > earlier` estricto entre marcas de `time.monotonic()`). Hipótesis, **no verificada**: el
+reloj de Windows tiene grano grueso (~15 ms) y los márgenes de 0,01–0,02 s se quedan cortos.
+Arreglar antes de fiarse del CI en rojo: tolerancias mayores o `>=`, y diagnosticarlo primero (§8).
+
 ## Restricciones ahora mismo
 - En este equipo solo hay Python 3.14. Las demás versiones las comprueba el CI.
 - El `python` de la terminal es el de streamer-project: aquí siempre `.venv/Scripts/python` (§13).

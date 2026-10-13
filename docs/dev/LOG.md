@@ -45,6 +45,8 @@ conectado, la creación de cuentas, el correo y el 2FA los hace el usuario; el a
 los formularios del «pending publisher» con la sesión ya iniciada. Si no conecta, U6 sigue siendo
 manual. Nada se ha hecho en TestPyPI ni PyPI.
 
+**CI:** dos fallos intermitentes en Windows, en tests distintos de `tests/test_every.py` (de tiempos); ambos pasaron al relanzar (el primero ya; el segundo, ver STATE). Sin relación con W5. Anotado en STATE como «Tests inestables», sin arreglar.
+
 **Siguiente:** U6 (por el navegador o a mano); después W5.5.
 
 ## S12 — 2026-10-12 — Primera prueba con el LFS real (W3.1, primera pasada)
