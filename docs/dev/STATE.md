@@ -5,7 +5,10 @@
 > ejemplos y `docs/packets.md` (tabla generada). U7 cerrada: el usuario vio las listas en su VS Code.
 > **`lfs-insim 0.2.0` está publicado en PyPI** (S16, release `v0.2.0`).
 > **W7 está hecha entera** (W7.7, S16: `@insim.on.IS_TINY(TINY.MPE)`, en `dev` sin publicar: CHANGELOG «Unreleased»).
-> **▶️ SIGUIENTE (decide el usuario):** abrir W8 (mejoras del proyecto anterior, `LEGADO.md`) o W6 (primera aplicación aparte).
+> **▶️ SIGUIENTE: abrir W8** (mejoras del proyecto anterior; lista y orden propuesto en `LEGADO.md` §4; se detalla con el
+> usuario al abrirla, no antes). El usuario eligió W8 antes que W6 (el agente recomendó W6 primero para que la
+> aplicación real decidiera el orden de W8; queda como alternativa). W7.7 y el CHANGELOG «Unreleased» esperan a la
+> siguiente versión: se publican con lo próximo que se añada.
 > **Receta de una versión nueva:** versión y CHANGELOG en
 > `dev`; `verify` en verde; avance rápido de `dev` a `main`; `gh release create vX.Y.Z --target main`
 > (el tag debe ser `v<version>`); aprobar el entorno `pypi` (pedirlo cada vez). Una versión publicada
@@ -13,7 +16,7 @@
 > `verify`): lo próximo que crezca, en un módulo propio. Ver `USER_ACTIONS.md`.
 
 ## Dónde estamos
-Fase activa: ninguna (W7 hecha entera en S16; falta elegir W8 o W6).
+Fase activa: ninguna (W7 hecha entera en S16); la siguiente sesión abre **W8**.
 
 - **Cómo se genera:** `.venv/Scripts/python scripts/generate_packets.py` lee
   `spec/cache/InSim.txt` y `spec/cache/OutSimPack.txt` (con `scripts/spec_parser.py`) y las

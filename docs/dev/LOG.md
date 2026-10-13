@@ -48,6 +48,10 @@ generador emite `SubReceiver(IS_TINY, TINY)` (`SUBTYPE_ENUMS`). Tropiezos: las s
 las barras invertidas en un script en línea otra vez (usar Edit). `verify` PASS, 477 tests. **Sin
 publicar** (CHANGELOG «Unreleased»; la versión sigue en 0.2.0).
 
+**Cierre de S16:** el usuario eligió abrir **W8** en la próxima sesión (el agente había recomendado W6 antes,
+para que una aplicación real ordenara W8; el usuario prefirió W8 y se respeta). Nada pendiente de él
+(`USER_ACTIONS.md` vacío). `main` = release `v0.2.0`; `dev` va por delante con W7.7 y la documentación.
+
 **Tropiezo:** un `sed` con `&` estropeó `spec_directions.py`; restaurado con git y reaplicado. Las
 barras invertidas en la entrada de Bash se pierden: para ellas, usar Edit.
 
