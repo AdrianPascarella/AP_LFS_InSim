@@ -1,5 +1,5 @@
 # 📍 Estado — AP_LFS_InSim (lfs_insim)
-> Actualizado: 2026-10-13 (S12): **W3 y W4 hechas enteras.** La biblioteca está validada en el
+> Actualizado: 2026-10-13 (S13): W5 detallada; **W3 y W4 hechas enteras (S12).** La biblioteca está validada en el
 > LFS real (InSim, OutGauge, OutSim y `OutSimPack2`; `tests/live_lfs.py`), y tiene la API de alto
 > nivel: `IS_MSO.text`, `await insim.request(IS_X)` / `request_all`, `Roster` (`lfs_insim.state`),
 > `insim.say()` / `command()`, `@insim.on_command("hello")`, `lfs_insim.text.plain()` y cuatro
