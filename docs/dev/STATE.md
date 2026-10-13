@@ -14,12 +14,15 @@
 > W4.6 hecha: `examples/` (`hello`, `who`, `gauge`, `buttons`), probados en `test_examples.py`.
 > W4.7 hecha: los cuatro, bien en el LFS real; `say(to=0)` pasó a `IS_MSL` (LFS rechaza `IS_MTC`
 > en un jugador). `cfg.txt` restaurado.
-> **▶️ SIGUIENTE: W4.8 — `lfs_insim.text.plain()`** (propuesta en `PLAN.md`, que el usuario
-> confirme el nombre), y con ella W4 queda cerrada. `_connection.py` va por ~405 líneas.
+> W4.8 hecha: `lfs_insim.text.plain()`. **W4 hecha entera** (nombres `on_command` y `plain`
+> confirmados por el usuario).
+> **▶️ SIGUIENTE: detallar W5 (publicación) con el usuario** antes de tocar nada: documentación
+> pública, 0.1.0 en TestPyPI y PyPI (publicar y crear tags pide permiso). `_connection.py` va por
+> ~405 líneas.
 
 ## Dónde estamos
-Fase activa: **W4 — La API de alto nivel y los ejemplos**, detallada en S12 (`PLAN.md`). W2 y W3
-están hechas enteras. Prueba en vivo: `tests/live_lfs.py` (cómo ejecutarla, en su docstring).
+Fase siguiente: **W5 — Publicación**, por detallar con el usuario. W2, W3 y W4 están hechas
+enteras. Prueba en vivo: `tests/live_lfs.py` (cómo ejecutarla, en su docstring).
 
 - **Cómo se genera:** `.venv/Scripts/python scripts/generate_packets.py` lee
   `spec/cache/InSim.txt` y `spec/cache/OutSimPack.txt` (con `scripts/spec_parser.py`) y las

@@ -287,8 +287,8 @@ sin aviso. *Por qué:* P4; una API pequeña se puede revisar entera.
 ## Precisado al escribir los comandos de chat (W4.5, S12; propuesto por el agente)
 - **Nombre: `@insim.on_command("hello")`, no `@insim.command`.** Choque detectado al escribirlo:
   `insim.command("/restart")` (W4.4) ya envía comandos, y un método no puede hacer las dos cosas.
-  `on_command` encaja con `@insim.on` y `@insim.on_connect`. *Pendiente de que el usuario lo vea*
-  (eligió la idea en S12 con el nombre `command`). *Descartado:* renombrar el de enviar.
+  `on_command` encaja con `@insim.on` y `@insim.on_connect`. **Confirmado por el usuario** (S12:
+  «Todo perfecto, confirmo»). *Descartado:* renombrar el de enviar.
 - La función recibe un `Command` (exportado en `lfs_insim`, amplía D6): `name` (en minúsculas),
   `args` (las palabras siguientes, tal cual), `ucid`, `plid`, `packet` (el `IS_MSO`) y
   `reply(texto)`, que contesta solo a quien lo escribió (`IS_MTC`).
@@ -299,6 +299,15 @@ sin aviso. *Por qué:* P4; una API pequeña se puede revisar entera.
   o repetido: `ValueError` al registrar.
 - Un comando sin función se deja pasar sin aviso (puede ser de otro programa). El `IS_MSO` sigue
   llegando a los manejadores de `IS_MSO`. Un error en la función se registra, como en `on()`.
+
+## Precisado al escribir `plain` (W4.8, S12; nombre confirmado por el usuario)
+- `lfs_insim.text.plain(texto)`: el texto como lo muestra LFS, sin colores y con los caracteres
+  escapados convertidos (`^h` → `#`, `^v` → `|`, `^^` → `^`…), para imprimir o guardar. No se puede
+  volver a enviar tal cual a LFS. `strip_colours` sigue igual (quita solo colores, para lo que se
+  vuelva a enviar). Amplía D6.
+- **La tabla de escapados no está en InSim.txt.** Se tomó la de InSim.NET (`LfsUnicodeEncoding.cs`,
+  11 códigos: `v a c d s q t l r h ^`), y el `^h773` → `#773` coincide con lo visto en el LFS real.
+  Un código desconocido y un `^` suelto se quedan tal cual.
 
 ## Abierto (se decide más adelante, no ahora)
 - Agrupar manejadores en módulos (lo que hacía `InSimApp` con varias aplicaciones a la vez): si

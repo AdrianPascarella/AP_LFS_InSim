@@ -140,7 +140,7 @@ jugador con un mod, para ver su SkinID en `CName` (P6). Con él se validan en LF
 | **Botones** (antes `prueba_botones`) | Interfaz dentro de LFS: botones, cuadros de texto | Enviar BTN y BFN; recibir BTC, BTT y BFN; MSL/MSO para comandos de chat | W4 |
 | **Control de IA** (antes `ai_control`) | Coches IA que conducen solos por rutas o calles | Enviar AIC, MST y botones; recibir MCI, CRS, RST, PLL, MSO, BTC y BTT; un ritmo fijo de actualización (`on_tick`) | W4 (la última: es la que hizo perder el control al proyecto anterior, P4) |
 
-## W4 — La API de alto nivel y los ejemplos   ⏳ ACTIVA · detallada con el usuario en S12
+## W4 — La API de alto nivel y los ejemplos   ✅ HECHA en S12 · detallada con el usuario en S12
 **Objetivo:** la forma de uso acordada en W1.5: eventos, envío cómodo de paquetes, el estado
 opcional (conexiones, jugadores, UCID ↔ PLID ↔ nombre) y `examples/` con programas cortos que
 funcionan.
@@ -188,12 +188,13 @@ contra el LFS falso y, al final (W4.7), contra el LFS real, que maneja el agente
   (OutGauge, solo con permiso para `cfg.txt`). *Acepta:* cada ejemplo hace lo que dice, visto en la
   captura de pantalla o en los paquetes. hecho en S12 → LOG.md S12 (los cuatro, bien; encontró que
   LFS rechaza `IS_MTC` en un jugador: `say(to=0)` pasó a `IS_MSL`)
-- [ ] **W4.8** — **Texto legible para mostrar** (encontrado en W4.7): `who.py` imprime
+- [x] **W4.8** — **Texto legible para mostrar** (encontrado en W4.7): `who.py` imprime
   `^h773 A.Pascarella`, porque `strip_colours()` quita los colores pero deja los caracteres
   escapados de LFS (`^h` = `#`, `^v` = `|`, `^^` = `^`…). Falta una forma de convertirlos.
-  *Propuesta del agente, pendiente del usuario:* `lfs_insim.text.plain(texto)` (sin colores y con
+  *Propuesta del agente, confirmada por el usuario:* `lfs_insim.text.plain(texto)` (sin colores y con
   los escapados convertidos), para imprimir o guardar; `strip_colours` sigue igual. *Acepta:* tests
   con todos los escapados de InSim.txt y `who.py` imprimiendo `#773 A.Pascarella`.
+  hecho en S12 → LOG.md S12 (nombre confirmado; la tabla, de InSim.NET: no está en InSim.txt)
 
 ## W5 — Publicación   📋 ESBOZADA
 **Objetivo:** documentación pública, versión 0.1.0 en TestPyPI y después en PyPI, y prueba de

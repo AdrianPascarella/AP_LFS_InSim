@@ -234,6 +234,17 @@ se va.
   falló al leer los parámetros sin enviar nada. Se repitió con el texto entre comillas.
 - **Verificación:** `verify.py` → PASS (305 passed, 1 deselected).
 
+**W4.8 — `lfs_insim.text.plain()`** (el usuario: «Todo perfecto, confirmo», que confirma
+también el nombre `@insim.on_command`).
+- La tabla de escapados no está en InSim.txt ni en `C:\LFS\docs`; una búsqueda web no la dio. Se
+  leyó en el código de InSim.NET (`LfsUnicodeEncoding.cs`, con `gh api`): 11 códigos, coherentes
+  con el `^h773` → `#773` visto en W4.7. Origen anotado en el código y en `API_DESIGN.md`.
+- **Red:** 7 casos en `tests/test_text.py` (el nombre real, todos los escapados, `^^1`, `^^^1x`,
+  colores, código desconocido y `^` suelto, griego), en rojo antes del código. `who.py` imprime con
+  `plain()` y su test usa un nombre con `^h`.
+- **W4 hecha entera.** Siguiente: detallar W5 con el usuario.
+- **Verificación:** `verify.py` → PASS (312 passed, 1 deselected).
+
 ## S11 — 2026-10-12 — `OutSim`, `OutGauge` y `run()` (W3.7)
 
 **Inicio:** según el protocolo; control de inicio en verde, documentos de acuerdo con git, 0
