@@ -57,7 +57,8 @@ Run it, then type `!hello` in LFS.
 ## `def` or `async def`
 
 Handlers may be plain functions (they run at once, so keep them quick) or `async def` (they run
-as tasks and may `await`). An exception in a handler is logged and never stops the others.
+as tasks and may `await`). An exception in a handler is logged and never stops the others
+(while developing, `InSim(errors="raise")` stops at the first one instead; see [InSim](insim.md)).
 
 If your program already runs an asyncio event loop, use the connection as a context manager
 instead of `run()`:

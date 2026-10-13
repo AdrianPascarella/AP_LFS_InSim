@@ -27,7 +27,8 @@ def run(*sources: Source) -> None:
     """Start every source and dispatch their packets until Ctrl+C.
 
     It also returns when any of them is closed (with `await insim.close()` in a handler, say),
-    and then closes the others. Example: `run(insim, gauge)`.
+    and then closes the others. Example: `run(insim, gauge)`. If one was closed by a failing
+    handler with errors="raise", that error is raised.
     """
     if not sources:
         raise TypeError("run() needs at least one InSim, OutSim or OutGauge")
@@ -41,7 +42,10 @@ async def _run(sources: tuple[Source, ...]) -> None:
             await stack.enter_async_context(source)
         waits = [asyncio.create_task(source.wait_closed()) for source in sources]
         try:
-            await asyncio.wait(waits, return_when=asyncio.FIRST_COMPLETED)
+            done, _ = await asyncio.wait(waits, return_when=asyncio.FIRST_COMPLETED)
         finally:
             for wait in waits:
                 wait.cancel()
+        for wait in done:
+            if (error := wait.exception()) is not None:
+                raise error

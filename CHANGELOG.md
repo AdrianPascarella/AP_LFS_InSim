@@ -1,7 +1,13 @@
 # Changelog
 
-## Unreleased
+## 0.3.0
 
+- `@insim.on_disconnect`: called when a connection ends (LFS closed, lost, or you closed), once
+  for each `on_connect`. `insim.reconnected` says, in `on_connect`, whether it is a reconnection.
+- `InSim(errors="raise")` (and `OutSim`, `OutGauge`): the first error in a handler closes and is
+  raised by `run()`, `wait_closed()` and `async with`, instead of only being logged. For
+  development; the default stays `"log"`.
+- `lfs_insim.text.Colour` and `coloured()`: colours to send (`f"{Colour.RED}Stop"`).
 - `@insim.on.IS_TINY(TINY.MPE)` and `@insim.on.IS_SMALL(SMALL.VTA, SMALL.RTP)`: the function is
   called only for those subtypes. `@insim.on.IS_TINY` alone still gets all of them.
   `insim.on(IS_TINY, TINY.MPE)` is the same. Only the subtypes that LFS sends are accepted, as

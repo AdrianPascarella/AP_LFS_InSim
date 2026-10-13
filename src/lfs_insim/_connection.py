@@ -13,7 +13,7 @@ from typing import Self, cast
 from lfs_insim import _requests
 from lfs_insim._commands import Command, CommandHandler, Commands
 from lfs_insim._events import P
-from lfs_insim._handlers import Handlers
+from lfs_insim._handlers import Errors, Handlers, StopsOnError
 from lfs_insim._shortcuts import On, Send
 from lfs_insim._stream import PacketStream
 from lfs_insim.packets import (
@@ -47,7 +47,7 @@ ConnectHandler = Callable[[], None] | Callable[[], Awaitable[None]]
 PacketWatcher = Callable[[InSimPacket], None]
 
 
-class InSim:
+class InSim(StopsOnError):
     """A connection to LFS over InSim (TCP).
 
     Register handlers with `@insim.on.IS_XXX`, then call `insim.run()`. From code that already
@@ -65,6 +65,7 @@ class InSim:
         flags: int = 0,
         interval_ms: int = 0,
         prefix: str = "",
+        errors: Errors = "log",
     ) -> None:
         """Prepare the connection; nothing is sent until it is opened.
 
@@ -74,6 +75,9 @@ class InSim:
         flags: ISF options, e.g. `ISF.MCI | ISF.LOCAL`.
         interval_ms: time between IS_MCI or IS_NLP packets (0 = none).
         prefix: the special host message prefix character, e.g. "!".
+        errors: what happens when a handler fails. "log" (the default): the error is logged and
+            everything goes on. "raise", for development: the first error closes the connection
+            and is raised again by `run()`, `wait_closed()` and `async with`.
         """
         if len(prefix) > 1:
             raise ValueError(f"prefix must be one character, not {prefix!r}")
@@ -89,10 +93,13 @@ class InSim:
             IName=name,
         )
         self._isi.pack()  # fail now, not when connecting, if a name is too long
-        self._handlers = Handlers()
+        self._handlers = Handlers(errors, self._fail)
         self._commands = Commands(prefix)
         self._requests = _requests.Requests()
         self._connect_handlers: list[ConnectHandler] = []
+        self._disconnect_handlers: list[ConnectHandler] = []
+        self._connections = 0  # connections opened by `async with` / run(), for `reconnected`
+        self._announced = False  # on_connect ran for this connection, so on_disconnect will
         self._every: list[tuple[float, ConnectHandler]] = []
         self._ticks: list[asyncio.Task[None]] = []  # the every() loops of this connection
         self._writer: asyncio.StreamWriter | None = None
@@ -141,6 +148,21 @@ class InSim:
         """
         self._connect_handlers.append(handler)
         return handler
+
+    def on_disconnect(self, handler: ConnectHandler) -> ConnectHandler:
+        """Decorator: call the function (no arguments) when a connection ends.
+
+        Once for each on_connect: when LFS closes or is lost, and when you close. The connection
+        is already gone, so it cannot send; a reconnection follows unless you closed. An
+        `async def` one is awaited, also when closing.
+        """
+        self._disconnect_handlers.append(handler)
+        return handler
+
+    @property
+    def reconnected(self) -> bool:
+        """True from the second connection on: in on_connect, whether this is a reconnection."""
+        return self._connections > 1
 
     def every(self, seconds: float) -> Callable[[ConnectHandler], ConnectHandler]:
         """Decorator: call the function (no arguments) every `seconds` while connected to LFS.
@@ -274,10 +296,14 @@ class InSim:
         await self._handlers.cancel()
 
     async def wait_closed(self) -> None:
-        """Wait until close() is called (or, after a bare connect(), until the connection ends)."""
+        """Wait until close() is called (or, after a bare connect(), until the connection ends).
+
+        With errors="raise", it raises the error of the handler that closed it.
+        """
         task = self._supervisor or self._reader_task
         if task is not None:
             await asyncio.wait([task])
+        await self._raise_error()
 
     def run(self) -> None:
         """Connect, reconnecting whenever needed, and dispatch packets until Ctrl+C or close()."""
@@ -299,7 +325,7 @@ class InSim:
         exc: BaseException | None,
         tb: TracebackType | None,
     ) -> None:
-        await self.close()
+        await self._exit(exc)
 
     async def _keep_connected(self) -> None:
         failures = 0  # attempts since LFS last accepted the connection
@@ -316,6 +342,8 @@ class InSim:
                     )
             else:
                 log.info("connected to LFS at %s:%d", self.host, self.port)
+                self._connections += 1
+                self._announced = True
                 for handler in self._connect_handlers:
                     self._handlers.call(handler, (), "on_connect")
                 if self._reader_task is not None:
@@ -379,6 +407,10 @@ class InSim:
             writer.close()
             with contextlib.suppress(OSError):
                 await writer.wait_closed()
+            if self._announced:
+                self._announced = False
+                for handler in self._disconnect_handlers:
+                    await self._handlers.call_and_wait(handler, (), "on_disconnect")
 
     def _dispatch(self, packet: InSimPacket) -> None:
         if isinstance(packet, IS_TINY) and packet.SubT == TINY.NONE and packet.ReqI == 0:

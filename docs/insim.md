@@ -8,7 +8,16 @@ insim = InSim(name="my program", prefix="!")
 
 The options of `InSim(...)`: `admin_password`, `host` and `port` (default `127.0.0.1:29999`),
 `flags` (the `ISF` options, such as `ISF.MCI | ISF.LOCAL`), `interval_ms` (time between
-`IS_MCI`/`IS_NLP` packets) and `prefix`.
+`IS_MCI`/`IS_NLP` packets), `prefix` and `errors`.
+
+`errors` says what happens when one of your handlers raises an exception. With `"log"` (the
+default) it is logged and everything goes on: right for a program that runs for hours. With
+`"raise"`, for development, the first error closes the connection and `run()` raises it, so a
+bug cannot go unnoticed in the log.
+
+```python
+insim = InSim(name="my program", errors="raise")   # while developing
+```
 
 ## Receiving
 
@@ -73,6 +82,13 @@ function is left alone, since it may be meant for another program.
 @insim.on_connect
 async def start() -> None:
     ...  # after every connection and reconnection: ask LFS for the initial state here
+    if insim.reconnected:
+        ...  # not the first connection: LFS has removed your buttons, so draw them again
+
+
+@insim.on_disconnect
+def stop() -> None:
+    ...  # the connection has ended (LFS closed, was lost, or you closed): it cannot send
 
 
 @insim.every(2)

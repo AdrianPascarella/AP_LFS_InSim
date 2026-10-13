@@ -47,4 +47,17 @@ strip_colours("^1Red ^7car")   # 'Red car'   only the colours
 Use `plain()` to show text outside LFS. Do not send its result back to LFS: the escapes are
 gone, so send the original.
 
+To send colours, put a `Colour` in the text. `coloured()` adds the colour and goes back to the
+default colour after the text:
+
+```python
+from lfs_insim.text import Colour, coloured
+
+insim.say(f"{Colour.RED}Stop{Colour.DEFAULT} now")   # '^1Stop^8 now'
+insim.say(coloured("Stop", Colour.RED) + " now")      # the same
+```
+
+`Colour` has `BLACK`, `RED`, `GREEN`, `YELLOW`, `BLUE`, `MAGENTA`, `CYAN`, `WHITE` and
+`DEFAULT`.
+
 `IS_MSO.text` is the message without the player's name in front of it.

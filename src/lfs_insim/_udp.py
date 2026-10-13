@@ -9,7 +9,7 @@ from types import TracebackType
 from typing import Self, TypeVar
 
 from lfs_insim import packets as _p
-from lfs_insim._handlers import Handlers
+from lfs_insim._handlers import Errors, Handlers, StopsOnError
 from lfs_insim._run import run
 from lfs_insim.packets import OutGaugePack, OutSimPack, OutSimPack2, PacketError
 from lfs_insim.packets._structure import Structure
@@ -21,13 +21,13 @@ UDPHandler = Callable[[S], None] | Callable[[S], Awaitable[None]]
 GaugeHandler = Callable[[OutGaugePack], None] | Callable[[OutGaugePack], Awaitable[None]]
 
 
-class _UDPSource:
+class _UDPSource(StopsOnError):
     """What OutSim and OutGauge share: listen on a UDP port and hand each packet to handlers."""
 
-    def __init__(self, port: int, host: str) -> None:
+    def __init__(self, port: int, host: str, errors: Errors) -> None:
         self.host = host
         self.port = port
-        self._handlers = Handlers()
+        self._handlers = Handlers(errors, self._fail)
         self._transport: asyncio.DatagramTransport | None = None
         self._closed: asyncio.Event | None = None
         self._reported = False  # a bad datagram was logged, and no good one has arrived since
@@ -45,9 +45,10 @@ class _UDPSource:
             self._closed.set()
 
     async def wait_closed(self) -> None:
-        """Wait until close() is called."""
+        """Wait until close() is called. With errors="raise", it raises the handler's error."""
         if self._closed is not None:
             await self._closed.wait()
+        await self._raise_error()
 
     def run(self) -> None:
         """Listen and dispatch packets until Ctrl+C or close()."""
@@ -70,7 +71,7 @@ class _UDPSource:
         exc: BaseException | None,
         tb: TracebackType | None,
     ) -> None:
-        await self.close()
+        await self._exit(exc)
 
     def _received(self, data: bytes) -> None:
         try:
@@ -114,13 +115,14 @@ class OutGauge(_UDPSource):
     `run(insim, gauge)` to use it together with InSim.
     """
 
-    def __init__(self, port: int, host: str = "127.0.0.1") -> None:
+    def __init__(self, port: int, host: str = "127.0.0.1", *, errors: Errors = "log") -> None:
         """Prepare to listen; nothing happens until it is run.
 
         port: the "OutGauge Port" of LFS's cfg.txt.
         host: the address to listen on; LFS sends to the "OutGauge IP" of cfg.txt.
+        errors: what happens when a handler fails: "log" (the default) or "raise", as in InSim.
         """
-        super().__init__(port, host)
+        super().__init__(port, host, errors)
         self.on = GaugeOn(self._handlers)
         """Handlers: `@gauge.on.OutGaugePack`, or `@gauge.on(OutGaugePack)`."""
 
@@ -136,14 +138,17 @@ class OutSim(_UDPSource):
     `.OutSimPack2`), then call `outsim.run()`, or `run(insim, outsim)` together with InSim.
     """
 
-    def __init__(self, port: int, host: str = "127.0.0.1", *, options: int = 0) -> None:
+    def __init__(
+        self, port: int, host: str = "127.0.0.1", *, options: int = 0, errors: Errors = "log"
+    ) -> None:
         """Prepare to listen; nothing happens until it is run.
 
         port: the "OutSim Port" of LFS's cfg.txt.
         host: the address to listen on; LFS sends to the "OutSim IP" of cfg.txt.
         options: the "OutSim Opts" of cfg.txt (hexadecimal there: `0x1ff`, or `OSO.MAIN | ...`).
+        errors: what happens when a handler fails: "log" (the default) or "raise", as in InSim.
         """
-        super().__init__(port, host)
+        super().__init__(port, host, errors)
         self.options = options
         self.on = OutSimOn(self)
         """Handlers: `@outsim.on.OutSimPack2` (or `.OutSimPack`), or `@outsim.on(OutSimPack2)`."""

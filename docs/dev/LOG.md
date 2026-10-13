@@ -49,6 +49,29 @@ ciegas sería trabajo sin motivo. `verify` PASS, 479 tests, sin aviso de tamaño
 **Tropiezo:** `git checkout` no restaura un archivo nuevo sin seguimiento; la copia previa a la mutación lo
 salvó. Para pruebas de mutación en archivos nuevos, copia antes (o `git add` primero).
 
+**W8.1 hecha** (el usuario: «Procede entonces»). Diseño del agente dentro de lo acordado:
+- **`errors="log" | "raise"`** en `InSim`, `OutSim` y `OutGauge` (`ValueError` con otro valor). Con `"raise"`, el
+  primer error de un manejador (`def`, `async def`, `every`, comandos, `on_disconnect`) se registra, no corre
+  ningún manejador más, se cierra (sin reconectar) y lo relanzan `wait_closed()`, la salida de `async with`
+  y `run()`; `run(insim, gauge)` relanza el de cualquiera. Vive en `_handlers.py`: `Handlers(errors, fail)`,
+  `call_and_wait()` (que ahora usa también `every`) y la base `StopsOnError` que comparten `InSim` y
+  `_UDPSource` (al principio estaba duplicada en los dos; se extrajo antes de cerrar).
+- **`@insim.on_disconnect`** (sin argumentos): una vez por cada `on_connect`, cuando la conexión ya no existe
+  (no puede enviar), también al cerrar; uno `async def` se espera (si fuera tarea, `close()` lo cancelaría
+  antes de empezar). Se llama en `_disconnect()`, el único sitio donde acaba una conexión.
+- **`insim.reconnected`** (propiedad): `True` desde la segunda conexión. No se cambió la firma de `on_connect`
+  (no rompe nada).
+- **Colores:** `lfs_insim.text.Colour` (`StrEnum`: `BLACK`… `WHITE` = `^0`–`^7`, `DEFAULT` = `^8`) y
+  `coloured(text, Colour.RED)` → `'^1text^8'` (`TypeError` si no es un `Colour`). `StrEnum` y no constantes
+  sueltas para que el editor los liste. **Sin confirmar en la especificación:** InSim.txt no documenta los
+  códigos de color; en el foro de lfs.net, una tabla de Scawen pone `^8` y `^9` como «reset» y otro
+  desarrollador dice que `^9` además restaura la página de códigos. Se usa `^8` y **falta verlo en LFS real**
+  antes de publicar; `^9` no se ofrece hasta saberlo.
+- **Rojo primero:** `tests/test_lifecycle.py` (11 tests) falló entero antes del código (8 fallos y error de
+  importación). Repetidos 15 veces junto a `test_insim`, `test_every` y `test_udp`: 15/15.
+- Guía (`insim.md`, `roster-and-text.md`, `outsim-outgauge.md`, `getting-started.md`) y CHANGELOG **0.3.0**;
+  `version = "0.3.0"` en `dev`, **sin publicar** (pide permiso). `verify` PASS, 490 tests. `_connection.py`: 439.
+
 ## S16 — 2026-10-13 — W7.6: equivalencia, tabla de direcciones, guía en forma canónica y 0.2.0
 
 **Inicio:** identidad git correcta (`AdrianPascarella`, gmail); `verify` PASS antes de tocar nada.

@@ -68,3 +68,6 @@ run(insim, gauge)
 
 If the port is already taken, starting raises `OSError`. Port 30000 is often in use by other
 programs; pick another.
+
+`OutSim` and `OutGauge` take `errors="raise"` too, as [InSim](insim.md) does: the first error in
+a handler stops it, and `run()` raises that error after closing the others.
