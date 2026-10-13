@@ -71,6 +71,34 @@ def test_each_connection_has_its_own() -> None:
     assert first.use(Roster) is not second.use(Roster)
 
 
+def test_a_function_is_a_plugin_too() -> None:
+    calls: list[tuple[InSim, int]] = []
+
+    def camera(insim: InSim, *, speed: int = 1) -> Roster:
+        calls.append((insim, speed))
+        return insim.use(Roster)
+
+    insim = InSim()
+    roster = insim.use(camera, speed=2)
+    assert roster is insim.use(Roster)  # what the function gives, with its type
+    assert insim.use(camera) is roster
+    assert calls == [(insim, 2)]  # called once
+    with pytest.raises(ValueError, match="camera"):
+        insim.use(camera, speed=3)
+
+
+def test_a_function_that_gives_nothing_is_used_once() -> None:
+    calls: list[InSim] = []
+
+    def logger(insim: InSim) -> None:
+        calls.append(insim)
+
+    insim = InSim()
+    insim.use(logger)
+    insim.use(logger)
+    assert calls == [insim]
+
+
 def test_commands_and_your_own_roster_ask_lfs_once() -> None:
     """P10: the commands made a Roster of their own, so LFS was asked for everyone twice."""
 

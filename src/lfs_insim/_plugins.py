@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import TYPE_CHECKING, Any, TypeVar
 
 if TYPE_CHECKING:
@@ -11,7 +12,7 @@ T = TypeVar("T")
 
 
 class Plugin:
-    """Base for a plugin: a class that takes the InSim, and its own options by name.
+    """Base for a plugin written as a class: it takes the InSim, and its own options by name.
 
         class Camera(Plugin):
             def __init__(self, insim: InSim, *, speed: int = 1) -> None:
@@ -21,7 +22,8 @@ class Plugin:
         camera = insim.use(Camera, speed=2)
 
     There is one of each type per InSim: `insim.use(Camera)` gives it, and making a second one
-    directly raises ValueError.
+    directly raises ValueError. A plugin may also be a function that takes the InSim; a class
+    is worth it for inheritance, options or state kept as attributes.
     """
 
     def __init__(self, insim: InSim) -> None:
@@ -29,21 +31,21 @@ class Plugin:
 
 
 class Plugins:
-    """The plugins of one InSim, by type, with the options each was made with."""
+    """The plugins of one InSim (classes or functions), with the options each was made with."""
 
     def __init__(self, insim: Any) -> None:
         self._insim = insim
-        self._made: dict[type, tuple[object, dict[str, Any]]] = {}
+        self._made: dict[Callable[..., Any], tuple[object, dict[str, Any]]] = {}
 
-    def use(self, plugin: type[T], options: dict[str, Any]) -> T:
+    def use(self, plugin: Callable[..., T], options: dict[str, Any]) -> T:
         if plugin in self._made:
             instance, made_with = self._made[plugin]
             if options and options != made_with:
                 raise ValueError(
-                    f"{plugin.__name__} is already in use with {made_with}, not {options}"
+                    f"{_name(plugin)} is already in use with {made_with}, not {options}"
                 )
-            return instance  # type: ignore[return-value]  # stored under its own type
-        instance = plugin(self._insim, **options)  # type: ignore[call-arg]
+            return instance  # type: ignore[return-value]  # stored under the plugin that made it
+        instance = plugin(self._insim, **options)
         self._made[plugin] = (instance, options)
         return instance
 
@@ -55,3 +57,7 @@ class Plugins:
                 f"this InSim already has a {plugin.__name__}: use insim.use({plugin.__name__})"
             )
         self._made[plugin] = (instance, {})
+
+
+def _name(plugin: Callable[..., Any]) -> str:
+    return getattr(plugin, "__qualname__", repr(plugin))

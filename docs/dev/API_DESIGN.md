@@ -350,8 +350,13 @@ cam = insim.use(FreeCam, speed=2)           # una aplicación de otro proyecto, 
 @commands.on_command("who")
 def who(cmd): ...
 
-class FreeCam(Plugin):                      # un plugin: una clase que recibe el insim
-    flags = ISF.MCI                         # lo que necesita en el IS_ISI
+def freecam(insim):                         # un plugin: una función que recibe el insim (lo normal)
+    roster = insim.use(Roster)
+    @insim.on.IS_MCI
+    def follow(packet): ...
+insim.use(freecam)                          # solo: igual, bajo if __name__ == "__main__"
+
+class FreeCam(Plugin):                      # o una clase, si aporta herencia, opciones o estado
     def __init__(self, insim, *, speed=1):
         super().__init__(insim)             # lo registra: un segundo FreeCam(insim) da error
         self.roster = insim.use(Roster)     # comparte el estado; fija el orden
@@ -377,7 +382,16 @@ class FreeCam(Plugin):                      # un plugin: una clase que recibe el
   `IS_TINY`.
 - **`ready()`** en los plugins con estado: los `on_connect` arrancan a la vez y uno puede leer el estado antes
   de que llegue la respuesta.
-- **Flags e intervalo declarados por el plugin**, juntados antes de conectar (flags con OR; intervalo, el más
+- **Funciones o clases** (aceptado en S20, para que un script como los ejemplos se convierta en plugin con una
+  sangría y no se adapte nada más): `use()` acepta cualquier invocable que reciba el `insim`. *Descartado:*
+  `include()` para fusionar scripts sin tocarlos (el `Roster` del script quedaría atado a un `insim` que nunca
+  conecta; redirigir envíos y fusionar registros, mucha maquinaria). Sin tocar nada, varios scripts ya se
+  ejecutan juntos con `run(a.insim, b.insim)`, cada uno con su conexión y su estado.
+- **Componer o heredar:** para combinar con estado compartido, un plugin usa otro (AITraffic hace
+  `use(AIControl)`); heredar (`AITraffic(AIControl)`) da dos copias de AIControl que no se conocen: solo
+  para variantes que no van juntas.
+- **Flags e intervalo pedidos por el plugin con una llamada al `insim`** (no como atributo de clase, para que
+  valga en funciones), juntados antes de conectar (flags con OR; intervalo, el más
   corto). Añadido con la conexión abierta → aviso (LFS solo los lee en el `IS_ISI`).
 - **Choques detectados en `use()`:** mismo comando con el mismo prefijo; rangos de `ClickID` repartidos por
   la biblioteca para que dos plugins con botones no se pisen.

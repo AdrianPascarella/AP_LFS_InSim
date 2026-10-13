@@ -169,9 +169,9 @@ class InSim(StopsOnError):
         """
         return self._commands.group(name, admin, allow, prefix)
 
-    def use(self, plugin: type[T], /, **options: Any) -> T:
-        """The plugin of this type, made the first time with this InSim and the options:
-        `roster = insim.use(Roster)`. Later calls give the same one; other options raise ValueError.
+    def use(self, plugin: Callable[..., T], /, **options: Any) -> T:
+        """A plugin (a class or a function), called the first time with this InSim and the options:
+        `roster = insim.use(Roster)`. Later calls give the same; other options raise ValueError.
         """
         return self._plugins.use(plugin, options)
 
