@@ -8,9 +8,10 @@
 > **`lfs-insim 0.5.0` está publicado en PyPI** (S19, release `v0.5.0`): comandos como invitado y prefijo propio
 > por comando (W9). Antes, 0.4.0 (S18: W8) y 0.3.0 y 0.2.0 (S16–S17).
 > **▶️ SIGUIENTE: W10, plugins** (`insim.use(Roster)`, comandos como plugin propio, nada pedido dos veces,
-> `ready()`, flags por plugin, `ClickID`). Plan aceptado en S20. **Hechas W10.1, W10.11 y W10.2** (`use()`,
-> `Plugin`, funciones como plugins, `Commands` como plugin: cambio incompatible, sin publicar), W10.3 (peticiones compartidas). W10.4 (`ready()`). Sigue
-> **W10.5** (flags e intervalo por plugin); W10.0 (prueba en real) cuando el usuario deje abrir LFS, antes de W10.8.
+> `ready()`, flags por plugin, `ClickID`). Plan aceptado en S20. **Hechas W10.1, W10.11, W10.2, W10.3, W10.4
+> y W10.5** (`use()`, `Plugin`, funciones como plugins, `Commands` como plugin —cambio incompatible, sin
+> publicar—, peticiones compartidas, `ready()`, `need()`). Sigue **W10.6** (choques: comandos y `ClickID`);
+> W10.0 (prueba en real) cuando el usuario deje abrir LFS, antes de W10.8.
 > Tareas en `PLAN.md`; diseño en `API_DESIGN.md`
 > («Plugins»); por qué, en `LOG.md` S20. **W6 espera a W10**; su alcance ya está decidido (en `PLAN.md`).
 > **Receta de una versión nueva:** versión y CHANGELOG en
