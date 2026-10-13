@@ -398,7 +398,8 @@ class FreeCam(Plugin):                      # o una clase, si aporta herencia, o
   `use(AIControl)`); heredar (`AITraffic(AIControl)`) da dos copias de AIControl que no se conocen: solo
   para variantes que no van juntas.
 - **Flags e intervalo pedidos por el plugin con una llamada al `insim`** (no como atributo de clase, para que
-  valga en funciones), juntados antes de conectar (flags con OR; intervalo, el más
+  valga en funciones; *precisado en W10.5:* `insim.need(flags=ISF.MCI, interval_ms=100)`; el intervalo 0 no
+  pide nada; el aviso sale si la conexión ya está en marcha, y cuenta desde la siguiente), juntados antes de conectar (flags con OR; intervalo, el más
   corto). Añadido con la conexión abierta → aviso (LFS solo los lee en el `IS_ISI`).
 - **Choques detectados en `use()`:** mismo comando con el mismo prefijo; rangos de `ClickID` repartidos por
   la biblioteca para que dos plugins con botones no se pisen.
