@@ -1,6 +1,35 @@
 # 📓 Diario — AP_LFS_InSim (lfs_insim)
 <!-- Solo se añade, lo más nuevo arriba. Una entrada por sesión. -->
 
+## S17 — 2026-10-13 — Revisión de W7.7 y W7.8: solo los subtipos que LFS envía
+
+**Inicio:** `session_start_check` PASS (rama, identidad, pull, plantilla v3); `verify` PASS (477) antes de tocar nada.
+El usuario preguntó qué opinaba el agente de lo último (W7.7).
+
+**Revisión de W7.7 (agente):** bien hecha, pero con dos fallos. (1) Aceptaba subtipos que LFS nunca envía:
+`@insim.on.IS_TINY(TINY.NCN)` no daba error y el manejador no se llamaba nunca, el mismo fallo que W7.2
+quitó para los paquetes. La propia guía y el test usaban `SMALL.STP`, que es una *instruction*. InSim.txt marca
+la dirección de cada `TINY_` / `SMALL_`. (2) Había dos fuentes: `SUBTYPE_ENUMS` en el generador y `SUBTYPES`
+a mano en `_events.py` (y `SubReceiver` recibía el enum sin usarlo). El agente propuso W7.8 antes de W8
+y antes de publicar W7.7; el usuario: «Haz W7.8 primero».
+
+**Hecho (W7.8):** `subtype_directions()` en `spec_directions.py` lee la marca de cada subtipo:
+`info`, `report` (SMALL_VTA), `ping reply` → LFS; `both ways` y `keep alive` (TINY_NONE) → los dos;
+`instruction`, `info request`, `ping request` → el programa; `SMALL_NONE` («not used») se salta; una marca
+desconocida para la generación. El generador escribe `src/lfs_insim/_subtypes.py`: `ReceivedTINY` /
+`ReceivedSMALL` (`Literal` con los miembros que envía LFS, para mypy) y `SUBTYPES` (enum y conjunto, para
+ejecutar). `_shortcuts.py` declara `IS_TINY: SubReceiver[IS_TINY, ReceivedTINY]`; las sobrecargas de
+`Receive.__call__` usan los `Literal`; `Receive._register` hace la comprobación y `Subtyped` lo llama sin
+`# type: ignore`. `TypeError` claro: «LFS never sends IS_TINY with TINY.NCN: … LFS sends TINY.NONE, …».
+`docs/packets.md` gana la sección «Subtypes» (generada); guía, CHANGELOG «Unreleased» y tests pasan a
+`SMALL.VTA`. **Rojo primero:** `tests/test_subtypes.py` con los casos nuevos (ejecución, mypy y contraste con
+la especificación) falló antes del código.
+**Lo que cuesta:** mypy pide el miembro literal; una variable de tipo `TINY` (no `Final`) pasada a
+`on.IS_TINY(...)` da error de tipos aunque valga. Aceptable: en un decorador casi siempre se escribe el miembro.
+**Verificación:** `verify` PASS, 479 tests. Sin publicar (sigue en «Unreleased» con W7.7).
+**Tropiezos:** (1) el agente metió por error un `git stash` en un comando; se deshizo al momento con
+`git stash pop`, sin pérdida. (2) Otra vez barras invertidas en un script por Bash (§13): se pasó a Edit.
+
 ## S16 — 2026-10-13 — W7.6: equivalencia, tabla de direcciones, guía en forma canónica y 0.2.0
 
 **Inicio:** identidad git correcta (`AdrianPascarella`, gmail); `verify` PASS antes de tocar nada.

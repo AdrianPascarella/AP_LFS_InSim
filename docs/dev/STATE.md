@@ -1,13 +1,14 @@
 # 📍 Estado — AP_LFS_InSim (lfs_insim)
-> Actualizado: 2026-10-13 (S16): **W7 hecha entera salvo W7.7.** La biblioteca está validada en el LFS real
+> Actualizado: 2026-10-13 (S17): **W7 hecha entera, con W7.8.** La biblioteca está validada en el LFS real
 > y tiene la API de alto nivel (`@insim.on.IS_NPL`, `insim.send.IS_MST(...)`, `received` / `sent`,
 > `await insim.request(...)`, `Roster`, `say()` / `command()`, `on_command`, `text.plain()`), cuatro
 > ejemplos y `docs/packets.md` (tabla generada). U7 cerrada: el usuario vio las listas en su VS Code.
 > **`lfs-insim 0.2.0` está publicado en PyPI** (S16, release `v0.2.0`).
-> **W7 está hecha entera** (W7.7, S16: `@insim.on.IS_TINY(TINY.MPE)`, en `dev` sin publicar: CHANGELOG «Unreleased»).
+> **W7 está hecha entera** (W7.7, S16: `@insim.on.IS_TINY(TINY.MPE)`; W7.8, S17: solo los subtipos que LFS envía,
+> generados en `_subtypes.py`; en `dev` sin publicar: CHANGELOG «Unreleased»).
 > **▶️ SIGUIENTE: abrir W8** (mejoras del proyecto anterior; lista y orden propuesto en `LEGADO.md` §4; se detalla con el
 > usuario al abrirla, no antes). El usuario eligió W8 antes que W6 (el agente recomendó W6 primero para que la
-> aplicación real decidiera el orden de W8; queda como alternativa). W7.7 y el CHANGELOG «Unreleased» esperan a la
+> aplicación real decidiera el orden de W8; queda como alternativa). W7.7, W7.8 y el CHANGELOG «Unreleased» esperan a la
 > siguiente versión: se publican con lo próximo que se añada.
 > **Receta de una versión nueva:** versión y CHANGELOG en
 > `dev`; `verify` en verde; avance rápido de `dev` a `main`; `gh release create vX.Y.Z --target main`
@@ -16,7 +17,7 @@
 > `verify`): lo próximo que crezca, en un módulo propio. Ver `USER_ACTIONS.md`.
 
 ## Dónde estamos
-Fase activa: ninguna (W7 hecha entera en S16); la siguiente sesión abre **W8**.
+Fase activa: ninguna (W7 hecha entera; W7.8 en S17); lo siguiente es abrir **W8**.
 
 - **Cómo se genera:** `.venv/Scripts/python scripts/generate_packets.py` lee
   `spec/cache/InSim.txt` y `spec/cache/OutSimPack.txt` (con `scripts/spec_parser.py`) y las

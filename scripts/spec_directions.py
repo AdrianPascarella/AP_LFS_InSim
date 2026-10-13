@@ -90,23 +90,95 @@ SHORTCUT_CLASSES = {
 # Packets whose SubT comes from an enum: `insim.on.IS_TINY(TINY.MPE)` (lfs_insim/_events.py).
 SUBTYPE_ENUMS = {"IS_SMALL": "SMALL", "IS_TINY": "TINY"}
 
+# Their enums mark every subtype too, with more words than the ISP enum:
+#     TINY_VER,		//  1 - info request	: get version
+#     TINY_MPE,		//  9 - info			: multi player end
+# Each word says who sends it: LFS ("info"), the program ("instruction"), or both.
+SUBTYPE_MARKS = {
+    "info": "info",
+    "report": "info",  # SMALL_VTA: LFS reports a vote action
+    "ping reply": "info",  # TINY_REPLY: LFS answers a TINY_PING
+    "both ways": "both ways",
+    "keep alive": "both ways",  # TINY_NONE: LFS sends it and the program sends it back
+    "instruction": "instruction",
+    "info request": "instruction",
+    "ping request": "instruction",
+}
+SUBTYPE_MARK = re.compile(r"^\d+\s*-\s*([a-z ]+?)\s*:")
+UNUSED_SUBTYPES = {"SMALL_NONE"}  # "0 : not used"
+
+
+def subtype_directions(spec: Spec) -> dict[str, dict[str, str]]:
+    """Packet -> its subtypes and their direction: {"IS_TINY": {"VER": "instruction", ...}}."""
+    result: dict[str, dict[str, str]] = {}
+    for packet, prefix in SUBTYPE_ENUMS.items():
+        found = [e for e in spec.enums if e.members and e.members[0].name.startswith(prefix + "_")]
+        if len(found) != 1:
+            raise SpecError(f"{len(found)} {prefix}_ enums (the subtypes of {packet}), not 1")
+        enum = found[0]
+        result[packet] = {}
+        for member in enum.members:
+            if member.name in UNUSED_SUBTYPES:
+                continue
+            match = SUBTYPE_MARK.match(member.comment)
+            if match is None or match.group(1) not in SUBTYPE_MARKS:
+                raise SpecError(
+                    f"line {enum.line}: {member.name} has no known direction "
+                    f"({' / '.join(SUBTYPE_MARKS)}) in its comment: {member.comment!r}"
+                )
+            result[packet][member.name.removeprefix(prefix + "_")] = SUBTYPE_MARKS[match.group(1)]
+    return result
+
+
+def emit_subtypes(subtypes: dict[str, dict[str, str]], header: str) -> str:
+    """lfs_insim/_subtypes.py: the subtypes that LFS sends, for the type checker and when run."""
+    out = [
+        header,
+        '"""The subtypes (SubT) that LFS sends: `@insim.on.IS_TINY(TINY.MPE)` (lfs_insim._events).',
+        "\n\nThose marked info, report, ping reply, keep alive or both ways in InSim.txt. The",
+        "\nothers are requests and instructions that your program sends: a handler of them would",
+        "\nnever run.",
+        '\n"""\n\nfrom __future__ import annotations\n\n',
+        "from enum import IntEnum\nfrom typing import Literal, TypeAlias\n\n",
+        f"from lfs_insim.packets import InfoPacket, {', '.join(sorted(SUBTYPE_ENUMS))}, ",
+        f"{', '.join(sorted(SUBTYPE_ENUMS.values()))}\n",
+    ]
+    received = {
+        packet: [f"{SUBTYPE_ENUMS[packet]}.{n}" for n, d in subs.items() if d != "instruction"]
+        for packet, subs in sorted(subtypes.items())
+    }
+    for packet, names in received.items():
+        out.append(f"\nReceived{SUBTYPE_ENUMS[packet]}: TypeAlias = Literal[{', '.join(names)}]\n")
+    out.append(
+        "\n# Each packet with subtypes: its enum, and the subtypes that LFS sends.\n"
+        "SUBTYPES: dict[type[InfoPacket], tuple[type[IntEnum], frozenset[IntEnum]]] = {\n"
+    )
+    for packet, names in received.items():
+        out.append(f"    {packet}: ({SUBTYPE_ENUMS[packet]}, frozenset({{{', '.join(names)}}})),\n")
+    out.append("}\n")
+    return "".join(out)
+
 
 def emit_shortcuts(directions: dict[str, str], docs: dict[str, str], header: str) -> str:
     """lfs_insim/_shortcuts.py: insim.on.IS_XXX and insim.send.IS_XXX, one attribute per packet."""
-    imported = sorted([*directions, *SUBTYPE_ENUMS.values()])
+    aliases = sorted(f"Received{enum}" for enum in SUBTYPE_ENUMS.values())
     out = [
         header,
         '"""The attributes of insim.on and insim.send: one per packet (see lfs_insim._events)."""',
         "\n\nfrom __future__ import annotations\n\n",
         "from lfs_insim._events import Receive, Receiver, Sender, SubReceiver, Transmit\n",
-        f"from lfs_insim.packets import {', '.join(imported)}\n",
+        f"from lfs_insim._subtypes import {', '.join(aliases)}\n",
+        f"from lfs_insim.packets import {', '.join(sorted(directions))}\n",
     ]
     for name, (base, attribute, module, doc) in SHORTCUT_CLASSES.items():
         wanted = DIRECTION_MODULES[module][0]
         out.append(f'\n\nclass {name}({base}):\n    """{doc}\n    """\n')
         for packet in sorted(p for p, direction in directions.items() if direction in wanted):
             if attribute == "Receiver" and packet in SUBTYPE_ENUMS:
-                out.append(f"\n    {packet} = SubReceiver({packet}, {SUBTYPE_ENUMS[packet]})\n")
+                alias = f"Received{SUBTYPE_ENUMS[packet]}"
+                out.append(
+                    f"\n    {packet}: SubReceiver[{packet}, {alias}] = SubReceiver({packet})\n"
+                )
             else:
                 out.append(f"\n    {packet} = {attribute}({packet})\n")
             out.append(docstring(docs[packet], "    "))
@@ -138,7 +210,9 @@ TABLE_WORDS = {
 }
 
 
-def emit_table(directions: dict[str, str], docs: dict[str, str]) -> str:
+def emit_table(
+    directions: dict[str, str], docs: dict[str, str], subtypes: dict[str, dict[str, str]]
+) -> str:
     """docs/packets.md: every InSim packet with its direction and the way to use it."""
     out = [
         "<!-- Generated by scripts/generate_packets.py from InSim.txt. Do not edit. -->\n\n",
@@ -160,5 +234,24 @@ def emit_table(directions: dict[str, str], docs: dict[str, str]) -> str:
     out.append(
         "\nOutSim and OutGauge come by UDP only: `@outsim.on.OutSimPack2`, "
         "`@gauge.on.OutGaugePack`.\n"
+    )
+    out.append(
+        "\n## Subtypes\n\n"
+        "`IS_TINY` and `IS_SMALL` carry a subtype (`SubT`). `@insim.on.IS_TINY(TINY.MPE)` accepts\n"
+        "only the subtypes that LFS sends; the others are requests and instructions for\n"
+        "`insim.send.IS_TINY(SubT=...)`.\n\n"
+        "| Packet | LFS sends | Your program sends |\n"
+        "| --- | --- | --- |\n"
+    )
+    for packet, subs in sorted(subtypes.items()):
+        enum = SUBTYPE_ENUMS[packet]
+        cells = [
+            ", ".join(f"`{enum}.{name}`" for name, d in subs.items() if (d == "instruction") == own)
+            for own in (False, True)
+        ]
+        out.append(f"| `{packet}` | {cells[0]} | {cells[1]} |\n")
+    out.append(
+        "\nThe ones marked both ways (`TINY.VTC`, `SMALL.ALC`, `SMALL.LCL`) and the keep alive\n"
+        "(`TINY.NONE`) are in the first column, and your program may send them too.\n"
     )
     return "".join(out)

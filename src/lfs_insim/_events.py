@@ -9,7 +9,8 @@
 the specification (lfs_insim/_shortcuts.py); the logic is here.
 
 IS_TINY and IS_SMALL carry a subtype (SubT): `@insim.on.IS_TINY(TINY.MPE)` or
-`@insim.on.IS_SMALL(SMALL.STP, SMALL.RTP)` call the function only for those.
+`@insim.on.IS_SMALL(SMALL.VTA, SMALL.RTP)` call the function only for those. Only the subtypes
+that LFS sends are accepted (lfs_insim/_subtypes.py, generated from the specification).
 """
 
 from __future__ import annotations
@@ -18,16 +19,14 @@ from collections.abc import Awaitable, Callable
 from enum import IntEnum
 from typing import Any, Generic, ParamSpec, TypeVar, overload
 
-from lfs_insim.packets import IS_SMALL, IS_TINY, SMALL, TINY
+from lfs_insim._subtypes import SUBTYPES, ReceivedSMALL, ReceivedTINY
+from lfs_insim.packets import IS_SMALL, IS_TINY
 from lfs_insim.packets._directions import InfoPacket, InstructionPacket, direction_error
 
 P = TypeVar("P", bound=InfoPacket)
 Handler = Callable[[P], None] | Callable[[P], Awaitable[None]]
 Fields = ParamSpec("Fields")
 S = TypeVar("S", bound=IntEnum)
-
-# The packets with a subtype (SubT) and the enum that says which ones exist.
-SUBTYPES: dict[type[InfoPacket], type[IntEnum]] = {IS_TINY: TINY, IS_SMALL: SMALL}
 
 
 class Receive:
@@ -38,11 +37,11 @@ class Receive:
 
     @overload
     def __call__(
-        self, packet_type: type[IS_TINY], subtype: TINY, /, *more: TINY
+        self, packet_type: type[IS_TINY], subtype: ReceivedTINY, /, *more: ReceivedTINY
     ) -> Callable[[Handler[IS_TINY]], Handler[IS_TINY]]: ...
     @overload
     def __call__(
-        self, packet_type: type[IS_SMALL], subtype: SMALL, /, *more: SMALL
+        self, packet_type: type[IS_SMALL], subtype: ReceivedSMALL, /, *more: ReceivedSMALL
     ) -> Callable[[Handler[IS_SMALL]], Handler[IS_SMALL]]: ...
     @overload
     def __call__(self, packet_type: type[P]) -> Callable[[Handler[P]], Handler[P]]: ...
@@ -51,22 +50,37 @@ class Receive:
     ) -> Callable[[Handler[Any]], Handler[Any]]:
         """Decorator: call the function with every packet of this type that LFS sends.
 
-        For IS_TINY and IS_SMALL, naming subtypes (`on(IS_TINY, TINY.MPE)`) limits it to those.
+        For IS_TINY and IS_SMALL, naming subtypes (`on(IS_TINY, TINY.MPE)`) limits it to those;
+        only the subtypes that LFS sends are accepted.
 
         The function may be `def` (it runs at once, so it should be quick) or `async def` (it
         runs as a task and may await). An exception in it is logged and does not stop the others.
         Only packets that LFS sends ("info" or "both ways" in InSim.txt): others raise TypeError.
         """
+        return self._register(packet_type, subtypes)
+
+    def _register(
+        self, packet_type: type[Any], subtypes: tuple[Any, ...]
+    ) -> Callable[[Handler[Any]], Handler[Any]]:
         if not (isinstance(packet_type, type) and issubclass(packet_type, InfoPacket)):
             raise TypeError(direction_error(packet_type, InfoPacket))
         if subtypes:
-            enum = SUBTYPES.get(packet_type)
-            if enum is None:
+            if packet_type not in SUBTYPES:
                 raise TypeError(f"{packet_type.__name__} has no subtypes")
+            enum, sent_by_lfs = SUBTYPES[packet_type]
             if not all(isinstance(subtype, enum) for subtype in subtypes):
                 raise TypeError(
                     f"{packet_type.__name__} subtypes are {enum.__name__} members "
                     f"({enum.__name__}.{next(iter(enum)).name}...), not {subtypes!r}"
+                )
+            never = sorted({s for s in subtypes if s not in sent_by_lfs})
+            if never:
+                raise TypeError(
+                    f"LFS never sends {packet_type.__name__} with "
+                    f"{', '.join(f'{enum.__name__}.{s.name}' for s in never)}: the function would "
+                    f"never run. Those are for your program to send "
+                    f"(insim.send.{packet_type.__name__}(SubT=...)). LFS sends "
+                    f"{', '.join(f'{enum.__name__}.{s.name}' for s in sorted(sent_by_lfs))}"
                 )
         only = frozenset(subtypes) or None
 
@@ -122,14 +136,14 @@ class Subtyped(Generic[P, S]):
     def __call__(self, subtype: S, /, *more: S) -> Callable[[Handler[P]], Handler[P]]: ...
     def __call__(self, first: Any, /, *more: IntEnum) -> Any:
         if isinstance(first, int):
-            return self._receive(self._packet_type, first, *more)  # type: ignore[call-overload]
-        return self._receive(self._packet_type)(first)
+            return self._receive._register(self._packet_type, (first, *more))
+        return self._receive._register(self._packet_type, ())(first)
 
 
 class SubReceiver(Generic[P, S]):
     """`insim.on.IS_XXX` of a packet with subtypes: the decorator, with an optional filter."""
 
-    def __init__(self, packet_type: type[P], subtypes: type[S]) -> None:
+    def __init__(self, packet_type: type[P]) -> None:
         self.packet_type = packet_type
 
     @overload

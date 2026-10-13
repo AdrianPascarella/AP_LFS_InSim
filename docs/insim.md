@@ -37,12 +37,15 @@ from lfs_insim.packets import SMALL, TINY
 def multiplayer_ended(packet: received.IS_TINY) -> None: ...
 
 
-@insim.on.IS_SMALL(SMALL.STP, SMALL.RTP)         # or any of several
+@insim.on.IS_SMALL(SMALL.VTA, SMALL.RTP)         # or any of several
 def timing(packet: received.IS_SMALL) -> None: ...
 ```
 
-Without names (`@insim.on.IS_TINY`) the function gets every subtype. A subtype of the other
-packet, or of a packet without subtypes, is an error in the editor and a `TypeError` when run.
+Without names (`@insim.on.IS_TINY`) the function gets every subtype. Only the subtypes that LFS
+sends are accepted (the list is in [Packets by direction](packets.md#subtypes)): `TINY.NCN`
+is a request that your program sends, so `@insim.on.IS_TINY(TINY.NCN)` would never run. That,
+a subtype of the other packet, or one of a packet without subtypes, is an error in the editor
+and a `TypeError` when run.
 
 Text fields are `str`. They keep LFS's `^` codes; see [text](roster-and-text.md#text).
 

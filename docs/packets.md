@@ -82,3 +82,17 @@ same classes as `lfs_insim.packets.IS_XXX`.
 | `IS_VTN` | LFS sends it | `on.IS_VTN` |  | VoTe Notify |
 
 OutSim and OutGauge come by UDP only: `@outsim.on.OutSimPack2`, `@gauge.on.OutGaugePack`.
+
+## Subtypes
+
+`IS_TINY` and `IS_SMALL` carry a subtype (`SubT`). `@insim.on.IS_TINY(TINY.MPE)` accepts
+only the subtypes that LFS sends; the others are requests and instructions for
+`insim.send.IS_TINY(SubT=...)`.
+
+| Packet | LFS sends | Your program sends |
+| --- | --- | --- |
+| `IS_SMALL` | `SMALL.VTA`, `SMALL.RTP`, `SMALL.ALC`, `SMALL.LCL` | `SMALL.SSP`, `SMALL.SSG`, `SMALL.TMS`, `SMALL.STP`, `SMALL.NLI`, `SMALL.LCS`, `SMALL.AII` |
+| `IS_TINY` | `TINY.NONE`, `TINY.REPLY`, `TINY.VTC`, `TINY.MPE`, `TINY.REN`, `TINY.CLR`, `TINY.AXC` | `TINY.VER`, `TINY.CLOSE`, `TINY.PING`, `TINY.SCP`, `TINY.SST`, `TINY.GTM`, `TINY.ISM`, `TINY.NCN`, `TINY.NPL`, `TINY.RES`, `TINY.NLP`, `TINY.MCI`, `TINY.REO`, `TINY.RST`, `TINY.AXI`, `TINY.RIP`, `TINY.NCI`, `TINY.ALC`, `TINY.AXM`, `TINY.SLC`, `TINY.MAL`, `TINY.PLH`, `TINY.IPB`, `TINY.LCL` |
+
+The ones marked both ways (`TINY.VTC`, `SMALL.ALC`, `SMALL.LCL`) and the keep alive
+(`TINY.NONE`) are in the first column, and your program may send them too.

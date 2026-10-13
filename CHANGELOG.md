@@ -2,9 +2,11 @@
 
 ## Unreleased
 
-- `@insim.on.IS_TINY(TINY.MPE)` and `@insim.on.IS_SMALL(SMALL.STP, SMALL.RTP)`: the function is
+- `@insim.on.IS_TINY(TINY.MPE)` and `@insim.on.IS_SMALL(SMALL.VTA, SMALL.RTP)`: the function is
   called only for those subtypes. `@insim.on.IS_TINY` alone still gets all of them.
-  `insim.on(IS_TINY, TINY.MPE)` is the same. Checked by the type checker and when run.
+  `insim.on(IS_TINY, TINY.MPE)` is the same. Only the subtypes that LFS sends are accepted, as
+  InSim.txt marks them (`TINY.NCN` is a request: an error). Checked by the type checker and when
+  run; the list is in [Packets by direction](docs/packets.md#subtypes).
 
 ## 0.2.0
 

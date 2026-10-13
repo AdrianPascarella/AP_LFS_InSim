@@ -282,6 +282,11 @@ abreviaturas, ni nombres como cadena, ni `on_IS_XXX`); (4) los `both ways` está
   — hecho en S16 (versión subida a 0.2.0 en `dev`; **sin publicar**, pide permiso) → LOG.md S16
 - [x] **W7.7** — Aparte, decidir con el usuario: `IS_TINY` / `IS_SMALL` con subtipo (`@insim.on.IS_TINY(TINY.MPE)`)
   — hecho en S16 (varios subtipos admitidos; solo recibir; tests con LFS falso, decidido con el usuario) → LOG.md S16
+- [x] **W7.8** — (S17, propuesta del agente tras revisar W7.7; el usuario: «Haz W7.8 primero») `on.IS_TINY(...)`
+  e `IS_SMALL(...)` aceptan solo los subtipos que LFS envía, según la marca de cada uno en InSim.txt
+  (`TINY.NCN` es una petición: error en mypy y `TypeError`). Una sola fuente: el generador escribe
+  `_subtypes.py` y desaparece la lista a mano de `_events.py`; sin `# type: ignore` en `Subtyped`
+  — hecho en S17 → LOG.md S17
 
 **Criterios de aceptación:** al teclear `insim.on.` y `insim.send.` el editor muestra solo lo que
 procede; `@insim.on(IS_MST)` sale en rojo en mypy y falla con un mensaje claro; el test de
