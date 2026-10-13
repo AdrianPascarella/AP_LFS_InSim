@@ -114,9 +114,9 @@ class Handlers:
             if due < loop.time():
                 due = loop.time() + seconds
 
-    async def cancel(self) -> None:
-        """Cancel the `async def` handlers still running (except the caller) and wait for them."""
-        tasks = [task for task in self._tasks if task is not asyncio.current_task()]
+    async def cancel(self, keep: asyncio.Task[Any] | None = None) -> None:
+        """Cancel the `async def` handlers still running (not `keep`) and wait for them."""
+        tasks = [task for task in self._tasks if task not in (keep, asyncio.current_task())]
         for task in tasks:
             task.cancel()
         await asyncio.gather(*tasks, return_exceptions=True)
@@ -127,31 +127,40 @@ def _name(handler: Callable[..., Any]) -> str:
 
 
 class StopsOnError:
-    """InSim, OutSim and OutGauge: with errors="raise", a handler's error closes them.
+    """How InSim, OutSim and OutGauge close: once, in a task of its own.
 
-    `wait_closed()` and leaving `async with` then raise that error (and so does run()).
+    However many times close() is called (from a handler, from `async with`, from an error), one
+    task does the closing and every caller waits for it: a second close() cannot cancel the first
+    half way. With errors="raise", a handler's error starts it too, and `wait_closed()` and leaving
+    `async with` raise that error (and so does run()).
     """
 
     _handlers: Handlers
-    _closing: asyncio.Task[None] | None = None  # the close() started by an error
+    _closing: asyncio.Task[None] | None = None  # the closing, once started
+    _in_closing = False  # running code that the closing itself waits for (on_disconnect)
+
+    async def _close(self, caller: asyncio.Task[Any] | None) -> None:
+        """Close for good; `caller` (the task that asked) is not cancelled."""
+        raise NotImplementedError
 
     async def close(self) -> None:
-        raise NotImplementedError
+        if self._closing is None:
+            self._closing = asyncio.ensure_future(self._close(asyncio.current_task()))
+        if not self._in_closing:  # from on_disconnect it would wait for itself
+            await asyncio.shield(self._closing)
 
     def _fail(self, error: Exception) -> None:
         if self._closing is None:
-            self._closing = asyncio.ensure_future(self.close())
+            self._closing = asyncio.ensure_future(self._close(None))
 
     async def _raise_error(self) -> None:
         if self._closing is not None:
-            await asyncio.wait([self._closing])
+            await asyncio.shield(self._closing)
         if self._handlers.error is not None:
             raise self._handlers.error
 
     async def _exit(self, exc: BaseException | None) -> None:
         """The end of `async with`: close, and raise the handler's error if nothing else is."""
-        if self._closing is not None:
-            await asyncio.wait([self._closing])
         await self.close()
         if exc is None:
             await self._raise_error()

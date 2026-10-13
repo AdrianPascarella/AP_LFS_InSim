@@ -72,6 +72,26 @@ salvó. Para pruebas de mutación en archivos nuevos, copia antes (o `git add` p
 - Guía (`insim.md`, `roster-and-text.md`, `outsim-outgauge.md`, `getting-started.md`) y CHANGELOG **0.3.0**;
   `version = "0.3.0"` en `dev`, **sin publicar** (pide permiso). `verify` PASS, 490 tests. `_connection.py`: 439.
 
+**Pruebas previas a 0.3.0 en LFS real** (el usuario: «Sí, abre LFS, comprueba los colores y publica»; sin tocar
+`cfg.txt`). LFS 0.8C31 abierto por el agente (no había otro), InSim con `lfs_screen.ps1 -Keys "t" -Then
+"/insim=29999{ENTER}"` desde PowerShell, puerto comprobado; cerrado al final con `/exit` por InSim.
+- **El wheel, no el código fuente:** `build` y `twine` en un venv de herramientas del scratchpad (el `.venv` no
+  tiene `build`); `twine check` PASSED; instalado en un venv limpio e importado desde `site-packages`.
+- **Colores, vistos en una captura a resolución completa:** el texto sin código sale gris claro; tras `^8` (y tras
+  `coloured()`) vuelve a ese gris; `^7` es blanco brillante, distinto. **`^8` = el color por defecto del mensaje:
+  confirmado.** `^9` se ve igual que `^8` en el chat; lo de la página de códigos no se probó, así que no se ofrece.
+- **Fallo encontrado y arreglado:** `on_disconnect` no se llamaba si `close()` se llamaba desde `on_connect`.
+  Diagnóstico con trazas (sin tocar la biblioteca): ese `close()` cancelaba el supervisor, así que
+  `wait_closed()` volvía antes de terminar el cierre; luego el `close()` de `async with` cancelaba las tareas de
+  manejadores, entre ellas la que estaba a mitad del primer cierre, y la cancelación llegaba al lector dentro de
+  `_disconnect()`, antes de `on_disconnect`. El test de W8.1 no lo vio porque cerraba solo por `async with`.
+  **Arreglo:** el cierre corre una sola vez en su propia tarea (`StopsOnError._close`, protegida con `shield`);
+  cada `close()` la espera; `wait_closed()` espera a que acabe; el que llama no se cancela (`keep`); un `close()`
+  dentro de `on_disconnect` no espera (se esperaría a sí mismo). **Rojo primero:** dos tests nuevos (cerrar desde
+  `on_connect`; cerrar desde `on_disconnect`, con LFS que se va y sin él) fallaron antes del arreglo. 492 tests;
+  15/15 repeticiones de los de conexión. Con el wheel nuevo, en LFS real: `connect` y `disconnect`.
+- **`errors="raise"` en vivo:** un manejador de `IS_VER` que falla → `run()` relanza «bug on purpose (LFS 0.8C31)».
+
 ## S16 — 2026-10-13 — W7.6: equivalencia, tabla de direcciones, guía en forma canónica y 0.2.0
 
 **Inicio:** identidad git correcta (`AdrianPascarella`, gmail); `verify` PASS antes de tocar nada.

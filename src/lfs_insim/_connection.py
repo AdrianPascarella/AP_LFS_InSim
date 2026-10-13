@@ -8,7 +8,7 @@ import functools
 import logging
 from collections.abc import Awaitable, Callable
 from types import TracebackType
-from typing import Self, cast
+from typing import Any, Self, cast
 
 from lfs_insim import _requests
 from lfs_insim._commands import Command, CommandHandler, Commands
@@ -280,10 +280,16 @@ class InSim(StopsOnError):
         self._reader_task = asyncio.create_task(self._read(reader))
 
     async def close(self) -> None:
-        """Stop reconnecting, send TINY_CLOSE, close the connection, cancel running handlers."""
-        await self._stop_ticks()  # first: one of them may be the caller (see _stop_ticks)
+        """Stop reconnecting, send TINY_CLOSE, close the connection, cancel running handlers.
+
+        A second call waits for the first. The handler that calls it is not cancelled.
+        """
+        await super().close()
+
+    async def _close(self, caller: asyncio.Task[Any] | None) -> None:
+        await self._stop_ticks(caller)  # first: one of them may be the caller (see _stop_ticks)
         supervisor, self._supervisor = self._supervisor, None
-        if supervisor is not None and supervisor is not asyncio.current_task():
+        if supervisor is not None and supervisor is not caller:
             supervisor.cancel()
             await asyncio.gather(supervisor, return_exceptions=True)
         if self._writer is not None:
@@ -293,7 +299,7 @@ class InSim(StopsOnError):
             task.cancel()
             await asyncio.gather(task, return_exceptions=True)
         await self._disconnect()
-        await self._handlers.cancel()
+        await self._handlers.cancel(caller)
 
     async def wait_closed(self) -> None:
         """Wait until close() is called (or, after a bare connect(), until the connection ends).
@@ -316,6 +322,7 @@ class InSim(StopsOnError):
 
     async def __aenter__(self) -> Self:
         """Start keeping the connection up in the background; returns without waiting for LFS."""
+        self._closing = None
         self._supervisor = asyncio.create_task(self._keep_connected())
         return self
 
@@ -390,11 +397,11 @@ class InSim(StopsOnError):
             tick = self._handlers.repeat(seconds, handler, running)
             self._ticks.append(asyncio.create_task(tick))
 
-    async def _stop_ticks(self) -> None:
-        # The caller's own tick (if close() is called from one) is not cancelled: it ends by
-        # itself, because the connection it was started for is gone.
+    async def _stop_ticks(self, keep: asyncio.Task[Any] | None = None) -> None:
+        # The caller's own tick (if close() is called from one: `keep`) is not cancelled: it ends
+        # by itself, because the connection it was started for is gone.
         ticks, self._ticks = self._ticks, []
-        ticks = [tick for tick in ticks if tick is not asyncio.current_task()]
+        ticks = [tick for tick in ticks if tick not in (keep, asyncio.current_task())]
         for tick in ticks:
             tick.cancel()
         await asyncio.gather(*ticks, return_exceptions=True)
@@ -409,8 +416,12 @@ class InSim(StopsOnError):
                 await writer.wait_closed()
             if self._announced:
                 self._announced = False
-                for handler in self._disconnect_handlers:
-                    await self._handlers.call_and_wait(handler, (), "on_disconnect")
+                self._in_closing = True  # a close() in them must not wait for this
+                try:
+                    for handler in self._disconnect_handlers:
+                        await self._handlers.call_and_wait(handler, (), "on_disconnect")
+                finally:
+                    self._in_closing = False
 
     def _dispatch(self, packet: InSimPacket) -> None:
         if isinstance(packet, IS_TINY) and packet.SubT == TINY.NONE and packet.ReqI == 0:

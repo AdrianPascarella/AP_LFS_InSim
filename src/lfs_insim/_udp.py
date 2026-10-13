@@ -6,7 +6,7 @@ import asyncio
 import logging
 from collections.abc import Awaitable, Callable
 from types import TracebackType
-from typing import Self, TypeVar
+from typing import Any, Self, TypeVar
 
 from lfs_insim import packets as _p
 from lfs_insim._handlers import Errors, Handlers, StopsOnError
@@ -36,11 +36,14 @@ class _UDPSource(StopsOnError):
         raise NotImplementedError
 
     async def close(self) -> None:
-        """Stop listening and cancel running handlers."""
+        """Stop listening and cancel running handlers. A second call waits for the first."""
+        await super().close()
+
+    async def _close(self, caller: asyncio.Task[Any] | None) -> None:
         transport, self._transport = self._transport, None
         if transport is not None:
             transport.close()
-        await self._handlers.cancel()
+        await self._handlers.cancel(caller)
         if self._closed is not None:
             self._closed.set()
 
@@ -56,6 +59,7 @@ class _UDPSource(StopsOnError):
 
     async def __aenter__(self) -> Self:
         """Start listening. Raises OSError if the port cannot be used (already taken, say)."""
+        self._closing = None
         self._closed = asyncio.Event()
         loop = asyncio.get_running_loop()
         transport, _ = await loop.create_datagram_endpoint(

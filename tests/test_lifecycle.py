@@ -75,6 +75,60 @@ def test_an_async_on_disconnect_runs_to_the_end_when_closing() -> None:
     asyncio.run(main())
 
 
+def test_closing_from_on_connect_still_calls_on_disconnect() -> None:
+    # Seen with the real LFS (S17): wait_closed() returned while that close() was still running,
+    # and the close() of `async with` cancelled it half way, before on_disconnect.
+    async def main() -> None:
+        async with FakeLFS() as lfs:
+            insim = InSim(port=lfs.port)
+            events: list[str] = []
+
+            @insim.on_connect
+            async def connected() -> None:
+                events.append("connect")
+                await asyncio.sleep(0.05)
+                await insim.close()
+                events.append("after close")  # the caller is not cancelled by its own close()
+
+            @insim.on_disconnect
+            def disconnected() -> None:
+                events.append("disconnect")
+
+            async with insim:
+                await insim.wait_closed()
+                assert events == ["connect", "disconnect", "after close"]  # all done by now
+            assert events == ["connect", "disconnect", "after close"]
+
+    asyncio.run(main())
+
+
+def test_closing_from_on_disconnect_does_not_hang() -> None:
+    async def main(lfs_leaves: bool) -> None:
+        async with FakeLFS() as lfs:
+            insim = InSim(port=lfs.port)
+            insim._retry_delays = FAST
+            events: list[str] = []
+
+            @insim.on_disconnect
+            async def disconnected() -> None:
+                events.append("disconnect")
+                await insim.close()  # stop for good when the connection ends
+                events.append("closed")
+
+            async with asyncio.timeout(2), insim:
+                await lfs.wait_connected()
+                await _until(lambda: insim.connected)
+                if lfs_leaves:
+                    await lfs.drop()
+                    await insim.wait_closed()
+            await asyncio.sleep(0.1)
+            assert events == ["disconnect", "closed"]
+            assert lfs.connections == 1  # no reconnection after it
+
+    asyncio.run(main(lfs_leaves=True))
+    asyncio.run(main(lfs_leaves=False))
+
+
 def test_a_connection_that_never_opened_has_no_on_disconnect() -> None:
     async def main() -> None:
         async with FakeLFS() as lfs:
