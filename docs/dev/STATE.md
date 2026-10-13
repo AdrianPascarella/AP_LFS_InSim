@@ -1,16 +1,17 @@
 # 📍 Estado — AP_LFS_InSim (lfs_insim)
-> Actualizado: 2026-10-13 (S17): **W7 hecha entera, con W7.8.** La biblioteca está validada en el LFS real
+> Actualizado: 2026-10-13 (S17): **W7 entera y W8.0–W8.3 hechas.** La biblioteca está validada en el LFS real
 > y tiene la API de alto nivel (`@insim.on.IS_NPL`, `insim.send.IS_MST(...)`, `received` / `sent`,
 > `await insim.request(...)`, `Roster`, `say()` / `command()`, `on_command`, `text.plain()`), cuatro
-> ejemplos y `docs/packets.md` (tabla generada). U7 cerrada: el usuario vio las listas en su VS Code.
-> **`lfs-insim 0.3.0` está publicado en PyPI** (S17, release `v0.3.0`; antes 0.2.0 en S16).
-> **W7 está hecha entera** (W7.7, S16: `@insim.on.IS_TINY(TINY.MPE)`; W7.8, S17: solo los subtipos que LFS envía,
-> generados en `_subtypes.py`; en `dev` sin publicar: CHANGELOG «Unreleased»).
-> **▶️ SIGUIENTE: W8.4** (`order="before"` público). W8.0, W8.1, 0.3.0, W8.2 (comandos) y W8.3 (unidades) hechas en S17;
-> W8.2 y W8.3 sin publicar (CHANGELOG «Unreleased»; antes de 0.4.0, probarlas en LFS real). W8 abierta
-> y detallada con el usuario en S17 (`PLAN.md`, W8): botones fuera, comandos por anotaciones, permisos
-> `admin=True` / `allow=`. W7.7, W7.8 y el CHANGELOG «Unreleased» esperan a la
-> siguiente versión: se publican con lo próximo que se añada.
+> ejemplos y `docs/packets.md` (tabla generada).
+> **`lfs-insim 0.3.0` está publicado en PyPI** (S17, release `v0.3.0`): lleva W7.7, W7.8 (subtipos) y W8.1
+> (`errors="raise"`, `on_disconnect`, `reconnected`, `Colour`). Antes, 0.2.0 en S16.
+> **En `dev` sin publicar** (CHANGELOG «Unreleased»): W8.2 (comandos con tipos, ayuda, grupos, permisos) y W8.3
+> (unidades). Antes de publicarlas como 0.4.0, probarlas en LFS real (teclear `!speed abc`; comparar
+> `CompCar.speed_kmh` con OutGauge con un coche en pista): pide permiso para abrir LFS.
+> **▶️ SIGUIENTE: W8.4** (`order="before"` público): es API pública, así que **decidir su forma con el usuario
+> antes de escribir** (nombre, decorador o parámetro de `on`, qué orden se garantiza). Luego W8.5 y 0.4.0.
+> W8 abierta y detallada con el usuario en S17 (`PLAN.md`, W8): botones fuera, comandos por anotaciones,
+> permisos `admin=True` / `allow=`.
 > **Receta de una versión nueva:** versión y CHANGELOG en
 > `dev`; `verify` en verde; avance rápido de `dev` a `main`; `gh release create vX.Y.Z --target main`
 > (el tag debe ser `v<version>`); aprobar el entorno `pypi` (pedirlo cada vez; con permiso, el agente lo aprueba
