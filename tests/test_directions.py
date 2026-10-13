@@ -9,7 +9,7 @@ import spec_parser
 from mypy import api as mypy_api
 from spec_directions import packet_directions
 
-from lfs_insim import InSim, packets
+from lfs_insim import InSim, packets, received, sent
 from lfs_insim.packets import (
     IS_MST,
     IS_NPL,
@@ -85,3 +85,22 @@ def test_the_type_checker_sees_the_direction(tmp_path: Path) -> None:
     out, _, status = mypy_api.run([str(source), "--no-incremental", "--strict"])
     assert status == 1
     assert re.findall(r"use\.py:(\d+): error", out) == ["8", "10"], out  # on(IS_MST), send(IS_NPL)
+
+
+def test_received_and_sent_list_the_same_classes_by_direction() -> None:
+    every = [getattr(packets, name) for name in packets.__all__ if name.startswith("IS_")]
+    by_name = {cls.__name__: cls for cls in every}
+    for module, base in ((received, InfoPacket), (sent, InstructionPacket)):
+        listed = {name: getattr(module, name) for name in module.__all__}
+        assert listed == {name: cls for name, cls in by_name.items() if issubclass(cls, base)}
+        assert all(cls is getattr(packets, name) for name, cls in listed.items())  # not copies
+    assert received.IS_NPL is IS_NPL and sent.IS_MST is IS_MST
+    assert received.IS_TINY is sent.IS_TINY is IS_TINY  # both ways: in both
+    assert not hasattr(received, "IS_MST") and not hasattr(sent, "IS_NPL")
+
+
+def test_lfs_insim_received_works_after_a_plain_import() -> None:
+    import lfs_insim
+
+    assert lfs_insim.received.IS_VER is IS_VER
+    assert lfs_insim.sent.IS_TINY is IS_TINY

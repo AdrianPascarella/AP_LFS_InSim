@@ -44,3 +44,34 @@ def packet_directions(spec: Spec) -> dict[str, str]:
             )
         directions["IS_" + member.name.removeprefix("ISP_")] = match.group(1)
     return directions
+
+
+# The public modules that list the packets by direction (src/lfs_insim/received.py and sent.py).
+DIRECTION_MODULES = {
+    "received": (
+        ("info", "both ways"),
+        "The InSim packets that LFS sends, for `insim.on`: `@insim.on(received.IS_NPL)`.\n\n"
+        "The same classes as in lfs_insim.packets (`received.IS_NPL is packets.IS_NPL`), listed\n"
+        "by direction so that the editor shows only these. A packet that goes both ways is also\n"
+        "in lfs_insim.sent.",
+    ),
+    "sent": (
+        ("instruction", "both ways"),
+        "The InSim packets that your program sends, for `insim.send`: `insim.send(sent.IS_MST())`."
+        "\n\n"
+        "The same classes as in lfs_insim.packets (`sent.IS_MST is packets.IS_MST`), listed by\n"
+        "direction so that the editor shows only these. A packet that goes both ways is also in\n"
+        "lfs_insim.received.",
+    ),
+}
+
+
+def emit_direction_module(module: str, directions: dict[str, str], header: str) -> str:
+    """lfs_insim.received or lfs_insim.sent: re-exports, written out so the editor sees them."""
+    wanted, doc = DIRECTION_MODULES[module]
+    names = sorted(name for name, direction in directions.items() if direction in wanted)
+    return (
+        f'{header}"""{doc}\n"""\n\n'
+        f"from lfs_insim.packets import {', '.join(names)}\n\n"
+        f"__all__ = {names!r}\n"
+    )

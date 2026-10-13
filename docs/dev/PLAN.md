@@ -267,7 +267,7 @@ abreviaturas, ni nombres como cadena, ni `on_IS_XXX`); (4) los `both ways` está
   «Dirección» en el docstring de cada clase; `on()` y `send()` tipados para aceptar solo lo que
   corresponde (error de mypy/editor) y con error claro en ejecución (`on(IS_MST)`: «es una
   instrucción: la envías tú») — hecho en S15 → LOG.md S15
-- [ ] **W7.3** — Módulos `received` y `sent` (re-exportan las mismas clases, no copias)
+- [x] **W7.3** — Módulos `received` y `sent` (re-exportan las mismas clases, no copias) — hecho en S15 → LOG.md S15
 - [ ] **W7.4** — ~~Métodos `on_IS_XXX` y `send_IS_XXX` generados, en un mixin~~ (cambiado en S15):
   objetos `on` y `send` generados con un atributo por paquete, en un archivo propio (`_events.py`)
   para que `_connection.py` no crezca; siguen siendo invocables (`on(IS_X)`, `send(a, b)`);

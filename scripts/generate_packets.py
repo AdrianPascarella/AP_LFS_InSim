@@ -14,8 +14,10 @@ generate_enums. Output (tracked by git, never edited by hand):
   src/lfs_insim/packets/_outgauge.py  OutGaugePack
   src/lfs_insim/packets/_outsim.py    OutSimPack, OutSimPack2 and OSO   (need OutSimPack.txt)
   src/lfs_insim/packets/__init__.py   the public names                  (need OutSimPack.txt)
+  src/lfs_insim/received.py, sent.py  the packets by direction (spec_directions)
 
-Without OutSimPack.txt, as in the CI, the last two are skipped and the rest is still checked.
+Without OutSimPack.txt, as in the CI, _outsim.py and __init__.py are skipped and the rest is
+still checked.
 The code is passed through `ruff format`, so the dev tools must be installed.
 """
 
@@ -40,7 +42,7 @@ from generate_enums import (
     member_name,
     prefix_of,
 )
-from spec_directions import packet_directions
+from spec_directions import DIRECTION_MODULES, emit_direction_module, packet_directions
 from spec_parser import Field, Spec, SpecError, Struct, parse
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -401,6 +403,10 @@ def generate() -> tuple[dict[Path, str], list[Path]]:
                 module, by_module[module], enums, [], header, directions
             )
             for module in ("_insim", "_outgauge")
+        },
+        **{
+            PACKAGE_DIR.parent / f"{module}.py": emit_direction_module(module, directions, header)
+            for module in DIRECTION_MODULES
         },
     }
     skipped = [PACKAGE_DIR / "_outsim.py", PACKAGE_DIR / "__init__.py"]

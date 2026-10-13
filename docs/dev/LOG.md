@@ -84,7 +84,17 @@ Vistos en **rojo** con el `_connection.py` anterior (3 de 6 fallaron). **Tests c
 recorre lo que exporta `lfs_insim.packets` y tomaba las tres bases por paquetes (sin `_TYPE` ni
 `_LAYOUT`); se excluyen de esa enumeración, igual que ya se excluía `Structure`, sin tocar ninguna
 comprobación. `tests/live_lfs.py`: la lista de enviados pasa a `list[InstructionPacket]` (mypy).
-Verificación: `verify` PASS, 337 tests.
+Verificación: `verify` PASS, 337 tests. CI de W7.2 (`f926efe`): `verify` y `spec` en verde.
+
+**W7.3 hecha:** `src/lfs_insim/received.py` y `sent.py`, **generados** (`emit_direction_module` en
+`scripts/spec_directions.py`, para no acercar `generate_packets.py` a 500 líneas) con cada nombre
+escrito: calculados al importar, el editor no vería la lista, que es el objetivo de W7. Solo
+necesitan `InSim.txt`, así que el CI los comprueba. `received` tiene 54 paquetes (info + both ways) y `sent` 27
+(instruction + both ways). Se exportan desde `lfs_insim` para que `lfs_insim.received` funcione tras
+`import lfs_insim`. OutSim y OutGauge entran en `received` en W7.5. Tests en `test_directions.py`:
+mismas clases (no copias), completos según la base, los `both ways` en los dos, `received.IS_MST` no
+existe. Visto en **rojo** quitando `IS_TINY` de `received.py` a mano (el test y `--check` lo detectan).
+Verificación: `verify` PASS, 339 tests.
 
 ## S14 — 2026-10-13 — U6 por el navegador
 
