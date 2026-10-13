@@ -11,6 +11,7 @@ user never sets them: `IS_MST(Msg="hello").pack()` is a complete packet.
 from __future__ import annotations
 
 import struct
+from collections.abc import Callable
 from ipaddress import IPv4Address
 from typing import TYPE_CHECKING, Any
 
@@ -189,14 +190,22 @@ class Nested(Codec):
 
 
 class Array(Codec):
-    """A fixed number of items (Tyres[4], OSWheels[4]): the list must have exactly that many."""
+    """A fixed number of items (Tyres[4], OSWheels[4]): the list must have exactly that many.
 
-    def __init__(self, item: Codec, count: int) -> None:
+    With `fill` (IS_REO.PLID), a shorter list is completed with `fill()` items when sent.
+    """
+
+    def __init__(self, item: Codec, count: int, fill: Callable[[], Any] | None = None) -> None:
         self.item = item
         self.count = count
+        self.fill = fill
 
     def pack(self, value: Any, packet: Any) -> bytes:
-        if len(value) != self.count:
+        if self.fill is not None:
+            if len(value) > self.count:
+                raise PacketError(f"at most {self.count} items, got {len(value)}")
+            value = [*value, *(self.fill() for _ in range(self.count - len(value)))]
+        elif len(value) != self.count:
             raise PacketError(f"expected {self.count} items, got {len(value)}")
         return b"".join(self.item.pack(item, packet) for item in value)
 

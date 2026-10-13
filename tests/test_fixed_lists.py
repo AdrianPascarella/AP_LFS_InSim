@@ -9,7 +9,7 @@ import pytest
 from fake_lfs import FakeLFS
 
 from lfs_insim import InSim
-from lfs_insim.packets import IS_HCP, IS_IPB, IS_REO, CarHCP, PacketError
+from lfs_insim.packets import IS_HCP, IS_IPB, IS_PIT, IS_REO, CarHCP, PacketError
 from lfs_insim.packets._structure import unpack_insim
 
 REO = IS_REO(ReqI=1, NumP=3, PLID=[5, 2, 9] + [0] * 45)
@@ -37,11 +37,24 @@ def test_ipb_bytes() -> None:
     assert IS_IPB().pack() == bytes([2, 67, 0, 0, 0, 0, 0, 0])  # no bans: the list is cleared
 
 
-def test_a_short_list_is_a_clear_error() -> None:
-    with pytest.raises(PacketError, match="expected 48 items, got 3"):
-        IS_REO(NumP=3, PLID=[5, 2, 9]).pack()
-    with pytest.raises(PacketError, match="expected 32 items, got 1"):
-        IS_HCP(Info=[CarHCP(H_Mass=10)]).pack()
+def test_a_short_list_is_filled_with_zeros_where_zero_means_none() -> None:
+    # PLID 0 is no player and a zero CarHCP no handicap, so the rest can be left out (U9, S18).
+    assert IS_REO(ReqI=1, NumP=3, PLID=[5, 2, 9]).pack() == REO.pack()
+    assert IS_HCP(ReqI=1, Info=[CarHCP(H_Mass=10, H_TRes=20)]).pack() == HCP.pack()
+    assert IS_REO(PLID=[]).pack() == IS_REO().pack()
+
+
+def test_too_many_items_is_still_an_error() -> None:
+    with pytest.raises(PacketError, match="at most 48 items, got 49"):
+        IS_REO(PLID=[1] * 49).pack()
+    with pytest.raises(PacketError, match="at most 32 items, got 33"):
+        IS_HCP(Info=[CarHCP() for _ in range(33)]).pack()
+
+
+def test_other_fixed_lists_must_be_complete() -> None:
+    # Tyres: 0 is a real tyre (R1), so a missing wheel is not filled in.
+    with pytest.raises(PacketError, match="expected 4 items, got 2"):
+        IS_PIT(Tyres=[1, 2]).pack()
 
 
 def test_sent_to_lfs_and_received_from_it() -> None:

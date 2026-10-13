@@ -160,6 +160,7 @@ def plain_columns(struct: Struct, struct_names: set[str]) -> list[Column]:
     is_packet = struct.name.startswith("IS_")
     tail_text = overrides.TAIL_TEXT.get(struct.name)
     tail_array = overrides.TAIL_ARRAY.get(struct.name)
+    zero_filled = overrides.ZERO_FILLED.get(struct.name)
     if "variable size" in struct.comment and tail_text is None and tail_array is None:
         raise SpecError(f"{struct.name} has a variable size: add it to TAIL_TEXT or TAIL_ARRAY")
     code_page = overrides.TEXT_CODE_PAGES.get(struct.name)
@@ -237,6 +238,7 @@ def plain_columns(struct: Struct, struct_names: set[str]) -> list[Column]:
             result.append(Column(item.name, codec, "str", '""', item.comment))
         elif item.count is not None:
             codec, annotation, default = item_codec(item, struct_names)
+            fill = f", fill={annotation}" if item.name == zero_filled else ""
             if default.startswith("field("):
                 factory = f"[{annotation}() for _ in range({item.count})]"
             else:
@@ -244,7 +246,7 @@ def plain_columns(struct: Struct, struct_names: set[str]) -> list[Column]:
             result.append(
                 Column(
                     item.name,
-                    f"_c.Array({codec}, {item.count})",
+                    f"_c.Array({codec}, {item.count}{fill})",
                     f"list[{annotation}]",
                     f"field(default_factory=lambda: {factory})",
                     item.comment,
@@ -253,6 +255,10 @@ def plain_columns(struct: Struct, struct_names: set[str]) -> list[Column]:
         else:
             codec, annotation, default = item_codec(item, struct_names)
             result.append(Column(item.name, codec, annotation, default, item.comment))
+    if zero_filled is not None and not any(
+        c.name == zero_filled and c.codec.startswith("_c.Array(") for c in result
+    ):
+        raise SpecError(f"{struct.name}.{zero_filled} in ZERO_FILLED is not a fixed array")
     return result
 
 

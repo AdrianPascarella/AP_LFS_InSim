@@ -76,6 +76,13 @@ TAIL_ARRAY: dict[str, tuple[str, str | None]] = {
     "IS_AIC": ("Inputs", None),
 }
 
+# Fixed arrays in which an item of zeros means none (PLID 0: no player; a zero CarHCP: no
+# handicap): a shorter list is filled with zeros when sent. Not Tyres, where 0 is a real tyre.
+ZERO_FILLED: dict[str, str] = {
+    "IS_REO": "PLID",
+    "IS_HCP": "Info",
+}
+
 # Structs in InSim.txt that are not InSim packets, and the module they go to. Every struct of
 # OutSimPack.txt goes to _outsim.
 MODULES: dict[str, str] = {

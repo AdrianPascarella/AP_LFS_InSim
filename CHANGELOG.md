@@ -14,6 +14,9 @@
   state of your own the way `Roster` does (it now uses only this). `InSimPacket`, the base of
   every packet, is in `lfs_insim.packets` to annotate them. See
   [Your own state](docs/roster-and-text.md#your-own-state).
+- `IS_REO(NumP=3, PLID=[5, 2, 9])` and `IS_HCP(Info=[...])` with fewer items than the packet holds:
+  the rest is filled with zeros (no player, no handicap) when sent. Other fixed lists, like
+  `Tyres`, must still be complete.
 
 ## 0.3.0
 

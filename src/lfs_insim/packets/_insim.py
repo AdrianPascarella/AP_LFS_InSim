@@ -715,7 +715,7 @@ class IS_HCP(InstructionPacket):
         ("Type", _c.TYPE),
         ("ReqI", _c.Scalar("B")),
         ("Zero", _c.Pad(1)),
-        ("Info", _c.Array(_c.Nested(CarHCP), 32)),
+        ("Info", _c.Array(_c.Nested(CarHCP), 32, fill=CarHCP)),
     )
 
 
@@ -1695,7 +1695,7 @@ class IS_REO(BothWaysPacket):
         ("Type", _c.TYPE),
         ("ReqI", _c.Scalar("B")),
         ("NumP", _c.Scalar("B")),
-        ("PLID", _c.Array(_c.Scalar("B"), 48)),
+        ("PLID", _c.Array(_c.Scalar("B"), 48, fill=int)),
     )
 
 
