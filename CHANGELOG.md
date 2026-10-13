@@ -8,6 +8,8 @@
   raised by `run()`, `wait_closed()` and `async with`, instead of only being logged. For
   development; the default stays `"log"`.
 - `lfs_insim.text.Colour` and `coloured()`: colours to send (`f"{Colour.RED}Stop"`).
+- `close()` closes once: a second call (from a handler and from `async with`, say) waits for the
+  first instead of cancelling it half way, and `wait_closed()` returns when the closing is done.
 - `@insim.on.IS_TINY(TINY.MPE)` and `@insim.on.IS_SMALL(SMALL.VTA, SMALL.RTP)`: the function is
   called only for those subtypes. `@insim.on.IS_TINY` alone still gets all of them.
   `insim.on(IS_TINY, TINY.MPE)` is the same. Only the subtypes that LFS sends are accepted, as
