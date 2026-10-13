@@ -111,6 +111,13 @@ distinto de 0, `ValueError` si es negativo, y avisa si la conexión ya está en 
 siguiente, porque se reenvía `self._isi` al reconectar). Rojo primero: `tests/test_needs.py` (5 tests).
 `verify` PASS (573 tests). La guía de plugins va en W10.8.
 
+**W10.6 hecha:** dos plugins con el mismo comando y prefijo → `ValueError` que lo nombra (ya pasaba, porque
+`Commands` es uno compartido: test de caracterización, verde desde el principio). `insim.reserve_click_ids(n)`
+→ `range` consecutivo de los 240 `ClickID` (0–239, InSim.txt «BUTTONS»); al pasarse, `ValueError`. Rojo
+primero: 3 tests. `verify` PASS (577 tests). **Hubo un fallo mío al documentar W10.5:** un script de ediciones
+se cortó a medias y el commit salió igual (iba en otra línea, no encadenado); se completó en dos commits más.
+Desde W10.6, el script va encadenado al commit con `&&`.
+
 ## S19 — 2026-10-13 — W9: comandos como invitado en un servidor ajeno
 
 **Inicio:** `session_start_check` PASS (rama, identidad, pull, plantilla v3). Documentos y realidad coinciden

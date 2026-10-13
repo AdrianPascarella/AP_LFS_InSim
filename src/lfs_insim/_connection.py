@@ -131,6 +131,12 @@ class InSim(StopsOnError):
         """
         return self._plugins.use(plugin, options)
 
+    def reserve_click_ids(self, count: int) -> range:
+        """ClickIDs for the buttons of one plugin, none of them given to another: `ids =
+        insim.reserve_click_ids(10)`, then `IS_BTN(ClickID=ids[0], ...)`. There are 240 (0 to 239).
+        """
+        return self._plugins.reserve_click_ids(count)
+
     def need(self, *, flags: int = 0, interval_ms: int = 0) -> None:
         """What a plugin needs in IS_ISI, added to what InSim() and other plugins asked for:
         `insim.need(flags=ISF.MCI, interval_ms=100)`. Flags are added up; of the intervals, the

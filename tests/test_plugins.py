@@ -137,3 +137,40 @@ async def _until(condition: Callable[[], object], timeout: float = 2.0) -> None:
     async with asyncio.timeout(timeout):
         while not condition():
             await asyncio.sleep(0.01)
+
+
+# Clashes between plugins (W10.6)
+
+
+def test_two_plugins_with_the_same_command_is_an_error_naming_it() -> None:
+    def kicker(insim: InSim) -> None:
+        insim.use(Commands).on_command("kick")(print)
+
+    def other_kicker(insim: InSim) -> None:
+        insim.use(Commands).on_command("kick")(print)
+
+    insim = InSim(prefix="!")
+    insim.use(kicker)
+    with pytest.raises(ValueError, match="!kick"):
+        insim.use(other_kicker)
+
+
+def test_each_plugin_gets_click_ids_of_its_own() -> None:
+    insim = InSim()
+    menu = insim.reserve_click_ids(10)
+    hud = insim.reserve_click_ids(5)
+    assert menu == range(0, 10)
+    assert hud == range(10, 15)
+
+
+def test_there_are_240_click_ids() -> None:
+    insim = InSim()
+    insim.reserve_click_ids(200)
+    insim.reserve_click_ids(40)
+    with pytest.raises(ValueError, match="240"):
+        insim.reserve_click_ids(1)
+
+
+def test_reserving_no_click_ids_is_an_error() -> None:
+    with pytest.raises(ValueError, match="count"):
+        InSim().reserve_click_ids(0)

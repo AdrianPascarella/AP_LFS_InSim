@@ -402,7 +402,9 @@ class FreeCam(Plugin):                      # o una clase, si aporta herencia, o
   pide nada; el aviso sale si la conexión ya está en marcha, y cuenta desde la siguiente), juntados antes de conectar (flags con OR; intervalo, el más
   corto). Añadido con la conexión abierta → aviso (LFS solo los lee en el `IS_ISI`).
 - **Choques detectados en `use()`:** mismo comando con el mismo prefijo; rangos de `ClickID` repartidos por
-  la biblioteca para que dos plugins con botones no se pisen.
+  la biblioteca para que dos plugins con botones no se pisen. *Precisado en W10.6:* el comando repetido ya lo
+  detectaba `Commands` (uno compartido); `insim.reserve_click_ids(n)` da un `range` consecutivo, 240 en total
+  (0–239, InSim.txt); no hay devolución (nadie la ha pedido). `BFN_CLEAR` borra los de todos: va en la guía.
 - **`on_close` por plugin** y log con el nombre del plugin.
 - **Solo o combinado:** el paquete de una aplicación trae su arranque (`python -m freecam`: crea un `InSim`,
   hace `use(FreeCam)` y lo ejecuta); el código del plugin es el mismo.

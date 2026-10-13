@@ -10,6 +10,9 @@ if TYPE_CHECKING:
 
 T = TypeVar("T")
 
+CLICK_IDS = 240
+"""Buttons an InSim may show at once: ClickID 0 to 239 (InSim.txt, BUTTONS)."""
+
 
 class Plugin:
     """Base for a plugin written as a class: it takes the InSim, and its own options by name.
@@ -36,6 +39,7 @@ class Plugins:
     def __init__(self, insim: Any) -> None:
         self._insim = insim
         self._made: dict[Callable[..., Any], tuple[object, dict[str, Any]]] = {}
+        self._next_click_id = 0
 
     def use(self, plugin: Callable[..., T], options: dict[str, Any]) -> T:
         if plugin in self._made:
@@ -48,6 +52,17 @@ class Plugins:
         instance = plugin(self._insim, **options)
         self._made[plugin] = (instance, options)
         return instance
+
+    def reserve_click_ids(self, count: int) -> range:
+        if count < 1:
+            raise ValueError(f"count must be 1 or more, not {count}")
+        start = self._next_click_id
+        if start + count > CLICK_IDS:
+            raise ValueError(
+                f"{count} more ClickIDs do not fit: {start} of the {CLICK_IDS} are reserved"
+            )
+        self._next_click_id = start + count
+        return range(start, start + count)
 
     def adopt(self, instance: object) -> None:
         """For a plugin made directly (`Roster(insim)`): it becomes the one `use()` gives."""
