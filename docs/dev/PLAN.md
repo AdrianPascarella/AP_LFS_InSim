@@ -208,9 +208,10 @@ estado `Development Status :: 3 - Alpha`. Todo lo público, en inglés.
   qué cubre (InSim, OutSim, OutGauge), enlaces a `docs/` y a `examples/`. *Acepta:* el ejemplo del
   README se ejecuta tal cual (comprobado por un test). hecho en S13 → LOG.md S13
   (`tests/test_readme.py`: es `examples/hello.py`, ya probado con el LFS falso)
-- [ ] **W5.2** — **Guía en `docs/`** (inglés): empezar, paquetes y eventos, comandos, `request`,
+- [x] **W5.2** — **Guía en `docs/`** (inglés): empezar, paquetes y eventos, comandos, `request`,
   `Roster`, texto y colores, OutSim/OutGauge. *Acepta:* cada fragmento de código está probado o
-  sale de `examples/`; ningún enlace roto.
+  sale de `examples/`; ningún enlace roto. hecho en S13 → LOG.md S13 (`tests/test_docs.py`: los
+  bloques son Python válido, sus `import` existen y los enlaces no están rotos; no se ejecutan)
 - [ ] **W5.3** — **Empaquetado 0.1.0:** versión, classifier Alpha, `CHANGELOG.md`, `py.typed` en el
   wheel. *Acepta:* `python -m build` y `twine check` en verde; el wheel se instala en un venv
   limpio y `import lfs_insim` funciona.

@@ -57,7 +57,7 @@ if __name__ == "__main__":
 | Read car physics or the dashboard | `OutSim` and `OutGauge` |
 | Show LFS text without colour codes | `lfs_insim.text.plain(...)` |
 
-Short, runnable programs are in [`examples/`](examples): `hello.py`, `who.py`, `buttons.py` and
+The guide is in [`docs/`](docs/README.md). Short, runnable programs are in [`examples/`](examples): `hello.py`, `who.py`, `buttons.py` and
 `gauge.py`.
 
 ## Development

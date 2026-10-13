@@ -16,7 +16,14 @@ U6 (cuentas y publicador en TestPyPI/PyPI), que se abre al llegar a W5.4.
 `.venv`: creado con `pip install -e . ruff mypy pytest`; `verify.py` en verde (310 tests).
 Aviso que ya existía: `packets/_codec.py` tiene 525 líneas (límite 500).
 
-**Siguiente:** W5.2, guía en `docs/`.
+**W5.2 hecha:** guía en `docs/` (índice, empezar, InSim, Roster y texto, OutSim/OutGauge), en
+inglés, enlazada desde el README. `tests/test_docs.py` comprueba que los bloques de código son
+Python válido con `import` que existen, y que no hay enlaces ni anclas rotos; el código no se
+ejecuta (necesitaría LFS). Se quitó una línea de `cfg.txt` (`OutGauge Delay`) que no se podía
+respaldar con nada del repositorio. Lo que **no** está comprobado en el LFS real: los fragmentos
+nuevos de la guía que no vienen de `examples/` (solo se comprobó que compilan).
+
+**Siguiente:** W5.3, empaquetado 0.1.0.
 
 ## S12 — 2026-10-12 — Primera prueba con el LFS real (W3.1, primera pasada)
 
