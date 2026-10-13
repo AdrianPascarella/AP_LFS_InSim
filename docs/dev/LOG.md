@@ -11,7 +11,12 @@ por ahora); publicación con Trusted Publishing desde GitHub Actions; estado Alp
 **Hecho:** W5 detallada en `PLAN.md` (W5.1–W5.6). Aún no se ha tocado código. Anticipada la tarjeta
 U6 (cuentas y publicador en TestPyPI/PyPI), que se abre al llegar a W5.4.
 
-**Siguiente:** W5.1, README real.
+**W5.1 hecha:** README real (alpha, instalación, primer programa, tabla de qué usar para qué).
+`tests/test_readme.py` comprueba que su ejemplo es `examples/hello.py`. En este equipo no había
+`.venv`: creado con `pip install -e . ruff mypy pytest`; `verify.py` en verde (310 tests).
+Aviso que ya existía: `packets/_codec.py` tiene 525 líneas (límite 500).
+
+**Siguiente:** W5.2, guía en `docs/`.
 
 ## S12 — 2026-10-12 — Primera prueba con el LFS real (W3.1, primera pasada)
 

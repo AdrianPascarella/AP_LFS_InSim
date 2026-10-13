@@ -206,7 +206,8 @@ estado `Development Status :: 3 - Alpha`. Todo lo público, en inglés.
 
 - [x] **W5.1** — **README real** (hoy dice «rewrite in progress»): instalación, ejemplo corto,
   qué cubre (InSim, OutSim, OutGauge), enlaces a `docs/` y a `examples/`. *Acepta:* el ejemplo del
-  README se ejecuta tal cual (comprobado por un test).
+  README se ejecuta tal cual (comprobado por un test). hecho en S13 → LOG.md S13
+  (`tests/test_readme.py`: es `examples/hello.py`, ya probado con el LFS falso)
 - [ ] **W5.2** — **Guía en `docs/`** (inglés): empezar, paquetes y eventos, comandos, `request`,
   `Roster`, texto y colores, OutSim/OutGauge. *Acepta:* cada fragmento de código está probado o
   sale de `examples/`; ningún enlace roto.
