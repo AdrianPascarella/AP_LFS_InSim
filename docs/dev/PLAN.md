@@ -225,7 +225,7 @@ estado `Development Status :: 3 - Alpha`. Todo lo público, en inglés.
 - [x] **W5.6** — **Etiqueta `v0.1.0` y release en GitHub, y publicación en PyPI.** Crear tags y
   publicar piden permiso explícito en el momento.
 
-## W7 — Dirección de los paquetes y atajos generados   📋 DECIDIDA (S14), sin empezar
+## W7 — Dirección de los paquetes y atajos generados   🔜 EN CURSO (S15) · decidida en S14, rehecha en S15
 **Objetivo:** que el editor ayude a escribir `on` y `send`: saber qué paquetes se reciben, cuáles se
 envían y cuáles van en los dos sentidos, sin recordarlo de memoria. Acordado con el usuario en S14
 tras revisar el proyecto anterior (`docs/dev/LEGADO.md`). El ID es W7 porque los IDs no se renumeran;
@@ -234,38 +234,54 @@ va antes de W6 porque el generador es lo que menos se toca después.
 **Decisiones (usuario, S14):** todo sale del generador y de la especificación (cada paquete está
 marcado `info` / `instruction` / `both ways` en el `enum` ISP de `InSim.txt`). Se admiten **todas
 las formas**, y la canónica es `on_XXX` con el nombre completo:
-- Recibir: `@insim.on_IS_NPL` (canónica) · `@insim.on(IS_NPL)` · `@insim.on(received.IS_NPL)`
-- Enviar: `insim.send_IS_MST(Msg=...)` · `insim.send(IS_MST(...))` · `insim.send(sent.IS_MST(...))`
-- OutSim y OutGauge igual (solo se reciben): `@outsim.on_OutSimPack2`, `@gauge.on_OutGaugePack`;
+- ~~Recibir: `@insim.on_IS_NPL` (canónica) · `@insim.on(IS_NPL)` · `@insim.on(received.IS_NPL)`~~
+- ~~Enviar: `insim.send_IS_MST(Msg=...)` · `insim.send(IS_MST(...))` · `insim.send(sent.IS_MST(...))`~~
+- ~~OutSim y OutGauge igual (solo se reciben): `@outsim.on_OutSimPack2`, `@gauge.on_OutGaugePack`;
+  `received` los incluye.~~
+
+**Rehecho con el usuario en S15 (sustituye a lo tachado; motivos en LOG S15):** lo que se echaba de
+menos era **ver la lista**. En vez de ~95 métodos `on_IS_XXX` / `send_IS_XXX` sueltos en `insim`, la
+lista cuelga de `on` y de `send`:
+- Recibir: `@insim.on.IS_NPL` (canónica) · `@insim.on(IS_NPL)` (`received.IS_NPL` es la misma clase)
+- Enviar: `insim.send.IS_MST(Msg=...)` (canónica) · `insim.send(IS_MST(...))`, que sigue siendo la
+  forma de enviar varios a la vez o uno ya construido
+- OutSim y OutGauge igual (solo se reciben): `@outsim.on.OutSimPack2`, `@gauge.on.OutGaugePack`;
   `received` los incluye.
+- `send.IS_XXX` copia la firma del constructor (`ParamSpec`): mismos campos y ayuda que `IS_XXX(...)`,
+  sin duplicar código. `on.IS_XXX` comprueba en mypy que el manejador recibe ese paquete.
+- El tipo del argumento del manejador no se deduce del decorador (Python no lo permite en un `def`):
+  la guía enseña `from lfs_insim import received` y `def joined(packet: received.IS_NPL)`, un solo
+  import para todos.
 
-**Condiciones (agente, aceptadas):** (1) una sola fuente y un test que pruebe la equivalencia:
-`received.IS_NPL is IS_NPL`, las tres formas llegan al mismo manejador, y las que no corresponden no
-existen (`on_IS_MST`, `received.IS_MST`); (2) la guía y los ejemplos enseñan solo la canónica, las
-otras van en una página de referencia; (3) sin más variantes (ni abreviaturas, ni nombres como
-cadena); (4) los `both ways` están en `received` y en `sent` y tienen `on_` y `send_`.
+**Condiciones (agente, aceptadas; actualizadas en S15):** (1) una sola fuente y un test que pruebe la
+equivalencia: `received.IS_NPL is IS_NPL`, las formas llegan al mismo manejador, y las que no
+corresponden no existen (`on.IS_MST`, `received.IS_MST`, `send.IS_NPL`); (2) la guía y los ejemplos
+enseñan solo la canónica, las otras van en una página de referencia; (3) sin más variantes (ni
+abreviaturas, ni nombres como cadena, ni `on_IS_XXX`); (4) los `both ways` están en `received` y en
+`sent` y en `on.` y `send.`.
 
-- [ ] **W7.1** — El generador lee la dirección de cada paquete (`info` / `instruction` / `both ways`)
+- [x] **W7.1** — El generador lee la dirección de cada paquete (`info` / `instruction` / `both ways`)
   del `enum` ISP de `InSim.txt`; comprobar cómo trata los comentarios de casos raros (`REO`: «info
-  or instruction»). Test contra la especificación
+  or instruction»). Test contra la especificación — hecho en S15 → LOG.md S15
 - [ ] **W7.2** — Clases base por dirección (`InfoPacket`, `InstructionPacket`, `BothWays`) y línea
   «Dirección» en el docstring de cada clase; `on()` y `send()` tipados para aceptar solo lo que
   corresponde (error de mypy/editor) y con error claro en ejecución (`on(IS_MST)`: «es una
   instrucción: la envías tú»)
 - [ ] **W7.3** — Módulos `received` y `sent` (re-exportan las mismas clases, no copias)
-- [ ] **W7.4** — Métodos `on_IS_XXX` y `send_IS_XXX` generados, en un mixin de un archivo propio
-  (`_events.py`) para que `_connection.py` no crezca; `send_` con los campos como argumentos con nombre
-  y su docstring
-- [ ] **W7.5** — OutSim y OutGauge: `on_OutSimPack`, `on_OutSimPack2`, `on_OutGaugePack` y su entrada
+- [ ] **W7.4** — ~~Métodos `on_IS_XXX` y `send_IS_XXX` generados, en un mixin~~ (cambiado en S15):
+  objetos `on` y `send` generados con un atributo por paquete, en un archivo propio (`_events.py`)
+  para que `_connection.py` no crezca; siguen siendo invocables (`on(IS_X)`, `send(a, b)`);
+  `send.IS_XXX` con la firma del constructor (`ParamSpec`)
+- [ ] **W7.5** — OutSim y OutGauge: `on.OutSimPack`, `on.OutSimPack2`, `on.OutGaugePack` y su entrada
   en `received`. Las de OutSim solo se regeneran en este equipo (`OutSimPack.txt`, P3); el CI sigue
   saltándose esa parte
 - [ ] **W7.6** — Test de equivalencia (condición 1), tabla de direcciones generada en `docs/`, guía y
   ejemplos pasados a la forma canónica, `CHANGELOG.md`, versión 0.2.0 si cambia la API pública
-- [ ] **W7.7** — Aparte, decidir con el usuario: `IS_TINY` / `IS_SMALL` con subtipo (`@insim.on_IS_TINY(TINY.MPE)`)
+- [ ] **W7.7** — Aparte, decidir con el usuario: `IS_TINY` / `IS_SMALL` con subtipo (`@insim.on.IS_TINY(TINY.MPE)`)
 
-**Criterios de aceptación:** al teclear `insim.on_` y `insim.send_` el editor muestra solo lo que
+**Criterios de aceptación:** al teclear `insim.on.` y `insim.send.` el editor muestra solo lo que
 procede; `@insim.on(IS_MST)` sale en rojo en mypy y falla con un mensaje claro; el test de
-equivalencia pasa en las tres formas para todos los paquetes; `verify` y el CI en verde.
+equivalencia pasa en todas las formas para todos los paquetes; `verify` y el CI en verde.
 
 ## W8 — Mejoras rescatadas del proyecto anterior   📋 ESBOZADA (S14)
 Lista y razones en `docs/dev/LEGADO.md`; el orden propuesto está en su §4: `errors="raise"` y colores

@@ -32,6 +32,7 @@ CHECKED_PATHS = [
     "scripts/verify.py",
     "scripts/fetch_spec.py",
     "scripts/spec_parser.py",
+    "scripts/spec_directions.py",
     "scripts/spec_overrides.py",
     "scripts/generate_enums.py",
     "scripts/generate_packets.py",

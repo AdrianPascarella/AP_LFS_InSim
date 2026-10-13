@@ -40,6 +40,7 @@ from generate_enums import (
     member_name,
     prefix_of,
 )
+from spec_directions import packet_directions
 from spec_parser import Field, Spec, SpecError, Struct, parse
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -368,6 +369,13 @@ def generate() -> tuple[dict[Path, str], list[Path]]:
     rule = "# Do not edit: change the generator or scripts/spec_overrides.py and run it again.\n"
     header = f"{source}.\n{rule}"
     enums = collect_enums(insim)
+    directions = packet_directions(insim)
+    packets = {name for name in insim.structs if name.startswith("IS_")}
+    if packets != directions.keys():
+        raise SpecError(
+            f"packets without a direction: {sorted(packets - directions.keys())}; "
+            f"directions without a packet: {sorted(directions.keys() - packets)}"
+        )
     by_module: dict[str, list[Struct]] = {"_insim": [], "_outsim": [], "_outgauge": []}
     for struct in insim.structs.values():
         by_module[overrides.MODULES.get(struct.name, "_insim")].append(struct)

@@ -1,13 +1,14 @@
 # 📍 Estado — AP_LFS_InSim (lfs_insim)
-> Actualizado: 2026-10-13 (S14): W5.1–W5.3 hechas; **W3 y W4 hechas enteras (S12).** La biblioteca está validada en el
+> Actualizado: 2026-10-13 (S15): auditoría de S13–S14 (LOG S15), W7 rehecha y **W7.1 hecha**. La biblioteca está validada en el
 > LFS real (InSim, OutGauge, OutSim y `OutSimPack2`; `tests/live_lfs.py`), y tiene la API de alto
 > nivel: `IS_MSO.text`, `await insim.request(IS_X)` / `request_all`, `Roster` (`lfs_insim.state`),
 > `insim.say()` / `command()`, `@insim.on_command("hello")`, `lfs_insim.text.plain()` y cuatro
 > ejemplos en `examples/`, probados en cada push y comprobados en el LFS real. Decisiones en
 > `API_DESIGN.md`. El agente maneja LFS con `tests/lfs_screen.ps1`, que no envía nada si LFS no
 > está delante (PROTOCOL §13). `cfg.txt` está restaurado: OutSim/OutGauge en vivo pide permiso.
-> **▶️ SIGUIENTE: W7** (dirección de los paquetes y atajos generados: `@insim.on_IS_NPL`,
-> `insim.send_IS_MST(...)`, `received`/`sent`; detallada en `PLAN.md`, decidida con el usuario en S14).
+> **▶️ SIGUIENTE: W7.2** (clases base por dirección y `on()`/`send()` tipados). W7 se rehízo en S15:
+> `@insim.on.IS_NPL` y `insim.send.IS_MST(...)` en vez de `on_IS_XXX`; ver `PLAN.md`. La dirección ya
+> la da `scripts/spec_directions.py` (`packet_directions(spec)`), que el generador comprueba pero aún no usa.
 > Después W8 (mejoras del proyecto anterior, `LEGADO.md`) y W6 (primera aplicación aparte).
 > `lfs-insim 0.1.0` está **publicado en PyPI** (S14, release `v0.1.0`). **Receta de una versión nueva:**
 > subir `version` en `pyproject.toml` y añadir la sección a `CHANGELOG.md` en `dev`; `verify` en verde;
@@ -17,7 +18,7 @@
 > módulo propio. Ver `USER_ACTIONS.md`.
 
 ## Dónde estamos
-Fase siguiente: **W5 — Publicación**, detallada y sin empezar. W2, W3 y W4 están hechas enteras. Prueba en vivo: `tests/live_lfs.py` (cómo ejecutarla, en su docstring).
+Fase activa: **W7 — Dirección de los paquetes y atajos generados** (W7.1 hecha). W1–W5 están hechas enteras. Prueba en vivo: `tests/live_lfs.py` (cómo ejecutarla, en su docstring).
 
 - **Cómo se genera:** `.venv/Scripts/python scripts/generate_packets.py` lee
   `spec/cache/InSim.txt` y `spec/cache/OutSimPack.txt` (con `scripts/spec_parser.py`) y las

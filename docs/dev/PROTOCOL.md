@@ -38,6 +38,12 @@ antiguo, inservible aquí), Git y `gh`. **No tiene Python 3.11, 3.12 ni 3.13**: 
 este equipo no tiene las comprueba el CI de GitHub (desde S3). LFS está instalado en `C:\LFS`.
 No se descarta usar más equipos. Cuando llegue otro, se anota aquí qué cambia entre ellos (versión
 de Python, si tiene LFS), y se hace pull y push en cada sesión.
+- **Segundo equipo (desde S13, anotado en S15):** Windows 11 Pro, usuario `C:\Users\Adrian`, repo en
+  `C:\Users\Adrian\Projects\AP_LFS_InSim`. Python **3.14 y 3.12** (con 3.12 se reproducen aquí los
+  fallos de Windows anterior a 3.13). LFS en `C:\LFS`, con `docs\OutSimPack.txt`. La cuenta activa de
+  `gh` es `AdrianPascarella` (hay también `Veloik-adrian`), y `git push` funciona con el ayudante
+  global `manager` sin colgarse. Las rutas `C:\Users\pasca\...` de esta Configuración son del primer
+  equipo.
 
 **Verificación.** `.venv/Scripts/python scripts/verify.py` (desde S2). Detecta: un intérprete
 equivocado o sin las herramientas de desarrollo, o un `lfs_insim` importado desde otra carpeta;
@@ -432,6 +438,11 @@ Formas en que este equipo o sus herramientas ya han dañado o pueden dañar el t
   es LFS y, si no, sale con 2 sin enviar nada. **Reglas:** después de activar InSim, comprobar que
   el puerto 29999 responde antes de seguir; si el usuario puede estar usando el equipo, preguntar
   antes de manejar LFS; y nunca probar la protección con un clic o una tecla de verdad.
+
+- **Equipo nuevo, identidad equivocada** (visto en S15): en el segundo equipo el repo no tenía
+  identidad local y S13–S14 publicaron 16 commits con el correo del trabajo, porque no se ejecutó el
+  control de inicio (§3.2). No se reescribió el historial; `.mailmap` los unifica en `git log`.
+  **Regla:** el control de inicio se ejecuta siempre, también en un equipo recién clonado.
 
 ## §14 — Guías de procedimiento
 Cuando una tarea recurrente tenga un coste de orientación alto, se escribe una guía con la

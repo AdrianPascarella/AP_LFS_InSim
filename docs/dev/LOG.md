@@ -1,6 +1,61 @@
 # 📓 Diario — AP_LFS_InSim (lfs_insim)
 <!-- Solo se añade, lo más nuevo arriba. Una entrada por sesión. -->
 
+## S15 — 2026-10-13 — Auditoría de S13–S14, W7 rehecha y W7.1
+
+**Inicio:** el control de inicio falló en la identidad: el repo no tenía identidad local en este
+equipo (el segundo, ver PROTOCOL «Máquinas») y salía `apascarella@tensolutions.es`. Corregida en local.
+**16 commits de S13–S14 ya subidos** con ese correo (14 en `main`, que es de donde sale `v0.1.0`).
+
+**Auditoría pedida por el usuario** (S13–S14 se hicieron con Sonnet 5.5, primera vez que lo usaba).
+Comprobado, no solo leído: `verify` en verde; CI verde en todos los commits salvo el fallo de tiempos ya
+diagnosticado; `publish.yml` correcto; PyPI con wheel y sdist 0.1.0; release `v0.1.0` (pre-release, en
+`58a71ae`; `main` va un commit de documentación por delante); entorno `pypi` con revisor obligatorio; cada
+afirmación de README y `docs/` contrastada con la API real; afirmaciones de `LEGADO.md` comprobadas (la
+dirección en el `enum` ISP, ningún test nombra `IS_REO`/`IS_HCP`/`IS_IPB`, la espera solo se reinicia
+con `IS_VER`). **Diagnóstico de `test_every` reproducido** en Python 3.12 de este equipo, 25
+ejecuciones de cada versión: los tests antiguos fallaron 4/25 y los nuevos 0/25.
+Defectos encontrados: (1) no se ejecutó el control de inicio (§3.2) → los 16 commits; (2) en
+`test_a_slow_call_does_not_cause_a_burst` el margen bajó de 0,01 s a 0,002 s sin anotarlo (§5). Se acepta
+por un motivo que **se registra aquí**: tras una llamada lenta, `repeat()` espera `seconds` medidos con
+`loop.time()`, cuyo reloj en Windows anterior a 3.13 va a saltos de ~15 ms, y asyncio adelanta los
+temporizadores hasta su resolución, así que el hueco real puede bajar de 10 ms sin que haya ráfaga;
+una ráfaga se vería como microsegundos, que 2 ms sigue detectando; (3) `bd05b30` borró del LOG la única
+nota del arreglo de `every` (§1); (4) no se anotó el equipo nuevo (§16); (5) U6 decía que faltaba el
+entorno `pypi`, ya creado; (6) el `.venv` se creó sin `--group dev` (salió ruff 0.17.0, dentro del
+rango, por suerte). Sin confirmar: que el merge a `main` y la aprobación del despliegue tuvieran permiso
+(el LOG de S14 lo dice; preguntado al usuario).
+
+**Correo:** el usuario eligió `.mailmap` (recomendado) en vez de reescribir el historial, que obligaba a
+force-push en `main` y a mover `v0.1.0`, ya publicada. Commit `1aa1ab7`. GitHub no usa `.mailmap` en su web.
+
+**W7 rehecha con el usuario.** El agente desaconsejó los ~95 métodos `on_IS_XXX` / `send_IS_XXX`:
+llenan `insim.` (al teclear `insim.s` saldrían 30 `send_IS_…` delante de `say`), no ahorran el import
+(el tipo del argumento de un `def` no se deduce del decorador), `send_IS_X` repite el constructor, tres
+formas por cosa, y quitarlos después rompe código ajeno, mientras que añadirlos después no. El usuario
+aclaró que lo que echaba de menos del anterior era **ver la lista**. Propuesta del agente, aceptada:
+colgar la lista de `on` y `send` (`@insim.on.IS_NPL`, `insim.send.IS_MST(...)`), sin tocar el espacio
+de nombres de `insim`; se mantienen `on(IS_X)` y `send(a, b)`; `received.IS_X` es la misma clase, así que
+no cuenta como forma aparte. Prototipo comprobado con mypy estricto: `send.IS_MST` toma la firma del
+constructor (`ParamSpec`, revelada como `def (Msg: str =, ReqI: int =)`) y salen los cuatro errores
+esperados (tipo de campo, campo inexistente, `send.IS_NPL`, manejador de otro paquete). Pylance está
+instalado aquí; cómo lo ve el editor es punto ciego (comodidad de la API), para cuando W7.4 esté hecha.
+Pregunta del usuario: ¿puede el manejador tener el tipo sin importar el paquete? En un `def`, no: Python
+no deduce el tipo del argumento a partir del decorador (ni mypy ni Pyright). La guía enseñará
+`from lfs_insim import received` y `packet: received.IS_NPL`: un solo import, con la lista también al
+anotar.
+
+**W7.1 hecha:** `scripts/spec_directions.py` (`packet_directions(spec)`) lee la dirección del comentario
+de cada `ISP_` y para con `SpecError` si falta o es otra palabra; el generador comprueba que cada `IS_`
+tiene dirección y al revés. Resultado: 70 paquetes, 43 `info`, 16 `instruction` y 11 `both ways`
+(`AXM`, `BFN`, `CPP`, `IPB`, `MAL`, `PLH`, `REO`, `RIP`, `SMALL`, `SSH`, `TINY`). `REO` («info or
+instruction») sale `both ways`: cuenta lo de antes de los dos puntos. Los archivos generados no cambian.
+`tests/test_spec_directions.py` (6 tests); vistos en **rojo** con la expresión rota (3 fallaron).
+Verificación: `verify` PASS, 331 tests, ninguno saltado (aquí están la especificación y `OutSimPack.txt`).
+
+**Documentos:** `PLAN.md` (W7 rehecha, lo antiguo tachado), `PROTOCOL.md` (segundo equipo y una
+cicatriz nueva en §13), `STATE.md` (decía «W5 sin empezar», desfasado) y la línea de U6.
+
 ## S14 — 2026-10-13 — U6 por el navegador
 
 **Hecho:** Chrome conectó (en S13 no). Con el usuario haciendo cuentas, verificación de correo y 2FA
