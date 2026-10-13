@@ -277,8 +277,9 @@ abreviaturas, ni nombres como cadena, ni `on_IS_XXX`); (4) los `both ways` está
   en `received`. ~~Las de OutSim solo se regeneran en este equipo (`OutSimPack.txt`, P3); el CI sigue
   saltándose esa parte~~ (escritas a mano: son tres fijas; `received.py` no necesita `OutSimPack.txt`)
   — hecho en S15 → LOG.md S15
-- [ ] **W7.6** — Test de equivalencia (condición 1), tabla de direcciones generada en `docs/`, guía y
+- [x] **W7.6** — Test de equivalencia (condición 1), tabla de direcciones generada en `docs/`, guía y
   ejemplos pasados a la forma canónica, `CHANGELOG.md`, versión 0.2.0 si cambia la API pública
+  — hecho en S16 (versión subida a 0.2.0 en `dev`; **sin publicar**, pide permiso) → LOG.md S16
 - [ ] **W7.7** — Aparte, decidir con el usuario: `IS_TINY` / `IS_SMALL` con subtipo (`@insim.on.IS_TINY(TINY.MPE)`)
 
 **Criterios de aceptación:** al teclear `insim.on.` y `insim.send.` el editor muestra solo lo que

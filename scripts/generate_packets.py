@@ -16,6 +16,7 @@ generate_enums. Output (tracked by git, never edited by hand):
   src/lfs_insim/packets/__init__.py   the public names                  (need OutSimPack.txt)
   src/lfs_insim/received.py, sent.py  the packets by direction (spec_directions)
   src/lfs_insim/_shortcuts.py         insim.on.IS_XXX and insim.send.IS_XXX (spec_directions)
+  docs/packets.md                     the packets by direction (spec_directions)
 
 Without OutSimPack.txt, as in the CI, _outsim.py and __init__.py are skipped and the rest is
 still checked.
@@ -48,6 +49,7 @@ from spec_directions import (
     UDP_PACKETS,
     emit_direction_module,
     emit_shortcuts,
+    emit_table,
     packet_directions,
 )
 from spec_parser import Field, Spec, SpecError, Struct, parse
@@ -419,6 +421,9 @@ def generate() -> tuple[dict[Path, str], list[Path]]:
             PACKAGE_DIR.parent / f"{module}.py": emit_direction_module(module, directions, header)
             for module in DIRECTION_MODULES
         },
+        ROOT / "docs" / "packets.md": emit_table(
+            directions, {name: insim.structs[name].comment or name for name in directions}
+        ),
         PACKAGE_DIR.parent / "_shortcuts.py": emit_shortcuts(
             directions, {name: insim.structs[name].comment or name for name in directions}, header
         ),
@@ -444,7 +449,7 @@ def generate() -> tuple[dict[Path, str], list[Path]]:
         modules["_outsim"] = sorted(modules["_outsim"] + [c.name for c in outsim_enums])
         files[PACKAGE_DIR / "__init__.py"] = emit_init(modules, header)
         skipped = []
-    return {path: ruff(text, path) for path, text in files.items()}, skipped
+    return {p: t if p.suffix == ".md" else ruff(t, p) for p, t in files.items()}, skipped
 
 
 def main() -> int:

@@ -4,8 +4,8 @@ remove them.
 LFS must be listening for InSim: type /insim=29999 in LFS first.
 """
 
-from lfs_insim import Command, InSim
-from lfs_insim.packets import BFN, IS_BFN, IS_BTC, IS_BTN, IS_BTT, ISB
+from lfs_insim import Command, InSim, received
+from lfs_insim.packets import BFN, IS_BTN, ISB
 
 insim = InSim(name="buttons", prefix="!")
 
@@ -50,19 +50,19 @@ def buttons(command: Command) -> None:
 
 @insim.on_command("hide")
 def hide(command: Command) -> None:
-    insim.send(IS_BFN(SubT=BFN.CLEAR, UCID=command.ucid))
+    insim.send.IS_BFN(SubT=BFN.CLEAR, UCID=command.ucid)
 
 
-@insim.on(IS_BTC)
-def clicked(packet: IS_BTC) -> None:
+@insim.on.IS_BTC
+def clicked(packet: received.IS_BTC) -> None:
     global clicks
     if packet.ClickID == CLICK_ME:
         clicks += 1
         show(packet.UCID)
 
 
-@insim.on(IS_BTT)
-def typed(packet: IS_BTT) -> None:
+@insim.on.IS_BTT
+def typed(packet: received.IS_BTT) -> None:
     if packet.ClickID == TYPE_HERE:
         insim.say(f"You typed: {packet.Text}", to=packet.UCID)
 

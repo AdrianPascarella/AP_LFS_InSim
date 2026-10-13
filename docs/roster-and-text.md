@@ -6,16 +6,15 @@ Almost every program needs to know who is connected and who is driving. `Roster`
 packets for you:
 
 ```python
-from lfs_insim import InSim
-from lfs_insim.packets import IS_NPL
+from lfs_insim import InSim, received
 from lfs_insim.state import Roster
 
 insim = InSim(name="who")
 roster = Roster(insim)  # create it before running the connection
 
 
-@insim.on(IS_NPL)
-def joined(packet: IS_NPL) -> None:
+@insim.on.IS_NPL
+def joined(packet: received.IS_NPL) -> None:
     player = roster.players[packet.PLID]
     print(player.name, "is driven from", player.connection.username or "this computer")
 ```

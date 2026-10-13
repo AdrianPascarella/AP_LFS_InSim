@@ -24,14 +24,13 @@ In LFS, type `/insim=29999` to let it listen for InSim. Then run this and type `
 game:
 
 ```python
-from lfs_insim import Command, InSim
-from lfs_insim.packets import IS_VER
+from lfs_insim import Command, InSim, received
 
 insim = InSim(name="hello", prefix="!")  # admin_password="..." if LFS has one
 
 
-@insim.on(IS_VER)
-def connected(packet: IS_VER) -> None:
+@insim.on.IS_VER
+def connected(packet: received.IS_VER) -> None:
     print(f"Connected to LFS {packet.Version}, InSim {packet.InSimVer}")
 
 
@@ -48,9 +47,9 @@ if __name__ == "__main__":
 
 | You want to… | Use |
 | --- | --- |
-| Receive a packet | `@insim.on(IS_XXX)` |
+| Receive a packet | `@insim.on.IS_XXX` |
 | Answer a chat command | `@insim.on_command("name")` |
-| Send packets, chat or `/commands` | `insim.send(...)`, `insim.say(...)`, `insim.command(...)` |
+| Send a packet, chat or `/commands` | `insim.send.IS_XXX(...)`, `insim.say(...)`, `insim.command(...)` |
 | Ask LFS and wait for the answer | `await insim.request(IS_STA)`, `request_all(...)` |
 | Run something on a rhythm | `@insim.every(seconds)` |
 | Know who is connected and who is driving | `lfs_insim.state.Roster` |

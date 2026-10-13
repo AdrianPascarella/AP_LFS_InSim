@@ -1,30 +1,20 @@
 # 📍 Estado — AP_LFS_InSim (lfs_insim)
-> Actualizado: 2026-10-13 (S15): auditoría de S13–S14 (LOG S15), W7 rehecha y **W7.1 hecha**. La biblioteca está validada en el
-> LFS real (InSim, OutGauge, OutSim y `OutSimPack2`; `tests/live_lfs.py`), y tiene la API de alto
-> nivel: `IS_MSO.text`, `await insim.request(IS_X)` / `request_all`, `Roster` (`lfs_insim.state`),
-> `insim.say()` / `command()`, `@insim.on_command("hello")`, `lfs_insim.text.plain()` y cuatro
-> ejemplos en `examples/`, probados en cada push y comprobados en el LFS real. Decisiones en
-> `API_DESIGN.md`. El agente maneja LFS con `tests/lfs_screen.ps1`, que no envía nada si LFS no
-> está delante (PROTOCOL §13). `cfg.txt` está restaurado: OutSim/OutGauge en vivo pide permiso.
-> **▶️ SIGUIENTE: U7** (que el usuario vea `insim.on.` / `insim.send.` en su VS Code) y después
-> **W7.6** (test de equivalencia, tabla de direcciones, guía y ejemplos con la forma canónica,
-> CHANGELOG y 0.2.0), que espera a U7. W7.7 (subtipos de `IS_TINY`) se decide con el usuario.
-> W7.5 hecha: `@gauge.on.OutGaugePack`, `@outsim.on.OutSimPack(2)`, y los tres en `received`. W7 se rehízo en S15: `@insim.on.IS_NPL`
-> e `insim.send.IS_MST(...)` en vez de `on_IS_XXX`; ver `PLAN.md`. W7.4 hecha: `insim.on` / `insim.send`
-> son objetos (`_events.py` a mano, `_shortcuts.py` generado). W7.3 hecha: `lfs_insim.received` /
-> `sent`, generados. W7.1–W7.2 hechas: cada paquete hereda
-> de `InfoPacket` / `InstructionPacket` / `BothWaysPacket` (`packets/_directions.py`, dirección leída por
-> `scripts/spec_directions.py`), y `on()` / `send()` rechazan lo que no toca, en mypy y en ejecución.
-> Después W8 (mejoras del proyecto anterior, `LEGADO.md`) y W6 (primera aplicación aparte).
-> `lfs-insim 0.1.0` está **publicado en PyPI** (S14, release `v0.1.0`). **Receta de una versión nueva:**
-> subir `version` en `pyproject.toml` y añadir la sección a `CHANGELOG.md` en `dev`; `verify` en verde;
-> avance rápido de `dev` a `main`; `gh release create vX.Y.Z --target main` (el tag debe ser `v<version>`);
-> aprobar el entorno `pypi` (el usuario lo autorizó en S14 para 0.1.0; pedirlo cada vez). Una versión
-> publicada no se puede resubir. `_connection.py` va por ~405 líneas: lo próximo que crezca, en un
-> módulo propio. Ver `USER_ACTIONS.md`.
+> Actualizado: 2026-10-13 (S16): **W7 hecha entera salvo W7.7.** La biblioteca está validada en el LFS real
+> y tiene la API de alto nivel (`@insim.on.IS_NPL`, `insim.send.IS_MST(...)`, `received` / `sent`,
+> `await insim.request(...)`, `Roster`, `say()` / `command()`, `on_command`, `text.plain()`), cuatro
+> ejemplos y `docs/packets.md` (tabla generada). U7 cerrada: el usuario vio las listas en su VS Code.
+> La versión de `dev` es **0.2.0, sin publicar** (CHANGELOG listo).
+> **▶️ SIGUIENTE (decide el usuario):** (a) publicar 0.2.0 (receta abajo; pide permiso expreso);
+> (b) W7.7, subtipos de `IS_TINY` / `IS_SMALL` (`@insim.on.IS_TINY(TINY.MPE)`), que se decide con él;
+> (c) abrir W8 (mejoras del proyecto anterior, `LEGADO.md`) o W6 (primera aplicación aparte).
+> `lfs-insim 0.1.0` está publicado en PyPI. **Receta de una versión nueva:** versión y CHANGELOG en
+> `dev`; `verify` en verde; avance rápido de `dev` a `main`; `gh release create vX.Y.Z --target main`
+> (el tag debe ser `v<version>`); aprobar el entorno `pypi` (pedirlo cada vez). Una versión publicada
+> no se puede resubir. `_connection.py` va por ~405 líneas y `_codec.py` pasa de 500 (aviso de
+> `verify`): lo próximo que crezca, en un módulo propio. Ver `USER_ACTIONS.md`.
 
 ## Dónde estamos
-Fase activa: **W7 — Dirección de los paquetes y atajos generados** (W7.1 hecha). W1–W5 están hechas enteras. Prueba en vivo: `tests/live_lfs.py` (cómo ejecutarla, en su docstring).
+Fase activa: **W7 — Dirección de los paquetes y atajos generados** (W7.1–W7.6 hechas; falta W7.7). W1–W5 están hechas enteras. Prueba en vivo: `tests/live_lfs.py` (cómo ejecutarla, en su docstring).
 
 - **Cómo se genera:** `.venv/Scripts/python scripts/generate_packets.py` lee
   `spec/cache/InSim.txt` y `spec/cache/OutSimPack.txt` (con `scripts/spec_parser.py`) y las
@@ -50,7 +40,7 @@ El proyecto anterior está en la rama `refactor/estabilizacion` y en las etiquet
 consulta, no se copia.
 
 ## Lo que te espera
-Ninguna acción pendiente (U6 cerrada en S14) → `USER_ACTIONS.md`.
+Ninguna acción pendiente (U7 cerrada en S16) → `USER_ACTIONS.md`.
 
 ## Tests inestables (arreglados en S14)
 `tests/test_every.py` fallaba a veces solo en el Windows del CI (3.12 y 3.13). Causa comprobada: en

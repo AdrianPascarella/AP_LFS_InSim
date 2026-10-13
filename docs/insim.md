@@ -13,13 +13,18 @@ The options of `InSim(...)`: `admin_password`, `host` and `port` (default `127.0
 ## Receiving
 
 ```python
-from lfs_insim.packets import IS_NPL
+from lfs_insim import received
 
 
-@insim.on(IS_NPL)
-def joined(packet: IS_NPL) -> None:
+@insim.on.IS_NPL
+def joined(packet: received.IS_NPL) -> None:
     print(packet.PName, "is on track in a", packet.CName)
 ```
+
+Type `insim.on.` and the editor lists the packets LFS sends. Annotating the argument with
+`received.IS_NPL` lists them again; it is the same class as `lfs_insim.packets.IS_NPL`. The
+list, with the direction of each packet, is [Packets by direction](packets.md). The long form
+`@insim.on(IS_NPL)` does exactly the same.
 
 Text fields are `str`. They keep LFS's `^` codes; see [text](roster-and-text.md#text).
 
@@ -57,16 +62,17 @@ async def tick() -> None:
 ## Sending
 
 ```python
-from lfs_insim.packets import IS_MST
-
 insim.say("Hello everyone")        # the chat; everyone sees it
 insim.say("Just you", to=3)        # only the connection with UCID 3 (0 = this computer)
 insim.command("/restart")          # an LFS command
-insim.send(IS_MST(Msg="/end"))     # any packet; several at once: insim.send(a, b)
+insim.send.IS_MST(Msg="/end")      # any packet that a program sends
 ```
 
+Type `insim.send.` and the editor lists the packets a program sends, with their fields. To
+send several at once, or one already built, use `insim.send(IS_MST(Msg="/end"), other)`.
+
 `say()` picks the right packet for you and raises `ValueError` if the text is too long
-(`PacketError` is a `ValueError`). `send()` raises `ConnectionError` if LFS is not connected.
+(`PacketError` is a `ValueError`). Sending raises `ConnectionError` if LFS is not connected.
 
 ## Asking LFS
 

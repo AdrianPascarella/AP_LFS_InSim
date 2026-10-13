@@ -1,6 +1,23 @@
 # 📓 Diario — AP_LFS_InSim (lfs_insim)
 <!-- Solo se añade, lo más nuevo arriba. Una entrada por sesión. -->
 
+## S16 — 2026-10-13 — W7.6: equivalencia, tabla de direcciones, guía en forma canónica y 0.2.0
+
+**Inicio:** identidad git correcta (`AdrianPascarella`, gmail); `verify` PASS antes de tocar nada.
+**U7 cerrada:** el usuario probó `insim.on.` / `insim.send.` en su VS Code: «va perfecto».
+
+**Hecho:** (1) `tests/test_equivalence.py` (128 tests): para cada uno de los 70 paquetes, la clase es la
+misma en `packets`, `received` y `sent` según su dirección, `on.X` / `send.X` existen solo si toca,
+`on.X(h)`, `on(X)(h)` y `on(received.X)(h)` registran lo mismo; OutSim/OutGauge solo en `received`.
+(2) `docs/packets.md`, tabla generada por `generate_packets.py` (`emit_table` en `spec_directions.py`),
+enlazada desde `docs/README.md`; los `.md` no pasan por ruff. (3) README, guía y los cuatro ejemplos
+pasados a `@insim.on.IS_X` / `insim.send.IS_X(...)` con `received.IS_X`; `insim.send(a, b)` se queda
+donde se envían varios. (4) `CHANGELOG.md` 0.2.0 y `version = "0.2.0"`.
+**Verificación:** `verify` PASS, 474 tests. **Sin publicar:** subir 0.2.0 a PyPI (merge a `main`, release,
+aprobar entorno `pypi`) exige permiso expreso del usuario.
+**Tropiezo:** un `sed` con `&` estropeó `spec_directions.py`; restaurado con git y reaplicado. Las
+barras invertidas en la entrada de Bash se pierden: para ellas, usar Edit.
+
 ## S15 — 2026-10-13 — Auditoría de S13–S14, W7 rehecha y W7.1
 
 **Inicio:** el control de inicio falló en la identidad: el repo no tenía identidad local en este

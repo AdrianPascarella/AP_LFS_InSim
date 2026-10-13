@@ -15,14 +15,13 @@ OutGauge Port 30001
 If you also set `OutGauge ID`, LFS adds that number to every packet (`packet.ID`).
 
 ```python
-from lfs_insim import OutGauge
-from lfs_insim.packets import OutGaugePack
+from lfs_insim import OutGauge, received
 
 gauge = OutGauge(port=30001)
 
 
-@gauge.on(OutGaugePack)
-def dashboard(packet: OutGaugePack) -> None:
+@gauge.on.OutGaugePack
+def dashboard(packet: received.OutGaugePack) -> None:
     print(f"{packet.Speed * 3.6:.0f} km/h at {packet.RPM:.0f} rpm")
 
 
@@ -40,14 +39,14 @@ The `OutSim ...` lines of `cfg.txt` work the same way. With `OutSim Opts 0`, LFS
 select. Give the same options to `OutSim`:
 
 ```python
-from lfs_insim import OutSim
-from lfs_insim.packets import OSO, OutSimPack2
+from lfs_insim import OutSim, received
+from lfs_insim.packets import OSO
 
 outsim = OutSim(port=30002, options=OSO.MAIN | OSO.INPUTS)
 
 
-@outsim.on(OutSimPack2)
-def motion(packet: OutSimPack2) -> None:
+@outsim.on.OutSimPack2
+def motion(packet: received.OutSimPack2) -> None:
     print(packet)  # the parts that were not sent are None
 ```
 

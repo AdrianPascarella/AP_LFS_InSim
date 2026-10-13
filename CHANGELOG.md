@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.0
+
+- `@insim.on.IS_NPL` and `insim.send.IS_MST(Msg=...)`: the editor lists only the packets LFS sends
+  under `insim.on.` and only the packets a program sends under `insim.send.`, and `send.IS_XXX`
+  shows the fields of the packet. Same for `@outsim.on.OutSimPack2` and `@gauge.on.OutGaugePack`.
+  `insim.on(IS_NPL)` and `insim.send(IS_MST(...))` still work and do the same.
+- `lfs_insim.received` and `lfs_insim.sent`: the same packet classes, listed by direction
+  (`packet: received.IS_NPL`).
+- Every packet knows its direction (`info`, `instruction` or `both ways`, as InSim.txt marks it).
+  `on()` of a packet LFS never sends, or `send()` of one only LFS sends, is an error in mypy and a
+  `TypeError` when run.
+- New page [Packets by direction](docs/packets.md); guide and examples use the new forms.
+
 ## 0.1.0
 
 First release (alpha). The API may still change before 1.0.
