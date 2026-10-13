@@ -1,6 +1,17 @@
 # 📓 Diario — AP_LFS_InSim (lfs_insim)
 <!-- Solo se añade, lo más nuevo arriba. Una entrada por sesión. -->
 
+## S14 — 2026-10-13 — U6 por el navegador
+
+**Hecho:** Chrome conectó (en S13 no). Con el usuario haciendo cuentas, verificación de correo y 2FA
+(el agente no puede: PROHIBIDO por seguridad del navegador), el agente rellenó y envió, con
+confirmación previa, el *pending publisher* de `lfs-insim` en TestPyPI (entorno `testpypi`) y en PyPI
+(entorno `pypi`): `AdrianPascarella/AP_LFS_InSim`, `publish.yml`. Comprobado releyendo ambas páginas.
+**U6 cerrada.**
+
+**Pendiente:** W5.5 (primera ejecución real de `publish.yml` en TestPyPI) y W5.6. Opcional: entorno
+`pypi` en GitHub con revisor obligatorio. Tests de `every` inestables sin arreglar.
+
 ## S13 — 2026-10-13 — W5 detallada
 
 **Inicio:** la sesión arrancó en `main`; el usuario pidió cambiar a `dev` (hecho, pull al día).

@@ -1,17 +1,16 @@
 # 📍 Estado — AP_LFS_InSim (lfs_insim)
-> Actualizado: 2026-10-13 (S13): W5.1–W5.3 hechas; **W3 y W4 hechas enteras (S12).** La biblioteca está validada en el
+> Actualizado: 2026-10-13 (S14): W5.1–W5.3 hechas; **W3 y W4 hechas enteras (S12).** La biblioteca está validada en el
 > LFS real (InSim, OutGauge, OutSim y `OutSimPack2`; `tests/live_lfs.py`), y tiene la API de alto
 > nivel: `IS_MSO.text`, `await insim.request(IS_X)` / `request_all`, `Roster` (`lfs_insim.state`),
 > `insim.say()` / `command()`, `@insim.on_command("hello")`, `lfs_insim.text.plain()` y cuatro
 > ejemplos en `examples/`, probados en cada push y comprobados en el LFS real. Decisiones en
 > `API_DESIGN.md`. El agente maneja LFS con `tests/lfs_screen.ps1`, que no envía nada si LFS no
 > está delante (PROTOCOL §13). `cfg.txt` está restaurado: OutSim/OutGauge en vivo pide permiso.
-> **▶️ SIGUIENTE: U6** (cuentas y publicador en TestPyPI/PyPI): el usuario quiere que el agente la
-> haga por el navegador, pero en S13 no había herramientas de Chrome: arrancar con
-> `claude --chrome --continue` y comprobar; si no conecta, la hace él a mano. Después W5.5
-> (instalar desde TestPyPI) y W5.6. W5.1–W5.4 hechas en S13: versión 0.1.0 sin publicar y
-> `publish.yml` en `dev` (aún sin ejecutar nunca). Docs en Markdown, Trusted Publishing, Alpha. Publicar y crear tags pide permiso. `_connection.py` va por
-> ~405 líneas: lo próximo que crezca, en un módulo propio.
+> **▶️ SIGUIENTE: W5.5** — lanzar a mano `publish.yml` (TestPyPI) y probar `pip install` desde
+> TestPyPI en un entorno limpio ejecutando `hello.py`; después W5.6. U6 hecha en S14: `lfs-insim`
+> está como *pending publisher* en ambos índices. `publish.yml` aún no se ha ejecutado nunca.
+> Publicar y crear tags pide permiso. `_connection.py` va por ~405 líneas: lo próximo que crezca,
+> en un módulo propio.
 
 ## Dónde estamos
 Fase siguiente: **W5 — Publicación**, detallada y sin empezar. W2, W3 y W4 están hechas enteras. Prueba en vivo: `tests/live_lfs.py` (cómo ejecutarla, en su docstring).
@@ -40,7 +39,7 @@ El proyecto anterior está en la rama `refactor/estabilizacion` y en las etiquet
 consulta, no se copia.
 
 ## Lo que te espera
-**1 acción pendiente** (U6, bloquea W5.5 y W5.6) → `USER_ACTIONS.md`.
+Ninguna acción pendiente (U6 cerrada en S14) → `USER_ACTIONS.md`.
 
 ## Tests inestables (S13, sin arreglar)
 `tests/test_every.py` falla de vez en cuando **solo en Windows del CI** y pasa al relanzar:
