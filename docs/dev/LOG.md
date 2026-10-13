@@ -1,7 +1,7 @@
 # 📓 Diario — AP_LFS_InSim (lfs_insim)
 <!-- Solo se añade, lo más nuevo arriba. Una entrada por sesión. -->
 
-## S21 — 2026-10-14 — U12 descartada
+## S21 — 2026-10-14 — U12 descartada; 0.6.0 publicada (W10.10)
 
 **Inicio:** `session_start_check` PASS (rama, identidad, pull, plantilla v3). Documentos y realidad coinciden
 (último commit `7225c9e`, árbol limpio), salvo un desajuste: «Lo que te espera» de `STATE.md` decía 1 pendiente
@@ -12,6 +12,20 @@ medida que avancemos»). La comodidad de la API de plugins sigue siendo punto ci
 plugins reales (W6, FreeCam). Consecuencia: W10.10 (publicar 0.6.0) ya no espera a U12; sigue pidiendo permiso
 expreso. Si FreeCam pide cambiar nombres (`need()`, `reserve_click_ids()`, `on_close`) después de publicar,
 será un cambio incompatible en 0.7.0 (aceptable en 0.x).
+
+**Publicado 0.6.0 (W10.10)** (el usuario: «Sí, publica la 0.6.0», respuesta a una pregunta que incluía aprobar
+el entorno `pypi`). Versión y CHANGELOG («Unreleased» → «0.6.0») en `dev` (`c9ab9a7`); `verify` PASS (588 tests);
+wheel y sdist construidos en un venv del scratchpad, `twine check` PASSED, instalado en un venv limpio. CI `verify`
+en verde en `dev` y `main`; avance rápido de `dev` a `main` (`c9ab9a7`). `gh release create` con la cuenta activa
+(`Veloik-adrian`) falló otra vez por el permiso `workflow`; hecho con `GH_TOKEN` de `AdrianPascarella` (release
+`v0.6.0`, pre-release como las anteriores, notas del CHANGELOG). Entorno `pypi` aprobado por el agente; `publish`
+en verde (run 38476654790). `pip install lfs-insim==0.6.0` en un venv limpio: 0.6.0, `Plugin`, `Commands`,
+`lfs_insim.testing.FakeLFS`, `use(Roster)` da la misma instancia, `need` / `reserve_click_ids` / `on_close` OK.
+- **Fallo mío al esperar el CI:** el bucle filtraba `gh run list --commit` con el SHA corto, no encontraba nada y
+  se quedó esperando 10 min; el CI ya estaba en verde. Con `gh run list` sin filtro se vio. En la prueba desde
+  PyPI importé `lfs_insim.Roster` (está en `lfs_insim.state`): error de la prueba, no del paquete.
+
+**Cierre de S21:** W10 cerrada y publicada; siguiente, W6. 1 acción opcional pendiente (U11).
 
 ## S20 — 2026-10-13 — W6 decidida y aparcada; W10 (plugins) esbozada antes
 

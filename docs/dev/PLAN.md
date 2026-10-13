@@ -359,7 +359,7 @@ aplicación (W6) lo necesita (el usuario, S18).
   el usuario en S19 antes de publicar. hecho en S19 → LOG.md S19
 - [x] **W9.6** — Publicar 0.5.0 (con permiso del usuario), antes de empezar W6. hecho en S19 → LOG.md S19
 
-## W10 — Plugins: `Roster`, comandos y aplicaciones, solos o combinados   🔜 EN CURSO (S20) · plan aceptado en S20 · va antes de W6
+## W10 — Plugins: `Roster`, comandos y aplicaciones, solos o combinados   ✅ HECHA (S20–S21) · publicada como 0.6.0
 **Objetivo:** que `Roster`, los comandos y las aplicaciones (FreeCam, AIControl…) sean plugins que se usan
 solos o combinados en un mismo `InSim`, compartiendo estado y sin pedir nada dos veces. El núcleo (`InSim`)
 se queda en conectar, recibir y enviar. Pedido por el usuario en S20; diseño en `API_DESIGN.md` («Plugins»,
@@ -402,11 +402,11 @@ W10.8).
   AIDrift); varios programas con `run()`. hecho en S20 → LOG.md S20 (validación: U12)
 - [x] **W10.9** — Kit de pruebas público (`lfs_insim.testing`, el LFS falso) para probar plugins de otros
   proyectos (streamer-project, FreeCam). API pública nueva: se diseña al llegar. hecho en S20 → LOG.md S20
-- [ ] **W10.10** — Publicar (0.6.0, con permiso del usuario).
+- [x] **W10.10** — Publicar (0.6.0, con permiso del usuario). Publicado en S21 (release `v0.6.0`).
 **Fuera, a propósito:** manifiestos, carga por carpetas, buscar plugins por nombre, versiones entre plugins y
 activar o desactivar con el programa en marcha (el cargador del proyecto anterior, P4).
 
-## W6 — Primera aplicación aparte   📋 ESBOZADA · espera a W10
+## W6 — Primera aplicación aparte   📋 ESBOZADA · siguiente (W10 publicada en 0.6.0)
 **Objetivo:** escribir, en un proyecto separado, la primera aplicación real con la biblioteca (la
 cámara libre, que necesita streamer-project) y anotar cada incomodidad como tarea de la biblioteca.
 **Decidido con el usuario en S20:** vive **dentro de streamer-project** (un módulo en `tools/`, que instala

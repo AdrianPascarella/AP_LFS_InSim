@@ -1,19 +1,17 @@
 # 📍 Estado — AP_LFS_InSim (lfs_insim)
-> Actualizado: 2026-10-14 (S21): U12 descartada. En S20: **W10 (plugins) hecha salvo publicar** (W10.0–W10.9 y W10.11, en `dev`, sin
-> publicar), a petición del usuario y antes de W6. En S19: **W9 hecha** (comandos como invitado, probados en el LFS real; prefijo propio por comando, W9.7;
-> **publicado como 0.5.0**). Antes, en S18: **W7 y W8 hechas**. La biblioteca está validada en el LFS real
-> y tiene la API de alto nivel (`@insim.on.IS_NPL`, `insim.send.IS_MST(...)`, `received` / `sent`,
-> `await insim.request(...)`, `Roster`, `say()` / `command()`, `on_command`, `text.plain()`), cuatro
-> ejemplos y `docs/packets.md` (tabla generada).
-> **`lfs-insim 0.5.0` está publicado en PyPI** (S19, release `v0.5.0`): comandos como invitado y prefijo propio
-> por comando (W9). Antes, 0.4.0 (S18: W8) y 0.3.0 y 0.2.0 (S16–S17).
-> **▶️ SIGUIENTE: W10.10, publicar 0.6.0** — solo con permiso expreso del usuario. U12 se descartó en S21 (la
-> comodidad se juzgará con plugins reales, W6). Ya en `dev`: `insim.use()`, `lfs_insim.Plugin`, plugins como funciones,
-> `Commands` como plugin (**incompatible**: `@commands.on_command`), peticiones compartidas, `roster.ready()`,
-> `insim.need()`, `insim.reserve_click_ids()`, `@insim.on_close`, `lfs_insim.testing.FakeLFS`, guía
-> `docs/plugins.md` y `docs/testing.md`, ejemplos como plugins y `together.py`. LFS acepta hasta 8 programas
-> InSim a la vez (W10.0). Después: **W6** (FreeCam como plugin, en streamer-project; alcance en `PLAN.md`).
-> Tareas en `PLAN.md`; diseño en `API_DESIGN.md` («Plugins»); por qué, en `LOG.md` S20.
+> Actualizado: 2026-10-14 (S21): **W10 (plugins) hecha y publicada como `lfs-insim 0.6.0`** (release `v0.6.0`).
+> U12 se descartó (la comodidad de los plugins se juzgará con plugins reales, en W6). En S19: W9 (comandos como
+> invitado, 0.5.0). Antes, 0.4.0 (S18: W8) y 0.3.0 y 0.2.0 (S16–S17). La biblioteca está validada en el LFS
+> real y tiene la API de alto nivel (`@insim.on.IS_NPL`, `insim.send.IS_MST(...)`, `received` / `sent`,
+> `await insim.request(...)`, `say()` / `command()`, `text.plain()`) y, desde 0.6.0, plugins: `insim.use()`,
+> `lfs_insim.Plugin`, plugins como funciones, `Commands` como plugin (`@commands.on_command`), peticiones
+> compartidas, `roster.ready()`, `insim.need()`, `insim.reserve_click_ids()`, `@insim.on_close` y
+> `lfs_insim.testing.FakeLFS`. Guías `docs/plugins.md` y `docs/testing.md`; ejemplos como plugins y `together.py`.
+> LFS acepta hasta 8 programas InSim a la vez (W10.0).
+> **▶️ SIGUIENTE: W6** — la cámara libre (`FreeCam`) como plugin, dentro de streamer-project (instala
+> `lfs-insim` desde PyPI); primera versión repetición + plano guionizado. Alcance en `PLAN.md`; cada
+> incomodidad de la biblioteca que aparezca, como tarea aquí. Diseño de plugins en `API_DESIGN.md`
+> («Plugins»); por qué, en `LOG.md` S20.
 > **Receta de una versión nueva:** versión y CHANGELOG en
 > `dev`; `verify` en verde; avance rápido de `dev` a `main`; `gh release create vX.Y.Z --target main`
 > (el tag debe ser `v<version>`); aprobar el entorno `pypi` (pedirlo cada vez; con permiso, el agente lo aprueba
@@ -23,7 +21,7 @@
 > módulo propio (los comandos de W8.2, en `_commands.py`). Ver `USER_ACTIONS.md`.
 
 ## Dónde estamos
-Fase activa: **W10** (todo hecho en S20 salvo W10.10, publicar). W6 detrás. W9 hecha y 0.5.0 publicado en S19.
+Fase activa: **W6** (siguiente; esbozada). W10 hecha y publicada como 0.6.0 en S21.
 
 - **Cómo se genera:** `.venv/Scripts/python scripts/generate_packets.py` lee
   `spec/cache/InSim.txt` y `spec/cache/OutSimPack.txt` (con `scripts/spec_parser.py`) y las
