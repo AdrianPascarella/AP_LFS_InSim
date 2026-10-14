@@ -188,34 +188,43 @@ send several at once, or one already built, use `insim.send(IS_MST(Msg="/end"), 
 ## Asking LFS
 
 ```python
-from lfs_insim.packets import IS_NCN, IS_STA
-
-
 @insim.every(5)
 async def report() -> None:
-    state = await insim.request(IS_STA)            # one packet
-    everyone = await insim.request_all(IS_NCN)     # a list: one per connection
+    state = await insim.request.IS_STA()            # one packet
+    everyone = await insim.request_all.IS_NCN()     # a list: one per connection
     print(state.NumP, len(everyone))
 ```
 
-`request` raises `TimeoutError` if LFS does not answer within 2 seconds (change it with
-`timeout=`). The answers also reach your `@insim.on` handlers. Asking for a packet that LFS does
-not send on request raises `TypeError` and says which function to use instead.
-
-Some instructions are answered when LFS has done them: loading or moving through a replay
-(`IS_RIP`) and saving a screenshot (`IS_SSH`). Give `request` the packet to send, and it returns
-LFS's reply:
+Type `insim.request.` and the editor lists what LFS sends when asked (`IS_STA`, `IS_VER`,
+`IS_CPP`...); `insim.request_all.` lists what it sends in several packets (`IS_NCN`, `IS_NPL`,
+`IS_RES`...). `request` raises `TimeoutError` if LFS does not answer within 2 seconds (change it
+with `timeout=`); `request_all` returns when it has them all, or when none has arrived for half a
+second (change it with `quiet=`). The answers also reach your `@insim.on` handlers. To ask for
+several things at once, use `asyncio.gather`:
 
 ```python
-from lfs_insim.packets import IS_RIP
+import asyncio
 
-reply = await insim.request(IS_RIP(MPR=1, RName="race", CTime=60_000), timeout=30)
+state, version = await asyncio.gather(insim.request.IS_STA(), insim.request.IS_VER())
+```
+
+Some instructions are answered when LFS has done them: loading or moving through a replay
+(`IS_RIP`) and saving a screenshot (`IS_SSH`). `insim.instruct.` lists them; it sends the packet
+and returns LFS's reply:
+
+```python
+reply = await insim.instruct.IS_RIP(MPR=1, RName="race", CTime=60_000, timeout=30)
 if reply.Error > 1:  # 0 and 1 mean done (1: it was already there)
     print("LFS could not load it:", reply.Error)
 ```
 
-Loading or searching a replay can take a while: give it a longer `timeout`. Any other packet
-raises `TypeError` (use `insim.send` for packets that LFS does not answer).
+Loading or searching a replay can take a while: give it a longer `timeout`. Note the
+difference: `insim.request.IS_RIP()` asks which replay is loaded; `insim.instruct.IS_RIP(...)`
+loads one.
+
+`insim.request(IS_STA)`, `insim.request_all(IS_NCN)` and `insim.instruct(IS_RIP(...))` do the
+same, for a packet type or a packet you already have; given one that does not fit, they raise
+`TypeError` and say which to use instead.
 
 ## Buttons
 

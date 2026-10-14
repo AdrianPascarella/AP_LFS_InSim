@@ -60,7 +60,7 @@ give the same. That is how plugins share:
   the second one is added.
 - Your own plugins: a plugin that uses another gets the same one as everybody else.
 
-If two plugins ask LFS for the same thing at the same time (`await insim.request(IS_STA)`), it is
+If two plugins ask LFS for the same thing at the same time (`await insim.request.IS_STA()`), it is
 asked for once and both get the answer.
 
 The functions given to `@insim.on_connect` start at the same time, so one may look at the roster

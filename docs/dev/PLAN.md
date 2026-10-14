@@ -433,7 +433,10 @@ con muestras que hacen de red, y es menos arriesgado que la cámara.
   de ejemplo en bytes.
 - [ ] **W6.6** — Enum para los bits de `IS_NPL.PType` (mujer, IA, remoto; InSim.txt los da en un comentario, así
   que el generador no lo crea): el registrador define `PTYPE_AI = 2` y `PTYPE_REMOTE = 4` a mano.
-- [ ] **W6.4** — Publicar lo que pidan W6.2 y W6.3 (0.7.0, con permiso del usuario).
+- [x] **W6.7** — `insim.request.IS_XXX()`, `insim.request_all.IS_XXX()` e `insim.instruct.IS_XXX(...)` (propuesto
+  por el usuario en S22: el mismo problema que W7 con `on` y `send`). Sustituye la forma `request(IS_RIP(...))`
+  de W6.1 (sin publicar). Hecho en S22 → LOG.md S22; decisión en `API_DESIGN.md`.
+- [ ] **W6.4** — Publicar lo que pidan W6.2, W6.3 y W6.7 (0.7.0, con permiso del usuario).
 
 ## Ideas (aparcadas, sin compromiso)
 - **Ayudante de botones** (de escribir `examples/buttons.py`, S12): hay que repartir los `ClickID` a

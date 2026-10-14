@@ -1,4 +1,4 @@
-"""Asking LFS for information and waiting for the answer (internal; used by InSim.request).
+"""Asking LFS for information and waiting for the answer (internal; used by lfs_insim._asking).
 
 An info request is an IS_TINY whose ReqI LFS copies into the answer, so each request gets a
 ReqI of its own and the answers are told apart by it. ReqI 1 is left to IS_ISI (its IS_VER), and
@@ -12,66 +12,11 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-import copy
 from collections.abc import Awaitable, Callable, Iterator
 from dataclasses import dataclass, field
 from typing import Any, TypeVar
 
-from lfs_insim.packets import (
-    IS_AXI,
-    IS_AXM,
-    IS_CPP,
-    IS_IPB,
-    IS_ISM,
-    IS_MAL,
-    IS_MCI,
-    IS_NCI,
-    IS_NCN,
-    IS_NLP,
-    IS_NPL,
-    IS_PLH,
-    IS_REO,
-    IS_RES,
-    IS_RIP,
-    IS_RST,
-    IS_SLC,
-    IS_SSH,
-    IS_STA,
-    IS_VER,
-    TINY,
-)
 from lfs_insim.packets._structure import InSimPacket
-
-SINGLE: dict[type[InSimPacket], TINY] = {
-    IS_VER: TINY.VER,
-    IS_STA: TINY.SST,
-    IS_CPP: TINY.SCP,
-    IS_ISM: TINY.ISM,
-    IS_NLP: TINY.NLP,
-    IS_REO: TINY.REO,
-    IS_RST: TINY.RST,
-    IS_AXI: TINY.AXI,
-    IS_RIP: TINY.RIP,
-    IS_MAL: TINY.MAL,
-    IS_PLH: TINY.PLH,
-    IS_IPB: TINY.IPB,
-}
-"""Answers that come in one packet, and the TINY that asks for them."""
-
-MULTI: dict[type[InSimPacket], tuple[TINY, str | None]] = {
-    IS_NCN: (TINY.NCN, "Total"),  # one per connection, host included
-    IS_NPL: (TINY.NPL, "NumP"),  # one per player
-    IS_RES: (TINY.RES, "NumRes"),  # one per result; none before anyone finishes
-    IS_NCI: (TINY.NCI, None),  # host only
-    IS_SLC: (TINY.SLC, None),  # host only
-    IS_MCI: (TINY.MCI, None),  # "a set of IS_MCI"
-    IS_AXM: (TINY.AXM, None),  # the layout, in as many packets as it needs
-}
-"""Answers that come in several packets: the TINY, and the field that says how many there are
-(without one, the answers are taken as complete when no more arrive for a while)."""
-
-INSTRUCTIONS: frozenset[type[InSimPacket]] = frozenset({IS_RIP, IS_SSH})
-"""Instructions that LFS answers with the same packet type and ReqI when it has done them."""
 
 FIRST_REQI = 2
 
@@ -126,18 +71,6 @@ class Requests:
         finally:
             del self._waiting[req_i]
 
-    async def instruct(
-        self, packet: InSimPacket, send: Callable[[Any], None], timeout: float | None
-    ) -> InSimPacket:
-        """Send a copy of an instruction with a ReqI of its own and wait for LFS's reply."""
-        if type(packet) not in INSTRUCTIONS:
-            raise TypeError(not_answered(packet))
-        with self.waiting(type(packet)) as (req_i, waiting):
-            sent: Any = copy.copy(packet)
-            sent.ReqI = req_i  # every packet has ReqI
-            send(sent)
-            return await answer(waiting, timeout)
-
     def deliver(self, packet: InSimPacket) -> None:
         """Hand a packet from LFS to the request it answers, if any."""
         self._arrived += 1
@@ -157,23 +90,6 @@ class Requests:
             if req_i not in self._waiting:
                 return req_i
         raise RuntimeError("too many requests waiting at once (the limit is 254)")
-
-
-def wrong_function(reply: type[InSimPacket], function: str) -> str:
-    """The TypeError message when `function` cannot ask for `reply`."""
-    name = reply.__name__
-    if reply in MULTI:
-        return f"LFS answers with several {name}: use request_all({name})"
-    if reply in SINGLE:
-        return f"LFS answers with a single {name}: use request({name})"
-    return f"{name} is not something LFS sends on request"
-
-
-def not_answered(packet: InSimPacket) -> str:
-    """The TypeError message when request() is given a packet that LFS does not answer."""
-    name = type(packet).__name__
-    answered = ", ".join(sorted(cls.__name__ for cls in INSTRUCTIONS))
-    return f"LFS does not answer {name} with a reply: request() takes {answered} (or a class)"
 
 
 async def answer(waiting: Waiting, timeout: float | None) -> InSimPacket:

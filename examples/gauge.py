@@ -5,7 +5,6 @@ closed, set these lines in its cfg.txt: "OutGauge Mode 1" and "OutGauge Port 300
 """
 
 from lfs_insim import InSim, OutGauge, received, run
-from lfs_insim.packets import IS_STA
 
 insim = InSim(name="gauge")
 gauge = OutGauge(port=30001)  # UDP; port 30000 is often taken by other programs
@@ -21,7 +20,7 @@ def dashboard(packet: received.OutGaugePack) -> None:
 
 @insim.every(2)
 async def show() -> None:
-    state = await insim.request(IS_STA)  # waits for LFS without stopping anything else
+    state = await insim.request.IS_STA()  # waits for LFS without stopping anything else
     if latest is None:
         text = "No OutGauge data yet: is a car on track?"
     else:

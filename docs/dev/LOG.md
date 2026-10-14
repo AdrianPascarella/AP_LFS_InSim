@@ -1,6 +1,43 @@
 # 📓 Diario — AP_LFS_InSim (lfs_insim)
 <!-- Solo se añade, lo más nuevo arriba. Una entrada por sesión. -->
 
+## S22 — 2026-10-14 — W6.7: `request.IS_XXX`, `request_all.IS_XXX` e `instruct.IS_XXX` (equipo secundario)
+
+**Inicio:** `session_start_check` PASS (rama, identidad, pull de lo de S21, plantilla v3). Desajuste:
+`STATE.md` decía que `_connection.py` tenía 496 líneas; tenía 500 (el LOG S21 sí lo decía). Ahora tiene 452.
+Sesión en el **equipo secundario** del usuario: sin LFS ni streamer-project, así que W6.3 (FreeCam) espera al
+principal y la pregunta abierta (qué es «un plano») sigue sin respuesta.
+
+**W6.7 hecha** (propuesta del usuario: «creo que estamos teniendo el mismo problema que nos presentó el send y el
+on, debería ser algo del estilo insim.request.IS_XXX()»). El agente estuvo de acuerdo y añadió un fallo de
+W6.1: `request(IS_RIP)` preguntaba qué repetición hay y `request(IS_RIP(...))` la cargaba, distinguidas solo
+por unos paréntesis. El usuario eligió tres nombres, `request`, `request_all` (aparte) e `instruct`
+(«hazlo así con instruct y request_all aparte»).
+- Nuevo `_asking.py`: `Request`, `RequestAll` e `Instruct`, con un atributo por paquete; los atributos son las
+  tablas (`IS_STA = One(IS_STA, TINY.SST)`), que antes estaban en `_requests.py` (ahí queda solo la espera
+  por `ReqI` y el compartir). `instruct.IS_RIP` / `IS_SSH` con firma escrita a mano (por el `timeout`), sin
+  `ReqI`, `Error` ni `TTime`; `instruct()` acepta solo `IS_RIP` / `IS_SSH` también para mypy (TypeVar con
+  restricciones). Lo llamable sigue: `request(IS_STA)`, `request_all(IS_NPL)`, `instruct(paquete)`.
+- Comprobado con mypy en una prueba aparte: `request.IS_STA()` → `IS_STA`, `request_all.IS_NPL()` →
+  `list[IS_NPL]`, `instruct.IS_RIP(...)` → `IS_RIP`; `request.IS_MST`, `request_all.IS_STA`,
+  `instruct.IS_STA`, `instruct(IS_MST(...))` e `instruct.IS_RIP(ReqI=3)` son errores.
+- Tests: los de `test_request.py`, pasados a la forma canónica; nuevos: cada lista con solo sus paquetes y sin
+  pisarse, la firma de `instruct` contra el constructor, las formas llamables, y `request.IS_RIP()` pide
+  (`TINY_RIP`) mientras `instruct.IS_RIP` carga. Mutación (no pasar `MPR`): rojo.
+- `state.py` y `examples/gauge.py` usan la forma canónica; guía `insim.md` («Asking LFS», con
+  `asyncio.gather` para pedir varios), `plugins.md`, README y CHANGELOG «Unreleased».
+
+**Encadenar, descartado** (el usuario: «para poder pedir varios se pueda hacer algo como
+insim.request.IS_XXX(...).IS_XXX(...)… o si ya es sobreingeniería»; luego, para `send`, «me refería para tener
+la ayuda del IDE. Aunque si dices que no vale la pena lo acepto»). Para pedir varios, `asyncio.gather` ya da
+los tipos; para enviar varios con ayuda del editor, `insim.send(sent.IS_MST(...), sent.IS_MTC(...))`.
+Encadenar `send` enviaría en cada eslabón (lo mismo que dos líneas) o necesitaría un final que, olvidado, no
+envía nada. Detalle en `API_DESIGN.md`.
+
+**Verificación:** `verify` PASS (597 tests). Control de cierre, abajo en el commit.
+
+**Commits:** el de W6.7 con este cierre.
+
 ## S21 — 2026-10-14 — U12 descartada; 0.6.0 publicada (W10.10)
 
 **Inicio:** `session_start_check` PASS (rama, identidad, pull, plantilla v3). Documentos y realidad coinciden

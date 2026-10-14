@@ -1,18 +1,19 @@
 """Asking LFS for information and waiting for the answer (W4.2), against the fake LFS."""
 
 import asyncio
+import inspect
 import time
 from collections.abc import Awaitable, Callable
 
 import pytest
 
 from lfs_insim import InSim
+from lfs_insim._asking import INSTRUCTIONS, All, Instruct, One, Request, RequestAll
 from lfs_insim.packets import (
     IS_MSO,
     IS_MST,
     IS_NCI,
     IS_NPL,
-    IS_RES,
     IS_RIP,
     IS_SSH,
     IS_STA,
@@ -38,7 +39,7 @@ def run(test: Callable[[FakeLFS, InSim], Awaitable[None]]) -> None:
 
 def test_request_sends_the_tiny_and_returns_the_answer() -> None:
     async def test(lfs: FakeLFS, insim: InSim) -> None:
-        version = await insim.request(IS_VER)
+        version = await insim.request.IS_VER()
         assert version.Version == "0.8C31"
         tiny = await lfs.wait_for(IS_TINY)
         assert tiny.SubT == TINY.VER
@@ -52,7 +53,7 @@ def test_request_all_stops_when_the_counter_is_reached() -> None:
     async def test(lfs: FakeLFS, insim: InSim) -> None:
         lfs.replies[TINY.NPL] = [IS_NPL(PLID=plid, NumP=3) for plid in (1, 2, 3)]
         start = time.monotonic()
-        players = await insim.request_all(IS_NPL, quiet=5)
+        players = await insim.request_all.IS_NPL(quiet=5)
         assert [player.PLID for player in players] == [1, 2, 3]
         assert time.monotonic() - start < 2  # did not wait for the quiet time
 
@@ -62,7 +63,7 @@ def test_request_all_stops_when_the_counter_is_reached() -> None:
 def test_request_all_without_a_counter_waits_for_quiet() -> None:
     async def test(lfs: FakeLFS, insim: InSim) -> None:
         lfs.replies[TINY.NCI] = [IS_NCI(UCID=1), IS_NCI(UCID=2)]
-        guests = await insim.request_all(IS_NCI, quiet=QUIET)
+        guests = await insim.request_all.IS_NCI(quiet=QUIET)
         assert [guest.UCID for guest in guests] == [1, 2]
 
     run(test)
@@ -71,7 +72,7 @@ def test_request_all_without_a_counter_waits_for_quiet() -> None:
 def test_request_all_with_no_answer_is_an_empty_list() -> None:
     # LFS sends nothing for TINY_RES before anyone has finished (seen in the live test, S12).
     async def test(lfs: FakeLFS, insim: InSim) -> None:
-        assert await insim.request_all(IS_RES, quiet=QUIET) == []
+        assert await insim.request_all.IS_RES(quiet=QUIET) == []
 
     run(test)
 
@@ -79,7 +80,7 @@ def test_request_all_with_no_answer_is_an_empty_list() -> None:
 def test_request_without_an_answer_times_out() -> None:
     async def test(lfs: FakeLFS, insim: InSim) -> None:
         with pytest.raises(TimeoutError):
-            await insim.request(IS_STA, timeout=QUIET)
+            await insim.request.IS_STA(timeout=QUIET)
 
     run(test)
 
@@ -89,7 +90,7 @@ def test_requests_at_the_same_time_get_their_own_answers() -> None:
         lfs.replies[TINY.NPL] = [IS_NPL(PLID=7, NumP=1)]
         lfs.replies[TINY.SST] = [IS_STA(NumP=1)]
         version, players, state = await asyncio.gather(
-            insim.request(IS_VER), insim.request_all(IS_NPL), insim.request(IS_STA)
+            insim.request.IS_VER(), insim.request_all.IS_NPL(), insim.request.IS_STA()
         )
         assert len({version.ReqI, players[0].ReqI, state.ReqI}) == 3
         assert players[0].PLID == 7 and state.NumP == 1
@@ -102,7 +103,7 @@ def test_answers_also_reach_the_handlers() -> None:
         seen: list[IS_NPL] = []
         insim.on(IS_NPL)(seen.append)
         lfs.replies[TINY.NPL] = [IS_NPL(PLID=1, NumP=1)]
-        players = await insim.request_all(IS_NPL)
+        players = await insim.request_all.IS_NPL()
         assert seen == players
 
     run(test)
@@ -111,7 +112,7 @@ def test_answers_also_reach_the_handlers() -> None:
 def test_an_answer_of_another_type_is_not_taken() -> None:
     async def test(lfs: FakeLFS, insim: InSim) -> None:
         lfs.replies[TINY.SST] = [IS_MSO(Msg="not a state"), IS_STA(NumP=2)]
-        state = await insim.request(IS_STA)
+        state = await insim.request.IS_STA()
         assert state.NumP == 2
 
     run(test)
@@ -121,7 +122,7 @@ def test_request_identifiers_are_reused() -> None:
     # More requests than there are ReqI values (2 to 255): finished ones free theirs.
     async def test(lfs: FakeLFS, insim: InSim) -> None:
         for _ in range(300):
-            await insim.request(IS_VER)
+            await insim.request.IS_VER()
 
     run(test)
 
@@ -136,7 +137,7 @@ def test_request_without_a_connection_fails() -> None:
 
 def test_losing_the_connection_while_waiting_fails() -> None:
     async def test(lfs: FakeLFS, insim: InSim) -> None:
-        waiting = asyncio.create_task(insim.request(IS_STA, timeout=5))
+        waiting = asyncio.create_task(insim.request.IS_STA(timeout=5))
         await lfs.wait_for(IS_TINY)
         await lfs.drop()
         with pytest.raises(ConnectionError):
@@ -147,12 +148,14 @@ def test_losing_the_connection_while_waiting_fails() -> None:
 
 def test_asking_with_the_wrong_function_is_a_type_error() -> None:
     insim = InSim()
-    with pytest.raises(TypeError, match="request_all"):
+    with pytest.raises(TypeError, match=r"request_all\.IS_NPL\(\)"):
         asyncio.run(insim.request(IS_NPL))
-    with pytest.raises(TypeError, match=r"request\(IS_VER\)"):
+    with pytest.raises(TypeError, match=r"request\.IS_VER\(\)"):
         asyncio.run(insim.request_all(IS_VER))
     with pytest.raises(TypeError, match="IS_MSO"):
         asyncio.run(insim.request(IS_MSO))
+    with pytest.raises(TypeError, match=r"instruct\.IS_RIP\(\.\.\.\)"):
+        asyncio.run(insim.request(IS_RIP(RName="race")))  # type: ignore[arg-type]
 
 
 # The same request at the same time is sent once (W10.3): plugins ask for the same on connecting.
@@ -165,7 +168,7 @@ def _asked(lfs: FakeLFS, sub: TINY) -> list[IS_TINY]:
 def test_the_same_request_all_at_the_same_time_is_sent_once() -> None:
     async def test(lfs: FakeLFS, insim: InSim) -> None:
         lfs.replies[TINY.NPL] = [IS_NPL(PLID=plid, NumP=2) for plid in (1, 2)]
-        first, second = await asyncio.gather(insim.request_all(IS_NPL), insim.request_all(IS_NPL))
+        first, second = await asyncio.gather(insim.request_all.IS_NPL(), insim.request_all.IS_NPL())
         assert [p.PLID for p in first] == [p.PLID for p in second] == [1, 2]
         first.clear()  # each gets a list of its own
         assert len(second) == 2
@@ -177,7 +180,7 @@ def test_the_same_request_all_at_the_same_time_is_sent_once() -> None:
 def test_the_same_request_at_the_same_time_is_sent_once() -> None:
     async def test(lfs: FakeLFS, insim: InSim) -> None:
         lfs.replies[TINY.SST] = [IS_STA(NumP=4)]
-        first, second = await asyncio.gather(insim.request(IS_STA), insim.request(IS_STA))
+        first, second = await asyncio.gather(insim.request.IS_STA(), insim.request.IS_STA())
         assert first.NumP == second.NumP == 4
         assert len(_asked(lfs, TINY.SST)) == 1
 
@@ -187,8 +190,8 @@ def test_the_same_request_at_the_same_time_is_sent_once() -> None:
 def test_the_same_request_later_is_sent_again() -> None:
     async def test(lfs: FakeLFS, insim: InSim) -> None:
         lfs.replies[TINY.SST] = [IS_STA(NumP=4)]
-        await insim.request(IS_STA)
-        await insim.request(IS_STA)
+        await insim.request.IS_STA()
+        await insim.request.IS_STA()
         assert len(_asked(lfs, TINY.SST)) == 2
 
     run(test)
@@ -196,8 +199,8 @@ def test_the_same_request_later_is_sent_again() -> None:
 
 def test_a_shared_request_survives_the_first_asker_giving_up() -> None:
     async def test(lfs: FakeLFS, insim: InSim) -> None:
-        first = asyncio.create_task(insim.request(IS_STA))
-        second = asyncio.create_task(insim.request(IS_STA))
+        first = asyncio.create_task(insim.request.IS_STA())
+        second = asyncio.create_task(insim.request.IS_STA())
         tiny = await lfs.wait_for(IS_TINY)
         assert tiny.SubT == TINY.SST
         first.cancel()
@@ -214,13 +217,13 @@ def test_after_news_from_lfs_the_same_request_is_sent_again() -> None:
     async def test(lfs: FakeLFS, insim: InSim) -> None:
         news: list[IS_MSO] = []
         insim.on(IS_MSO)(news.append)
-        first = asyncio.create_task(insim.request(IS_STA))
+        first = asyncio.create_task(insim.request.IS_STA())
         first_tiny = await lfs.wait_for(IS_TINY)
         await lfs.send(IS_MSO(Msg="news"))
         async with asyncio.timeout(2):
             while not news:
                 await asyncio.sleep(0.01)
-        second = asyncio.create_task(insim.request(IS_STA))
+        second = asyncio.create_task(insim.request.IS_STA())
         second_tiny = await lfs.wait_for(IS_TINY)
         assert second_tiny.SubT == TINY.SST
         assert second_tiny.ReqI != first_tiny.ReqI
@@ -237,7 +240,7 @@ def test_after_news_from_lfs_the_same_request_is_sent_again() -> None:
 def test_request_sends_an_instruction_and_returns_its_reply() -> None:
     async def test(lfs: FakeLFS, insim: InSim) -> None:
         load = IS_RIP(MPR=1, CTime=5000, RName="race")
-        waiting = asyncio.ensure_future(insim.request(load))
+        waiting = asyncio.ensure_future(insim.instruct(load))
         sent = await lfs.wait_for(IS_RIP)
         assert sent.ReqI not in (0, 1)
         assert (sent.RName, sent.CTime, sent.MPR) == ("race", 5000, 1)
@@ -252,7 +255,7 @@ def test_request_sends_an_instruction_and_returns_its_reply() -> None:
 
 def test_request_screenshot() -> None:
     async def test(lfs: FakeLFS, insim: InSim) -> None:
-        waiting = asyncio.ensure_future(insim.request(IS_SSH(Name="shot")))
+        waiting = asyncio.ensure_future(insim.instruct.IS_SSH(Name="shot"))
         sent = await lfs.wait_for(IS_SSH)
         assert sent.Name == "shot" and sent.ReqI not in (0, 1)
         await lfs.send(IS_SSH(ReqI=sent.ReqI, Error=0, Name="shot"))
@@ -263,8 +266,8 @@ def test_request_screenshot() -> None:
 
 def test_the_same_instruction_twice_is_sent_twice() -> None:
     async def test(lfs: FakeLFS, insim: InSim) -> None:
-        first = asyncio.ensure_future(insim.request(IS_RIP(CTime=1000)))
-        second = asyncio.ensure_future(insim.request(IS_RIP(CTime=1000)))
+        first = asyncio.ensure_future(insim.instruct.IS_RIP(CTime=1000))
+        second = asyncio.ensure_future(insim.instruct.IS_RIP(CTime=1000))
         a = await lfs.wait_for(IS_RIP)
         b = await lfs.wait_for(IS_RIP)
         assert a.ReqI != b.ReqI
@@ -278,7 +281,7 @@ def test_the_same_instruction_twice_is_sent_twice() -> None:
 def test_a_packet_that_lfs_does_not_answer_is_refused() -> None:
     async def test(lfs: FakeLFS, insim: InSim) -> None:
         with pytest.raises(TypeError, match="IS_MST"):
-            await insim.request(IS_MST(Msg="hi"))  # type: ignore[arg-type]
+            await insim.instruct(IS_MST(Msg="hi"))  # type: ignore[type-var]
 
     run(test)
 
@@ -286,6 +289,80 @@ def test_a_packet_that_lfs_does_not_answer_is_refused() -> None:
 def test_an_instruction_without_reply_times_out() -> None:
     async def test(lfs: FakeLFS, insim: InSim) -> None:
         with pytest.raises(TimeoutError):
-            await insim.request(IS_RIP(CTime=1000), timeout=0.1)
+            await insim.instruct.IS_RIP(CTime=1000, timeout=0.1)
+
+    run(test)
+
+
+# insim.request.IS_XXX, insim.request_all.IS_XXX and insim.instruct.IS_XXX (W6.7): the editor
+# lists only what each can ask for; the callable forms do the same.
+
+
+def _listed(namespace: type, kind: type) -> set[str]:
+    return {name for name, value in vars(namespace).items() if isinstance(value, kind)}
+
+
+def test_each_namespace_lists_only_its_packets() -> None:
+    assert len(_listed(Request, One)) == 12
+    assert _listed(RequestAll, All) == {
+        "IS_NCN",
+        "IS_NPL",
+        "IS_RES",
+        "IS_NCI",
+        "IS_SLC",
+        "IS_MCI",
+        "IS_AXM",
+    }
+    assert not _listed(Request, One) & _listed(RequestAll, All)
+    for name, entry in [*vars(Request).items(), *vars(RequestAll).items()]:
+        if isinstance(entry, (One, All)):
+            assert entry.reply.__name__ == name
+    assert {cls.__name__ for cls in INSTRUCTIONS} == {
+        name for name in vars(Instruct) if name.startswith("IS_")
+    }
+    insim = InSim()
+    for missing in ("IS_MST", "IS_NPL"):
+        assert not hasattr(insim.request, missing)
+    assert not hasattr(insim.request_all, "IS_STA")
+    assert not hasattr(insim.instruct, "IS_STA")
+
+
+def test_instruct_takes_the_fields_of_the_packet() -> None:
+    # Written by hand (the timeout does not fit a copied signature): the same names and defaults
+    # as the constructor, without ReqI (its own), Error and TTime (only in the reply).
+    for packet_type in INSTRUCTIONS:
+        built = inspect.signature(packet_type).parameters
+        given = dict(inspect.signature(getattr(Instruct, packet_type.__name__)).parameters)
+        del given["self"]
+        assert given.pop("timeout").default == 2.0
+        for name, parameter in given.items():
+            assert parameter.default == built[name].default, name
+        assert set(built) - set(given) <= {"ReqI", "Error", "TTime"}
+
+
+def test_the_callable_forms_do_the_same() -> None:
+    async def test(lfs: FakeLFS, insim: InSim) -> None:
+        lfs.replies[TINY.SST] = [IS_STA(NumP=2)]
+        lfs.replies[TINY.NPL] = [IS_NPL(PLID=1, NumP=1)]
+        assert (await insim.request(IS_STA, timeout=1)).NumP == 2
+        assert [p.PLID for p in await insim.request_all(IS_NPL, quiet=QUIET)] == [1]
+        waiting = asyncio.ensure_future(insim.instruct.IS_RIP(MPR=1, RName="race", timeout=1))
+        sent = await lfs.wait_for(IS_RIP)
+        assert (sent.MPR, sent.RName) == (1, "race")
+        await lfs.send(IS_RIP(ReqI=sent.ReqI, RName="race"))
+        assert (await waiting).ReqI == sent.ReqI
+
+    run(test)
+
+
+def test_request_of_a_replay_asks_and_instruct_loads() -> None:
+    # IS_RIP is in both: request.IS_RIP() asks which replay is loaded (TINY_RIP); instruct.IS_RIP
+    # sends the IS_RIP itself.
+    async def test(lfs: FakeLFS, insim: InSim) -> None:
+        asking = asyncio.ensure_future(insim.request.IS_RIP())
+        tiny = await lfs.wait_for(IS_TINY)
+        assert tiny.SubT == TINY.RIP
+        await lfs.send(IS_RIP(ReqI=tiny.ReqI, RName="loaded"))
+        assert (await asking).RName == "loaded"
 
     run(test)

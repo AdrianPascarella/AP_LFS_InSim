@@ -8,10 +8,10 @@ import inspect
 import logging
 from collections.abc import Awaitable, Callable
 from types import TracebackType
-from typing import Any, Self, cast
+from typing import Any, Self
 
 from lfs_insim import _requests
-from lfs_insim._events import P
+from lfs_insim._asking import Instruct, Request, RequestAll
 from lfs_insim._handlers import Errors, Handlers, StopsOnError
 from lfs_insim._plugins import Plugins, T
 from lfs_insim._shortcuts import On, Send
@@ -125,6 +125,14 @@ class InSim(StopsOnError):
         Raises ConnectionError if there is no connection, and TypeError for packets that only
         LFS sends.
         """
+        self.request = Request(self._requests, self.send)
+        """Ask and wait: `state = await insim.request.IS_STA()` (the editor lists what LFS sends on
+        request), or `await insim.request(IS_STA)`. TimeoutError after `timeout` seconds."""
+        self.request_all = RequestAll(self._requests, self.send)
+        """Ask for packets that come in several: `players = await insim.request_all.IS_NPL()`."""
+        self.instruct = Instruct(self._requests, self.send)
+        """Send an instruction and wait for LFS's reply: `await insim.instruct.IS_RIP(RName="r")`.
+        Only IS_RIP and IS_SSH, the ones that LFS answers."""
 
     def use(self, plugin: Callable[..., T], /, **options: Any) -> T:
         """A plugin (a class or a function), called the first time with this InSim and the options:
@@ -267,61 +275,6 @@ class InSim(StopsOnError):
         packet = IS_MST(Msg=command)
         packet.pack()
         self.send(packet)
-
-    async def request(self, reply: type[P] | P, *, timeout: float | None = 2.0) -> P:
-        """Ask LFS for a packet and wait for it: `state = await insim.request(IS_STA)`.
-
-        Sends the IS_TINY that asks for it (TINY_SST for IS_STA, TINY_VER for IS_VER...); the
-        answer also reaches the `@insim.on` handlers. Raises TimeoutError if LFS does not answer
-        within `timeout` seconds, ConnectionError if there is no connection or it is lost while
-        waiting, and TypeError for a packet that LFS does not send on request, or sends in
-        several parts (those are for request_all). The same request made while one waits is not
-        sent again: both get its answer (or its error), within the first one's timeout. Given an
-        IS_RIP or IS_SSH, sends a copy with a ReqI of its own and returns LFS's reply (check its
-        Error): `await insim.request(IS_RIP(RName="race"), timeout=30)`.
-        """
-        if isinstance(reply, InSimPacket):
-            return cast(P, await self._requests.instruct(reply, self.send, timeout))
-        sub = _requests.SINGLE.get(reply)
-        if sub is None:
-            raise TypeError(_requests.wrong_function(reply, "request"))
-
-        async def ask() -> InSimPacket:
-            with self._requests.waiting(reply) as (req_i, waiting):
-                self.send(IS_TINY(ReqI=req_i, SubT=sub))
-                return await _requests.answer(waiting, timeout)
-
-        return cast(P, await self._requests.shared((reply, "request"), ask))
-
-    async def request_all(self, reply: type[P], *, quiet: float = 0.5) -> list[P]:
-        """Ask LFS for packets that come in several: `players = await insim.request_all(IS_NPL)`.
-
-        For IS_NCN, IS_NPL, IS_RES, IS_NCI, IS_SLC, IS_MCI and IS_AXM. Returns when as many have
-        arrived as the packets themselves say (Total in IS_NCN, NumP in IS_NPL, NumRes in
-        IS_RES), or when none has arrived for `quiet` seconds: an empty list if LFS has nothing
-        to send (no results before anyone finishes, say). The answers also reach the handlers.
-        Raises ConnectionError and TypeError as request() does, and shares a request made at the
-        same time as request() does (each gets its own list).
-        """
-        entry = _requests.MULTI.get(reply)
-        if entry is None:
-            raise TypeError(_requests.wrong_function(reply, "request_all"))
-        sub, counter = entry
-
-        async def ask() -> list[InSimPacket]:
-            answers: list[InSimPacket] = []
-            with self._requests.waiting(reply) as (req_i, waiting):
-                self.send(IS_TINY(ReqI=req_i, SubT=sub))
-                while True:
-                    try:
-                        packet = await _requests.answer(waiting, quiet)
-                    except TimeoutError:
-                        return answers
-                    answers.append(packet)
-                    if counter is not None and len(answers) >= getattr(packet, counter):
-                        return answers
-
-        return cast(list[P], list(await self._requests.shared((reply, "request_all"), ask)))
 
     async def connect(self) -> None:
         """Connect once and send IS_ISI; packets are then dispatched in the background.

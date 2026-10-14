@@ -152,15 +152,15 @@ class Roster(Plugin):
 
     async def _ask_everyone(self) -> bool:
         try:
-            await self._insim.request_all(IS_NCN)
-            await self._insim.request_all(IS_NPL)
+            await self._insim.request_all.IS_NCN()
+            await self._insim.request_all.IS_NPL()
         except ConnectionError:
             return False  # lost or closed: the next connection asks
         return True
 
     async def _ask_multiplayer(self) -> bool:
         try:
-            await self._insim.request(IS_ISM, timeout=1.0)  # handled by _before
+            await self._insim.request.IS_ISM(timeout=1.0)  # handled by _before
         except TimeoutError:
             self._guest = False  # not in multiplayer: LFS does not answer
         except ConnectionError:

@@ -1,29 +1,32 @@
 # 📍 Estado — AP_LFS_InSim (lfs_insim)
-> Actualizado: 2026-10-14 (S21): **W10 (plugins) hecha y publicada como `lfs-insim 0.6.0`** (release `v0.6.0`).
-> U12 se descartó (la comodidad de los plugins se juzgará con plugins reales, en W6). En S19: W9 (comandos como
-> invitado, 0.5.0). Antes, 0.4.0 (S18: W8) y 0.3.0 y 0.2.0 (S16–S17). La biblioteca está validada en el LFS
-> real y tiene la API de alto nivel (`@insim.on.IS_NPL`, `insim.send.IS_MST(...)`, `received` / `sent`,
-> `await insim.request(...)`, `say()` / `command()`, `text.plain()`) y, desde 0.6.0, plugins: `insim.use()`,
-> `lfs_insim.Plugin`, plugins como funciones, `Commands` como plugin (`@commands.on_command`), peticiones
-> compartidas, `roster.ready()`, `insim.need()`, `insim.reserve_click_ids()`, `@insim.on_close` y
-> `lfs_insim.testing.FakeLFS`. Guías `docs/plugins.md` y `docs/testing.md`; ejemplos como plugins y `together.py`.
+> Actualizado: 2026-10-14 (S22): **W6.7 hecha** en `dev` (equipo secundario), sin publicar: `await
+> insim.request.IS_STA()`, `await insim.request_all.IS_NPL()` y `await insim.instruct.IS_RIP(...)` (el editor
+> lista lo que cabe en cada uno; `request(IS_X)` y `request_all(IS_X)` siguen). Sustituye `request(IS_RIP(...))`
+> de W6.1. Encadenar (`request.IS_A().IS_B()`) descartado: `asyncio.gather`. Antes, en S21: W10 (plugins)
+> publicada como `lfs-insim 0.6.0`. La biblioteca está validada en el LFS real y tiene la API de alto nivel
+> (`@insim.on.IS_NPL`, `insim.send.IS_MST(...)`, `received` / `sent`, `request` / `request_all` / `instruct`,
+> `say()` / `command()`, `text.plain()`) y plugins: `insim.use()`, `lfs_insim.Plugin`, `Commands` como plugin,
+> peticiones compartidas, `roster.ready()`, `insim.need()`, `insim.reserve_click_ids()`, `@insim.on_close` y
+> `lfs_insim.testing.FakeLFS`.
 > LFS acepta hasta 8 programas InSim a la vez (W10.0).
-> **▶️ SIGUIENTE: W6.3** — `FreeCam` en streamer-project (W9.1 de allí): repetición + plano guionizado.
+> **▶️ SIGUIENTE: W6.3** — `FreeCam` en streamer-project (W9.1 de allí): repetición + plano guionizado; necesita
+> el equipo principal (LFS y streamer-project). FreeCam usará `instruct.IS_RIP(...)` (`request(IS_RIP(...))` ya no existe).
+> En el secundario, W6.5 y W6.6 se pueden hacer.
 > **Pregunta abierta al usuario (fin de S21), lo primero de la próxima sesión:** qué es «un plano». Propuesta del agente, sin respuesta todavía: un archivo pequeño con una lista de pasos: ir a un instante de la repetición; seguir a un coche con una vista del juego (`IS_SCC`); cámara libre de A a B en N segundos, con posición y hacia dónde mira (`IS_CPP`, LFS suaviza); esperar N segundos. Más adelante, planos generados desde los eventos del registrador. Con eso se graban tomas concretas con OBS. La
 > repetición `freecam_prueba.mpr` está cargada en el LFS del usuario y hay permiso para usarlo. **W6.2 hecha** en
-> S21: el registrador de streamer-project usa `lfs_insim` 0.6.0 (mismos eventos que antes). W6.1 en `dev` y
-> probada en real (`request(IS_RIP(...))`), sin publicar. Pendientes pequeñas: W6.5 (leer un paquete de sus
+> S21: el registrador de streamer-project usa `lfs_insim` 0.6.0 (mismos eventos que antes). W6.1 (con la forma de W6.7) en `dev`,
+> probada en real en S21, sin publicar. Pendientes pequeñas: W6.5 (leer un paquete de sus
 > bytes, público) y W6.6 (enum de `PType`). Tareas en `PLAN.md` (W6); por qué, en `LOG.md` S21.
 > **Receta de una versión nueva:** versión y CHANGELOG en
 > `dev`; `verify` en verde; avance rápido de `dev` a `main`; `gh release create vX.Y.Z --target main`
 > (el tag debe ser `v<version>`); aprobar el entorno `pypi` (pedirlo cada vez; con permiso, el agente lo aprueba
 > por la API: `gh api -X POST .../actions/runs/<id>/pending_deployments -F "environment_ids[]=<id>" -f state=approved`,
 > con `GH_TOKEN` de `AdrianPascarella`). Una versión publicada
-> no se puede resubir. `_connection.py` va por 496 líneas (aviso de `verify` en 500): lo que crezca, en un
-> módulo propio (los comandos de W8.2, en `_commands.py`). Ver `USER_ACTIONS.md`.
+> no se puede resubir. `_connection.py` va por 452 líneas (aviso de `verify` en 500): lo que crezca, en un
+> módulo propio (los comandos, en `_commands.py`; las peticiones, en `_asking.py`). Ver `USER_ACTIONS.md`.
 
 ## Dónde estamos
-Fase activa: **W6** (en curso: W6.1 y W6.2 hechas; siguiente, W6.3, la cámara libre). W10 hecha y publicada como 0.6.0 en S21.
+Fase activa: **W6** (en curso: W6.1, W6.2 y W6.7 hechas; siguiente, W6.3, la cámara libre). W10 hecha y publicada como 0.6.0 en S21.
 
 - **Cómo se genera:** `.venv/Scripts/python scripts/generate_packets.py` lee
   `spec/cache/InSim.txt` y `spec/cache/OutSimPack.txt` (con `scripts/spec_parser.py`) y las

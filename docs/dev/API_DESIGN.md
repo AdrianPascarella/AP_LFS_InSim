@@ -248,6 +248,31 @@ sin aviso. *Por qué:* P4; una API pequeña se puede revisar entera.
   `TINY_ALC`, `TINY_LCL`), porque el tipo no basta para saber qué pedir. Se añaden si alguien lo
   necesita.
 
+## Rehecho: `request.IS_XXX`, `request_all.IS_XXX` e `instruct.IS_XXX` (W6.7, S22; propuesto por el usuario)
+- **El mismo problema que W7 con `on` y `send`:** `request(...)` aceptaba cualquier paquete y solo al
+  ejecutarse decía que no. Ahora la lista cuelga del nombre: `await insim.request.IS_STA()` (12),
+  `await insim.request_all.IS_NPL()` (7, devuelve una lista), `await insim.instruct.IS_RIP(...)` (IS_RIP e
+  IS_SSH). El editor muestra solo los que caben y qué devuelve cada uno; mypy rechaza los demás.
+- **Tres nombres, uno por comportamiento.** `IS_RIP` está en dos: `request.IS_RIP()` pregunta qué repetición
+  hay (`TINY_RIP`); `instruct.IS_RIP(RName=...)` la carga. Con W6.1, sin publicar, las dos eran
+  `request(IS_RIP)` frente a `request(IS_RIP(...))`: solo los paréntesis las distinguían. *Descartado:*
+  `send_and_wait` (el usuario eligió `instruct`, el nombre de la especificación) y fundir `request_all` en
+  `request` (leyendo `players = await insim.request.IS_NPL()` no se ve que llega una lista).
+- **Las tablas son los atributos** (`_asking.py`, a mano: InSim.txt dice en comentarios qué `TINY` pide cada
+  paquete): `IS_STA = One(IS_STA, TINY.SST)`; lo llamable busca ahí. Un test comprueba que cada atributo se
+  llama como su paquete y que las listas no se pisan.
+- **`instruct.IS_RIP(...)` tiene la firma escrita a mano** (el `timeout` no cabe en una firma copiada con
+  `ParamSpec`): mismos nombres y valores por defecto que el constructor (un test lo comprueba), sin `ReqI`
+  (lo pone la biblioteca), `Error` ni `TTime` (solo van en la respuesta).
+- **Siguen** `insim.request(IS_STA)` y `insim.request_all(IS_NPL)` (publicadas desde 0.3) e
+  `insim.instruct(paquete)`; `request(IS_RIP(...))` desaparece (no llegó a publicarse) y da un `TypeError`
+  que dice que se use `instruct.IS_RIP(...)`.
+- *Descartado* (propuesto por el usuario, «o si ya es sobreingeniería»): encadenar,
+  `insim.request.IS_STA().IS_VER()`. Para pedir varios, `asyncio.gather(...)` ya da los tipos de cada uno.
+  Para `send`, `insim.send(sent.IS_MST(...), sent.IS_MTC(...))` ya da la ayuda del editor; encadenar o
+  enviaría en cada eslabón (lo mismo que dos líneas) o necesitaría un final (`.go()`) que, olvidado, no
+  envía nada sin avisar.
+
 ## Precisado al escribir el `Roster` (W4.3, S12; propuesto por el agente, el usuario delegó)
 - `Roster(insim)`, creado antes de `run()`. `roster.connections[UCID]` → `Connection` (`ucid`,
   `username`, `name`, `admin`, `remote`, `players`) y `roster.players[PLID]` → `Player` (`plid`,

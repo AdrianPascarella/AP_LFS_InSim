@@ -2,9 +2,13 @@
 
 ## Unreleased
 
-- `insim.request(IS_RIP(...))` and `insim.request(IS_SSH(...))`: send an instruction that LFS
-  answers when it is done (load or move through a replay, save a screenshot) and wait for the
-  reply. See [Asking LFS](docs/insim.md#asking-lfs).
+- `await insim.request.IS_STA()`, `await insim.request_all.IS_NPL()`: the editor lists what LFS
+  sends on request, and what it sends in several packets, with what each returns.
+  `insim.request(IS_STA)` and `insim.request_all(IS_NPL)` still work.
+- `await insim.instruct.IS_RIP(RName="race", timeout=30)` and `insim.instruct.IS_SSH(Name=...)`:
+  send an instruction that LFS answers when it is done (load or move through a replay, save a
+  screenshot) and wait for the reply. `insim.instruct(packet)` for one already built. See
+  [Asking LFS](docs/insim.md#asking-lfs).
 
 ## 0.6.0
 

@@ -9,7 +9,7 @@ A Python library for the [Live for Speed](https://www.lfs.net) InSim protocol: *
 - Python 3.11 or newer, no dependencies, fully typed.
 - Every packet class is generated from the official specification published at lfs.net, so the
   fields are named exactly as in `InSim.txt`.
-- Handlers with decorators, `await insim.request(...)`, chat commands, a roster of connections
+- Handlers with decorators, `await insim.request.IS_STA()`, chat commands, a roster of connections
   and players, and automatic reconnection if LFS restarts.
 
 ## Install
@@ -53,7 +53,7 @@ if __name__ == "__main__":
 | Receive a packet | `@insim.on.IS_XXX` |
 | Answer a chat command | `commands = insim.use(Commands)`, `@commands.on_command("name")` |
 | Send a packet, chat or `/commands` | `insim.send.IS_XXX(...)`, `insim.say(...)`, `insim.command(...)` |
-| Ask LFS and wait for the answer | `await insim.request(IS_STA)`, `request_all(...)` |
+| Ask LFS and wait for the answer | `await insim.request.IS_STA()`, `request_all.IS_NPL()`, `instruct.IS_RIP(...)` |
 | Run something on a rhythm | `@insim.every(seconds)` |
 | Know who is connected and who is driving | `roster = insim.use(Roster)` (`lfs_insim.state`) |
 | Write a plugin, alone or with others | a function that takes the `InSim`: `insim.use(plugin)` |
