@@ -32,6 +32,7 @@ from lfs_insim.packets import (
     IS_BTN,
     IS_CRS,
     IS_MSL,
+    IS_MSO,
     IS_NPL,
     IS_OCO,
     IS_PEN,
@@ -46,6 +47,7 @@ from lfs_insim.packets import (
     ISF,
     LCL,
     LCS,
+    MSO,
     OCO,
     PENALTY,
     PENR,
@@ -124,20 +126,46 @@ class GroupD:
             )
             s.insim.send(IS_SMALL(SubT=SMALL.LCL, UVal=flag))  # value 0: off
             await asyncio.sleep(0.5)
+        # No packet tells whether the horn sounded: the driver answers in the chat (S25).
+        await self.ready("Turn the sound up, then type ok in the chat")
         s.insim.send(IS_SMALL(SubT=SMALL.LCS, UVal=LCS.SET_FLASH | 0x0400))
         s.insim.send(IS_SMALL(SubT=SMALL.LCS, UVal=LCS.SET_HORN | 1 << 16))
-        await asyncio.sleep(1.5)
-        await s.screen()
+        await asyncio.sleep(3)
         s.insim.send(IS_SMALL(SubT=SMALL.LCS, UVal=LCS.SET_FLASH | LCS.SET_HORN))  # both off
-        s.note("SMALL_LCS flash and horn 1.5 s: heard / see screen.png (no packet to check)")
+        await self.verdict(
+            "SMALL_LCS horn and flash for 3 s", "Did you hear the horn? Type yes or no"
+        )
 
     async def oco(self) -> None:
         s = self.s
-        s.insim.send(IS_OCO(OCOAction=OCO.LIGHTS_SET, Index=OCO_INDEX_MAIN, Data=1 | 2 | 4))
-        await asyncio.sleep(1)
+        await self.ready("Stop where you can see the start lights, then type ok")
+        for data in (1, 1 | 2, 1 | 2 | 4, 8):  # red 1, red 1-2, red 1-3, green
+            s.insim.send(IS_OCO(OCOAction=OCO.LIGHTS_SET, Index=OCO_INDEX_MAIN, Data=data))
+            await asyncio.sleep(2)
         await s.screen()
         s.insim.send(IS_OCO(OCOAction=OCO.LIGHTS_RESET, Index=OCO_INDEX_MAIN))
-        s.note("IS_OCO three red start lights while driving: see screen.png")
+        await self.verdict(
+            "IS_OCO start lights: red 1, 2, 3, then green",
+            "Did the start lights go red 1-2-3 then green? Type yes or no",
+        )
+
+    async def answer(self, timeout: float = WAIT) -> str | None:
+        """The next chat line the driver types (IS_MSO from this computer), lower case."""
+        since = self.s.mark()
+        mso = await self.s.expect(
+            IS_MSO, lambda p: p.UserType == MSO.USER, since=since, timeout=timeout
+        )
+        return None if mso is None else plain(mso.Msg[mso.TextStart :]).strip().lower()
+
+    async def ready(self, text: str) -> None:
+        self.tell(text)
+        await self.answer()
+
+    async def verdict(self, name: str, question: str) -> None:
+        self.tell(question)
+        reply = await self.answer()
+        ok = None if reply is None else reply.startswith(("y", "s"))  # yes / si
+        self.s.check(name, ok, f"the driver typed {reply!r}")
 
     async def step(
         self, text: str, cls: type[P], where: Callable[[P], bool], name: str

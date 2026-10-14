@@ -63,7 +63,7 @@
 | IS_NLP | ⬇ | ✔ | S12, S24 | A | `ISF.NLP` / `TINY_NLP`; vuelta y posición; ritmo de `SMALL_NLI` (S24) |
 | IS_NPL | ⬇ | ✔ | S12, S23 | A/R | entra un coche; `PType` de IA, `CName` de mod (S12) |
 | IS_OBH | ⬇ | ✔ | S24 | A/E | una IA golpea un cono añadido: `Index` 20, `LAYOUT \| CAN_MOVE \| ON_SPOT` (otra pasada no lo tocó) |
-| IS_OCO | ⬆ | ◐ | S24 | A | semáforos de salida enviados sin error; falta ver el efecto (captura en el momento) |
+| IS_OCO | ⬆ | ✔ | S24, S25 | A | semáforos de salida rojo 1, 2, 3 y verde: el piloto los vio (contestó en el chat, S25) |
 | IS_PEN | ⬇ | ✔ | S23, S25 | A | `/p_dt` en Un Jugador → `DT_VALID` (ya en el pit lane) por `ADMIN`, quitada al salir; exceso de velocidad en el pit lane → `DT` y luego `SG` por `SPEEDING` (S25) |
 | IS_PFL | ⬇ | ◐ | S23 | A | cambiar ayudas del jugador |
 | IS_PIT | ⬇ | ✔ | S23, S25 | A | parada en el box: `FuelAdd`, `NumStops`, `Work` (S25) |
@@ -135,7 +135,7 @@
 | SMALL_RTP | ⬇ | ◐ | S12 | A | respuesta a `TINY_GTM` |
 | SMALL_NLI | ⬆ | ✔ | S24 | A | 1000 ms → ~1 `IS_NLP` por segundo (tarda un momento en aplicarse) |
 | SMALL_ALC | ⬍ | ✔ | S12, S24, S25 | A/H | enviado desde el InSim del servidor: aplicado, releído y restaurado (S25); como invitado admin, rechazado (S24) |
-| SMALL_LCS | ⬆ | ◐ | S25 | A | ráfagas y bocina enviadas sin error; falta que el usuario confirme que se oyó |
+| SMALL_LCS | ⬆ | ✔ | S25 | A | bocina y ráfagas 3 s: el piloto la oyó (contestó en el chat) |
 | SMALL_LCL | ⬍ | ✔ | S12, S25 | A | enviado (cortas, emergencia, antiniebla trasera) y releído con `TINY_LCL` (S25) |
 | SMALL_AII | ⬆ | ✔ | S24 | A | → `IS_AII` de una IA, sin quitarle el control |
 | TTC_SEL | ⬆ | ✔ | S24 | E | → `IS_AXM` `PMO_TTC_SEL` con la selección puesta por `PMO_SELECTION` |

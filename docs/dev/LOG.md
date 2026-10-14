@@ -63,6 +63,9 @@ sale arriba en la pantalla de LFS (un botón) y en el chat (`IS_MSL`), y espera 
 - **Fallos del script, corregidos:** decía «Shift+R para reiniciar el coche», que reinicia la carrera (el usuario
   usó su tecla, «Y»); esperaba `DT` y no `DT_VALID`, y un `IS_PLA` DT; y pedía Shift+I, que es para los botones
   del host: con un InSim local es Shift+B (con botones los quita, `USER_CLEAR`; sin ellos los pide, `REQUEST`).
+- **Bocina y semáforos, repetidos** (el usuario: «No escuché nada porque tenía el volumen al mínimo y tampoco pude
+  ver el semaforo. Volvamos a mirarlo»): `group_d.py` pide ahora confirmación en el chat (lee el `IS_MSO` del
+  piloto). Bocina 3 s → «yes»; semáforos rojo 1-2-3 y verde (8 s) → «yes». `SMALL_LCS` e `IS_OCO`, ✔.
 
 ## S24 — 2026-10-14 — W11.2: batería en vivo (`tests/live/`); W11.3: grupo A en el LFS real
 
