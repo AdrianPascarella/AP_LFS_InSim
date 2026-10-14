@@ -1,5 +1,10 @@
 # 📍 Estado — AP_LFS_InSim (lfs_insim)
-> Actualizado: 2026-10-14 (S23), equipo principal: **W6 cerrada y `lfs-insim` 0.7.0 publicada** (W6.4, con
+> Actualizado: 2026-10-14 (S24), equipo principal. **W11.2 hecha (S24):** batería en vivo en `tests/live/`
+> (`harness.py`: `Session` con `expect` / `check` / `screen` e informe con lo visto en cada sentido;
+> `group_a.py`: secciones `requests setup race sends udp finish`, `--only`; `probe.py`, antes `tests/live_lfs.py`).
+> Se lanza con `.venv/Scripts/python tests/live/group_a.py` con LFS en la pantalla de preparación de Un Jugador.
+> **Aún no se ha ejecutado contra el LFS real.** Hallazgo: `InSim()` no deja poner `UDPPort` (W11.8, por decidir).
+> Antes, en S23: **W6 cerrada y `lfs-insim` 0.7.0 publicada** (W6.4, con
 > permiso). 0.7.0 trae W6.1 y W6.5–W6.10: `request.IS_X()` / `request_all.IS_X()` / `instruct.IS_RIP(...)`,
 > `unpack_insim` pública, enums de comentarios (`PTYPE`, `NCNF`, `SCHF`, `PLHF`, `RACING`, `WIND`, `OFFON`, `ACR`,
 > `ISM`, `FLG`, `HLVC`, `REPLAY`) y `connect()` que llama a `on_connect`/`on_disconnect` (W6.10). **W6.3 hecha:**
@@ -8,8 +13,8 @@
 > con un cliente mínimo propio; no los causa la biblioteca (LOG S23).
 > **Fase activa: W11, pruebas intensivas contra el LFS real** (propuesta del usuario, plan aceptado en S23).
 > W11.1 hecha: `docs/dev/COVERAGE.md` (estado de cada paquete y subtipo en real, por grupos A/R/E/H/P/G).
-> **▶️ SIGUIENTE (sesión nueva, la pidió el usuario): W11.2 + W11.3** — la batería en vivo y el grupo A (Un
-> Jugador con IA). **Permiso dado en S23** («Me parece bien y te doy permiso»): abrir LFS, ponerlo en Un Jugador con
+> **▶️ SIGUIENTE: W11.3** — ejecutar `group_a.py` en el LFS real (Un Jugador con IA), arreglar el script donde
+> LFS no haga lo supuesto y anotar lo visto en `COVERAGE.md`. **Permiso dado en S23** («Me parece bien y te doy permiso»): abrir LFS, ponerlo en Un Jugador con
 > IA, hacer carreras y teclear/hacer clic con `lfs_screen.ps1` (no manda nada si LFS no queda delante). Sin tocar
 > `cfg.txt` en este grupo (OutSim/OutGauge por `SMALL_SSP`/`SSG`). LFS quedó cerrado al final de S23 (lo abrió el
 > agente; `/exit` por InSim). Los demás grupos, cada uno con su permiso; el grupo P, en una tarjeta. La

@@ -465,10 +465,10 @@ falta para provocar cada paquete; las pruebas automáticas, con informe; cada fa
 de pantalla) se pide antes, con copia de lo que se toque. Lo que necesita a otra persona va en una tarjeta.
 - [x] **W11.1** — Tabla de cobertura, desde lo probado en el LOG (S9–S23). Hecho en S23: 70 paquetes,
   31 `TINY`, 11 `SMALL`, 3 `TTC` y UDP → `COVERAGE.md`.
-- [ ] **W11.2** — Batería en vivo reutilizable (sobre `tests/live_lfs.py` o una carpeta `tests/live/`): un script
+- [x] **W11.2** — Batería en vivo reutilizable (sobre `tests/live_lfs.py` o una carpeta `tests/live/`): un script
   por grupo que monta la situación (con `lfs_screen.ps1` y comandos por `IS_MST`), espera lo que debe llegar,
   comprueba valores, reescribe cada paquete (mismo contenido al releerlo, como en S12) y deja un informe en
-  `tests/live_reports/`. Fuera de pytest (como `live_lfs.py`).
+  `tests/live_reports/`. Fuera de pytest (como `live_lfs.py`). Hecho en S24 → LOG.md S24.
 - [ ] **W11.3** — Grupo A (Un Jugador con IA): carrera completa (`RST`, `SPX`, `LAP`, `FIN`, `RES`, `NLP`, `MCI`,
   `CON`, `FLG`, `HLV`, `PEN`, `PIT`/`PSF`/`PLA`, `CRS`, `CSC`, `PLL`/`PLP`, `TINY_REN`/`CLR`), botones (estilos,
   `DEL_BTN`), `AIC`/`AII`, `OCO`, `SCH`, `SFP`, `SSH`, `SMALL_*` (`TMS`, `STP`, `NLI`, `LCS`, `LCL`, `SSP`,
@@ -481,6 +481,10 @@ de pantalla) se pide antes, con copia de lo que se toque. Lo que necesita a otra
   `III`, `MTC` a una persona, `NCN`/`CNL` remotos, y U11.
 - [ ] **W11.7** — Cerrar: cada fallo encontrado arreglado (o anotado si es de LFS), `COVERAGE.md` al día, y
   publicar una versión si cambió la biblioteca (con permiso).
+- [ ] **W11.8** — (Encontrada en S24, por decidir con el usuario) `InSim()` no deja poner `IS_ISI.UDPPort`, así
+  que `SMALL_SSP` / `SMALL_SSG` (OutSim / OutGauge sin tocar `cfg.txt`) no se pueden usar con la API pública: LFS
+  manda los datos a ese puerto. La batería lo pone por dentro. Antes de decidir, ver en W11.3 si funciona y qué
+  pasa con `IS_NLP` / `IS_MCI` (con `UDPPort` puesto, LFS los manda por UDP en vez de por TCP).
 
 ## Ideas (aparcadas, sin compromiso)
 - **Ayudante de botones** (de escribir `examples/buttons.py`, S12): hay que repartir los `ClickID` a

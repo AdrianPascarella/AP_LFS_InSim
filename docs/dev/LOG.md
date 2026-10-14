@@ -1,6 +1,46 @@
 # 📓 Diario — AP_LFS_InSim (lfs_insim)
 <!-- Solo se añade, lo más nuevo arriba. Una entrada por sesión. -->
 
+## S24 — 2026-10-14 — W11.2: batería en vivo (`tests/live/`)
+
+**Inicio:** `session_start_check` PASS (nada que traer). `verify` PASS (613). Equipo principal. LFS cerrado.
+El usuario: «Adelante, empieza con W11.2».
+
+**W11.2 hecha** (sin el juego; la primera ejecución en real es W11.3):
+- **`tests/live/harness.py`:** lo común. El `Recorder` de `live_lfs.py` (lee cada paquete de LFS, lo reescribe y
+  lo relee) se movió aquí, con `install()` / `uninstall()`. Nuevo: `LiveInSim`, que guarda y relee cada paquete
+  **enviado** (todo pasa por `_write`); `Session`, con `mark()`, `seen()`, `expect()` (espera un tipo, con filtro,
+  desde una marca), `check()` (PASS / FAIL / SKIP: SKIP es «la situación no se dio», p. ej. no hubo contacto),
+  `screen()` (llama a `lfs_screen.ps1`; si LFS no está delante, para la prueba con `ScreenRefused`) y `finish()`
+  (informe `tests/live_reports/<grupo>_*.json` y resumen, con lo visto en cada sentido por nombre de subtipo,
+  `TINY_REPLY`, `SMALL_RTP`…, para pasar a `COVERAGE.md`).
+- **`tests/live/group_a.py`:** secciones `requests`, `setup` (`/laps`, `/ai` ×2, `IS_REO` enviado y releído con
+  `TINY_REO`, `/restart` → `IS_RST`), `race` (MCI, NLP, CSC, SPX, LAP; `SMALL_AII` y `IS_AIC` con
+  `CS_SEND_AI_INFO`, y girar a la izquierda una IA comparando el `Heading` de dos `IS_AII`), `sends` (5 estilos de
+  botón y `BFN_DEL_BTN` con captura, `IS_OCO` en los semáforos, `IS_SFP` del 2D comprobado con `IS_STA`,
+  `IS_SCH` «V» → `IS_CCH`, `instruct.IS_SSH`, `SMALL_NLI` contando `IS_NLP`), `udp` (`SMALL_SSP` / `SSG` en una
+  segunda conexión con `UDPPort` 30011, nunca el 30000 del usuario) y `finish` (FIN de cada IA, RES, `TINY_RES`,
+  CON/FLG/HLV/PEN si pasaron, `/end` → `TINY_REN`, `/clear` → `TINY_CLR`). Empieza en la pantalla de preparación
+  de Un Jugador y monta la carrera con comandos de `Commands.txt`, no con clics. `SMALL_TMS` / `STP` no están: la
+  especificación dice «currently unavailable».
+- **`tests/live/probe.py`** = el antiguo `tests/live_lfs.py` (`git mv`), igual que antes pero con el harness.
+- **`tests/test_live_harness.py`:** el harness contra `FakeLFS` (checks, los dos sentidos, `passed()`), para que no
+  se rompa entre pruebas en real. `pyproject.toml`: `tests/live` en el `pythonpath` de pytest.
+
+**Decisiones:**
+- **Carpeta `tests/live/` y no ampliar `live_lfs.py`** → un script por grupo y lo común en un módulo; el sondeo
+  general se queda como `probe.py`. `lfs_screen.ps1` se queda en `tests/` (lo citan §13 y `STATE.md`).
+- **Montar la carrera por comandos** (`/laps`, `/ai`, `/restart`) en vez de clics en coordenadas → no depende de
+  la resolución ni de dónde quede cada botón; si LFS no acepta alguno, lo dirá la prueba.
+
+**Hallazgo (W11.8, por decidir):** `InSim()` no tiene opción para `IS_ISI.UDPPort`, y `SMALL_SSP` / `SSG` mandan
+OutSim / OutGauge a ese puerto: con la API pública no se pueden usar. La batería lo pone por dentro
+(`insim._isi.UDPPort`) en una segunda conexión, porque con `UDPPort` puesto LFS manda también `IS_NLP` / `IS_MCI`
+por UDP.
+
+**Verificación:** `verify` PASS (616: los 3 nuevos del harness). Los scripts arrancan (`--help`); sin LFS,
+`group_a.py` espera el `IS_VER`.
+
 ## S23 — 2026-10-14 — U13 cerrada; W6.3 (FreeCam, en streamer-project) y W6.10 (`connect()` y `on_connect`); avisos rojos de LFS investigados
 
 **Inicio:** `session_start_check` PASS (pull de S22). `verify` PASS (612). Equipo **principal**: LFS en `C:\LFS`, con
