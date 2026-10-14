@@ -162,7 +162,15 @@ OutSim y OutGauge a 10 por segundo con `UVal` 10, 0 los para. Al cerrar LFS norm
 
 **0.8.0 preparada** (el agente la considera adecuada: `udp_port` probado en real, las notas no cambian código):
 versión y CHANGELOG («Unreleased» → «0.8.0»), `verify` PASS (630), wheel y sdist con `twine check` PASSED,
-instalada en un venv limpio (0.8.0, `udp_port`, notas). Publicación: en el siguiente paso.
+instalada en un venv limpio (0.8.0, `udp_port`, notas).
+
+**0.8.0 publicada.** CI `verify` en verde sobre `84e82ab`; avance rápido de `dev` a `main`; `gh release create
+v0.8.0` (pre-release, notas del CHANGELOG, con `GH_TOKEN` de `AdrianPascarella`); entorno `pypi` aprobado por el
+agente por la API (§15); `publish` en verde (run 38643842471). `pip install lfs-insim==0.8.0` en un venv limpio:
+0.8.0, con `udp_port`.
+
+**Cierre de S24.** LFS cerrado (lo abrió el agente; `/exit`), `cfg.txt` igual a la copia de antes de la prueba.
+Pendiente del usuario: U11 (opcional). Decisión pendiente: instalar el paquete «LFS dedicated host» (W11.11).
 
 ## S23 — 2026-10-14 — U13 cerrada; W6.3 (FreeCam, en streamer-project) y W6.10 (`connect()` y `on_connect`); avisos rojos de LFS investigados
 
