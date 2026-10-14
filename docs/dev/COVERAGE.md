@@ -41,9 +41,9 @@
 | IS_CRS | ⬇ | ✔ | S23, S25 | A | la tecla de reiniciar el coche del piloto (S25; Shift+R reinicia la carrera) |
 | IS_CSC | ⬇ | ✔ | S23, S24 | A | `CSC.START` de cada coche al salir (S24) |
 | IS_FIN | ⬇ | ✔ | S12, S24 | A | `TTime` igual al de `IS_RES` (S24) |
-| IS_FLG | ⬇ | ◐ | S12 | A | bandera azul / amarilla (IA lenta o parada) |
+| IS_FLG | ⬇ | ✔ | S12, S24 | A | amarilla (`Flag` 2) encendida y apagada para una IA parada en pista (la que `IS_AIC` dejó sin control, S24) |
 | IS_HCP | ⬆ | ◐ | S25 | H | enviado (XF GTI 20 kg, 5 %) y quitado, sin aviso; falta ver su efecto |
-| IS_HLV | ⬇ | ◐ | S12 | A | salirse de pista, golpe contra muro (`ISF.HLV`) |
+| IS_HLV | ⬇ | ✔ | S12, S24 | A | esa IA: `HLVC` 0 (tierra) y luego 5 (fuera de los límites), a 34 y 33 m/s, `Time` en ms (S24) |
 | IS_III | ⬇ | ✔ | S25 | H/P | un invitado escribe `/i hola` → `IS_III` (UCID 1, `Msg`) en el InSim del servidor |
 | IS_IPB | ⬍ | ✔ | S25 | H | `TINY_IPB` y enviado (ban de 192.0.2.1, releído y quitado) en el InSim del servidor; como invitado admin, sin respuesta (S24) |
 | IS_ISI | ⬆ | ✔ | todas | A | conectar (flags, `Interval`, prefijo, contraseña de admin) |
@@ -82,11 +82,11 @@
 | IS_SET | ⬇ | ✖ | — | H/P | `ISF.SET`: un invitado manda su setup (¿también el anfitrión? por ver) |
 | IS_SFP | ⬆ | ✔ | S24 | A | ocultar y mostrar el 2D (`ISS.SHOW_2D` en `IS_STA`) |
 | IS_SLC | ⬇ | ✔ | S25 | H | `TINY_SLC` en el InSim del servidor: `XFG` del host y vacío del invitado sin coche |
-| IS_SMALL | ⬍ | ◐ | S12 | A | ver la tabla de `SMALL` |
+| IS_SMALL | ⬍ | ✔ | S12, S24, S25 | A | ver la tabla de `SMALL` |
 | IS_SPX | ⬇ | ✔ | S12, S24 | A | paso por un parcial (`STime`, `Split`) |
 | IS_SSH | ⬍ | ✔ | S24 | A | `instruct.IS_SSH(Name=...)` → `SSH.OK` y el archivo en `C:\LFS\data\shots` |
 | IS_STA | ⬇ | ✔ | S12, S23 | A | `TINY_SST`; flags de estado (cámara libre, pausa) en S23 |
-| IS_TINY | ⬍ | ◐ | varias | A | ver la tabla de `TINY` |
+| IS_TINY | ⬍ | ✔ | varias | A | ver la tabla de `TINY` |
 | IS_TOC | ⬇ | ◐ | S23 | R/P | alguien toma el coche de otro |
 | IS_TTC | ⬆ | ✔ | S24 | E | ver la tabla de `TTC`; **todos necesitan `ReqI`** («IS_TTC with no ReqI») |
 | IS_UCO | ⬇ | ✔ | S23, S24 | E/R | una IA cruza un checkpoint de InSim añadido: `CP_FWD`, `ObjectInfo` igual al enviado (S24) |
@@ -120,10 +120,10 @@
 | TINY_AXC | ⬇ | ✔ | S24 | E | `IS_AXM` `PMO_CLEAR_ALL` |
 | TINY_RIP | ⬆ | ✔ | S12, S23 | R | → `IS_RIP` |
 | TINY_NCI | ⬆ | ✔ | S25 | H | → `IS_NCI` (servidor con contraseña de admin) |
-| TINY_ALC | ⬆ | ◐ | S12 | A | → `SMALL_ALC` |
+| TINY_ALC | ⬆ | ✔ | S12, S25 | A/H | → `SMALL_ALC`; releído tras cambiarlo (S25) |
 | TINY_AXM | ⬆ | ✔ | S12, S24 | E | → `IS_AXM` hasta `PMO_FILE_END` |
 | TINY_SLC | ⬆ | ✔ | S25 | H | → `IS_SLC` de cada conexión |
-| TINY_MAL | ⬆ | ◐ | S12 | H | → `IS_MAL` |
+| TINY_MAL | ⬆ | ✔ | S12, S24, S25 | H | → `IS_MAL`; releído tras cambiarlo (S24, S25) |
 | TINY_PLH | ⬆ | ✔ | S12, S25 | H | → `IS_PLH` |
 | TINY_IPB | ⬆ | ✔ | S25 | H | → `IS_IPB` en el InSim del servidor |
 | TINY_LCL | ⬆ | ✔ | S12, S25 | A | → `SMALL_LCL` con lo puesto (S25) |
@@ -146,6 +146,19 @@
 | Qué | Estado | Visto | Cómo / qué falta |
 |---|---|---|---|
 | OutGauge | ✔ | S12, S16, S24 | `cfg.txt` (con permiso y copia); por `SMALL_SSG` sin tocar `cfg.txt` (S24) |
-| OutSim (`OutSimPack`) | ✔ | S12 | `cfg.txt`, Opts 0 |
-| OutSim (`OutSimPack2`) | ✔ | S16 | `cfg.txt`, Opts con partes; falta por `SMALL_SSP` |
+| OutSim (`OutSimPack`) | ✔ | S12, S24 | `cfg.txt`, Opts 0; también por `SMALL_SSP` con `InSim(udp_port=...)` (S24) |
+| OutSim (`OutSimPack2`) | ✔ | S16 | `cfg.txt`, Opts con partes (`SMALL_SSP` manda siempre `OutSimPack`) |
 | InSim por UDP (`UDPPort` de `IS_ISI`) | ✖ | — | `IS_NLP` / `IS_MCI` por UDP (idea aparcada en `PLAN.md`) |
+
+## Lo que queda (W11.7, S25)
+
+Al cerrar las pruebas de los grupos A, E, H y D: **97 comprobados, 13 solo leídos, 5 nunca
+vistos y 2 que LFS no tiene** (de 117 filas). En todas las pasadas, **0 paquetes mal leídos o
+escritos** en ningún sentido. Lo que falta, por motivo:
+
+- **Otra persona conectada (grupo P, W11.6):** `IS_JRR`, `IS_SET`, `IS_TOC`, `IS_CPR`, `IS_CNL` de una persona,
+  votaciones (`IS_VTN`, `TINY_VTC`, `SMALL_VTA`) y el efecto de `IS_PLC`; también U11.
+- **Valores sin mirar** (llegaron y se reescriben igual): `IS_CON` (no hubo contactos), `IS_PFL`, `IS_CCH`,
+  `TINY_GTM` / `SMALL_RTP` (solo fuera de carrera, `UVal` 0); el efecto de `IS_HCP`.
+- **No se provoca a propósito:** `IS_MOD` (cambia la pantalla del usuario); `IS_AXO` (necesita un autocross).
+- **La biblioteca no lo hace:** InSim por UDP (`IS_NLP` / `IS_MCI` al `UDPPort`), idea aparcada en `PLAN.md`.

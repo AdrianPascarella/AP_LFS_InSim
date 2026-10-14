@@ -25,7 +25,9 @@
 > **W11.5 y W11.11 cerradas (S25):** el servidor de «Crear servidor nuevo» corre en el hosting de lfs.net, con su
 > InSim (IP/puerto en «Your hosts», IP permitidas en «Access control»; **no pararlo: se borra**); `group_h.py
 > --host --admin` 23 PASS. **W11.10 hecha (S25):** `group_d.py`, el usuario conduce (12 PASS). Docs en
-> «Unreleased». **▶️ SIGUIENTE:** W11.6 (tarjeta del grupo P, con otra persona) y W11.7 (cerrar W11). Antes de lanzar LFS con opciones, copia de `cfg.txt` (§13). El
+> «Unreleased». **W11.7 hecha (S25):** `COVERAGE.md` 97 ✔ / 13 ◐ / 5 ✖, ningún fallo de la biblioteca; sin
+> versión nueva (solo un docstring desde 0.8.0). **▶️ SIGUIENTE:** W11.6 (grupo P, con otra persona: el usuario
+> avisará); después, decidir la próxima fase. Antes de lanzar LFS con opciones, copia de `cfg.txt` (§13). El
 > permiso del grupo A (S23) vale para repetir `group_a.py`; sin tocar `cfg.txt`. LFS quedó cerrado al final de
 > S24 (lo abrió el agente; `/exit` por InSim). Los demás grupos, cada uno con su permiso; el grupo P, en una tarjeta. La
 > > biblioteca tiene la API de alto nivel (`@insim.on.IS_NPL`, `insim.send.IS_MST(...)`, `received` / `sent`,

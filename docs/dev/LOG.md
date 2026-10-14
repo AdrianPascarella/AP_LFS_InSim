@@ -67,6 +67,15 @@ sale arriba en la pantalla de LFS (un botón) y en el chat (`IS_MSL`), y espera 
   ver el semaforo. Volvamos a mirarlo»): `group_d.py` pide ahora confirmación en el chat (lee el `IS_MSO` del
   piloto). Bocina 3 s → «yes»; semáforos rojo 1-2-3 y verde (8 s) → «yes». `SMALL_LCS` e `IS_OCO`, ✔.
 
+**W11.7 hecha** (el usuario: «Sigamos con W11.7, más tarde haremos el grupo P»). Revisados los informes guardados:
+`IS_FLG` (amarilla on/off) e `IS_HLV` (`HLVC` 0 y 5, velocidades y tiempos con sentido) de la IA que `IS_AIC`
+dejó sin control, ✔; `TINY_ALC` / `TINY_MAL` (releídos tras cambiarlos) e `IS_TINY` / `IS_SMALL`, ✔.
+`COVERAGE.md`: **97 comprobados, 13 solo leídos, 5 nunca vistos, 2 que LFS no tiene** (117 filas) y una sección
+«Lo que queda» por motivo. **Ningún fallo de la biblioteca** en toda la W11: lo encontrado era de LFS o de la
+especificación y está en los docstrings (`NOTES`), en la guía o en §13. **Sin versión nueva:** desde 0.8.0 solo
+cambió el docstring de `say()` (lo demás, docs del repositorio, ya visibles en GitHub); se publicará con el
+próximo cambio de código («Unreleased»). La fase W11 sigue abierta solo por W11.6 (grupo P, con otra persona).
+
 ## S24 — 2026-10-14 — W11.2: batería en vivo (`tests/live/`); W11.3: grupo A en el LFS real
 
 **Inicio:** `session_start_check` PASS (nada que traer). `verify` PASS (613). Equipo principal. LFS cerrado.

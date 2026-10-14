@@ -481,8 +481,9 @@ de pantalla) se pide antes, con copia de lo que se toque. Lo que necesita a otra
   **Hecho en S25 → LOG.md S25**, contra el InSim del servidor alojado (con contraseña de admin: 23 PASS).
 - [ ] **W11.6** — Grupo P (otra persona conectada): tarjeta para el usuario con `JRR`, `VTN`/`VTC`/`VTA`, `TOC`,
   `III`, `MTC` a una persona, `NCN`/`CNL` remotos, y U11.
-- [ ] **W11.7** — Cerrar: cada fallo encontrado arreglado (o anotado si es de LFS), `COVERAGE.md` al día, y
-  publicar una versión si cambió la biblioteca (con permiso).
+- [x] **W11.7** — Cerrar: cada fallo encontrado arreglado (o anotado si es de LFS), `COVERAGE.md` al día, y
+  publicar una versión si cambió la biblioteca (con permiso). Hecho en S25 → LOG.md S25 (sin versión nueva: desde
+  0.8.0 solo cambió un docstring; va con el próximo cambio de código). Queda W11.6 (grupo P) para cerrar W11.
 - [x] **W11.8** — (Encontrada en S24) `InSim()` no deja poner `IS_ISI.UDPPort`, así
   que `SMALL_SSP` / `SMALL_SSG` (OutSim / OutGauge sin tocar `cfg.txt`) no se pueden usar con la API pública: LFS
   manda los datos a ese puerto. La batería lo pone por dentro. Antes de decidir, ver en W11.3 si funciona y qué
