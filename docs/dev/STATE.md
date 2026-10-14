@@ -4,9 +4,11 @@
 > `group_a.py`: secciones `requests setup race sends udp finish`, `--only`; `probe.py`, antes `tests/live_lfs.py`).
 > Se lanza con `.venv/Scripts/python tests/live/group_a.py` con LFS en la pantalla de preparación de Un Jugador.
 > **W11.3 hecha (S24):** grupo A en el LFS real (0.8C32, en ventana): pasada final 41 PASS + carrera extra 30 PASS,
-> **0 paquetes mal leídos o mal escritos**; `COVERAGE.md` al día. Hallazgos por decidir: W11.8 (`UDPPort`; `UVal`
-> de `SSP`/`SSG` en centésimas) y **W11.9 (cualquier `IS_AIC` le quita el coche a la IA y no se le devuelve)**.
-> Lo que queda del grupo A necesita un coche en pista (W11.10).
+> **0 paquetes mal leídos o mal escritos**; `COVERAGE.md` al día. **W11.8 y W11.9 hechas (S24), sin publicar
+> («Unreleased»):** `InSim(udp_port=...)` (con `ISF.MCI`/`NLP` da `ValueError`) y notas de lo visto en el juego en
+> los docstrings generados (`NOTES` de `spec_overrides.py`: `IS_AIC` quita el coche a la IA; `UVal` de
+> `SSP`/`SSG` en centésimas). `generate_packets.py` va por 501 líneas (aviso de `verify`): lo siguiente que crezca
+> ahí, partirlo. Lo que queda del grupo A necesita un coche en pista (W11.10).
 > Antes, en S23: **W6 cerrada y `lfs-insim` 0.7.0 publicada** (W6.4, con
 > permiso). 0.7.0 trae W6.1 y W6.5–W6.10: `request.IS_X()` / `request_all.IS_X()` / `instruct.IS_RIP(...)`,
 > `unpack_insim` pública, enums de comentarios (`PTYPE`, `NCNF`, `SCHF`, `PLHF`, `RACING`, `WIND`, `OFFON`, `ACR`,
