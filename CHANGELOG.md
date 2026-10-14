@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.7.0
 
 - `await insim.request.IS_STA()`, `await insim.request_all.IS_NPL()`: the editor lists what LFS
   sends on request, and what it sends in several packets, with what each returns.
