@@ -268,7 +268,7 @@ class InSim(StopsOnError):
         packet.pack()
         self.send(packet)
 
-    async def request(self, reply: type[P], *, timeout: float | None = 2.0) -> P:
+    async def request(self, reply: type[P] | P, *, timeout: float | None = 2.0) -> P:
         """Ask LFS for a packet and wait for it: `state = await insim.request(IS_STA)`.
 
         Sends the IS_TINY that asks for it (TINY_SST for IS_STA, TINY_VER for IS_VER...); the
@@ -276,8 +276,12 @@ class InSim(StopsOnError):
         within `timeout` seconds, ConnectionError if there is no connection or it is lost while
         waiting, and TypeError for a packet that LFS does not send on request, or sends in
         several parts (those are for request_all). The same request made while one waits is not
-        sent again: both get its answer (or its error), within the first one's timeout.
+        sent again: both get its answer (or its error), within the first one's timeout. Given an
+        IS_RIP or IS_SSH, sends a copy with a ReqI of its own and returns LFS's reply (check its
+        Error): `await insim.request(IS_RIP(RName="race"), timeout=30)`.
         """
+        if isinstance(reply, InSimPacket):
+            return cast(P, await self._requests.instruct(reply, self.send, timeout))
         sub = _requests.SINGLE.get(reply)
         if sub is None:
             raise TypeError(_requests.wrong_function(reply, "request"))

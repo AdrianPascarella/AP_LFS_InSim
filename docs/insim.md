@@ -202,6 +202,21 @@ async def report() -> None:
 `timeout=`). The answers also reach your `@insim.on` handlers. Asking for a packet that LFS does
 not send on request raises `TypeError` and says which function to use instead.
 
+Some instructions are answered when LFS has done them: loading or moving through a replay
+(`IS_RIP`) and saving a screenshot (`IS_SSH`). Give `request` the packet to send, and it returns
+LFS's reply:
+
+```python
+from lfs_insim.packets import IS_RIP
+
+reply = await insim.request(IS_RIP(MPR=1, RName="race", CTime=60_000), timeout=30)
+if reply.Error > 1:  # 0 and 1 mean done (1: it was already there)
+    print("LFS could not load it:", reply.Error)
+```
+
+Loading or searching a replay can take a while: give it a longer `timeout`. Any other packet
+raises `TypeError` (use `insim.send` for packets that LFS does not answer).
+
 ## Buttons
 
 Buttons are `IS_BTN` packets; clicks come back as `IS_BTC` (and `IS_BTT` for text typed into a

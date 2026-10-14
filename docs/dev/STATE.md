@@ -8,10 +8,10 @@
 > compartidas, `roster.ready()`, `insim.need()`, `insim.reserve_click_ids()`, `@insim.on_close` y
 > `lfs_insim.testing.FakeLFS`. Guías `docs/plugins.md` y `docs/testing.md`; ejemplos como plugins y `together.py`.
 > LFS acepta hasta 8 programas InSim a la vez (W10.0).
-> **▶️ SIGUIENTE: W6** — la cámara libre (`FreeCam`) como plugin, dentro de streamer-project (instala
-> `lfs-insim` desde PyPI); primera versión repetición + plano guionizado. Alcance en `PLAN.md`; cada
-> incomodidad de la biblioteca que aparezca, como tarea aquí. Diseño de plugins en `API_DESIGN.md`
-> («Plugins»); por qué, en `LOG.md` S20.
+> **▶️ SIGUIENTE: W6.2** — el registrador de streamer-project (`tools/insim_logger`) pasa a usar `lfs_insim`
+> (decisión del usuario en S21: antes que la cámara). W6.1 hecha en `dev`, sin publicar: `insim.request(IS_RIP(...))`.
+> Después, W6.3 (`FreeCam`; repetición de prueba `freecam_prueba.mpr` y permiso para usar su LFS). Tareas en
+> `PLAN.md` (W6); por qué, en `LOG.md` S21.
 > **Receta de una versión nueva:** versión y CHANGELOG en
 > `dev`; `verify` en verde; avance rápido de `dev` a `main`; `gh release create vX.Y.Z --target main`
 > (el tag debe ser `v<version>`); aprobar el entorno `pypi` (pedirlo cada vez; con permiso, el agente lo aprueba
@@ -21,7 +21,7 @@
 > módulo propio (los comandos de W8.2, en `_commands.py`). Ver `USER_ACTIONS.md`.
 
 ## Dónde estamos
-Fase activa: **W6** (siguiente; esbozada). W10 hecha y publicada como 0.6.0 en S21.
+Fase activa: **W6** (en curso: W6.1 hecha; siguiente, W6.2, el registrador). W10 hecha y publicada como 0.6.0 en S21.
 
 - **Cómo se genera:** `.venv/Scripts/python scripts/generate_packets.py` lee
   `spec/cache/InSim.txt` y `spec/cache/OutSimPack.txt` (con `scripts/spec_parser.py`) y las

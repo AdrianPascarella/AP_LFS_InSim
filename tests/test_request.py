@@ -7,7 +7,19 @@ from collections.abc import Awaitable, Callable
 import pytest
 
 from lfs_insim import InSim
-from lfs_insim.packets import IS_MSO, IS_NCI, IS_NPL, IS_RES, IS_STA, IS_TINY, IS_VER, TINY
+from lfs_insim.packets import (
+    IS_MSO,
+    IS_MST,
+    IS_NCI,
+    IS_NPL,
+    IS_RES,
+    IS_RIP,
+    IS_SSH,
+    IS_STA,
+    IS_TINY,
+    IS_VER,
+    TINY,
+)
 from lfs_insim.testing import FakeLFS
 
 QUIET = 0.2  # request_all's wait for more answers, short for the tests
@@ -214,5 +226,66 @@ def test_after_news_from_lfs_the_same_request_is_sent_again() -> None:
         assert second_tiny.ReqI != first_tiny.ReqI
         await lfs.send(IS_STA(ReqI=first_tiny.ReqI, NumP=1), IS_STA(ReqI=second_tiny.ReqI, NumP=2))
         assert ((await first).NumP, (await second).NumP) == (1, 2)
+
+    run(test)
+
+
+# Instructions that LFS answers (W6.1): IS_RIP and IS_SSH are sent with a ReqI of their own, and
+# LFS replies with the same packet type and that ReqI when it has done it.
+
+
+def test_request_sends_an_instruction_and_returns_its_reply() -> None:
+    async def test(lfs: FakeLFS, insim: InSim) -> None:
+        load = IS_RIP(MPR=1, CTime=5000, RName="race")
+        waiting = asyncio.ensure_future(insim.request(load))
+        sent = await lfs.wait_for(IS_RIP)
+        assert sent.ReqI not in (0, 1)
+        assert (sent.RName, sent.CTime, sent.MPR) == ("race", 5000, 1)
+        await lfs.send(IS_RIP(ReqI=0, RName="other"))  # not the reply: no ReqI
+        await lfs.send(IS_RIP(ReqI=sent.ReqI, MPR=1, CTime=5000, TTime=60000, RName="race"))
+        reply = await waiting
+        assert (reply.ReqI, reply.TTime) == (sent.ReqI, 60000)
+        assert load.ReqI == 0  # the packet given is not changed
+
+    run(test)
+
+
+def test_request_screenshot() -> None:
+    async def test(lfs: FakeLFS, insim: InSim) -> None:
+        waiting = asyncio.ensure_future(insim.request(IS_SSH(Name="shot")))
+        sent = await lfs.wait_for(IS_SSH)
+        assert sent.Name == "shot" and sent.ReqI not in (0, 1)
+        await lfs.send(IS_SSH(ReqI=sent.ReqI, Error=0, Name="shot"))
+        assert (await waiting).Error == 0
+
+    run(test)
+
+
+def test_the_same_instruction_twice_is_sent_twice() -> None:
+    async def test(lfs: FakeLFS, insim: InSim) -> None:
+        first = asyncio.ensure_future(insim.request(IS_RIP(CTime=1000)))
+        second = asyncio.ensure_future(insim.request(IS_RIP(CTime=1000)))
+        a = await lfs.wait_for(IS_RIP)
+        b = await lfs.wait_for(IS_RIP)
+        assert a.ReqI != b.ReqI
+        await lfs.send(IS_RIP(ReqI=b.ReqI, CTime=1000), IS_RIP(ReqI=a.ReqI, CTime=1000))
+        assert (await first).ReqI == a.ReqI
+        assert (await second).ReqI == b.ReqI
+
+    run(test)
+
+
+def test_a_packet_that_lfs_does_not_answer_is_refused() -> None:
+    async def test(lfs: FakeLFS, insim: InSim) -> None:
+        with pytest.raises(TypeError, match="IS_MST"):
+            await insim.request(IS_MST(Msg="hi"))  # type: ignore[arg-type]
+
+    run(test)
+
+
+def test_an_instruction_without_reply_times_out() -> None:
+    async def test(lfs: FakeLFS, insim: InSim) -> None:
+        with pytest.raises(TimeoutError):
+            await insim.request(IS_RIP(CTime=1000), timeout=0.1)
 
     run(test)

@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- `insim.request(IS_RIP(...))` and `insim.request(IS_SSH(...))`: send an instruction that LFS
+  answers when it is done (load or move through a replay, save a screenshot) and wait for the
+  reply. See [Asking LFS](docs/insim.md#asking-lfs).
+
 ## 0.6.0
 
 - **Breaking:** chat commands are a plugin. `commands = insim.use(Commands)`, then

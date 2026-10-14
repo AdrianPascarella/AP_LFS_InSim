@@ -406,7 +406,7 @@ W10.8).
 **Fuera, a propósito:** manifiestos, carga por carpetas, buscar plugins por nombre, versiones entre plugins y
 activar o desactivar con el programa en marcha (el cargador del proyecto anterior, P4).
 
-## W6 — Primera aplicación aparte   📋 ESBOZADA · siguiente (W10 publicada en 0.6.0)
+## W6 — Primera aplicación aparte   🔜 EN CURSO (S21)
 **Objetivo:** escribir, en un proyecto separado, la primera aplicación real con la biblioteca (la
 cámara libre, que necesita streamer-project) y anotar cada incomodidad como tarea de la biblioteca.
 **Decidido con el usuario en S20:** vive **dentro de streamer-project** (un módulo en `tools/`, que instala
@@ -414,6 +414,19 @@ cámara libre, que necesita streamer-project) y anotar cada incomodidad como tar
 `IS_RIP`, saltar a un instante, coche y vista con `IS_SCC`, y una cámara libre que va de un punto a otro con
 `IS_CPP`). Será un plugin de W10 (`FreeCam`). En `C:\LFS\data\mpr` no hay repeticiones todavía (U36 de
 streamer-project).
+
+**Cambio de orden en S21** (el usuario: «quizás vaya antes pasar el logger que tienen a nuestra librería»):
+primero el **registrador** de streamer-project (`tools/insim_logger`, con su propio socket y `struct`) pasa a
+usar `lfs_insim`; la cámara libre, después. El agente estuvo de acuerdo: se usa en cada partida, tiene tests
+con muestras que hacen de red, y es menos arriesgado que la cámara.
+- [x] **W6.1** — `insim.request(IS_RIP(...))` / `request(IS_SSH(...))`: mandar una instrucción que LFS contesta y
+  esperar la respuesta (lo necesita la cámara para cargar y saltar en una repetición). Hecho en S21, sin publicar.
+- [ ] **W6.2** — El registrador de streamer-project con `lfs_insim` (en aquel repo, W9 de allí); cada incomodidad,
+  como tarea aquí.
+- [ ] **W6.3** — `FreeCam`: repetición + plano guionizado (`IS_RIP`, `IS_SCC`, `IS_CPP`). Repetición de prueba
+  copiada con permiso del usuario en `C:\LFS\data\mprreecam_prueba.mpr` (de `temp_mpr.mpr`, 107 MB). Permiso
+  dado para controlar su LFS en la prueba en real.
+- [ ] **W6.4** — Publicar lo que pidan W6.2 y W6.3 (0.7.0, con permiso del usuario).
 
 ## Ideas (aparcadas, sin compromiso)
 - **Ayudante de botones** (de escribir `examples/buttons.py`, S12): hay que repartir los `ClickID` a

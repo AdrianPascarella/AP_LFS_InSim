@@ -25,7 +25,24 @@ en verde (run 38476654790). `pip install lfs-insim==0.6.0` en un venv limpio: 0.
   se quedó esperando 10 min; el CI ya estaba en verde. Con `gh run list` sin filtro se vio. En la prueba desde
   PyPI importé `lfs_insim.Roster` (está en `lfs_insim.state`): error de la prueba, no del paquete.
 
-**Cierre de S21:** W10 cerrada y publicada; siguiente, W6. 1 acción opcional pendiente (U11).
+**W6 empezada** (el usuario: «Empieza con W6»). Se leyó el protocolo de streamer-project (allí el siguiente era
+W13; W9 es la cámara) y se hizo una sonda de solo lectura al LFS del usuario: abierto, sin partida ni repetición.
+- **Hueco de la biblioteca:** `request()` solo manda `IS_TINY`; no hay forma de mandar un `IS_RIP` y esperar su
+  respuesta. Preguntado, el usuario eligió la recomendada: arreglarlo en la biblioteca (*descartado* un rodeo en
+  FreeCam con un `ReqI` fijo, que podría chocar con los que reparte la biblioteca).
+- **Repetición:** solo había `temp_mpr.mpr`, que LFS sobrescribe; con permiso se copió a `freecam_prueba.mpr`.
+  Permiso también para controlar su LFS en la prueba en real.
+- **Cambio de orden** (el usuario, a mitad: «quizás vaya antes pasar el logger que tienen a nuestra librería»): el
+  agente estuvo de acuerdo (se usa en cada partida, tiene tests de red, menos riesgo). Lo a medias (`request`
+  con paquete, tests ya en rojo): el usuario eligió terminarlo y dejarlo en `dev`.
+
+**W6.1 hecha:** `insim.request(IS_RIP(...))` y `request(IS_SSH(...))` mandan una copia con `ReqI` propio y devuelven
+la respuesta; sin compartir (cada una se manda); otro paquete → `TypeError`. Rojo primero: 4 de 5 tests (el de
+`TypeError` ya fallaba por otro motivo). Mutación «sin copiar el paquete»: rojo. La lógica va en
+`Requests.instruct` para no pasar de 500 líneas en `_connection.py` (se quedó en 499). Guía `insim.md` («Asking
+LFS»), CHANGELOG «Unreleased». `verify` PASS (593 tests).
+
+**0.6.0 publicada;** después, W6 en la misma sesión (abajo).
 
 ## S20 — 2026-10-13 — W6 decidida y aparcada; W10 (plugins) esbozada antes
 

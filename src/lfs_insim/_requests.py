@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import copy
 from collections.abc import Awaitable, Callable, Iterator
 from dataclasses import dataclass, field
 from typing import Any, TypeVar
@@ -34,6 +35,7 @@ from lfs_insim.packets import (
     IS_RIP,
     IS_RST,
     IS_SLC,
+    IS_SSH,
     IS_STA,
     IS_VER,
     TINY,
@@ -67,6 +69,9 @@ MULTI: dict[type[InSimPacket], tuple[TINY, str | None]] = {
 }
 """Answers that come in several packets: the TINY, and the field that says how many there are
 (without one, the answers are taken as complete when no more arrive for a while)."""
+
+INSTRUCTIONS: frozenset[type[InSimPacket]] = frozenset({IS_RIP, IS_SSH})
+"""Instructions that LFS answers with the same packet type and ReqI when it has done them."""
 
 FIRST_REQI = 2
 
@@ -121,6 +126,18 @@ class Requests:
         finally:
             del self._waiting[req_i]
 
+    async def instruct(
+        self, packet: InSimPacket, send: Callable[[Any], None], timeout: float | None
+    ) -> InSimPacket:
+        """Send a copy of an instruction with a ReqI of its own and wait for LFS's reply."""
+        if type(packet) not in INSTRUCTIONS:
+            raise TypeError(not_answered(packet))
+        with self.waiting(type(packet)) as (req_i, waiting):
+            sent: Any = copy.copy(packet)
+            sent.ReqI = req_i  # every packet has ReqI
+            send(sent)
+            return await answer(waiting, timeout)
+
     def deliver(self, packet: InSimPacket) -> None:
         """Hand a packet from LFS to the request it answers, if any."""
         self._arrived += 1
@@ -150,6 +167,13 @@ def wrong_function(reply: type[InSimPacket], function: str) -> str:
     if reply in SINGLE:
         return f"LFS answers with a single {name}: use request({name})"
     return f"{name} is not something LFS sends on request"
+
+
+def not_answered(packet: InSimPacket) -> str:
+    """The TypeError message when request() is given a packet that LFS does not answer."""
+    name = type(packet).__name__
+    answered = ", ".join(sorted(cls.__name__ for cls in INSTRUCTIONS))
+    return f"LFS does not answer {name} with a reply: request() takes {answered} (or a class)"
 
 
 async def answer(waiting: Waiting, timeout: float | None) -> InSimPacket:
