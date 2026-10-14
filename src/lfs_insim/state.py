@@ -40,6 +40,7 @@ from lfs_insim.packets import (
     IS_PLP,
     IS_TINY,
     IS_TOC,
+    ISM,
     NCNF,
     PTYPE,
     TINY,
@@ -181,7 +182,7 @@ class Roster(Plugin):
             if not connection.remote:
                 self._local = packet.UCID
         elif isinstance(packet, IS_ISM):
-            self._guest = not packet.Host
+            self._guest = packet.Host == ISM.GUEST
             if not packet.ReqI:
                 self._ready.clear()  # now, not when _restarted runs: ready() must not say yes
         elif isinstance(packet, IS_TINY) and packet.SubT == TINY.MPE:

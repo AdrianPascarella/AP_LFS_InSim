@@ -14,8 +14,12 @@
   [Packets from their bytes](docs/testing.md#packets-from-their-bytes).
 - `PTYPE` (`FEMALE`, `AI`, `REMOTE`): the bits of `IS_NPL.PType`, e.g.
   `packet.PType & PTYPE.AI`. Also `NCNF` (`IS_NCN.Flags`: `REMOTE`), `SCHF` (`IS_SCH.Flags`:
-  `SHIFT`, `CTRL`) and `HCPF` (`PlayerHCap.Flags` in `IS_PLH`: `SET_MASS`, `SET_TRES`, `SILENT`).
+  `SHIFT`, `CTRL`) and `PLHF` (`PlayerHCap.Flags` in `IS_PLH`: `SET_MASS`, `SET_TRES`, `SILENT`).
   InSim.txt gives these bits only in a comment, so there were no enums.
+- Enums for values that InSim.txt lists only in a comment: `RACING` (`IS_STA.RaceInProg`), `WIND`
+  (`IS_STA.Wind`, `IS_RST.Wind`), `OFFON` (`IS_SFP.OffOn`, `IS_FLG.OffOn`), `ACR` (`IS_ACR.Result`),
+  `ISM` (`IS_ISM.Host`), `FLG` (`IS_FLG.Flag`: `BLUE`, `YELLOW`), `HLVC` (`IS_HLV.HLVC`) and
+  `REPLAY` (`IS_RIP.MPR`). E.g. `if packet.Result == ACR.REJECTED: ...`.
 
 ## 0.6.0
 

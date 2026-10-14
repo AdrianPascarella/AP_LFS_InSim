@@ -128,7 +128,23 @@ BIT_COMMENTS: dict[tuple[str, str], str] = {
     ("IS_NPL", "PType"): "PTYPE",  # bit 0: female / bit 1: AI / bit 2: remote
     ("IS_NCN", "Flags"): "NCNF",  # bit 2: remote
     ("IS_SCH", "Flags"): "SCHF",  # bit 0: SHIFT / bit 1: CTRL
-    ("PlayerHCap", "Flags"): "HCPF",  # bit 0: set Mass / bit 1: set TRes (...) / bit 7: silent
+    ("PlayerHCap", "Flags"): "PLHF",  # bit 0: set Mass / bit 1: set TRes (...) / bit 7: silent
+}
+
+# Fields whose values are listed only in their own comment ("0 = off / 1 = weak / 2 = strong"):
+# (struct, field) -> the IntEnum class they become, as BIT_COMMENTS. Two fields may share a class
+# if their comments give the same values. Left out: IS_STA.ServerStatus ("> 1 = fail") and
+# IS_NCI.License ("1:S1 ..."), whose comments do not list every value.
+VALUE_COMMENTS: dict[tuple[str, str], str] = {
+    ("IS_STA", "RaceInProg"): "RACING",  # 0 = no race / 1 = race / 2 = qualifying
+    ("IS_STA", "Wind"): "WIND",  # 0 = off / 1 = weak / 2 = strong (IS_RST.Wind has no comment)
+    ("IS_SFP", "OffOn"): "OFFON",  # 0 = off / 1 = on
+    ("IS_FLG", "OffOn"): "OFFON",
+    ("IS_ACR", "Result"): "ACR",  # 1 - processed / 2 - rejected / 3 - unknown command
+    ("IS_ISM", "Host"): "ISM",  # 0 = guest / 1 = host
+    ("IS_FLG", "Flag"): "FLG",  # 1 = given blue / 2 = causing yellow
+    ("IS_HLV", "HLVC"): "HLVC",  # 0: ground / 1: wall / 4: speeding / 5: out of bounds
+    ("IS_RIP", "MPR"): "REPLAY",  # 0 = SPR / 1 = MPR
 }
 
 # Class docstrings where the comment above the values in the specification does not describe them.
@@ -137,7 +153,15 @@ CLASS_DOCS: dict[str, str] = {
     "PTYPE": "Kind of player. FEMALE is not reported on a dedicated host",
     "NCNF": "Kind of connection",
     "SCHF": "Keys held with the key of IS_SCH",
-    "HCPF": "Flags of PlayerHCap, in IS_PLH: which handicaps to set. SILENT shows no message",
+    "PLHF": "Flags of PlayerHCap, in IS_PLH: which handicaps to set. SILENT shows no message",
+    "RACING": "Whether a race is in progress",
+    "WIND": "Wind (also IS_RST.Wind)",
+    "OFFON": "Off or on",
+    "ACR": "What LFS did with an admin command",
+    "ISM": "Whether this computer is the host or a guest",
+    "FLG": "Which flag a player is shown",
+    "HLVC": "What a player did wrong on a hot lap",
+    "REPLAY": "Kind of replay: single player (SPR) or multiplayer (MPR)",
     "OSO": "Parts of OutSimPack2 chosen by OutSim Opts in cfg.txt (hexadecimal; 1ff = all of them)",
 }
 
@@ -146,6 +170,8 @@ KEEP_PREFIX: frozenset[str] = frozenset({"AXO"})
 
 # Member names that would not be valid Python identifiers once the prefix is removed.
 MEMBER_NAMES: dict[str, str] = {
+    "FLG_GIVEN_BLUE": "BLUE",  # FLG.BLUE: the comment says "1 = given blue"
+    "FLG_CAUSING_YELLOW": "YELLOW",
     "PENALTY_30": "SECONDS_30",
     "PENALTY_45": "SECONDS_45",
     "JRR_2": "UNUSED_2",  # placeholders in the C enum, kept so the numbering stays visible

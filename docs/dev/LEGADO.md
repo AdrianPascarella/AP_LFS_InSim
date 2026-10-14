@@ -115,11 +115,12 @@
 `src/lfs_insim/insim_enums.py` del anterior (1.611 líneas) tenía ~45 clases que el generador actual no crea,
 porque InSim.txt da esos valores solo en comentarios. Comparado clase a clase con `lfs_insim.packets`:
 - **Bits en el comentario del campo** («bit N: …»): `PTYPE`, `NCN_FLAGS`, `SCH_FLAGS`, `PHC` → hechos en
-  W6.6 y W6.8 con el generador (`BIT_COMMENTS`), como `PTYPE`, `NCNF`, `SCHF` y `HCPF`.
+  W6.6 y W6.8 con el generador (`BIT_COMMENTS`), como `PTYPE`, `NCNF`, `SCHF` y `PLHF`.
 - **Valores en el comentario del campo** («0 = off / 1 = weak / 2 = strong», «0: demo / 1: S1 ...»):
   `RAINPR` (`IS_STA.RaceInProg`), `WIND` (`Wind`), `OFFON` (`IS_SFP` / `IS_PLC`... `OffOn`), `RESULT`
   (`IS_ACR.Result`), `HG` (`IS_ISM.Host`), `LICENSE` (`IS_NCI.License`), `BYF` (`IS_FLG.Flag`), `HLVC`
-  (`IS_HLV.HLVC`), `SMPR` (`IS_RIP.MPR`) → propuesta W6.9: otro mecanismo del generador, como `BIT_COMMENTS`.
+  (`IS_HLV.HLVC`), `SMPR` (`IS_RIP.MPR`) → hechos en W6.9 (`VALUE_COMMENTS`) como `RACING`, `WIND`, `OFFON`,
+  `ACR`, `ISM`, `FLG`, `HLVC` y `REPLAY`; `LICENSE` no (comentario incompleto).
   `SERVER` (`ServerStatus`: «> 1 = fail», abierto) y `LICENSE` («1:S1 ...», incompleto) necesitan cuidado.
 - **Bloques de comentario aparte** («Passengers byte / bit 0 front male...», «Timing» de `IS_RST`, índice
   de checkpoint en los bits 0-1 de `Flags`): `PASS`, `RST_TIMING`, `CPK_INDEX` → mismo problema, otra forma.

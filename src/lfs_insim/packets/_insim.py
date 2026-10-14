@@ -274,7 +274,7 @@ class IS_STA(InfoPacket):
     """Number finished or qualified"""
 
     RaceInProg: int = 0
-    """0 = no race / 1 = race / 2 = qualifying"""
+    """0 = no race / 1 = race / 2 = qualifying (RACING)"""
 
     QualMins: int = 0
 
@@ -291,7 +291,7 @@ class IS_STA(InfoPacket):
     """0,1,2..."""
 
     Wind: int = 0
-    """0 = off / 1 = weak / 2 = strong"""
+    """0 = off / 1 = weak / 2 = strong (WIND)"""
 
     _TYPE = ISP.STA
     _LAYOUT = (
@@ -328,7 +328,7 @@ class IS_SFP(InstructionPacket):
     """the state to set"""
 
     OffOn: int = 0
-    """0 = off / 1 = on"""
+    """0 = off / 1 = on (OFFON)"""
 
     _TYPE = ISP.SFP
     _LAYOUT = (
@@ -460,7 +460,7 @@ class IS_ACR(InfoPacket):
     """set if user is an admin"""
 
     Result: int = 0
-    """1 - processed / 2 - rejected / 3 - unknown command"""
+    """1 - processed / 2 - rejected / 3 - unknown command (ACR)"""
 
     Text: str = ""
     """4, 8, 12... 64 characters - last byte is zero"""
@@ -612,7 +612,7 @@ class IS_ISM(InfoPacket):
     """usually 0 / or if a reply: ReqI as received in the TINY_ISM"""
 
     Host: int = 0
-    """0 = guest / 1 = host"""
+    """0 = guest / 1 = host (ISM)"""
 
     HName: str = ""
     """the name of the host joined or started"""
@@ -727,7 +727,7 @@ class PlayerHCap(Structure):
     """player's unique id"""
 
     Flags: int = 0
-    """bit 0: set Mass / bit 1: set TRes (e.g. Flags=3 to set both) / bit 7: silent (HCPF)"""
+    """bit 0: set Mass / bit 1: set TRes (e.g. Flags=3 to set both) / bit 7: silent (PLHF)"""
 
     H_Mass: int = 0
     """0 to 200 - added mass (kg)"""
@@ -1510,10 +1510,10 @@ class IS_FLG(InfoPacket):
     """player's unique id"""
 
     OffOn: int = 0
-    """0 = off / 1 = on"""
+    """0 = off / 1 = on (OFFON)"""
 
     Flag: int = 0
-    """1 = given blue / 2 = causing yellow"""
+    """1 = given blue / 2 = causing yellow (FLG)"""
 
     CarBehind: int = 0
     """unique id of obstructed player"""
@@ -2119,7 +2119,7 @@ class IS_HLV(InfoPacket):
     """player's unique id"""
 
     HLVC: int = 0
-    """0: ground / 1: wall / 4: speeding / 5: out of bounds"""
+    """0: ground / 1: wall / 4: speeding / 5: out of bounds (HLVC)"""
 
     Time: int = 0
     """time stamp"""
@@ -2539,7 +2539,7 @@ class IS_RIP(BothWaysPacket):
     """0 or 1 = OK / other values are listed below"""
 
     MPR: int = 0
-    """0 = SPR / 1 = MPR"""
+    """0 = SPR / 1 = MPR (REPLAY)"""
 
     Paused: int = 0
     """request: pause on arrival / reply: paused state"""

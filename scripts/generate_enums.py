@@ -9,7 +9,7 @@ from __future__ import annotations
 import keyword
 import re
 import textwrap
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import spec_overrides as overrides
 from spec_parser import Define, Spec, SpecError
@@ -20,8 +20,8 @@ class EnumClass:
     name: str
     doc: str
     members: list[Define]
-    from_c_enum: bool  # values of a C enum (never flags) rather than #defines
-    field: str | None = None  # "IS_NPL.PType": bits named only in that field's comment
+    from_c_enum: bool  # values of a C enum or a comment (never flags) rather than #defines
+    fields: list[str] = field(default_factory=list)  # "IS_NPL.PType": named only in its comment
 
 
 def docstring(text: str, indent: str) -> str:
@@ -76,15 +76,24 @@ def collect_enums(spec: Spec) -> list[EnumClass]:
             classes[target] = EnumClass(target, "", [], False)
         classes[target].members.append(value)
 
-    for (struct_name, field_name), target in overrides.BIT_COMMENTS.items():
+    commented = [(key, cls, bit_members, False) for key, cls in overrides.BIT_COMMENTS.items()]
+    commented += [(key, cls, value_members, True) for key, cls in overrides.VALUE_COMMENTS.items()]
+    for (struct_name, field_name), target, read, never_flags in commented:
         struct = spec.structs.get(struct_name)
         if struct is None:
             continue  # another specification (OutSimPack.txt)
         item = next((f for f in struct.fields if f.name == field_name), None)
         if item is None:
-            raise SpecError(f"{struct_name}.{field_name} is gone (see BIT_COMMENTS)")
-        add(target, "", bit_members(target, item.comment, struct.line), False, struct_name)
-        classes[target].field = f"{struct_name}.{field_name}"
+            raise SpecError(
+                f"{struct_name}.{field_name} is gone (see BIT_COMMENTS / VALUE_COMMENTS)"
+            )
+        members = read(target, item.comment, struct.line)
+        known = classes.get(target)
+        if known is None or not known.fields:
+            add(target, "", members, never_flags, struct_name)
+        elif [(m.name, m.value) for m in known.members] != [(m.name, m.value) for m in members]:
+            raise SpecError(f"{struct_name}.{field_name}: not the same values as {known.fields}")
+        classes[target].fields.append(f"{struct_name}.{field_name}")
 
     for cls in classes.values():
         cls.members.sort(key=lambda m: m.value)
@@ -104,6 +113,22 @@ def bit_members(cls: str, comment: str, line: int) -> list[Define]:
         bit, words, _ = match.groups()
         name = "_".join(words.upper().split())
         members.append(Define(f"{cls}_{name}", 1 << int(bit), part, line))
+    return members
+
+
+VALUE = re.compile(r"^(\d+) ?(?:=|:|-) ?([A-Za-z][A-Za-z0-9 ]*?)\s*(\([^)]*\))?$")
+
+
+def value_members(cls: str, comment: str, line: int) -> list[Define]:
+    """The values of a comment like "0 = off / 1 = weak", named as cls_OFF, cls_WEAK."""
+    members = []
+    for part in comment.split("/"):
+        match = VALUE.match(part := part.strip())
+        if match is None:
+            raise SpecError(f"line {line}: {part!r} is not 'N = name' (see VALUE_COMMENTS)")
+        value, words, _ = match.groups()
+        name = "_".join(words.upper().split())
+        members.append(Define(f"{cls}_{name}", int(value), part, line))
     return members
 
 
@@ -156,8 +181,12 @@ def enum_classes(classes: list[EnumClass]) -> str:
         doc = overrides.CLASS_DOCS.get(cls.name, cls.doc).rstrip(":").strip()
         doc = f"{doc}. " if doc else ""
         out.append(f"\n\nclass {cls.name}({base}):\n")
-        if cls.field is not None:
-            names = f"Bits of {cls.field}, as its comment in InSim.txt describes them (no C names)."
+        if cls.fields:
+            kind = "Values" if cls.from_c_enum else "Bits"
+            names = (
+                f"{kind} of {' and '.join(cls.fields)}, as InSim.txt describes them in a comment "
+                "(no C names)."
+            )
         else:
             names = f"C names: {', '.join(n + '_x' for n in c_names)}."
         out.append(docstring(doc + names, "    "))

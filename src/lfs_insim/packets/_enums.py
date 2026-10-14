@@ -5,6 +5,7 @@
 from enum import IntEnum, IntFlag
 
 __all__ = [
+    "ACR",
     "AIFLAGS",
     "BFN",
     "CCI",
@@ -14,15 +15,17 @@ __all__ = [
     "CSC",
     "DL",
     "DLF",
+    "FLG",
     "FVM",
     "GRG",
-    "HCPF",
+    "HLVC",
     "HOSTF",
     "INST",
     "IS",
     "ISB",
     "ISB_CLICK",
     "ISF",
+    "ISM",
     "ISP",
     "ISS",
     "JRR",
@@ -37,15 +40,19 @@ __all__ = [
     "OBH",
     "OCO",
     "OCO_INDEX",
+    "OFFON",
     "OG",
     "PENALTY",
     "PENR",
     "PIF",
     "PITLANE",
+    "PLHF",
     "PMO",
     "PMOF",
     "PSE",
     "PTYPE",
+    "RACING",
+    "REPLAY",
     "RIF",
     "RIP",
     "RIPOPT",
@@ -61,6 +68,7 @@ __all__ = [
     "UCO",
     "VIEW",
     "VOTE",
+    "WIND",
 ]
 
 
@@ -1718,8 +1726,8 @@ class HOSTF(IntFlag):
 
 class PTYPE(IntFlag):
     """
-    Kind of player. FEMALE is not reported on a dedicated host. Bits of IS_NPL.PType, as its
-    comment in InSim.txt describes them (no C names).
+    Kind of player. FEMALE is not reported on a dedicated host. Bits of IS_NPL.PType, as
+    InSim.txt describes them in a comment (no C names).
     """
 
     FEMALE = 1
@@ -1734,7 +1742,7 @@ class PTYPE(IntFlag):
 
 class NCNF(IntFlag):
     """
-    Kind of connection. Bits of IS_NCN.Flags, as its comment in InSim.txt describes them (no C
+    Kind of connection. Bits of IS_NCN.Flags, as InSim.txt describes them in a comment (no C
     names).
     """
 
@@ -1744,8 +1752,8 @@ class NCNF(IntFlag):
 
 class SCHF(IntFlag):
     """
-    Keys held with the key of IS_SCH. Bits of IS_SCH.Flags, as its comment in InSim.txt
-    describes them (no C names).
+    Keys held with the key of IS_SCH. Bits of IS_SCH.Flags, as InSim.txt describes them in a
+    comment (no C names).
     """
 
     SHIFT = 1
@@ -1755,10 +1763,10 @@ class SCHF(IntFlag):
     """bit 1: CTRL"""
 
 
-class HCPF(IntFlag):
+class PLHF(IntFlag):
     """
     Flags of PlayerHCap, in IS_PLH: which handicaps to set. SILENT shows no message. Bits of
-    PlayerHCap.Flags, as its comment in InSim.txt describes them (no C names).
+    PlayerHCap.Flags, as InSim.txt describes them in a comment (no C names).
     """
 
     SET_MASS = 1
@@ -1769,3 +1777,122 @@ class HCPF(IntFlag):
 
     SILENT = 128
     """bit 7: silent"""
+
+
+class RACING(IntEnum):
+    """
+    Whether a race is in progress. Values of IS_STA.RaceInProg, as InSim.txt describes them in a
+    comment (no C names).
+    """
+
+    NO_RACE = 0
+    """0 = no race"""
+
+    RACE = 1
+    """1 = race"""
+
+    QUALIFYING = 2
+    """2 = qualifying"""
+
+
+class WIND(IntEnum):
+    """
+    Wind (also IS_RST.Wind). Values of IS_STA.Wind, as InSim.txt describes them in a comment (no
+    C names).
+    """
+
+    OFF = 0
+    """0 = off"""
+
+    WEAK = 1
+    """1 = weak"""
+
+    STRONG = 2
+    """2 = strong"""
+
+
+class OFFON(IntEnum):
+    """
+    Off or on. Values of IS_SFP.OffOn and IS_FLG.OffOn, as InSim.txt describes them in a comment
+    (no C names).
+    """
+
+    OFF = 0
+    """0 = off"""
+
+    ON = 1
+    """1 = on"""
+
+
+class ACR(IntEnum):
+    """
+    What LFS did with an admin command. Values of IS_ACR.Result, as InSim.txt describes them in
+    a comment (no C names).
+    """
+
+    PROCESSED = 1
+    """1 - processed"""
+
+    REJECTED = 2
+    """2 - rejected"""
+
+    UNKNOWN_COMMAND = 3
+    """3 - unknown command"""
+
+
+class ISM(IntEnum):
+    """
+    Whether this computer is the host or a guest. Values of IS_ISM.Host, as InSim.txt describes
+    them in a comment (no C names).
+    """
+
+    GUEST = 0
+    """0 = guest"""
+
+    HOST = 1
+    """1 = host"""
+
+
+class FLG(IntEnum):
+    """
+    Which flag a player is shown. Values of IS_FLG.Flag, as InSim.txt describes them in a
+    comment (no C names).
+    """
+
+    BLUE = 1
+    """1 = given blue"""
+
+    YELLOW = 2
+    """2 = causing yellow"""
+
+
+class HLVC(IntEnum):
+    """
+    What a player did wrong on a hot lap. Values of IS_HLV.HLVC, as InSim.txt describes them in
+    a comment (no C names).
+    """
+
+    GROUND = 0
+    """0: ground"""
+
+    WALL = 1
+    """1: wall"""
+
+    SPEEDING = 4
+    """4: speeding"""
+
+    OUT_OF_BOUNDS = 5
+    """5: out of bounds"""
+
+
+class REPLAY(IntEnum):
+    """
+    Kind of replay: single player (SPR) or multiplayer (MPR). Values of IS_RIP.MPR, as InSim.txt
+    describes them in a comment (no C names).
+    """
+
+    SPR = 0
+    """0 = SPR"""
+
+    MPR = 1
+    """1 = MPR"""

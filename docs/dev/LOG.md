@@ -1,7 +1,7 @@
 # 📓 Diario — AP_LFS_InSim (lfs_insim)
 <!-- Solo se añade, lo más nuevo arriba. Una entrada por sesión. -->
 
-## S22 — 2026-10-14 — W6.7 (`request.IS_XXX`, `request_all.IS_XXX`, `instruct.IS_XXX`), W6.5, W6.6 y W6.8 (equipo secundario)
+## S22 — 2026-10-14 — W6.7 (`request.IS_XXX`, `request_all.IS_XXX`, `instruct.IS_XXX`), W6.5, W6.6, W6.8 y W6.9 (equipo secundario)
 
 **Inicio:** `session_start_check` PASS (rama, identidad, pull de lo de S21, plantilla v3). Desajuste:
 `STATE.md` decía que `_connection.py` tenía 496 líneas; tenía 500 (el LOG S21 sí lo decía). Ahora tiene 452.
@@ -75,6 +75,19 @@ lector acepta un paréntesis al final («set TRes (e.g. Flags=3 to set both)»),
   inventados (`WEATHER` con CLEAR/CLOUDY/RAIN, cuando InSim.txt dice «0,1,2...» y depende de la pista).
 - **Nombre dudoso, dicho al usuario:** `HCPF` recuerda a `IS_HCP` (handicaps por coche) y el campo es de
   `IS_PLH` (por jugador); `PLHF` sería más exacto. Sin publicar todavía, cambiarlo es gratis.
+
+**`HCPF` → `PLHF` y W6.9 hecha** (el usuario: «Me parece bien que lo cambies a PLHF, procede con W6.9»).
+- `VALUE_COMMENTS` en `spec_overrides.py`, como `BIT_COMMENTS`: `value_members` lee «N = nombre», «N: nombre»
+  y «N - nombre» separados por «/», y para si el comentario no tiene esa forma. Salen siempre `IntEnum`:
+  por sus valores, `ACR` (1, 2, 3) y `FLG` (1, 2) parecían bits a `is_flags`. Dos campos pueden compartir clase si
+  dan los mismos valores (`OFFON`, de `IS_SFP` e `IS_FLG`); si no, error.
+- **Nombres, elegidos por el agente** (el usuario delegó al decir «procede»): `RACING` (`RaceInProg`; *descartado*
+  `RAINPR` del anterior), `WIND` (también vale para `IS_RST.Wind`, sin comentario), `OFFON`, `ACR` (`Result`),
+  `ISM` (`Host`), `FLG` (`Flag`; `BLUE` y `YELLOW` con `MEMBER_NAMES`, el comentario dice «given blue» /
+  «causing yellow»), `HLVC`, `REPLAY` (`IS_RIP.MPR`: `SPR` / `MPR`; *descartado* `SMPR` del anterior).
+- **Fuera:** `ServerStatus` («> 1 = fail», abierto) y `License` («1:S1 ...», incompleto): un test comprueba
+  que comentarios así paran la generación.
+- `state.py`: `self._guest = packet.Host == ISM.GUEST` (antes `not packet.Host`). CHANGELOG. `verify` PASS.
 
 ## S21 — 2026-10-14 — U12 descartada; 0.6.0 publicada (W10.10)
 

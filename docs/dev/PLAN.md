@@ -437,11 +437,12 @@ con muestras que hacen de red, y es menos arriesgado que la cámara.
 - [x] **W6.8** — Lo mismo para los otros campos con «bit N: …» en su comentario: `IS_NCN.Flags` (bit 2: remote;
   `state.py` tiene `_REMOTE = 4` a mano), `IS_SCH.Flags` (SHIFT, CTRL) e `IS_PLH`/`PlayerHCap.Flags` (set Mass,
   set TRes, silent). Basta una línea en `BIT_COMMENTS` cada uno; falta elegir los nombres de las clases. Hecho en
-  S22: `NCNF`, `SCHF`, `HCPF` (nombres aceptados por el usuario) → LOG.md S22.
-- [ ] **W6.9** — *Propuesta, sin decidir:* los valores que InSim.txt da en el comentario de un campo («0 = off /
+  S22: `NCNF`, `SCHF`, `PLHF` (nombres aceptados por el usuario; `HCPF` pasó a `PLHF`) → LOG.md S22.
+- [x] **W6.9** — Los valores que InSim.txt da en el comentario de un campo («0 = off /
   1 = weak / 2 = strong»): `RaceInProg`, `Wind`, `OffOn`, `IS_ACR.Result`, `IS_ISM.Host`, `IS_FLG.Flag`, `HLVC`,
   `IS_RIP.MPR`... El anterior los tenía a mano (`LEGADO.md` §7). Otro mecanismo del generador como
-  `BIT_COMMENTS`; falta decidir cuáles y sus nombres.
+  `BIT_COMMENTS`. Hecho en S22 (`VALUE_COMMENTS`; nombres elegidos por el agente, el usuario: «procede con
+  W6.9») → LOG.md S22. Fuera: `ServerStatus` y `License`, cuyo comentario no da todos los valores.
 - [x] **W6.7** — `insim.request.IS_XXX()`, `insim.request_all.IS_XXX()` e `insim.instruct.IS_XXX(...)` (propuesto
   por el usuario en S22: el mismo problema que W7 con `on` y `send`). Sustituye la forma `request(IS_RIP(...))`
   de W6.1 (sin publicar). Hecho en S22 → LOG.md S22; decisión en `API_DESIGN.md`.
