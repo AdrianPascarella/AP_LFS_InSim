@@ -501,6 +501,9 @@ de pantalla) se pide antes, con copia de lo que se toque. Lo que necesita a otra
   `group_h.py` ya sirve: avisa en una nota de si su InSim es el del anfitrión.
   S24: el `LFS.exe` del juego no aloja servidores dedicados (`/host=` no existe); hace falta el paquete aparte
   «LFS dedicated host» de lfs.net (instalar software: otro permiso).
+  S25: permiso dado, pero **no hay servidor dedicado para la 0.8C**: el hilo «0.8C Downloads and Updates» solo
+  trae el juego; en lfs.net solo está el de 0.6V (`LFS_S3_DCON_6V.zip`, InSim antiguo). **Bloqueada** hasta que
+  lo publiquen, o con un servidor alojado (LFS hosting, InSim por IP) o de otra persona.
 - [x] **W11.12** — (S24) Documentar en `docs/insim.md` que con «Create new host» de LFS 0.8C32 el juego es un
   invitado admin (UCID 1) y su InSim no puede usar lo de anfitrión (`IS_MTC`, `SMALL_ALC`…); y en `say(to=...)`. Hecho en S24 → LOG.md S24.
 - [ ] **W11.10** — Lo que queda del grupo A, que necesita tu coche en pista (o una IA en boxes): `PIT`/`PSF`,

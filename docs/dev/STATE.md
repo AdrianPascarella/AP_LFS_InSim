@@ -1,5 +1,5 @@
 # 📍 Estado — AP_LFS_InSim (lfs_insim)
-> Actualizado: 2026-10-14 (S24), equipo principal. **`lfs-insim` 0.8.0 publicada (S24)**: `InSim(udp_port=...)`
+> Actualizado: 2026-10-15 (S25), equipo principal. **`lfs-insim` 0.8.0 publicada (S24)**: `InSim(udp_port=...)`
 > (probado en real), notas de lo visto en LFS en los docstrings, docs de «Create new host». **W11.2 hecha (S24):** batería en vivo en `tests/live/`
 > (`harness.py`: `Session` con `expect` / `check` / `screen` e informe con lo visto en cada sentido;
 > `group_a.py`: secciones `requests setup race sends udp finish`, `--only`; `probe.py`, antes `tests/live_lfs.py`).
@@ -22,10 +22,9 @@
 > **W11.4 (grupo E) hecha y W11.5 (grupo H) a medias (S24):** `group_e.py` y `group_h.py`; notas nuevas
 > (`IS_TTC` y `PMO_GET_Z` necesitan `ReqI`). En LFS 0.8C32 «Crear servidor nuevo» deja al juego como invitado admin:
 > lo de anfitrión necesita un servidor dedicado (W11.11).
-> **▶️ SIGUIENTE:** W11.11 necesita el paquete «LFS dedicated host» de lfs.net (el `LFS.exe` del juego no aloja
-> servidores dedicados): pedir permiso para descargarlo e instalarlo (fuera de `C:\LFS`). Sin él: W11.10 (lo del
-> grupo A que pide un coche en pista) o W11.6 (tarjeta del grupo P). Antes de lanzar LFS con opciones, copia de
-> `cfg.txt` (§13). El
+> **W11.11 bloqueada (S25):** no hay servidor dedicado de la 0.8C publicado (solo el de 0.6V). **▶️ SIGUIENTE:**
+> W11.10 (lo del grupo A que pide un coche en pista: el usuario conduce o una IA en boxes) o W11.6 (tarjeta del
+> grupo P, con otra persona). Antes de lanzar LFS con opciones, copia de `cfg.txt` (§13). El
 > permiso del grupo A (S23) vale para repetir `group_a.py`; sin tocar `cfg.txt`. LFS quedó cerrado al final de
 > S24 (lo abrió el agente; `/exit` por InSim). Los demás grupos, cada uno con su permiso; el grupo P, en una tarjeta. La
 > > biblioteca tiene la API de alto nivel (`@insim.on.IS_NPL`, `insim.send.IS_MST(...)`, `received` / `sent`,

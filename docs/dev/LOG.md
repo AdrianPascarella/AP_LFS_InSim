@@ -1,6 +1,22 @@
 # 📓 Diario — AP_LFS_InSim (lfs_insim)
 <!-- Solo se añade, lo más nuevo arriba. Una entrada por sesión. -->
 
+## S25 — 2026-10-15 — W11.11: no hay servidor dedicado para la 0.8C
+
+**Contexto:** misma conversación que S24, al día siguiente. El usuario dio permiso para descargar e instalar el
+servidor dedicado («Te doy permiso»).
+
+**Búsqueda, sin descargar nada:** la página de descargas de lfs.net (con la sesión del usuario en Chrome) solo
+lista el juego 0.8C31 y sus parches; el hilo «0.8C Downloads and Updates» (114808) igual; el de «Quick Start /
+FAQ…» (113235) no menciona servidores dedicados. Con cabeceras HTTP: `download/LFS_S3_DCON_6V.zip` existe
+(1,9 MB, el que usa un Dockerfile de terceros) pero es 0.6V, con un InSim anterior al 10 que usa la biblioteca;
+`download/LFS_S3_DCON_7G.zip`, `..._8C31`, `..._8C32`, `..._8C` dan 404 (`file_lfs.php` responde 200 a
+cualquier nombre: no sirve para saber si existe).
+
+**Decisión:** no instalar el de 0.6V (no probaría lo que usa la biblioteca). W11.11 queda **bloqueada**: hasta
+que se publique un servidor dedicado de la 0.8C, o con un servidor alojado (servicio de hosting de LFS, InSim por
+IP) o el de otra persona (grupo P). Nada cambió en `C:\LFS`.
+
 ## S24 — 2026-10-14 — W11.2: batería en vivo (`tests/live/`); W11.3: grupo A en el LFS real
 
 **Inicio:** `session_start_check` PASS (nada que traer). `verify` PASS (613). Equipo principal. LFS cerrado.
