@@ -61,6 +61,8 @@ de streamer-project. Lo que importa aquí:
 
 **0.6.0 publicada;** después, W6 en la misma sesión (abajo).
 
+**Cierre de S21** (el usuario: «Deja todo listo para continuar en la siguiente sesión»). Siguiente: W6.3, la cámara libre. Antes de escribirla, el usuario tiene que decir qué es un plano: propuesta del agente anotada en `STATE.md`. W6.5 y W6.6 (pequeñas) entrarían en 0.7.0 con la cámara. 1 acción del usuario pendiente aquí (U11); en streamer-project, U37 y U36. La repetición `freecam_prueba` quedó cargada en el LFS del usuario.
+
 ## S20 — 2026-10-13 — W6 decidida y aparcada; W10 (plugins) esbozada antes
 
 **Inicio:** `session_start_check` PASS (rama, identidad, pull, plantilla v3). Documentos y realidad coinciden

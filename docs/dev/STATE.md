@@ -8,7 +8,8 @@
 > compartidas, `roster.ready()`, `insim.need()`, `insim.reserve_click_ids()`, `@insim.on_close` y
 > `lfs_insim.testing.FakeLFS`. Guías `docs/plugins.md` y `docs/testing.md`; ejemplos como plugins y `together.py`.
 > LFS acepta hasta 8 programas InSim a la vez (W10.0).
-> **▶️ SIGUIENTE: W6.3** — `FreeCam` en streamer-project (W9.1 de allí): repetición + plano guionizado. La
+> **▶️ SIGUIENTE: W6.3** — `FreeCam` en streamer-project (W9.1 de allí): repetición + plano guionizado.
+> **Pregunta abierta al usuario (fin de S21), lo primero de la próxima sesión:** qué es «un plano». Propuesta del agente, sin respuesta todavía: un archivo pequeño con una lista de pasos: ir a un instante de la repetición; seguir a un coche con una vista del juego (`IS_SCC`); cámara libre de A a B en N segundos, con posición y hacia dónde mira (`IS_CPP`, LFS suaviza); esperar N segundos. Más adelante, planos generados desde los eventos del registrador. Con eso se graban tomas concretas con OBS. La
 > repetición `freecam_prueba.mpr` está cargada en el LFS del usuario y hay permiso para usarlo. **W6.2 hecha** en
 > S21: el registrador de streamer-project usa `lfs_insim` 0.6.0 (mismos eventos que antes). W6.1 en `dev` y
 > probada en real (`request(IS_RIP(...))`), sin publicar. Pendientes pequeñas: W6.5 (leer un paquete de sus
