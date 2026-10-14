@@ -39,7 +39,7 @@ W13; W9 es la cámara) y se hizo una sonda de solo lectura al LFS del usuario: a
 **W6.1 hecha:** `insim.request(IS_RIP(...))` y `request(IS_SSH(...))` mandan una copia con `ReqI` propio y devuelven
 la respuesta; sin compartir (cada una se manda); otro paquete → `TypeError`. Rojo primero: 4 de 5 tests (el de
 `TypeError` ya fallaba por otro motivo). Mutación «sin copiar el paquete»: rojo. La lógica va en
-`Requests.instruct` para no pasar de 500 líneas en `_connection.py` (se quedó en 499). Guía `insim.md` («Asking
+`Requests.instruct` para no pasar de 500 líneas en `_connection.py` (se quedó en 500, justo en el límite: lo siguiente, en otro módulo). Guía `insim.md` («Asking
 LFS»), CHANGELOG «Unreleased». `verify` PASS (593 tests).
 
 **0.6.0 publicada;** después, W6 en la misma sesión (abajo).

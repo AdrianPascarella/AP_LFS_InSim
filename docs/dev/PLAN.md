@@ -424,7 +424,7 @@ con muestras que hacen de red, y es menos arriesgado que la cámara.
 - [ ] **W6.2** — El registrador de streamer-project con `lfs_insim` (en aquel repo, W9 de allí); cada incomodidad,
   como tarea aquí.
 - [ ] **W6.3** — `FreeCam`: repetición + plano guionizado (`IS_RIP`, `IS_SCC`, `IS_CPP`). Repetición de prueba
-  copiada con permiso del usuario en `C:\LFS\data\mprreecam_prueba.mpr` (de `temp_mpr.mpr`, 107 MB). Permiso
+  copiada con permiso del usuario en `C:\LFS\data\mpr\freecam_prueba.mpr` (de `temp_mpr.mpr`, 107 MB). Permiso
   dado para controlar su LFS en la prueba en real.
 - [ ] **W6.4** — Publicar lo que pidan W6.2 y W6.3 (0.7.0, con permiso del usuario).
 
