@@ -88,6 +88,12 @@ lector acepta un paréntesis al final («set TRes (e.g. Flags=3 to set both)»),
 - **Fuera:** `ServerStatus` («> 1 = fail», abierto) y `License` («1:S1 ...», incompleto): un test comprueba
   que comentarios así paran la generación.
 - `state.py`: `self._guest = packet.Host == ISM.GUEST` (antes `not packet.Host`). CHANGELOG. `verify` PASS.
+- Nombres aceptados por el usuario («Perfecto»).
+
+**Cierre de S22** (el usuario: «cierra la sesión siguiendo el protocolo»). La pregunta de qué es «un plano» llevaba
+dos sesiones solo en el chat y en `STATE.md`: ahora es la tarjeta **U13** (bloquea W6.3), como pide §4.2. Siguiente:
+U13 y W6.3 en el equipo principal; luego W6.4 (0.7.0). CI `verify` y `spec` en verde en cada commit de la sesión.
+Commits: `W6.7`, `W6.5`, `W6.6`, `W6.8`, `W6.9` y este cierre.
 
 ## S21 — 2026-10-14 — U12 descartada; 0.6.0 publicada (W10.10)
 

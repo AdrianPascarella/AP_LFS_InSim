@@ -14,10 +14,11 @@
 > LFS acepta hasta 8 programas InSim a la vez (W10.0).
 > **▶️ SIGUIENTE: W6.3** — `FreeCam` en streamer-project (W9.1 de allí): repetición + plano guionizado; necesita
 > el equipo principal (LFS y streamer-project). FreeCam usará `instruct.IS_RIP(...)` (`request(IS_RIP(...))` ya no existe).
-> **Pregunta abierta al usuario (fin de S21), lo primero de la próxima sesión:** qué es «un plano». Propuesta del agente, sin respuesta todavía: un archivo pequeño con una lista de pasos: ir a un instante de la repetición; seguir a un coche con una vista del juego (`IS_SCC`); cámara libre de A a B en N segundos, con posición y hacia dónde mira (`IS_CPP`, LFS suaviza); esperar N segundos. Más adelante, planos generados desde los eventos del registrador. Con eso se graban tomas concretas con OBS. La
+> **Antes de W6.3, U13:** que el usuario diga qué es «un plano» (la propuesta del agente está en la tarjeta). La
 > repetición `freecam_prueba.mpr` está cargada en el LFS del usuario y hay permiso para usarlo. **W6.2 hecha** en
 > S21: el registrador de streamer-project usa `lfs_insim` 0.6.0 (mismos eventos que antes). W6.1 (con la forma de W6.7) en `dev`,
-> probada en real en S21, sin publicar. Tareas en `PLAN.md` (W6); por qué, en `LOG.md` S21.
+> probada en real en S21, sin publicar. Después de W6.3, W6.4: publicar 0.7.0 (con permiso; CHANGELOG
+> «Unreleased» ya tiene W6.1, W6.5–W6.9). Tareas en `PLAN.md` (W6); por qué, en `LOG.md` S21 y S22.
 > **Receta de una versión nueva:** versión y CHANGELOG en
 > `dev`; `verify` en verde; avance rápido de `dev` a `main`; `gh release create vX.Y.Z --target main`
 > (el tag debe ser `v<version>`); aprobar el entorno `pypi` (pedirlo cada vez; con permiso, el agente lo aprueba
@@ -54,8 +55,8 @@ El proyecto anterior está en la rama `refactor/estabilizacion` y en las etiquet
 consulta, no se copia.
 
 ## Lo que te espera
-1 pendiente, opcional y sin bloquear nada: U11 (comando de otra persona como invitado) → `USER_ACTIONS.md`.
-U12 descartada por el usuario en S21.
+2 pendientes → `USER_ACTIONS.md`: **U13** (qué es «un plano»; **bloquea W6.3**, lo primero de la próxima sesión) y
+U11 (opcional: comando de otra persona como invitado). U12 descartada por el usuario en S21.
 
 ## Tests inestables (arreglados en S14)
 `tests/test_every.py` fallaba a veces solo en el Windows del CI (3.12 y 3.13). Causa comprobada: en

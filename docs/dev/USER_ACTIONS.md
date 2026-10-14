@@ -1,10 +1,25 @@
 # 🙋 Tus acciones — AP_LFS_InSim (lfs_insim)
-> **1 pendiente (no bloquea)** · actualizado en S21 · U11 cuando haya alguien más en tu servidor
+> **2 pendientes (U13 bloquea W6.3)** · actualizado en S22 · U13 lo primero de la próxima sesión; U11 cuando haya
+> alguien más en tu servidor
 >
 > Todo lo de aquí necesita tus manos o tu criterio: el agente no puede hacerlo o no puede
 > comprobarlo. **Nunca editas este archivo**: cuéntale el resultado al agente y él cerrará la tarjeta.
 
 ## ⏳ Pendientes
+
+### U13 — Decir qué es «un plano» de la cámara libre          ⏳ · bloquea: W6.3 · abierta en S21 (tarjeta en S22)
+**Tipo:** decidir          **Tiempo:** ~5 min, sin el LFS delante
+**Por qué:** `FreeCam` (W6.3) graba «planos guionizados» sobre una repetición, y el agente no puede elegir por ti
+qué tiene que poder describir uno: de eso depende el formato del archivo y lo que se programa.
+**Pasos:**
+  1. Lee la propuesta del agente: un archivo pequeño con una lista de pasos que se ejecutan en orden:
+     ir a un instante de la repetición; seguir a un coche con una vista del juego (`IS_SCC`); cámara libre de A a B
+     en N segundos, con posición y hacia dónde mira (`IS_CPP`, LFS suaviza); esperar N segundos. Más adelante,
+     planos generados a partir de los eventos del registrador. Con eso grabas tomas concretas con OBS.
+  2. Di si te vale tal cual, qué le quitarías o añadirías, o qué tenías tú en mente.
+**Resultado esperado:** una respuesta con la que el agente pueda escribir el formato del plano.
+**Señales de fallo:** —
+**Si falla, dime:** —
 
 ### U11 — Probar que, como invitado, los comandos de otra persona se ignoran          ⏳ · bloquea: nada · abierta en S19
 **Tipo:** validar          **Tiempo:** ~5 min, con una segunda persona en tu servidor «testing»
