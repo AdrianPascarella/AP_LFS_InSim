@@ -13,7 +13,9 @@
   It refuses bytes left over after the packet. See
   [Packets from their bytes](docs/testing.md#packets-from-their-bytes).
 - `PTYPE` (`FEMALE`, `AI`, `REMOTE`): the bits of `IS_NPL.PType`, e.g.
-  `packet.PType & PTYPE.AI`. InSim.txt gives them only in a comment, so there was no enum.
+  `packet.PType & PTYPE.AI`. Also `NCNF` (`IS_NCN.Flags`: `REMOTE`), `SCHF` (`IS_SCH.Flags`:
+  `SHIFT`, `CTRL`) and `HCPF` (`PlayerHCap.Flags` in `IS_PLH`: `SET_MASS`, `SET_TRES`, `SILENT`).
+  InSim.txt gives these bits only in a comment, so there were no enums.
 
 ## 0.6.0
 

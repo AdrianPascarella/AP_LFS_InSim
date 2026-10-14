@@ -1,7 +1,7 @@
 # 📓 Diario — AP_LFS_InSim (lfs_insim)
 <!-- Solo se añade, lo más nuevo arriba. Una entrada por sesión. -->
 
-## S22 — 2026-10-14 — W6.7 (`request.IS_XXX`, `request_all.IS_XXX`, `instruct.IS_XXX`), W6.5 y W6.6 (equipo secundario)
+## S22 — 2026-10-14 — W6.7 (`request.IS_XXX`, `request_all.IS_XXX`, `instruct.IS_XXX`), W6.5, W6.6 y W6.8 (equipo secundario)
 
 **Inicio:** `session_start_check` PASS (rama, identidad, pull de lo de S21, plantilla v3). Desajuste:
 `STATE.md` decía que `_connection.py` tenía 496 líneas; tenía 500 (el LOG S21 sí lo decía). Ahora tiene 452.
@@ -63,6 +63,18 @@ avisar). `state.py` usaba `_AI = 2` a mano: ahora `PTYPE.AI`. Tests en `tests/te
 comentario cambiado → error, un `IS_NPL` de bytes). `verify` PASS (604).
 - **Encontrado:** otros tres campos con «bit N:» en el comentario (`IS_NCN.Flags`, con `_REMOTE = 4` a mano en
   `state.py`; `IS_SCH.Flags`; los `Flags` de handicaps) → W6.8, falta elegir nombres.
+
+**W6.8 hecha** (el usuario: «Me valen. De hecho ya tenía algo similar pero hecho a mano en la versión antigua.
+Échale un vistazo»). `NCNF` (`IS_NCN.Flags`: `REMOTE`), `SCHF` (`IS_SCH.Flags`: `SHIFT`, `CTRL`) y `HCPF`
+(`PlayerHCap.Flags` de `IS_PLH`: `SET_MASS`, `SET_TRES`, `SILENT`), una línea cada uno en `BIT_COMMENTS`. El
+lector acepta un paréntesis al final («set TRes (e.g. Flags=3 to set both)»), que va a la ayuda y no al nombre.
+`state.py` usaba `_REMOTE = 4` a mano: ahora `NCNF.REMOTE`. `verify` PASS.
+- **Revisión del anterior** (`insim_enums.py`, ~45 clases que el actual no tiene): anotada en `LEGADO.md` §7.
+  Cuatro eran estos bits (allí `PTYPE`, `NCN_FLAGS`, `SCH_FLAGS`, `PHC`). Otros nueve son valores en el
+  comentario del campo («0 = off / 1 = weak») → **W6.9, propuesta sin decidir**. Algunos son dudosos o
+  inventados (`WEATHER` con CLEAR/CLOUDY/RAIN, cuando InSim.txt dice «0,1,2...» y depende de la pista).
+- **Nombre dudoso, dicho al usuario:** `HCPF` recuerda a `IS_HCP` (handicaps por coche) y el campo es de
+  `IS_PLH` (por jugador); `PLHF` sería más exacto. Sin publicar todavía, cambiarlo es gratis.
 
 ## S21 — 2026-10-14 — U12 descartada; 0.6.0 publicada (W10.10)
 

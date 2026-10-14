@@ -110,3 +110,22 @@
 - A1 por anotaciones de tipo; A2 con `admin=True` y `allow=función`; A4 fuera de W8 (fase propia con la
   aplicación de botones delante); 0.3.0 tras W8.1. La tabla de direcciones ya es pública (`docs/packets.md`, S16).
   Detalle en `PLAN.md`, W8.
+
+## 7. Enums escritos a mano en el anterior (S22, revisado a petición del usuario)
+`src/lfs_insim/insim_enums.py` del anterior (1.611 líneas) tenía ~45 clases que el generador actual no crea,
+porque InSim.txt da esos valores solo en comentarios. Comparado clase a clase con `lfs_insim.packets`:
+- **Bits en el comentario del campo** («bit N: …»): `PTYPE`, `NCN_FLAGS`, `SCH_FLAGS`, `PHC` → hechos en
+  W6.6 y W6.8 con el generador (`BIT_COMMENTS`), como `PTYPE`, `NCNF`, `SCHF` y `HCPF`.
+- **Valores en el comentario del campo** («0 = off / 1 = weak / 2 = strong», «0: demo / 1: S1 ...»):
+  `RAINPR` (`IS_STA.RaceInProg`), `WIND` (`Wind`), `OFFON` (`IS_SFP` / `IS_PLC`... `OffOn`), `RESULT`
+  (`IS_ACR.Result`), `HG` (`IS_ISM.Host`), `LICENSE` (`IS_NCI.License`), `BYF` (`IS_FLG.Flag`), `HLVC`
+  (`IS_HLV.HLVC`), `SMPR` (`IS_RIP.MPR`) → propuesta W6.9: otro mecanismo del generador, como `BIT_COMMENTS`.
+  `SERVER` (`ServerStatus`: «> 1 = fail», abierto) y `LICENSE` («1:S1 ...», incompleto) necesitan cuidado.
+- **Bloques de comentario aparte** («Passengers byte / bit 0 front male...», «Timing» de `IS_RST`, índice
+  de checkpoint en los bits 0-1 de `Flags`): `PASS`, `RST_TIMING`, `CPK_INDEX` → mismo problema, otra forma.
+- **Invenciones o dudosos:** `WEATHER` (InSim.txt dice «0,1,2...»: depende de la pista, CLEAR/CLOUDY/RAIN
+  no sale de ninguna parte), `CARS` (bits de coche de `IS_PLC`: comprobar en InSim.txt), `CHARS`
+  (`ord('A')`...), `IS_RECT` (zona de botones), `GEAR`, `STEER`, `HEADLIGHTS`... (valores de `CS_x` de
+  `AIInputVal`, que el actual ya da como `CS`), `LFS_LIMITS`, `AD_NOAD`, `MOD_BIT`, `CAR_CONFIG`.
+  Sin propuesta: solo si una aplicación los pide.
+

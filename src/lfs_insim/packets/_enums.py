@@ -16,6 +16,7 @@ __all__ = [
     "DLF",
     "FVM",
     "GRG",
+    "HCPF",
     "HOSTF",
     "INST",
     "IS",
@@ -31,6 +32,7 @@ __all__ = [
     "LFS",
     "LID",
     "MSO",
+    "NCNF",
     "NRM",
     "OBH",
     "OCO",
@@ -48,6 +50,7 @@ __all__ = [
     "RIP",
     "RIPOPT",
     "SAI",
+    "SCHF",
     "SETF",
     "SMALL",
     "SND",
@@ -1727,3 +1730,42 @@ class PTYPE(IntFlag):
 
     REMOTE = 4
     """bit 2: remote"""
+
+
+class NCNF(IntFlag):
+    """
+    Kind of connection. Bits of IS_NCN.Flags, as its comment in InSim.txt describes them (no C
+    names).
+    """
+
+    REMOTE = 4
+    """bit 2: remote"""
+
+
+class SCHF(IntFlag):
+    """
+    Keys held with the key of IS_SCH. Bits of IS_SCH.Flags, as its comment in InSim.txt
+    describes them (no C names).
+    """
+
+    SHIFT = 1
+    """bit 0: SHIFT"""
+
+    CTRL = 2
+    """bit 1: CTRL"""
+
+
+class HCPF(IntFlag):
+    """
+    Flags of PlayerHCap, in IS_PLH: which handicaps to set. SILENT shows no message. Bits of
+    PlayerHCap.Flags, as its comment in InSim.txt describes them (no C names).
+    """
+
+    SET_MASS = 1
+    """bit 0: set Mass"""
+
+    SET_TRES = 2
+    """bit 1: set TRes (e.g. Flags=3 to set both)"""
+
+    SILENT = 128
+    """bit 7: silent"""

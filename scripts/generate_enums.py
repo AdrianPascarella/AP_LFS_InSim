@@ -91,7 +91,7 @@ def collect_enums(spec: Spec) -> list[EnumClass]:
     return list(classes.values())
 
 
-BIT = re.compile(r"^bit (\d+): ([A-Za-z][A-Za-z ]*)$")
+BIT = re.compile(r"^bit (\d+): ([A-Za-z][A-Za-z ]*?)\s*(\([^)]*\))?$")  # an aside in brackets
 
 
 def bit_members(cls: str, comment: str, line: int) -> list[Define]:
@@ -101,9 +101,9 @@ def bit_members(cls: str, comment: str, line: int) -> list[Define]:
         match = BIT.match(part := part.strip())
         if match is None:
             raise SpecError(f"line {line}: {part!r} is not 'bit N: name' (see BIT_COMMENTS)")
-        bit, words = match.groups()
+        bit, words, _ = match.groups()
         name = "_".join(words.upper().split())
-        members.append(Define(f"{cls}_{name}", 1 << int(bit), f"bit {bit}: {words}", line))
+        members.append(Define(f"{cls}_{name}", 1 << int(bit), part, line))
     return members
 
 

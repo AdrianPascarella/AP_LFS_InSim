@@ -40,14 +40,13 @@ from lfs_insim.packets import (
     IS_PLP,
     IS_TINY,
     IS_TOC,
+    NCNF,
     PTYPE,
     TINY,
 )
 from lfs_insim.packets._structure import InSimPacket
 
 __all__ = ["Connection", "Player", "Roster"]
-
-_REMOTE = 4  # IS_NCN.Flags bit 2
 
 
 @dataclass(eq=False)
@@ -178,7 +177,7 @@ class Roster(Plugin):
             connection.username = packet.UName
             connection.name = packet.PName
             connection.admin = bool(packet.Admin)
-            connection.remote = bool(packet.Flags & _REMOTE)
+            connection.remote = bool(packet.Flags & NCNF.REMOTE)
             if not connection.remote:
                 self._local = packet.UCID
         elif isinstance(packet, IS_ISM):

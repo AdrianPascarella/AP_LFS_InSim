@@ -126,12 +126,18 @@ COMMENT_VALUES: dict[str, str] = {
 # comment in capitals; a comment that no longer reads like that stops the generation.
 BIT_COMMENTS: dict[tuple[str, str], str] = {
     ("IS_NPL", "PType"): "PTYPE",  # bit 0: female / bit 1: AI / bit 2: remote
+    ("IS_NCN", "Flags"): "NCNF",  # bit 2: remote
+    ("IS_SCH", "Flags"): "SCHF",  # bit 0: SHIFT / bit 1: CTRL
+    ("PlayerHCap", "Flags"): "HCPF",  # bit 0: set Mass / bit 1: set TRes (...) / bit 7: silent
 }
 
 # Class docstrings where the comment above the values in the specification does not describe them.
 CLASS_DOCS: dict[str, str] = {
     "OCO_INDEX": "Index byte of IS_OCO: which start lights to override",
     "PTYPE": "Kind of player. FEMALE is not reported on a dedicated host",
+    "NCNF": "Kind of connection",
+    "SCHF": "Keys held with the key of IS_SCH",
+    "HCPF": "Flags of PlayerHCap, in IS_PLH: which handicaps to set. SILENT shows no message",
     "OSO": "Parts of OutSimPack2 chosen by OutSim Opts in cfg.txt (hexadecimal; 1ff = all of them)",
 }
 

@@ -589,7 +589,7 @@ class IS_SCH(InstructionPacket):
     """key to press"""
 
     Flags: int = 0
-    """bit 0: SHIFT / bit 1: CTRL"""
+    """bit 0: SHIFT / bit 1: CTRL (SCHF)"""
 
     _TYPE = ISP.SCH
     _LAYOUT = (
@@ -727,7 +727,7 @@ class PlayerHCap(Structure):
     """player's unique id"""
 
     Flags: int = 0
-    """bit 0: set Mass / bit 1: set TRes (e.g. Flags=3 to set both) / bit 7: silent"""
+    """bit 0: set Mass / bit 1: set TRes (e.g. Flags=3 to set both) / bit 7: silent (HCPF)"""
 
     H_Mass: int = 0
     """0 to 200 - added mass (kg)"""
@@ -851,7 +851,7 @@ class IS_NCN(InfoPacket):
     """number of connections including host"""
 
     Flags: int = 0
-    """bit 2: remote"""
+    """bit 2: remote (NCNF)"""
 
     _TYPE = ISP.NCN
     _LAYOUT = (
