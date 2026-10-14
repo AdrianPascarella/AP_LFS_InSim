@@ -280,12 +280,18 @@ class InSim(StopsOnError):
         """Connect once and send IS_ISI; packets are then dispatched in the background.
 
         Raises OSError if LFS cannot be reached, and does not reconnect: for that, use
-        `async with insim:` or `run()`.
+        `async with insim:` or `run()`. The on_connect functions run, and on_disconnect when it
+        ends, as with those.
         """
         reader, self._writer = await asyncio.open_connection(self.host, self.port)
         self._accepted = False
         self.send(self._isi)
         self._reader_task = asyncio.create_task(self._read(reader))
+        log.info("connected to LFS at %s:%d", self.host, self.port)
+        self._connections += 1
+        self._announced = True
+        for handler in self._connect_handlers:
+            self._handlers.call(handler, (), "on_connect")
 
     async def close(self) -> None:
         """Stop reconnecting, send TINY_CLOSE, close the connection, cancel running handlers.
@@ -358,11 +364,6 @@ class InSim(StopsOnError):
                         error,
                     )
             else:
-                log.info("connected to LFS at %s:%d", self.host, self.port)
-                self._connections += 1
-                self._announced = True
-                for handler in self._connect_handlers:
-                    self._handlers.call(handler, (), "on_connect")
                 if self._reader_task is not None:
                     await asyncio.wait([self._reader_task])
                 if self._accepted:

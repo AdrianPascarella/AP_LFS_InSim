@@ -20,6 +20,9 @@
   (`IS_STA.Wind`, `IS_RST.Wind`), `OFFON` (`IS_SFP.OffOn`, `IS_FLG.OffOn`), `ACR` (`IS_ACR.Result`),
   `ISM` (`IS_ISM.Host`), `FLG` (`IS_FLG.Flag`: `BLUE`, `YELLOW`), `HLVC` (`IS_HLV.HLVC`) and
   `REPLAY` (`IS_RIP.MPR`). E.g. `if packet.Result == ACR.REJECTED: ...`.
+- Fixed: `await insim.connect()` did not run the `on_connect` functions (nor `on_disconnect`
+  when it ended), so a plugin that asks LFS on connecting, like `Roster`, never got its answers:
+  `await roster.ready()` waited forever. Only `async with insim:` and `run()` ran them.
 
 ## 0.6.0
 

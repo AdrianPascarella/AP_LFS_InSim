@@ -9,6 +9,7 @@ import pytest
 
 from lfs_insim import InSim, OutGauge, text
 from lfs_insim.packets import IS_ISI, IS_TINY, OutGaugePack
+from lfs_insim.state import Roster
 from lfs_insim.testing import FakeLFS
 from lfs_insim.text import Colour
 
@@ -315,3 +316,24 @@ def test_coloured_wraps_text_and_goes_back_to_the_default() -> None:
     assert text.plain(text.coloured("Stop", Colour.RED)) == "Stop"
     with pytest.raises(TypeError, match="Colour"):
         text.coloured("Stop", "^1")  # type: ignore[arg-type]
+
+
+def test_connect_alone_calls_on_connect_and_close_calls_on_disconnect() -> None:
+    """W6.10: a plugin that asks LFS on connecting (Roster) must work with connect() too."""
+
+    async def main() -> None:
+        async with FakeLFS() as lfs:
+            insim = InSim(port=lfs.port)
+            roster = insim.use(Roster)
+            events: list[str] = []
+            insim.on_connect(lambda: events.append("connect"))
+            insim.on_disconnect(lambda: events.append("disconnect"))
+            await insim.connect()
+            await _until(lambda: events == ["connect"])
+            async with asyncio.timeout(3):
+                await roster.ready()
+            await insim.close()
+            assert events == ["connect", "disconnect"]
+            assert not insim.reconnected
+
+    asyncio.run(main())

@@ -240,4 +240,7 @@ goodbye to LFS and stops reconnecting.
 ## Without `run()`
 
 `await insim.connect()` connects once (no reconnection) and returns; `wait_closed()` waits until
-it ends. Use `async with insim:` or `run()` unless you need that.
+it ends, and `close()` ends it. The `on_connect` and `on_disconnect` functions (and so the plugins,
+like `Roster`) run as with the others. Use `async with insim:` or `run()` unless you need that: a
+program that does one thing and ends, say, where `connect()` raising `OSError` when LFS is not
+there is better than trying again forever.

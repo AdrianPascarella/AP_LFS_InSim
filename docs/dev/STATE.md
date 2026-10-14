@@ -1,34 +1,30 @@
 # 📍 Estado — AP_LFS_InSim (lfs_insim)
-> Actualizado: 2026-10-14 (S22): **W6.5–W6.9 hechas** en `dev` (equipo secundario), sin publicar. W6.6/W6.8/W6.9:
-> enums que InSim.txt da solo en comentarios, leídos por el generador (`BIT_COMMENTS`: `PTYPE`, `NCNF`, `SCHF`,
-> `PLHF`; `VALUE_COMMENTS`: `RACING`, `WIND`, `OFFON`, `ACR`, `ISM`, `FLG`, `HLVC`, `REPLAY`). W6.5:
-> `lfs_insim.packets.unpack_insim(data)` es pública (lee un paquete cualquiera de sus bytes). W6.7: `await
-> insim.request.IS_STA()`, `await insim.request_all.IS_NPL()` y `await insim.instruct.IS_RIP(...)` (el editor
-> lista lo que cabe en cada uno; `request(IS_X)` y `request_all(IS_X)` siguen). Sustituye `request(IS_RIP(...))`
-> de W6.1. Encadenar (`request.IS_A().IS_B()`) descartado: `asyncio.gather`. Antes, en S21: W10 (plugins)
-> publicada como `lfs-insim 0.6.0`. La biblioteca está validada en el LFS real y tiene la API de alto nivel
-> (`@insim.on.IS_NPL`, `insim.send.IS_MST(...)`, `received` / `sent`, `request` / `request_all` / `instruct`,
-> `say()` / `command()`, `text.plain()`) y plugins: `insim.use()`, `lfs_insim.Plugin`, `Commands` como plugin,
-> peticiones compartidas, `roster.ready()`, `insim.need()`, `insim.reserve_click_ids()`, `@insim.on_close` y
-> `lfs_insim.testing.FakeLFS`.
-> LFS acepta hasta 8 programas InSim a la vez (W10.0).
-> **▶️ SIGUIENTE: W6.3** — `FreeCam` en streamer-project (W9.1 de allí): repetición + plano guionizado; necesita
-> el equipo principal (LFS y streamer-project). FreeCam usará `instruct.IS_RIP(...)` (`request(IS_RIP(...))` ya no existe).
-> **Antes de W6.3, U13:** que el usuario diga qué es «un plano» (la propuesta del agente está en la tarjeta). La
-> repetición `freecam_prueba.mpr` está cargada en el LFS del usuario y hay permiso para usarlo. **W6.2 hecha** en
-> S21: el registrador de streamer-project usa `lfs_insim` 0.6.0 (mismos eventos que antes). W6.1 (con la forma de W6.7) en `dev`,
-> probada en real en S21, sin publicar. Después de W6.3, W6.4: publicar 0.7.0 (con permiso; CHANGELOG
-> «Unreleased» ya tiene W6.1, W6.5–W6.9). Tareas en `PLAN.md` (W6); por qué, en `LOG.md` S21 y S22.
+> Actualizado: 2026-10-14 (S23), equipo principal: **W6.3 hecha** — `FreeCam` en streamer-project
+> (`tools/freecam`, su W9.1), probada en real con `freecam_prueba.mpr`: cargar, ir a un instante, seguir a un
+> piloto con una vista (`IS_SCC`), cámara libre a una posición y movimiento suave (`IS_CPP`), esperar; `where`
+> escribe los pasos de donde está la cámara. Plano = U13 («me vale tal cual»). **W6.10 hecha:** `connect()` no
+> llamaba a `on_connect`/`on_disconnect` (con `connect()`, `roster.ready()` no volvía nunca); arreglado en
+> `dev`. **Avisos rojos de LFS** («sending to one but ReqI is not set», 5 cada vez): el usuario sospechó de un
+> `ReqI` sin poner; investigado: salen al **saltar hacia atrás** en una MPR, también con un cliente mínimo de
+> socket propio (`IS_ISI` + `IS_RIP` con `ReqI`), no hacia delante; no los causa la biblioteca (LOG S23).
+> **▶️ SIGUIENTE: W6.4** — publicar **0.7.0** (con permiso del usuario; CHANGELOG «Unreleased» ya tiene W6.1,
+> W6.5–W6.10) y después, en streamer-project, fijar `lfs-insim==0.7.0` (hoy su `.venv` tiene la de `dev`
+> instalada desde la carpeta). W6 se cierra con eso. Antes, en S22: W6.5–W6.9 (enums de comentarios,
+> `unpack_insim` pública, `request.IS_X()` / `request_all.IS_X()` / `instruct.IS_X(...)`). La biblioteca tiene
+> la API de alto nivel (`@insim.on.IS_NPL`, `insim.send.IS_MST(...)`, `received` / `sent`, `request` /
+> `request_all` / `instruct`, `say()` / `command()`, `text.plain()`), plugins (`insim.use()`, `Plugin`,
+> `Commands`, `Roster`, `insim.need()`, `reserve_click_ids()`, `on_close`) y `lfs_insim.testing.FakeLFS`.
+> LFS acepta hasta 8 programas InSim a la vez (W10.0). Tareas en `PLAN.md` (W6); por qué, en `LOG.md` S21–S23.
 > **Receta de una versión nueva:** versión y CHANGELOG en
 > `dev`; `verify` en verde; avance rápido de `dev` a `main`; `gh release create vX.Y.Z --target main`
 > (el tag debe ser `v<version>`); aprobar el entorno `pypi` (pedirlo cada vez; con permiso, el agente lo aprueba
 > por la API: `gh api -X POST .../actions/runs/<id>/pending_deployments -F "environment_ids[]=<id>" -f state=approved`,
 > con `GH_TOKEN` de `AdrianPascarella`). Una versión publicada
-> no se puede resubir. `_connection.py` va por 452 líneas (aviso de `verify` en 500): lo que crezca, en un
+> no se puede resubir. `_connection.py` va por 454 líneas (aviso de `verify` en 500): lo que crezca, en un
 > módulo propio (los comandos, en `_commands.py`; las peticiones, en `_asking.py`). Ver `USER_ACTIONS.md`.
 
 ## Dónde estamos
-Fase activa: **W6** (en curso: W6.1, W6.2, W6.5–W6.9 hechas; siguiente, W6.3, la cámara libre). W10 hecha y publicada como 0.6.0 en S21.
+Fase activa: **W6** (todo hecho menos W6.4, publicar 0.7.0). W10 hecha y publicada como 0.6.0 en S21.
 
 - **Cómo se genera:** `.venv/Scripts/python scripts/generate_packets.py` lee
   `spec/cache/InSim.txt` y `spec/cache/OutSimPack.txt` (con `scripts/spec_parser.py`) y las
@@ -55,8 +51,8 @@ El proyecto anterior está en la rama `refactor/estabilizacion` y en las etiquet
 consulta, no se copia.
 
 ## Lo que te espera
-2 pendientes → `USER_ACTIONS.md`: **U13** (qué es «un plano»; **bloquea W6.3**, lo primero de la próxima sesión) y
-U11 (opcional: comando de otra persona como invitado). U12 descartada por el usuario en S21.
+1 pendiente → `USER_ACTIONS.md`: U11 (opcional: comando de otra persona como invitado). U13 cerrada en S23. Además,
+el permiso para publicar 0.7.0 (W6.4), que se pide en el chat.
 
 ## Tests inestables (arreglados en S14)
 `tests/test_every.py` fallaba a veces solo en el Windows del CI (3.12 y 3.13). Causa comprobada: en

@@ -406,7 +406,7 @@ W10.8).
 **Fuera, a propósito:** manifiestos, carga por carpetas, buscar plugins por nombre, versiones entre plugins y
 activar o desactivar con el programa en marcha (el cargador del proyecto anterior, P4).
 
-## W6 — Primera aplicación aparte   🔜 EN CURSO (S21)
+## W6 — Primera aplicación aparte   🔜 EN CURSO (S21): solo falta W6.4 (publicar 0.7.0)
 **Objetivo:** escribir, en un proyecto separado, la primera aplicación real con la biblioteca (la
 cámara libre, que necesita streamer-project) y anotar cada incomodidad como tarea de la biblioteca.
 **Decidido con el usuario en S20:** vive **dentro de streamer-project** (un módulo en `tools/`, que instala
@@ -425,9 +425,14 @@ con muestras que hacen de red, y es menos arriesgado que la cámara.
 - [x] **W6.2** — El registrador de streamer-project con `lfs_insim` (en aquel repo, W9.0 de allí; su LOG S15).
   Hecho en S21 con 0.6.0 de PyPI: mismos eventos que el antiguo con tests y con una repetición real (239). La
   biblioteca le encontró un fallo (leía `IS_PLA` con el tipo 40; su P11). Incomodidades, en W6.5 y W6.6.
-- [ ] **W6.3** — `FreeCam`: repetición + plano guionizado (`IS_RIP`, `IS_SCC`, `IS_CPP`). Repetición de prueba
+- [x] **W6.3** — `FreeCam`: repetición + plano guionizado (`IS_RIP`, `IS_SCC`, `IS_CPP`). Repetición de prueba
   copiada con permiso del usuario en `C:\LFS\data\mpr\freecam_prueba.mpr` (de `temp_mpr.mpr`, 107 MB). Permiso
-  dado para controlar su LFS en la prueba en real.
+  dado para controlar su LFS en la prueba en real. Hecho en S23 en streamer-project (`tools/freecam`, su W9.1),
+  probado en real; el plano es el de U13 («me vale tal cual»). Encontró W6.10 → LOG.md S23. Allí falta fijar
+  `lfs-insim==0.7.0` cuando se publique (W6.4).
+- [x] **W6.10** — `connect()` no llamaba a `on_connect` / `on_disconnect`: con `connect()`, `roster.ready()`
+  no volvía nunca (`where` de FreeCam se colgó en real). Ahora el aviso lo hace `connect()`, y la reconexión
+  la usa. Hecho en S23 (test en rojo antes) → LOG.md S23.
 - [x] **W6.5** — Leer un paquete a partir de sus bytes con la API pública (hoy solo
   `lfs_insim.packets._structure.unpack_insim`, privada): el registrador la necesita en sus tests, con paquetes
   de ejemplo en bytes. Hecho en S22: `lfs_insim.packets.unpack_insim(data)`, pública y estricta → LOG.md S22.

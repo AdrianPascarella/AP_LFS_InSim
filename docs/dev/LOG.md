@@ -1,6 +1,50 @@
 # 📓 Diario — AP_LFS_InSim (lfs_insim)
 <!-- Solo se añade, lo más nuevo arriba. Una entrada por sesión. -->
 
+## S23 — 2026-10-14 — U13 cerrada; W6.3 (FreeCam, en streamer-project) y W6.10 (`connect()` y `on_connect`); avisos rojos de LFS investigados
+
+**Inicio:** `session_start_check` PASS (pull de S22). `verify` PASS (612). Equipo **principal**: LFS en `C:\LFS`, con
+`freecam_prueba.mpr`, y streamer-project. LFS estaba cerrado: lo abrió el agente (permiso de S21 para la prueba en
+real) y activó InSim con `lfs_screen.ps1` (`/insim=29999`). Sin tocar `cfg.txt`.
+
+**U13 cerrada** (el usuario: «Me vale tal cual, sigue con W6.3»): un plano es la lista de pasos propuesta.
+
+**W6.3 hecha, en streamer-project** (`tools/freecam`, su W9.1; detalle en su LOG S16). `FreeCam(Plugin)` ejecuta
+un plano JSON (`goto`, `follow`/`view`, `camera` con `seconds`, `wait`) con `instruct.IS_RIP`, `IS_SCC` e
+`IS_CPP`; `python -m tools.freecam run <plano>` y `where` (los pasos de donde está la cámara, para copiarlos).
+36 tests con `FakeLFS` (que contesta `IS_RIP` a mano en el test: `replies` solo cubre `TINY`). Para instalarla allí
+sin publicar: `pip install ../AP_LFS_InSim` en su `.venv` (provisional hasta 0.7.0).
+- **Probado en real**, con capturas: carga, salto en pausa, seguir a «#773 A.Pascarella» en `heli` y `driver`,
+  cámara libre, movimiento suave de 4 s, vuelta a la vista `follow`; `where` dentro y fuera de cámara libre.
+- **Lo que se aprendió de LFS** (en el README de la herramienta): `heading` va como una brújula (0 → +Y, 90 → +X);
+  `pitch` positivo mira hacia abajo; **`IS_SCC` no saca de la cámara libre** (un `IS_CPP` sin `SHIFTU`, sí);
+  **`IS_STA` tarda** un momento en decir que se entró en cámara libre (FreeCam recuerda la que puso él);
+  `IS_CPP` pedido fuera de cámara libre da la posición (0, 0, 0) (`where` lo dice en vez de escribirla); el
+  `IS_RIP` con `ReqI = 0` lo ignora LFS en silencio; en una MPR **cualquier salto** la recorre desde el principio
+  (~4.000 paquetes).
+- **Incomodidad → W6.10:** `where` se colgó en real con `connect()`.
+
+**W6.10 hecha.** `on_connect` dice «after every connection», pero solo lo llamaba el supervisor de `async with` /
+`run()`: con `connect()`, ni `on_connect` ni `on_disconnect`, así que `roster.ready()` no volvía nunca. El aviso
+(log, contador, `_announced`, `on_connect`) pasa a `connect()`, que el supervisor ya usaba. Test en rojo antes
+(`test_lifecycle.py`: `connect()` + `Roster` + `close()`). El registrador de streamer-project usa `connect()` sin
+`on_connect`: no le cambia nada. CHANGELOG («Fixed»), guía `insim.md`. `_connection.py`: 454 líneas.
+
+**Avisos rojos de LFS** («InSim : sending to one but ReqI is not set», 5 cada vez). El usuario: «Se supone que no
+deberían saltar avisos rojos… se está poniendo reqi = 1 porque no se está poniendo… Miratelo». Investigado con
+capturas tras cada prueba:
+- No los da: pedir `IS_RIP`, `IS_CPP`, las peticiones del `Roster` (`TINY_ISM`, `NCN`, `NPL`), cargar con `/mpr`.
+- Un **cliente mínimo con socket propio** (sin la biblioteca), que solo manda `IS_ISI` y un `IS_RIP` con `ReqI = 5`:
+  `ReqI` de ISI 0 y salto atrás 600 → 300 s, 5 avisos; ISI 1 y atrás 640 → 600, 5; ISI 0 y adelante 300 → 640,
+  ninguno; ISI 1 y adelante 300 → 500, ninguno. **Depende de saltar hacia atrás**, no de lo que mande el programa.
+  El salto «hacia delante» de la biblioteca con avisos (600 → 640) lo era hacia atrás: la repetición llevaba minutos
+  en marcha.
+- Conclusión: los provoca LFS al recorrer la MPR desde el principio; no hay un paquete nuestro sin `ReqI`. Qué manda
+  LFS «to one» no se sabe (no llega a InSim). Anotado en el README de FreeCam (`wait` antes de grabar, `goto` de
+  menos a más).
+
+**Verificación:** `verify` PASS en los dos repos (biblioteca, con W6.10; streamer-project, 657 tests).
+
 ## S22 — 2026-10-14 — W6.7 (`request.IS_XXX`, `request_all.IS_XXX`, `instruct.IS_XXX`), W6.5, W6.6, W6.8 y W6.9 (equipo secundario)
 
 **Inicio:** `session_start_check` PASS (rama, identidad, pull de lo de S21, plantilla v3). Desajuste:
