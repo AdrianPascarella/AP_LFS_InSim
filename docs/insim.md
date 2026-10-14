@@ -159,9 +159,11 @@ multiplayer hosts". Some admin tools still work, such as `IS_MAL`.
 
 To be the host, connect to the server's own InSim: on lfs.net, *Hosting → Your hosts* shows its
 host IP and InSim port, and *Access control* lists the IP addresses allowed to connect (empty:
-nobody). Add your public IP there, then `InSim(host="<host IP>", port=<InSim port>)`; give
-`admin_password` if the server has one. Note that a free hosted server is deleted if you stop
-it: do not send `/leave` or `/exit` to it.
+nobody). Add your public IP there, then `InSim(host="<host IP>", port=<InSim port>,
+admin_password="...")`. If the server has an admin password, it must be given: without it LFS
+does not answer at all. `IS_NCI` (a connection's language, licence and user ID) comes only from
+a server with an admin password. Note that a free hosted server is deleted if you stop it: do
+not send `/leave` or `/exit` to it.
 
 ### On connection, and on a rhythm
 

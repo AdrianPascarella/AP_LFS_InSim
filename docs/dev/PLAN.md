@@ -478,8 +478,7 @@ de pantalla) se pide antes, con copia de lo que se toque. Lo que necesita a otra
 - [x] **W11.5** — Grupo H (tu LFS como servidor, aunque no entre nadie): `NCI`, `SLC`, `MAL`, `PLH`/`HCP`, `PLC`,
   `IPB`, `MTC`, `ACR`, `III`, `ISM`/`MPE`, `SET`. **A medias (S24):** probado como invitado admin (en LFS 0.8C32
   «Crear servidor nuevo» no hace anfitrión al juego); lo propio del anfitrión necesita un servidor dedicado (W11.11).
-  **Hecho en S25 → LOG.md S25**, contra el InSim del servidor alojado; quedan `NCI` (sin contraseña de admin)
-  y `PLH`/`HCP` enviados (sin coche en el servidor).
+  **Hecho en S25 → LOG.md S25**, contra el InSim del servidor alojado (con contraseña de admin: 23 PASS).
 - [ ] **W11.6** — Grupo P (otra persona conectada): tarjeta para el usuario con `JRR`, `VTN`/`VTC`/`VTA`, `TOC`,
   `III`, `MTC` a una persona, `NCN`/`CNL` remotos, y U11.
 - [ ] **W11.7** — Cerrar: cada fallo encontrado arreglado (o anotado si es de LFS), `COVERAGE.md` al día, y

@@ -22,7 +22,7 @@
 
 | Paquete | Sentido | Estado | Visto | Grupo | Cómo se provoca / qué falta |
 |---|---|---|---|---|---|
-| IS_ACR | ⬇ | ✔ | S24, S25 | A/H | en Un Jugador, cada comando; en el InSim del servidor, el de un invitado admin (`/rstend 0`, UCID 1) y el del propio InSim (UCID 0) (S25) |
+| IS_ACR | ⬇ | ✔ | S24, S25 | A/H | en Un Jugador, cada comando; en el InSim del servidor, el de un invitado admin (`Result` 1, y 2 = rechazado con `/rstend` sin valor) y el del propio InSim (S25) |
 | IS_AIC | ⬆ | ✔ | S24 | A | **le quita el coche a la IA** (cualquier `IS_AIC`, incluso `CS_SEND_AI_INFO`): sin acelerador frena; `CS_MSX` gira; `CS_STOP_CONTROL` la para y no devuelve el control (W11.9) |
 | IS_AII | ⬇ | ✔ | S24 | A | por `SMALL_AII` (no quita el control) y por `CS_SEND_AI_INFO`; marcha, rpm, posición y velocidad con sentido |
 | IS_AXI | ⬇ | ✔ | S12, S24 | E | `TINY_AXI`; `NumO` cuenta un cono añadido; un checkpoint de InSim (índice 252) no cuenta ni en `NumO` ni en `NumCP` (S24) |
@@ -42,7 +42,7 @@
 | IS_CSC | ⬇ | ✔ | S23, S24 | A | `CSC.START` de cada coche al salir (S24) |
 | IS_FIN | ⬇ | ✔ | S12, S24 | A | `TTime` igual al de `IS_RES` (S24) |
 | IS_FLG | ⬇ | ◐ | S12 | A | bandera azul / amarilla (IA lenta o parada) |
-| IS_HCP | ⬆ | ✖ | — | H | handicaps por coche; ver `IS_PLH` o el efecto |
+| IS_HCP | ⬆ | ◐ | S25 | H | enviado (XF GTI 20 kg, 5 %) y quitado, sin aviso; falta ver su efecto |
 | IS_HLV | ⬇ | ◐ | S12 | A | salirse de pista, golpe contra muro (`ISF.HLV`) |
 | IS_III | ⬇ | ✔ | S25 | H/P | un invitado escribe `/i hola` → `IS_III` (UCID 1, `Msg`) en el InSim del servidor |
 | IS_IPB | ⬍ | ✔ | S25 | H | `TINY_IPB` y enviado (ban de 192.0.2.1, releído y quitado) en el InSim del servidor; como invitado admin, sin respuesta (S24) |
@@ -58,7 +58,7 @@
 | IS_MST | ⬆ | ✔ | S12, S18 | A | mensaje y comando (`/ai`, `/end`, `/mpr`) |
 | IS_MSX | ⬆ | ✔ | S12 | A | mensaje largo |
 | IS_MTC | ⬆ | ✔ | S18, S19, S24, S25 | H/P | desde el InSim del servidor: a todos (255, visto en el juego) y a una conexión (S25); como invitado, «only for multiplayer hosts» |
-| IS_NCI | ⬇ | ✖ | — | H | sin respuesta: el servidor alojado no tiene contraseña de administrador (se pone al crearlo; con él en marcha no se puede cambiar, y pararlo lo borra) |
+| IS_NCI | ⬇ | ✔ | S25 | H | `TINY_NCI` en un servidor alojado con contraseña de admin: `Language` 9, `License` 3, `UserID`; `IPAddress` 0 (el servidor tiene «Show IP addresses» en No) |
 | IS_NCN | ⬇ | ✔ | S12, S19 | A/G | `TINY_NCN`; flags de remoto y admin (S19) |
 | IS_NLP | ⬇ | ✔ | S12, S24 | A | `ISF.NLP` / `TINY_NLP`; vuelta y posición; ritmo de `SMALL_NLI` (S24) |
 | IS_NPL | ⬇ | ✔ | S12, S23 | A/R | entra un coche; `PType` de IA, `CName` de mod (S12) |
@@ -69,7 +69,7 @@
 | IS_PIT | ⬇ | ◐ | S23 | A | parada en boxes |
 | IS_PLA | ⬇ | ◐ | S21, S23, S24 | A | entrar o salir del pit lane (una IA tras la meta, S24) |
 | IS_PLC | ⬆ | ◐ | S24, S25 | H | aceptado por el servidor (sin aviso) pero sin respuesta que comprobar; falta ver su efecto (un invitado elige coche) |
-| IS_PLH | ⬍ | ◐ | S12, S24 | H | `TINY_PLH` (vacío, S24); falta enviar handicaps (necesita un coche en un servidor) |
+| IS_PLH | ⬍ | ✔ | S12, S25 | H | enviado a una IA (50 kg, 10 %) → `IS_PLH` de salida y `TINY_PLH` lo lee (S25) |
 | IS_PLL | ⬇ | ◐ | S23 | A | un jugador se va a espectador |
 | IS_PLP | ⬇ | ◐ | S23 | A | un jugador va a boxes (garaje) |
 | IS_PSF | ⬇ | ◐ | S23 | A | termina una parada en boxes |
@@ -119,12 +119,12 @@
 | TINY_AXI | ⬆ | ✔ | S12, S24 | E | → `IS_AXI` |
 | TINY_AXC | ⬇ | ✔ | S24 | E | `IS_AXM` `PMO_CLEAR_ALL` |
 | TINY_RIP | ⬆ | ✔ | S12, S23 | R | → `IS_RIP` |
-| TINY_NCI | ⬆ | ✖ | — | H | → `IS_NCI` (servidor con contraseña) |
+| TINY_NCI | ⬆ | ✔ | S25 | H | → `IS_NCI` (servidor con contraseña de admin) |
 | TINY_ALC | ⬆ | ◐ | S12 | A | → `SMALL_ALC` |
 | TINY_AXM | ⬆ | ✔ | S12, S24 | E | → `IS_AXM` hasta `PMO_FILE_END` |
 | TINY_SLC | ⬆ | ✔ | S25 | H | → `IS_SLC` de cada conexión |
 | TINY_MAL | ⬆ | ◐ | S12 | H | → `IS_MAL` |
-| TINY_PLH | ⬆ | ◐ | S12 | H | → `IS_PLH` |
+| TINY_PLH | ⬆ | ✔ | S12, S25 | H | → `IS_PLH` |
 | TINY_IPB | ⬆ | ✔ | S25 | H | → `IS_IPB` en el InSim del servidor |
 | TINY_LCL | ⬆ | ◐ | S12 | A | → `SMALL_LCL` |
 | SMALL_SSP | ⬆ | ✔ | S24 | A | OutSim al `UDPPort` del `IS_ISI` (que `InSim()` no deja poner, W11.8); **`UVal` en centésimas** (10 → 10 por segundo); 0 lo para |

@@ -206,6 +206,7 @@ class Session:
         group: str,
         *,
         host: str = "127.0.0.1",
+        admin_password: str = "",
         port: int = 29999,
         flags: int = 0,
         interval_ms: int = 0,
@@ -222,6 +223,7 @@ class Session:
         self.recorder = recorder
         self.insim = LiveInSim(
             name=f"live {group}",
+            admin_password=admin_password,
             host=host,
             port=port,
             flags=flags,

@@ -38,6 +38,19 @@ admin (S24). Estaba: IP permitidas para InSim vacía (nadie), contraseñas de ad
 - Docs (sin publicar, «Unreleased»): `docs/insim.md` explica cómo llegar al InSim del servidor (IP, puerto,
   «Access control», no pararlo); docstring de `say()`. W11.5 y W11.11 cerradas; `COVERAGE.md`: 12 filas.
 
+**Segundo servidor, con contraseña de admin** (el usuario: «Acabo de generar un nuevo servidor con contraseña de
+admin "admin" y contraseña de host "host"… Creo que ahora si no pones como contraseña en el IS_ISI la contraseña
+de admin no te dejará conectar un insim»). Servidor 450474, InSim 53581; su IP añadida a «Access control» como en
+el primero. **Hipótesis del usuario confirmada:** sin contraseña en `IS_ISI` no llega `IS_VER` (como ya imita
+`FakeLFS` con una contraseña equivocada); con «admin», `Host` 1. `group_h.py` y `Session` aceptan ya
+`--admin` / `admin_password`. El usuario eligió coche en el servidor para `/uai`.
+- **23 PASS, 0 FAIL, 0 SKIP**; 0 paquetes mal leídos o escritos. Nuevos: **`IS_NCI`** (`Language` 9,
+  `License` 3, `UserID`; `IPAddress` 0, con «Show IP addresses» en No), **`IS_PLH` enviado** a la IA del usuario
+  (50 kg, 10 %) → `IS_PLH` de salida y releído con `TINY_PLH`, `IS_HCP` enviado y quitado, `/uai` → `IS_NPL`,
+  `/restart` y `/end` desde el InSim del servidor, y un `IS_ACR` rechazado (`Result` 2: `/rstend` sin valor).
+- Lista de IP de InSim vacía otra vez al terminar. Docs (`insim.md`, «Unreleased»): sin la contraseña de
+  admin, el InSim no contesta; `IS_NCI` solo con contraseña.
+
 ## S24 — 2026-10-14 — W11.2: batería en vivo (`tests/live/`); W11.3: grupo A en el LFS real
 
 **Inicio:** `session_start_check` PASS (nada que traer). `verify` PASS (613). Equipo principal. LFS cerrado.

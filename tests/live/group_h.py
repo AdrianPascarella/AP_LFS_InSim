@@ -1,11 +1,12 @@
 """Live test, group H (W11.5): this LFS as a multiplayer host. Not collected by pytest.
 
-    .venv/Scripts/python tests/live/group_h.py [--host IP] [--port 29999] [--only SECTION ...]
+    .venv/Scripts/python tests/live/group_h.py [--host IP] [--admin PASS] [--port N] [--only ...]
 
 Connect to the InSim of the host itself. With LFS 0.8C32, *Create new host* runs the server on
 LFS's hosting service (lfs.net -> Hosting -> Your hosts shows its IP and InSim port; this
 computer's IP must be in its InSim access list), and the game joins it as an admin guest: its own
-`/insim` is a guest's (S24). Never stop a free hosted server: it is deleted (the user, S25).
+`/insim` is a guest's (S24). With an admin password set, its InSim answers only with it (S25).
+Never stop a free hosted server: it is deleted (the user, S25).
 Every host list the test changes (allowed mods, IP bans, allowed cars, handicaps) is read first
 and put back at the end.
 Sections, in order:
@@ -247,8 +248,8 @@ class GroupH:
         s.check("/leave -> TINY_MPE (no longer hosting)", mpe is not None)
 
 
-async def main_async(host: str, port: int, sections: list[str]) -> int:
-    s = Session("H", host=host, port=port, flags=FLAGS)
+async def main_async(host: str, admin: str, port: int, sections: list[str]) -> int:
+    s = Session("H", host=host, admin_password=admin, port=port, flags=FLAGS)
     async with s:
         if not s.check("connected (IS_VER)", await s.connected()):
             return s.finish()
@@ -269,13 +270,14 @@ async def main_async(host: str, port: int, sections: list[str]) -> int:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--host", default="127.0.0.1", help="the host's InSim address")
+    parser.add_argument("--admin", default="", help="the host's admin password (S25: needed)")
     parser.add_argument("--port", type=int, default=29999)
     parser.add_argument("--only", nargs="+", choices=SECTIONS, default=SECTIONS)
     args = parser.parse_args()
     sections = [name for name in SECTIONS if name in args.only]
     if args.host != "127.0.0.1" and "leave" in sections:
         parser.error("--host: leave the 'leave' section out (it would stop the hosted server)")
-    return asyncio.run(main_async(args.host, args.port, sections))
+    return asyncio.run(main_async(args.host, args.admin, args.port, sections))
 
 
 if __name__ == "__main__":
