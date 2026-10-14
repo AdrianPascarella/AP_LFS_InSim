@@ -3,7 +3,10 @@
 > (`harness.py`: `Session` con `expect` / `check` / `screen` e informe con lo visto en cada sentido;
 > `group_a.py`: secciones `requests setup race sends udp finish`, `--only`; `probe.py`, antes `tests/live_lfs.py`).
 > Se lanza con `.venv/Scripts/python tests/live/group_a.py` con LFS en la pantalla de preparación de Un Jugador.
-> **Aún no se ha ejecutado contra el LFS real.** Hallazgo: `InSim()` no deja poner `UDPPort` (W11.8, por decidir).
+> **W11.3 hecha (S24):** grupo A en el LFS real (0.8C32, en ventana): pasada final 41 PASS + carrera extra 30 PASS,
+> **0 paquetes mal leídos o mal escritos**; `COVERAGE.md` al día. Hallazgos por decidir: W11.8 (`UDPPort`; `UVal`
+> de `SSP`/`SSG` en centésimas) y **W11.9 (cualquier `IS_AIC` le quita el coche a la IA y no se le devuelve)**.
+> Lo que queda del grupo A necesita un coche en pista (W11.10).
 > Antes, en S23: **W6 cerrada y `lfs-insim` 0.7.0 publicada** (W6.4, con
 > permiso). 0.7.0 trae W6.1 y W6.5–W6.10: `request.IS_X()` / `request_all.IS_X()` / `instruct.IS_RIP(...)`,
 > `unpack_insim` pública, enums de comentarios (`PTYPE`, `NCNF`, `SCHF`, `PLHF`, `RACING`, `WIND`, `OFFON`, `ACR`,
@@ -13,11 +16,10 @@
 > con un cliente mínimo propio; no los causa la biblioteca (LOG S23).
 > **Fase activa: W11, pruebas intensivas contra el LFS real** (propuesta del usuario, plan aceptado en S23).
 > W11.1 hecha: `docs/dev/COVERAGE.md` (estado de cada paquete y subtipo en real, por grupos A/R/E/H/P/G).
-> **▶️ SIGUIENTE: W11.3** — ejecutar `group_a.py` en el LFS real (Un Jugador con IA), arreglar el script donde
-> LFS no haga lo supuesto y anotar lo visto en `COVERAGE.md`. **Permiso dado en S23** («Me parece bien y te doy permiso»): abrir LFS, ponerlo en Un Jugador con
-> IA, hacer carreras y teclear/hacer clic con `lfs_screen.ps1` (no manda nada si LFS no queda delante). Sin tocar
-> `cfg.txt` en este grupo (OutSim/OutGauge por `SMALL_SSP`/`SSG`). LFS quedó cerrado al final de S23 (lo abrió el
-> agente; `/exit` por InSim). Los demás grupos, cada uno con su permiso; el grupo P, en una tarjeta. La
+> **▶️ SIGUIENTE:** decidir con el usuario W11.8 y W11.9 (si cambian la biblioteca: docstrings / opción
+> `udp_port`) y pedir permiso para el grupo E (W11.4, editor de circuitos) o el H (W11.5, servidor propio). El
+> permiso del grupo A (S23) vale para repetir `group_a.py`; sin tocar `cfg.txt`. LFS quedó cerrado al final de
+> S24 (lo abrió el agente; `/exit` por InSim). Los demás grupos, cada uno con su permiso; el grupo P, en una tarjeta. La
 > > biblioteca tiene la API de alto nivel (`@insim.on.IS_NPL`, `insim.send.IS_MST(...)`, `received` / `sent`,
 > `request` / `request_all` / `instruct`, `say()` / `command()`, `text.plain()`), plugins (`insim.use()`,
 > `Plugin`, `Commands`, `Roster`, `insim.need()`, `reserve_click_ids()`, `on_close`) y

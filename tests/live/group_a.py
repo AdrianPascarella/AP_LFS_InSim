@@ -23,6 +23,7 @@ import argparse
 import asyncio
 import contextlib
 import math
+from collections.abc import Callable
 
 from harness import LiveOutGauge, LiveOutSim, Session
 
@@ -68,8 +69,17 @@ from lfs_insim.packets._structure import Structure
 
 SECTIONS = ["requests", "setup", "race", "sends", "udp", "finish"]
 FLAGS = ISF.LOCAL | ISF.CON | ISF.MCI | ISF.NLP | ISF.HLV | ISF.OBH
-UDP_PORT = 30011  # free on this computer: 30000 is the user's OutGauge (PROTOCOL §13)
+UDP_PORTS = {SMALL.SSP: 30011, SMALL.SSG: 30012}  # free here: 30000 is the user's OutGauge
+GO_BUTTON = (0.935, 0.96)  # in the race setup screen, as fractions of LFS's window
 OCO_INDEX_MAIN = 240  # main start lights (InSim.txt has it as a #define, not an enum)
+
+
+def of_player(plid: int) -> Callable[[IS_FIN], bool]:
+    return lambda packet: plid == packet.PLID
+
+
+def speed(aii: IS_AII) -> float:
+    return math.hypot(aii.OSData.Vel.X, aii.OSData.Vel.Y)
 
 
 class GroupA:
@@ -78,6 +88,7 @@ class GroupA:
         self.laps = laps
         self.ai: list[int] = []  # PLIDs of the AI drivers this test added
         self.race_start = 0  # mark of the race start
+        self.racing = True  # False when setup could not start the race: race and finish skip
 
     async def ask(self, sub: TINY, cls: type[Structure], reqi: int, timeout: float = 3) -> None:
         """Send a TINY request and check that the answer carries its ReqI."""
@@ -105,28 +116,39 @@ class GroupA:
         state = await s.insim.request.IS_STA()
         s.note(f"state before setup: {ISS(state.Flags)!r}, RaceInProg {state.RaceInProg}")
         s.insim.command(f"/laps {self.laps}")
+        grid = await s.insim.request_all.IS_NPL()
+        missing = 2 - sum(1 for p in grid if p.PType & PTYPE.AI)  # a run stopped early leaves some
         since = s.mark()
-        for _ in range(2):
+        for _ in range(missing):
             s.insim.command("/ai")
             await asyncio.sleep(1)
         await asyncio.sleep(2)
-        ai = [p for p in s.seen(IS_NPL, since) if p.PType & PTYPE.AI]
-        self.ai = [p.PLID for p in ai]
-        s.check("/ai x2 -> IS_NPL with PTYPE.AI", len(ai) == 2, f"PLIDs {self.ai}")
-        for npl in ai:
+        added = [p for p in s.seen(IS_NPL, since) if p.PType & PTYPE.AI]
+        s.check(f"/ai x{missing} -> IS_NPL with PTYPE.AI", len(added) == missing, str(len(added)))
+        for npl in added:
             s.check(f"NPL {npl.PLID}: name and car", bool(npl.PName and npl.CName), npl.PName)
-        if len(self.ai) == 2:  # the start order: the second AI first
-            order = [self.ai[1], self.ai[0]]
-            s.insim.send(IS_REO(NumP=2, PLID=order + [0] * 46))
-            await self.ask(TINY.REO, IS_REO, 50)
-            reo = s.seen(IS_REO)[-1]
-            s.check(
-                "IS_REO sent -> TINY_REO reads it back", reo.PLID[:2] == order, str(reo.PLID[:4])
-            )
+        grid = await s.insim.request_all.IS_NPL()
+        self.ai = [p.PLID for p in grid if p.PType & PTYPE.AI]
+        order = [p.PLID for p in reversed(grid)]  # the start order, reversed
+        s.insim.send(IS_REO(NumP=len(order), PLID=order + [0] * (48 - len(order))))
+        await asyncio.sleep(1)  # S24: a TINY_REO sent right after still gets the old order
+        await self.ask(TINY.REO, IS_REO, 50)
+        reo = s.seen(IS_REO)[-1]
+        s.check(
+            "IS_REO sent -> TINY_REO reads it back",
+            reo.PLID[: len(order)] == order,
+            f"sent {order}, read {reo.PLID[: len(order)]}",
+        )
         since = s.mark()
         s.insim.command("/restart")
-        rst = await s.expect_check("/restart -> IS_RST", IS_RST, since=since, timeout=60)
+        rst = await s.expect(IS_RST, since=since, timeout=5)
+        if rst is None:  # seen in S24: in single player /restart does not start the race
+            s.note("/restart did not start the race (single player): clicking GO")
+            await s.screen(at=GO_BUTTON, wait=500)
+            rst = await s.expect(IS_RST, since=since, timeout=60)
+        s.check("the race starts (IS_RST)", rst is not None)
         self.race_start = since
+        self.racing = rst is not None
         if rst is not None:
             s.check("IS_RST laps", rst.RaceLaps == self.laps, f"RaceLaps {rst.RaceLaps}")
             s.check("IS_RST track", rst.Track != "", rst.Track)
@@ -139,14 +161,15 @@ class GroupA:
         await s.expect_check("IS_CSC (car start)", IS_CSC, since=start, timeout=30)
         await s.expect_check("IS_SPX (split)", IS_SPX, since=start, timeout=120)
         if self.ai:
-            await self.ai_control(self.ai[0])
+            await self.ai_info(self.ai[0])
         await s.expect_check("IS_LAP", IS_LAP, since=start, timeout=240)
         await self.ask(TINY.NLP, IS_NLP, 60)
         await self.ask(TINY.MCI, IS_MCI, 61)
         await self.ask(TINY.RST, IS_RST, 62)
         await self.ask(TINY.NPL, IS_NPL, 63)
 
-    async def ai_control(self, plid: int) -> None:
+    async def ai_info(self, plid: int) -> None:
+        """SMALL_AII only: it does not take the car from the AI (any IS_AIC does, S24)."""
         s = self.s
         since = s.mark()
         s.insim.send(IS_SMALL(ReqI=70, SubT=SMALL.AII, UVal=plid))
@@ -159,6 +182,13 @@ class GroupA:
         )
         if aii is not None:
             s.check("IS_AII of the asked car", plid == aii.PLID, f"PLID {aii.PLID}")
+
+    async def ai_control(self, plid: int) -> None:
+        """IS_AIC, on a car past the finish line. S24: in the race, after an IS_AIC (even
+        CS_SEND_AI_INFO and the horn) the AI stopped driving and crashed. Here: measure it,
+        and whether CS_STOP_CONTROL gives the car back to the AI."""
+        s = self.s
+        first = await self.aii(plid, 75)
         since = s.mark()
         info = AIInputVal(Input=CS.SEND_AI_INFO)
         s.insim.send(IS_AIC(ReqI=71, PLID=plid, Inputs=[info]))
@@ -168,9 +198,23 @@ class GroupA:
         horn = AIInputVal(Input=CS.HORN, Time=100, Value=3)  # hold the horn 1 s
         s.insim.send(IS_AIC(PLID=plid, Inputs=[horn]))
         s.note("IS_AIC horn sent to an AI car: only heard, not checked")
-        # Steer hard left for 2 s: the car's heading must turn left (anticlockwise: it grows).
+        await self.steer(plid)
+        await asyncio.sleep(3)
+        held = await self.aii(plid, 76)
+        s.insim.send(IS_AIC(PLID=plid, Inputs=[AIInputVal(Input=CS.STOP_CONTROL)]))
+        await asyncio.sleep(6)
+        released = await self.aii(plid, 77)
+        s.note(
+            "AI speed (m/s) before IS_AIC / 4 s after / 6 s after CS_STOP_CONTROL: "
+            + " / ".join("-" if a is None else f"{speed(a):.1f}" for a in (first, held, released))
+        )
+
+    async def steer(self, plid: int) -> None:
+        """IS_AIC steering, after the finish line: in the race it put the car off (S24)."""
+        s = self.s
+        # Steer a little left for 0.5 s: the heading must turn left (anticlockwise: it grows).
         before = await self.aii(plid, 73)
-        steer = AIInputVal(Input=CS.MSX, Time=200, Value=1)
+        steer = AIInputVal(Input=CS.MSX, Time=50, Value=26000)
         s.insim.send(IS_AIC(PLID=plid, Inputs=[steer]))
         await asyncio.sleep(1)
         after = await self.aii(plid, 74)
@@ -180,11 +224,12 @@ class GroupA:
             turn = math.degrees(after.OSData.Heading - before.OSData.Heading)
             turn = (turn + 180) % 360 - 180
             s.check(
-                "IS_AIC steer left turns the car left", turn > 5, f"heading {turn:+.0f} degrees"
+                "IS_AIC steer left turns the car left", turn > 1, f"heading {turn:+.0f} degrees"
             )
         s.insim.send(IS_AIC(PLID=plid, Inputs=[AIInputVal(Input=CS.RESET_INPUTS)]))
 
     async def aii(self, plid: int, reqi: int) -> IS_AII | None:
+        """Ask for an IS_AII with SMALL_AII (which leaves the car to the AI)."""
         since = self.s.mark()
         self.s.insim.send(IS_SMALL(ReqI=reqi, SubT=SMALL.AII, UVal=plid))
         return await self.s.expect(IS_AII, lambda p: p.ReqI == reqi, since=since, timeout=3)
@@ -218,18 +263,29 @@ class GroupA:
         s.note("IS_OCO start lights red1, red2, red3, green, reset: visible only")
         await self.state_flag("SFP hide 2D", ISS.SHOW_2D, off=True)
         await self.state_flag("SFP show 2D", ISS.SHOW_2D, off=False)
-        since = s.mark()
-        s.insim.send(IS_SCH(CharB=ord("V")))  # V: next view
-        await s.expect_check("IS_SCH 'V' -> IS_CCH (camera change)", IS_CCH, since=since)
         ssh = await s.insim.instruct.IS_SSH(Name="lfs_insim_live")
         s.check(
             "instruct.IS_SSH -> SSH.OK", ssh.Error == 0, f"Error {ssh.Error}, Name {ssh.Name!r}"
         )
-        s.insim.send(IS_SMALL(SubT=SMALL.NLI, UVal=1000))
+        if not self.racing:  # S24: no camera and no IS_NLP in the race setup screen
+            s.check("IS_SCH and SMALL_NLI", None, "the race did not start")
+            return
         since = s.mark()
-        await asyncio.sleep(3.5)
+        before = await s.insim.request.IS_STA()
+        s.insim.send(IS_SCH(CharB=ord("V")))  # V: next view
+        cch = await s.expect(IS_CCH, since=since, timeout=5)
+        after = await s.insim.request.IS_STA()
+        s.check(
+            "IS_SCH 'V' changes the view",
+            cch is not None or after.InGameCam != before.InGameCam,
+            f"IS_CCH {cch}, InGameCam {before.InGameCam} -> {after.InGameCam}",
+        )
+        s.insim.send(IS_SMALL(SubT=SMALL.NLI, UVal=1000))
+        await asyncio.sleep(1.5)  # S24: counted at once, the old 500 ms gave 5 in 3.5 s
+        since = s.mark()
+        await asyncio.sleep(5)
         count = len(s.seen(IS_NLP, since))
-        s.check("SMALL_NLI 1000 ms -> ~3 IS_NLP in 3.5 s", 2 <= count <= 4, f"{count} IS_NLP")
+        s.check("SMALL_NLI 1000 ms -> ~5 IS_NLP in 5 s", 4 <= count <= 6, f"{count} IS_NLP")
         s.insim.send(IS_SMALL(SubT=SMALL.NLI, UVal=500))
 
     async def state_flag(self, name: str, flag: ISS, *, off: bool) -> None:
@@ -241,36 +297,44 @@ class GroupA:
 
     async def udp(self) -> None:
         """SMALL_SSP / SSG send to IS_ISI.UDPPort, which InSim() cannot set yet (W11 finding)."""
-        for sub, source in ((SMALL.SSP, LiveOutSim(UDP_PORT)), (SMALL.SSG, LiveOutGauge(UDP_PORT))):
+        # One port each: in S24, with one port, OutGauge datagrams reached the OutSim reader.
+        ssp, ssg = UDP_PORTS[SMALL.SSP], UDP_PORTS[SMALL.SSG]
+        for sub, source in ((SMALL.SSP, LiveOutSim(ssp)), (SMALL.SSG, LiveOutGauge(ssg))):
             source.recorder = self.s.recorder
             other = Session(  # one report: its packets go to the same recorder
-                f"A-{sub.name}", port=self.s.port, udp_port=UDP_PORT, recorder=self.s.recorder
+                f"A-{sub.name}", port=self.s.port, udp_port=UDP_PORTS[sub], recorder=self.s.recorder
             )
             async with source, other:
                 if not await other.connected(10):
                     self.s.check(f"SMALL_{sub.name}: second connection", False, "no IS_VER")
                     continue
                 since = self.s.mark()
-                other.insim.send(IS_SMALL(SubT=sub, UVal=100))
+                other.insim.send(IS_SMALL(SubT=sub, UVal=10))  # S24: hundredths of a second
                 await asyncio.sleep(3)
                 other.insim.send(IS_SMALL(SubT=sub, UVal=0))
                 got = [i for i in self.s.recorder.received[since:] if i.source != "InSim"]
                 self.s.check(
-                    f"SMALL_{sub.name} 100 ms -> UDP to UDPPort",
-                    len(got) >= 10,
-                    f"{len(got)} packets",
+                    f"SMALL_{sub.name} UVal 10 (0.1 s) -> UDP to UDPPort",
+                    20 <= len(got) <= 40,
+                    f"{len(got)} packets in 3 s",
                 )
+                await asyncio.sleep(0.5)
+                since = self.s.mark()
+                await asyncio.sleep(2)
+                after = [i for i in self.s.recorder.received[since:] if i.source != "InSim"]
+                self.s.check(f"SMALL_{sub.name} UVal 0 stops it", not after, f"{len(after)} after")
             self.s.insim.sent_log += other.insim.sent_log
 
     async def finish(self) -> None:
         s = self.s
         start = self.race_start
+        # IS_AIC on the first car to finish, at once: after the line an AI drives one more lap
+        # back to the pits and parks (the user, S24), so it is still moving for a while.
+        winner = await s.expect(IS_FIN, since=start, timeout=300)
+        if winner is not None:
+            await self.ai_control(winner.PLID)
         for plid in self.ai:
-            fin = next((p for p in s.seen(IS_FIN, start) if plid == p.PLID), None)
-            deadline = asyncio.get_running_loop().time() + 300
-            while fin is None and asyncio.get_running_loop().time() < deadline:
-                await asyncio.sleep(0.5)
-                fin = next((p for p in s.seen(IS_FIN, start) if plid == p.PLID), None)
+            fin = await s.expect(IS_FIN, of_player(plid), since=start, timeout=120)
             s.check(
                 f"IS_FIN of AI {plid}", fin is not None, "" if fin is None else f"{fin.TTime} ms"
             )
@@ -302,11 +366,17 @@ async def main_async(port: int, sections: list[str], laps: int) -> int:
         if not s.check("connected (IS_VER)", await s.connected()):
             return s.finish()
         test = GroupA(s, laps)
-        for name in sections:
-            print(f"== {name}")
-            await getattr(test, name)()
-        s.insim.send(IS_BFN(SubT=BFN.CLEAR))
-        await asyncio.sleep(0.5)
+        try:
+            for name in sections:
+                print(f"== {name}", flush=True)
+                if name in ("race", "udp", "finish") and not test.racing:
+                    s.check(f"section {name}", None, "the race did not start")
+                    continue
+                await getattr(test, name)()
+            s.insim.send(IS_BFN(SubT=BFN.CLEAR))
+            await asyncio.sleep(0.5)
+        except ConnectionError as error:  # S24: LFS closed mid-run; keep what was seen
+            s.check(f"connection kept until the end (in {name})", False, str(error))
     return s.finish()
 
 

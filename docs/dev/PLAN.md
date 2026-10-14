@@ -469,10 +469,10 @@ de pantalla) se pide antes, con copia de lo que se toque. Lo que necesita a otra
   por grupo que monta la situación (con `lfs_screen.ps1` y comandos por `IS_MST`), espera lo que debe llegar,
   comprueba valores, reescribe cada paquete (mismo contenido al releerlo, como en S12) y deja un informe en
   `tests/live_reports/`. Fuera de pytest (como `live_lfs.py`). Hecho en S24 → LOG.md S24.
-- [ ] **W11.3** — Grupo A (Un Jugador con IA): carrera completa (`RST`, `SPX`, `LAP`, `FIN`, `RES`, `NLP`, `MCI`,
+- [x] **W11.3** — Grupo A (Un Jugador con IA): carrera completa (`RST`, `SPX`, `LAP`, `FIN`, `RES`, `NLP`, `MCI`,
   `CON`, `FLG`, `HLV`, `PEN`, `PIT`/`PSF`/`PLA`, `CRS`, `CSC`, `PLL`/`PLP`, `TINY_REN`/`CLR`), botones (estilos,
   `DEL_BTN`), `AIC`/`AII`, `OCO`, `SCH`, `SFP`, `SSH`, `SMALL_*` (`TMS`, `STP`, `NLI`, `LCS`, `LCL`, `SSP`,
-  `SSG`), `REO` enviado, `TINY_RES` (no respondió en S12).
+  `SSG`), `REO` enviado, `TINY_RES` (no respondió en S12). Hecho en S24 → LOG.md S24 (lo que queda, en W11.10).
 - [ ] **W11.4** — Grupo E (editor de circuitos): `AXM` en los dos sentidos, `AXI`, `AXO`, `OBH`, `UCO`, `CIM`,
   `TTC_*`, `TINY_AXC`.
 - [ ] **W11.5** — Grupo H (tu LFS como servidor, aunque no entre nadie): `NCI`, `SLC`, `MAL`, `PLH`/`HCP`, `PLC`,
@@ -485,6 +485,17 @@ de pantalla) se pide antes, con copia de lo que se toque. Lo que necesita a otra
   que `SMALL_SSP` / `SMALL_SSG` (OutSim / OutGauge sin tocar `cfg.txt`) no se pueden usar con la API pública: LFS
   manda los datos a ese puerto. La batería lo pone por dentro. Antes de decidir, ver en W11.3 si funciona y qué
   pasa con `IS_NLP` / `IS_MCI` (con `UDPPort` puesto, LFS los manda por UDP en vez de por TCP).
+  Visto en S24: funciona (`UVal` en **centésimas de segundo**, 0 lo para); la segunda conexión llevaba `UDPPort` y
+  ningún `ISF.MCI`/`NLP`, así que lo de `IS_NLP`/`IS_MCI` por UDP sigue sin probar. Si se expone, el docstring
+  debe decir la unidad (la especificación no la dice).
+- [ ] **W11.9** — (Encontrada en S24) **Cualquier `IS_AIC` le quita el coche a la IA de LFS**, aunque solo pida
+  `CS_SEND_AI_INFO`: sin acelerador, frena; `CS_STOP_CONTROL` la para y no devuelve el control; no hay forma
+  documentada de devolvérselo. `SMALL_AII` no lo quita. Decidir con el usuario: avisarlo en el docstring de
+  `IS_AIC` / `CS` (vía `spec_overrides.py`), y buscar si Scawen dice algo en el foro (§15). Importa para la
+  aplicación de control de IA.
+- [ ] **W11.10** — Lo que queda del grupo A, que necesita tu coche en pista (o una IA en boxes): `PIT`/`PSF`,
+  `CRS`, `PLL`/`PLP`, `PEN`, `CON` (si hay contacto), `SMALL_LCS` / `LCL` puestos, `IS_OCO` con captura en el
+  momento, recibir `IS_BFN` (Shift+I / Shift+B).
 
 ## Ideas (aparcadas, sin compromiso)
 - **Ayudante de botones** (de escribir `examples/buttons.py`, S12): hay que repartir los `ClickID` a

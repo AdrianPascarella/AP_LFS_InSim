@@ -11,7 +11,11 @@
 # moment after -Keys, because opening the chat box with "t" takes LFS a little while.
 # Coordinates are of the full screen. With LFS full screen at 1920x1080, an InSim button
 # (200x200 units) is at x = 420 + L * 5.4, y = T * 5.4.
-param([int]$X = -1, [int]$Y = -1, [string]$Keys = "", [string]$Then = "", [int]$Wait = 1500)
+#   powershell -File tests/lfs_screen.ps1 -FX 0.935 -FY 0.96                    click inside LFS
+# -FX and -FY are fractions (0 to 1) of LFS's window, so they work full screen or windowed (S24:
+# LFS in a window, a full-screen click landed on the taskbar). Prefer them to -X / -Y.
+param([int]$X = -1, [int]$Y = -1, [double]$FX = -1, [double]$FY = -1, [string]$Keys = "",
+      [string]$Then = "", [int]$Wait = 1500)
 
 Add-Type -AssemblyName System.Windows.Forms, System.Drawing
 Add-Type @"
@@ -21,11 +25,27 @@ public static class LfsMouse {
   [DllImport("user32.dll")] public static extern void mouse_event(uint f, uint x, uint y, uint d, IntPtr e);
   [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
   [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr w, out uint p);
+  [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
+  [DllImport("user32.dll")] public static extern bool GetClientRect(IntPtr h, out LfsRect r);
+  [DllImport("user32.dll")] public static extern bool ClientToScreen(IntPtr h, ref LfsPoint p);
 }
+public struct LfsRect { public int L, T, R, B; }
+public struct LfsPoint { public int X, Y; }
 "@
+# With Windows display scaling (125% in S24) a process that does not say it knows about DPI sees a
+# smaller screen: clicks land elsewhere and the screenshot is cut. Say it before anything measures.
+[void][LfsMouse]::SetProcessDPIAware()
 
 $lfs = Get-Process LFS -ErrorAction SilentlyContinue
 if ($null -eq $lfs) { Write-Error "LFS is not running"; exit 1 }
+if ($FX -ge 0) {
+    $client = New-Object LfsRect
+    [void][LfsMouse]::GetClientRect($lfs.MainWindowHandle, [ref]$client)
+    $corner = New-Object LfsPoint
+    [void][LfsMouse]::ClientToScreen($lfs.MainWindowHandle, [ref]$corner)
+    $X = $corner.X + [int]($FX * $client.R)
+    $Y = $corner.Y + [int]($FY * $client.B)
+}
 if ($X -ge 0 -or $Keys -ne "") {
     $shell = New-Object -ComObject WScript.Shell
     [void]$shell.AppActivate($lfs.Id)

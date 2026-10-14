@@ -445,6 +445,11 @@ Formas en que este equipo o sus herramientas ya han dañado o pueden dañar el t
   el puerto 29999 responde antes de seguir; si el usuario puede estar usando el equipo, preguntar
   antes de manejar LFS; y nunca probar la protección con un clic o una tecla de verdad.
 
+- **Escalado de Windows y LFS en ventana** (visto en S24): con el escalado al 125 %, `lfs_screen.ps1` veía una
+  pantalla de 1536×864 (captura recortada) y, con LFS en ventana, un clic en coordenadas de pantalla completa cayó
+  en la barra de tareas y abrió los ajustes rápidos de Windows. Ahora el script declara los DPI y acepta `-FX` /
+  `-FY` (fracciones de la ventana de LFS). **Regla:** clics siempre con `-FX` / `-FY`, y mirar la captura antes.
+
 - **`ruff format` sobre una carpeta formatea también el Python de los `.md`** (visto en S20: `ruff format
   docs` cambió los bloques de código de `API_DESIGN.md`, `insim.md`, `units.md` y `roster-and-text.md`; se
   restauraron desde git). **Regla:** `ruff format` solo con archivos `.py` concretos o rutas de `CHECKED_PATHS`.

@@ -1,7 +1,7 @@
 # 📓 Diario — AP_LFS_InSim (lfs_insim)
 <!-- Solo se añade, lo más nuevo arriba. Una entrada por sesión. -->
 
-## S24 — 2026-10-14 — W11.2: batería en vivo (`tests/live/`)
+## S24 — 2026-10-14 — W11.2: batería en vivo (`tests/live/`); W11.3: grupo A en el LFS real
 
 **Inicio:** `session_start_check` PASS (nada que traer). `verify` PASS (613). Equipo principal. LFS cerrado.
 El usuario: «Adelante, empieza con W11.2».
@@ -40,6 +40,49 @@ por UDP.
 
 **Verificación:** `verify` PASS (616: los 3 nuevos del harness). Los scripts arrancan (`--help`); sin LFS,
 `group_a.py` espera el `IS_VER`.
+
+**W11.3 hecha: grupo A en el LFS real** (el usuario: «Puedes empezar ya»; permiso de S23). Había un LFS abierto
+que no abrió el agente: se preguntó y el usuario dijo «Úsalo tú». LFS ya es **0.8C32** y está **en ventana**.
+Seis pasadas; lo que pasó y lo que se aprendió:
+- **Pantalla (cicatriz nueva en §13):** con el escalado de Windows al 125 %, `lfs_screen.ps1` veía 1536×864 (captura
+  recortada, clic fuera de sitio). Arreglado con `SetProcessDPIAware`. Con LFS en ventana, el clic de GO en
+  coordenadas de pantalla completa cayó en la barra de tareas y abrió los ajustes rápidos de Windows (solo se
+  abrieron). Nuevo `-FX` / `-FY` (fracción de la ventana de LFS) y `Session.screen(at=...)`.
+- **El usuario: «¿Por qué tarda tanto?»** → la carrera no había empezado: en Un Jugador **`/restart` no arranca la
+  carrera** (sí `/laps`, `/ai`, `/end`, `/clear`). El script pulsa GO si no llega `IS_RST` en 5 s, y salta las
+  secciones de carrera si no arranca. Se lanza con `python -u` a un archivo, para ver el progreso.
+- **`IS_REO` sí funciona** en la preparación; el FAIL era del script: un `TINY_REO` justo después devuelve el orden
+  anterior (experimento aparte: [2, 1, 3] enviado, leído igual tras 1 s). Ahora espera 1 s.
+- **`IS_ACR` también llega en Un Jugador**: LFS confirma `/laps`, `/restart`, `/end`, `/clear` (`Result` 1).
+- **`SMALL_SSP` / `SSG`: `UVal` en centésimas de segundo** (experimento: 10 → ~10 por segundo; 100 y 1000 → uno por
+  segundo), y 0 lo para. Una sospecha de que 0 no paraba venía de usar un puerto para los dos: OutGauge llegaba al
+  lector de OutSim (ilegible) y el informe se cayó al escribirse (arreglado: puertos 30011 y 30012, y el informe
+  admite paquetes ilegibles). La especificación no dice la unidad (W11.8).
+- **`IS_AIC` le quita el coche a la IA** (W11.9). Tres IA acabaron fuera o paradas: girar a fondo 2 s a 160 km/h
+  (fallo del agente), girar suave ½ s (aún +32°) y, en la pasada final, **solo `CS_SEND_AI_INFO` y la bocina**: la
+  IA dejó de conducir y se estrelló (lo vio el usuario: «La AI 2 dejó de conducir y se chocó»). La especificación no
+  dice cómo devolver el control. Carrera extra, sobre la ganadora justo tras la meta (el usuario explicó que la IA da
+  una vuelta más hasta boxes y aparca): 42,3 m/s antes, 7,5 m/s 4 s después de tomar el control, **0 tras
+  `CS_STOP_CONTROL`**. `SMALL_AII` no quita el control. Las pruebas de `IS_AIC` van ahora tras la meta.
+- **`IS_SCH` «V» cambia la vista** (`InGameCam` 0 → 1), pero `IS_CCH` llegó una vez y otra no: la comprobación mira
+  `IS_STA`. `SMALL_NLI` necesita un momento para aplicarse (5 `IS_NLP` en 3,5 s a 1000 ms). `instruct.IS_SSH` dejó
+  `lfs_insim_live.jpg` en `C:\LFS\data\shots` (lo escribe LFS). `TINY_RES` **sí responde** en carrera (pendiente de
+  S12). Tras `/end` llegan también `IS_VTN`, `SMALL_VTA` y `TINY_VTC`.
+- **Falsa alarma revisada:** los `IS_MSO` salían con «�» en la consola; los bytes y el `str` son correctos («á» =
+  U+00E1, «°»). Las diferencias de bytes del `IS_MSO` son las `^L`, ya conocidas.
+- **El usuario se fue a mitad** de la cuarta pasada y LFS se cerró: el script se cayó sin informe. Ahora una conexión
+  perdida es un FAIL y el informe se escribe igual. Al volver: «Hazlo ahora, abre LFS y haz la última pasada».
+
+**Resultados:** pasada final (`A_20261014_184415.json`): **41 PASS, 2 FAIL** (los dos del script: el `FIN` de la IA
+estrellada por `IS_AIC` y el giro de un coche parado), 2 SKIP (no hubo `CON` ni `PEN`). Carrera extra
+(`A_20261014_184841.json`, `setup race finish`): **30 PASS**. En todas las pasadas: **0 paquetes ilegibles, 0
+reescritos con otro contenido, 0 enviados que se relean distinto, 0 avisos de la biblioteca**. `COVERAGE.md`: 34
+filas del grupo A actualizadas; `SMALL_TMS` / `STP` pasan a «—» («currently unavailable»). Lo que queda del grupo A
+necesita un coche en pista (W11.10). LFS, abierto por el agente, cerrado con `/exit`.
+
+**Decisiones:** montar la carrera por comandos y pulsar GO solo si hace falta (los clics dependen de la ventana);
+`IS_AIC` solo tras la meta; nada de esto cambia la biblioteca: los hallazgos que sí podrían cambiarla (W11.8,
+W11.9) quedan para decidir con el usuario.
 
 ## S23 — 2026-10-14 — U13 cerrada; W6.3 (FreeCam, en streamer-project) y W6.10 (`connect()` y `on_connect`); avisos rojos de LFS investigados
 

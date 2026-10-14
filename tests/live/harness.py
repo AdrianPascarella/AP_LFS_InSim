@@ -306,9 +306,16 @@ class Session:
         print(f"  note: {text}")
 
     async def screen(
-        self, *, keys: str = "", then: str = "", x: int = -1, y: int = -1, wait: int = 1500
+        self,
+        *,
+        keys: str = "",
+        then: str = "",
+        at: tuple[float, float] | None = None,
+        wait: int = 1500,
     ) -> None:
         """Type or click into LFS with lfs_screen.ps1 (which also leaves a screenshot).
+
+        at: where to click, as fractions (0 to 1) of LFS's window, full screen or windowed.
 
         Raises ScreenRefused if LFS was not in front: then nothing was sent, and the test stops
         rather than type into someone else's window.
@@ -318,8 +325,8 @@ class Session:
             args += ["-Keys", keys]
         if then:
             args += ["-Then", then]
-        if x >= 0:
-            args += ["-X", str(x), "-Y", str(y)]
+        if at is not None:
+            args += ["-FX", str(at[0]), "-FY", str(at[1])]
         process = await asyncio.create_subprocess_exec(
             "powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(SCREEN), *args
         )
@@ -420,7 +427,7 @@ def received_report(recorder: Recorder) -> dict[str, Any]:
         ],
         "log": recorder.log,
         "packets": [
-            {"packet": item.name, **_plain(item.packet)} for item in kept(recorder.received)
+            {"packet": item.name, **(_plain(item.packet) or {})} for item in kept(recorder.received)
         ],
     }
 
