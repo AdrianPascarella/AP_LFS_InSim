@@ -205,6 +205,7 @@ class Session:
         self,
         group: str,
         *,
+        host: str = "127.0.0.1",
         port: int = 29999,
         flags: int = 0,
         interval_ms: int = 0,
@@ -220,7 +221,12 @@ class Session:
             recorder.install()
         self.recorder = recorder
         self.insim = LiveInSim(
-            name=f"live {group}", port=port, flags=flags, interval_ms=interval_ms, udp_port=udp_port
+            name=f"live {group}",
+            host=host,
+            port=port,
+            flags=flags,
+            interval_ms=interval_ms,
+            udp_port=udp_port,
         )
         self.insim.sent_log = []
         self.checks: list[Check] = []

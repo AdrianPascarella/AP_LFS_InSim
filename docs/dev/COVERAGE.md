@@ -1,5 +1,5 @@
 # 🧪 Cobertura en el LFS real — AP_LFS_InSim (lfs_insim)
-> Fase W11 (S23; grupos A, E y H probados en S24 con `tests/live/group_a.py`, `group_e.py` y `group_h.py`; el H solo como invitado admin: en LFS 0.8C32 «Crear servidor nuevo» no hace anfitrión al juego). Qué paquete se ha visto funcionar en el LFS real, cómo se provoca y qué falta. Se actualiza
+> Fase W11 (S23; grupos A, E y H probados en S24 con `tests/live/group_a.py`, `group_e.py` y `group_h.py`; el H como invitado admin (S24) y contra el InSim del propio servidor alojado en lfs.net (S25): en LFS 0.8C32 «Crear servidor nuevo» lo aloja en el servicio de hosting y el juego entra como invitado). Qué paquete se ha visto funcionar en el LFS real, cómo se provoca y qué falta. Se actualiza
 > al probar cada grupo; el detalle de cada prueba, en `LOG.md` (la sesión de la columna «Visto»).
 
 **Estado** (lo más fuerte que se ha comprobado de cada uno):
@@ -22,7 +22,7 @@
 
 | Paquete | Sentido | Estado | Visto | Grupo | Cómo se provoca / qué falta |
 |---|---|---|---|---|---|
-| IS_ACR | ⬇ | ✔ | S24 | A/H | en Un Jugador LFS confirma cada comando; como invitado admin no llega (va al InSim del servidor, S24) |
+| IS_ACR | ⬇ | ✔ | S24, S25 | A/H | en Un Jugador, cada comando; en el InSim del servidor, el de un invitado admin (`/rstend 0`, UCID 1) y el del propio InSim (UCID 0) (S25) |
 | IS_AIC | ⬆ | ✔ | S24 | A | **le quita el coche a la IA** (cualquier `IS_AIC`, incluso `CS_SEND_AI_INFO`): sin acelerador frena; `CS_MSX` gira; `CS_STOP_CONTROL` la para y no devuelve el control (W11.9) |
 | IS_AII | ⬇ | ✔ | S24 | A | por `SMALL_AII` (no quita el control) y por `CS_SEND_AI_INFO`; marcha, rpm, posición y velocidad con sentido |
 | IS_AXI | ⬇ | ✔ | S12, S24 | E | `TINY_AXI`; `NumO` cuenta un cono añadido; un checkpoint de InSim (índice 252) no cuenta ni en `NumO` ni en `NumCP` (S24) |
@@ -44,21 +44,21 @@
 | IS_FLG | ⬇ | ◐ | S12 | A | bandera azul / amarilla (IA lenta o parada) |
 | IS_HCP | ⬆ | ✖ | — | H | handicaps por coche; ver `IS_PLH` o el efecto |
 | IS_HLV | ⬇ | ◐ | S12 | A | salirse de pista, golpe contra muro (`ISF.HLV`) |
-| IS_III | ⬇ | ✖ | — | H/P | `/i` como invitado admin no da `IS_III` (S24): va al InSim del servidor |
-| IS_IPB | ⬍ | ✖ | — | H | `TINY_IPB` sin respuesta como invitado admin (S24); falta en un servidor dedicado |
+| IS_III | ⬇ | ✔ | S25 | H/P | un invitado escribe `/i hola` → `IS_III` (UCID 1, `Msg`) en el InSim del servidor |
+| IS_IPB | ⬍ | ✔ | S25 | H | `TINY_IPB` y enviado (ban de 192.0.2.1, releído y quitado) en el InSim del servidor; como invitado admin, sin respuesta (S24) |
 | IS_ISI | ⬆ | ✔ | todas | A | conectar (flags, `Interval`, prefijo, contraseña de admin) |
-| IS_ISM | ⬇ | ✔ | S12, S19, S24 | H/G | `TINY_ISM`; como invitado (S19); con «Crear servidor nuevo» de 0.8C32, `Host` 0 (S24: el juego es invitado admin de su propio servidor) |
+| IS_ISM | ⬇ | ✔ | S12, S19, S24, S25 | H/G | `Host` 1 en el InSim del servidor alojado (S25); `Host` 0 en el del juego, invitado admin (S24) |
 | IS_JRR | ⬆ | ✖ | — | P | `ISF.REQ_JOIN`: aceptar o rechazar a alguien que quiere entrar |
 | IS_LAP | ⬇ | ✔ | S12, S24 | A | `LTime` ~1:40 en BL1, `LapsDone` (S24; también la registra streamer-project, S21) |
-| IS_MAL | ⬍ | ✔ | S12, S24 | H | enviado como invitado admin: cambia la lista, LFS la reenvía con el `UCID` que la cambió; vacía = todos (S24) |
+| IS_MAL | ⬍ | ✔ | S12, S24, S25 | H | enviado como invitado admin (S24) y como anfitrión (S25): cambia la lista, releída y restaurada |
 | IS_MCI | ⬇ | ✔ | S12, S18 | A | `ISF.MCI`; unidades de velocidad y posición comprobadas (S18) |
 | IS_MOD | ⬆ | ✖ | — | A | cambiar resolución / ventana (cuidado: cambia la pantalla del usuario) |
 | IS_MSL | ⬆ | ✔ | S12, S19 | A | vuelve como `IS_MSO`; solo lo ve este ordenador (S19) |
 | IS_MSO | ⬇ | ✔ | S12, S19 | A/G | chat; `USER`, `O`, `PREFIX`; falta `ISF.MSO_COLS` |
 | IS_MST | ⬆ | ✔ | S12, S18 | A | mensaje y comando (`/ai`, `/end`, `/mpr`) |
 | IS_MSX | ⬆ | ✔ | S12 | A | mensaje largo |
-| IS_MTC | ⬆ | ◐ | S18, S19, S24 | H/P | rechazado como invitado y como invitado admin («only for multiplayer hosts», S24); falta desde el InSim de un servidor dedicado |
-| IS_NCI | ⬇ | ✖ | — | H | `TINY_NCI` en un servidor con contraseña de admin |
+| IS_MTC | ⬆ | ✔ | S18, S19, S24, S25 | H/P | desde el InSim del servidor: a todos (255, visto en el juego) y a una conexión (S25); como invitado, «only for multiplayer hosts» |
+| IS_NCI | ⬇ | ✖ | — | H | sin respuesta: el servidor alojado no tiene contraseña de administrador (se pone al crearlo; con él en marcha no se puede cambiar, y pararlo lo borra) |
 | IS_NCN | ⬇ | ✔ | S12, S19 | A/G | `TINY_NCN`; flags de remoto y admin (S19) |
 | IS_NLP | ⬇ | ✔ | S12, S24 | A | `ISF.NLP` / `TINY_NLP`; vuelta y posición; ritmo de `SMALL_NLI` (S24) |
 | IS_NPL | ⬇ | ✔ | S12, S23 | A/R | entra un coche; `PType` de IA, `CName` de mod (S12) |
@@ -68,7 +68,7 @@
 | IS_PFL | ⬇ | ◐ | S23 | A | cambiar ayudas del jugador |
 | IS_PIT | ⬇ | ◐ | S23 | A | parada en boxes |
 | IS_PLA | ⬇ | ◐ | S21, S23, S24 | A | entrar o salir del pit lane (una IA tras la meta, S24) |
-| IS_PLC | ⬆ | ◐ | S24 | H | rechazado como invitado admin («only for multiplayer hosts»); falta en un servidor dedicado |
+| IS_PLC | ⬆ | ◐ | S24, S25 | H | aceptado por el servidor (sin aviso) pero sin respuesta que comprobar; falta ver su efecto (un invitado elige coche) |
 | IS_PLH | ⬍ | ◐ | S12, S24 | H | `TINY_PLH` (vacío, S24); falta enviar handicaps (necesita un coche en un servidor) |
 | IS_PLL | ⬇ | ◐ | S23 | A | un jugador se va a espectador |
 | IS_PLP | ⬇ | ◐ | S23 | A | un jugador va a boxes (garaje) |
@@ -81,7 +81,7 @@
 | IS_SCH | ⬆ | ✔ | S24 | A | «V» cambia la vista (`IS_STA.InGameCam`); falta con SHIFT / CTRL |
 | IS_SET | ⬇ | ✖ | — | H/P | `ISF.SET`: un invitado manda su setup (¿también el anfitrión? por ver) |
 | IS_SFP | ⬆ | ✔ | S24 | A | ocultar y mostrar el 2D (`ISS.SHOW_2D` en `IS_STA`) |
-| IS_SLC | ⬇ | ✖ | — | H | `TINY_SLC` («only for multiplayer hosts» en S12) / elegir coche |
+| IS_SLC | ⬇ | ✔ | S25 | H | `TINY_SLC` en el InSim del servidor: `XFG` del host y vacío del invitado sin coche |
 | IS_SMALL | ⬍ | ◐ | S12 | A | ver la tabla de `SMALL` |
 | IS_SPX | ⬇ | ✔ | S12, S24 | A | paso por un parcial (`STime`, `Split`) |
 | IS_SSH | ⬍ | ✔ | S24 | A | `instruct.IS_SSH(Name=...)` → `SSH.OK` y el archivo en `C:\LFS\data\shots` |
@@ -122,10 +122,10 @@
 | TINY_NCI | ⬆ | ✖ | — | H | → `IS_NCI` (servidor con contraseña) |
 | TINY_ALC | ⬆ | ◐ | S12 | A | → `SMALL_ALC` |
 | TINY_AXM | ⬆ | ✔ | S12, S24 | E | → `IS_AXM` hasta `PMO_FILE_END` |
-| TINY_SLC | ⬆ | ✖ | — | H | → `IS_SLC` |
+| TINY_SLC | ⬆ | ✔ | S25 | H | → `IS_SLC` de cada conexión |
 | TINY_MAL | ⬆ | ◐ | S12 | H | → `IS_MAL` |
 | TINY_PLH | ⬆ | ◐ | S12 | H | → `IS_PLH` |
-| TINY_IPB | ⬆ | ✖ | — | H | sin respuesta como invitado admin (S24) |
+| TINY_IPB | ⬆ | ✔ | S25 | H | → `IS_IPB` en el InSim del servidor |
 | TINY_LCL | ⬆ | ◐ | S12 | A | → `SMALL_LCL` |
 | SMALL_SSP | ⬆ | ✔ | S24 | A | OutSim al `UDPPort` del `IS_ISI` (que `InSim()` no deja poner, W11.8); **`UVal` en centésimas** (10 → 10 por segundo); 0 lo para |
 | SMALL_SSG | ⬆ | ✔ | S24 | A | OutGauge igual que `SSP`: `UDPPort`, `UVal` en centésimas, 0 lo para |
@@ -134,7 +134,7 @@
 | SMALL_STP | ⬆ | — | — | — | la especificación dice «currently unavailable» |
 | SMALL_RTP | ⬇ | ◐ | S12 | A | respuesta a `TINY_GTM` |
 | SMALL_NLI | ⬆ | ✔ | S24 | A | 1000 ms → ~1 `IS_NLP` por segundo (tarda un momento en aplicarse) |
-| SMALL_ALC | ⬍ | ◐ | S12, S24 | A/H | leído; enviarlo como invitado admin: «only for multiplayer hosts» (S24) |
+| SMALL_ALC | ⬍ | ✔ | S12, S24, S25 | A/H | enviado desde el InSim del servidor: aplicado, releído y restaurado (S25); como invitado admin, rechazado (S24) |
 | SMALL_LCS | ⬆ | ✖ | — | A | luces, bocina, sirena del coche local |
 | SMALL_LCL | ⬍ | ◐ | S12 | A | leído; falta poner luces |
 | SMALL_AII | ⬆ | ✔ | S24 | A | → `IS_AII` de una IA, sin quitarle el control |

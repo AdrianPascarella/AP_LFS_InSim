@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Docs: how to reach the host's own InSim when the server was started from the game (it runs on
+  LFS's hosting service): its IP, InSim port and access list on lfs.net. See
+  [Chat commands](docs/insim.md#chat-commands).
+
 ## 0.8.0
 
 - `InSim(udp_port=30001)`: the UDP port where LFS sends OutSim and OutGauge started with

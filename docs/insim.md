@@ -151,12 +151,17 @@ your program still gets the chat, but it is not the host, so things change:
 connection; see [Who is who](roster-and-text.md)).
 
 **A server started from the game is not this computer.** With LFS 0.8C32, *Multiplayer → Create
-new host* runs the server apart and your game joins it as an admin guest: the host is connection
-0, shown as remote, and you are connection 1. Your program is then a guest's InSim: `IS_ISM`
-says `Host` 0, and LFS refuses what only a host may do (`IS_MTC`, so `say(to=...)` for another
-connection, `IS_PLC`, setting `SMALL_ALC`) with "only for multiplayer hosts". Some admin tools
-still work, such as `IS_MAL`. To be the host, connect to the InSim of a dedicated host (LFS's
-separate dedicated server program).
+new host* starts the server on LFS's hosting service, and your game joins it as an admin guest:
+the host is connection 0, shown as remote, and you are connection 1. An `InSim` connected to your
+game is then a guest's: `IS_ISM` says `Host` 0, and LFS refuses what only a host may do
+(`IS_MTC`, so `say(to=...)` for another connection, `IS_PLC`, setting `SMALL_ALC`) with "only for
+multiplayer hosts". Some admin tools still work, such as `IS_MAL`.
+
+To be the host, connect to the server's own InSim: on lfs.net, *Hosting → Your hosts* shows its
+host IP and InSim port, and *Access control* lists the IP addresses allowed to connect (empty:
+nobody). Add your public IP there, then `InSim(host="<host IP>", port=<InSim port>)`; give
+`admin_password` if the server has one. Note that a free hosted server is deleted if you stop
+it: do not send `/leave` or `/exit` to it.
 
 ### On connection, and on a rhythm
 

@@ -1,17 +1,21 @@
 """Live test, group H (W11.5): this LFS as a multiplayer host. Not collected by pytest.
 
-    .venv/Scripts/python tests/live/group_h.py [--port 29999] [--only SECTION ...]
+    .venv/Scripts/python tests/live/group_h.py [--host IP] [--port 29999] [--only SECTION ...]
 
-Start with LFS hosting (Multiplayer -> Create new host; hidden, no one else needs to join), in
-the race setup screen, with InSim listening (`/insim=29999`). Every host list the test changes
-(allowed mods, IP bans, allowed cars, handicaps) is read first and put back at the end.
+Connect to the InSim of the host itself. With LFS 0.8C32, *Create new host* runs the server on
+LFS's hosting service (lfs.net -> Hosting -> Your hosts shows its IP and InSim port; this
+computer's IP must be in its InSim access list), and the game joins it as an admin guest: its own
+`/insim` is a guest's (S24). Never stop a free hosted server: it is deleted (the user, S25).
+Every host list the test changes (allowed mods, IP bans, allowed cars, handicaps) is read first
+and put back at the end.
 Sections, in order:
 
     requests  ISM (Host), NCN, NCI (only with an admin password), SLC, MAL, PLH, IPB, ALC
     lists     IS_MAL, IS_IPB, SMALL_ALC, IS_PLC: set, read back, restore
     messages  IS_MTC to the host (UCID 0), to everyone (255), to a player; /i -> IS_III; IS_ACR
     race      an AI driver, /restart; IS_PLH (sent -> echoed), IS_HCP, TINY_PLH
-    leave     /end, /clear and /leave -> TINY_MPE (LFS stops hosting)
+    leave     /end, /clear and /leave -> TINY_MPE: only for a host on this computer (a hosted
+              server would stop, and a free one is deleted)
 """
 
 from __future__ import annotations
@@ -33,7 +37,6 @@ from lfs_insim.packets import (
     IS_IPB,
     IS_MAL,
     IS_MTC,
-    IS_NCN,
     IS_NPL,
     IS_PLC,
     IS_PLH,
@@ -167,22 +170,34 @@ class GroupH:
         await asyncio.sleep(1)
         await s.screen()
         s.note("IS_MTC to UCID 0 and 255: see tests/live_reports/screen.png (red = refused)")
-        s.insim.command("/i hello from the host")
-        iii = await s.expect(IS_III, since=since, timeout=5)
-        s.check("/i text -> IS_III", True if iii else None, str(iii))
+        guests = [n for n in await s.insim.request_all.IS_NCN() if n.UCID]
+        if guests:  # a person in the server types what IS_III and IS_ACR need
+            ucid = guests[0].UCID
+            s.insim.send(IS_MTC(UCID=ucid, Text="lfs_insim test: IS_MTC to your connection"))
+            s.insim.send(
+                IS_MTC(UCID=ucid, Text="lfs_insim test: please type  /i hola  and  /rstend 0")
+            )
+            s.note(f"asked UCID {ucid} ({guests[0].PName}) to type /i hola and /rstend 0")
+            iii = await s.expect(IS_III, since=since, timeout=120)
+            s.check("a guest types /i -> IS_III", True if iii else None, str(iii))
+            acr = await s.expect(IS_ACR, lambda p: "rstend" in p.Text, since=since, timeout=60)
+            s.check("a guest types an admin command -> IS_ACR", True if acr else None, str(acr))
+        else:
+            s.check("IS_III / IS_ACR", None, "no guest to type /i or an admin command")
         s.insim.command("/rstmin 0")
         acr = await s.expect(IS_ACR, lambda p: "rstmin" in p.Text, since=since, timeout=5)
-        s.check("an admin command -> IS_ACR", acr is not None, str(acr))
-        await s.expect_check(
-            "IS_NCN when it starts (if any joined)", IS_NCN, since=since, timeout=0.1
-        )
+        s.check("a command from InSim -> IS_ACR", True if acr else None, str(acr))
 
     async def race(self) -> None:
         s = self.s
         since = s.mark()
-        s.insim.command("/ai")
+        guests = [n for n in await s.insim.request_all.IS_NCN() if n.UCID and n.UName]
+        # /ai adds this computer's AI; a hosted server has none, so add a guest's (/uai USERNAME).
+        command = f"/uai {guests[0].UName}" if guests and s.insim.host != "127.0.0.1" else "/ai"
+        s.insim.command(command)
         npl = await s.expect(IS_NPL, lambda p: bool(p.PType & PTYPE.AI), since=since, timeout=10)
-        if not s.check("/ai on the host -> IS_NPL", npl is not None):
+        if not s.check(f"{command.split()[0]} -> IS_NPL with PTYPE.AI", True if npl else None):
+            s.note("no AI car: the guest may have no car selected in this server")
             return
         assert npl is not None
         since = s.mark()
@@ -212,6 +227,11 @@ class GroupH:
         s.note("IS_HCP sent (XF GTI 20 kg, 5 %) and cleared: no reply to check")
         quiet = PlayerHCap(PLID=npl.PLID, Flags=PLHF.SET_MASS | PLHF.SET_TRES | PLHF.SILENT)
         s.insim.send(IS_PLH(HCaps=[quiet]))
+        since = s.mark()
+        s.insim.command("/end")  # back to the race setup screen
+        await s.expect_check(
+            "/end on the host -> TINY_REN", IS_TINY, subtype(TINY.REN), since=since
+        )
 
     async def leave(self) -> None:
         s = self.s
@@ -227,8 +247,8 @@ class GroupH:
         s.check("/leave -> TINY_MPE (no longer hosting)", mpe is not None)
 
 
-async def main_async(port: int, sections: list[str]) -> int:
-    s = Session("H", port=port, flags=FLAGS)
+async def main_async(host: str, port: int, sections: list[str]) -> int:
+    s = Session("H", host=host, port=port, flags=FLAGS)
     async with s:
         if not s.check("connected (IS_VER)", await s.connected()):
             return s.finish()
@@ -248,11 +268,14 @@ async def main_async(port: int, sections: list[str]) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    parser.add_argument("--host", default="127.0.0.1", help="the host's InSim address")
     parser.add_argument("--port", type=int, default=29999)
     parser.add_argument("--only", nargs="+", choices=SECTIONS, default=SECTIONS)
     args = parser.parse_args()
     sections = [name for name in SECTIONS if name in args.only]
-    return asyncio.run(main_async(args.port, sections))
+    if args.host != "127.0.0.1" and "leave" in sections:
+        parser.error("--host: leave the 'leave' section out (it would stop the hosted server)")
+    return asyncio.run(main_async(args.host, args.port, sections))
 
 
 if __name__ == "__main__":
