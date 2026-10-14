@@ -8,9 +8,11 @@
 > con un cliente mínimo propio; no los causa la biblioteca (LOG S23).
 > **Fase activa: W11, pruebas intensivas contra el LFS real** (propuesta del usuario, plan aceptado en S23).
 > W11.1 hecha: `docs/dev/COVERAGE.md` (estado de cada paquete y subtipo en real, por grupos A/R/E/H/P/G).
-> **▶️ SIGUIENTE: W11.2 + W11.3** — la batería en vivo y el grupo A (Un Jugador con IA). **Antes, pedir permiso**
-> para abrir Un Jugador con IA en su LFS y teclear en él con `lfs_screen.ps1` (le quita el foco si está usando el
-> ordenador). Los demás grupos, cada uno con su permiso; el grupo P, en una tarjeta. La
+> **▶️ SIGUIENTE (sesión nueva, la pidió el usuario): W11.2 + W11.3** — la batería en vivo y el grupo A (Un
+> Jugador con IA). **Permiso dado en S23** («Me parece bien y te doy permiso»): abrir LFS, ponerlo en Un Jugador con
+> IA, hacer carreras y teclear/hacer clic con `lfs_screen.ps1` (no manda nada si LFS no queda delante). Sin tocar
+> `cfg.txt` en este grupo (OutSim/OutGauge por `SMALL_SSP`/`SSG`). LFS quedó cerrado al final de S23 (lo abrió el
+> agente; `/exit` por InSim). Los demás grupos, cada uno con su permiso; el grupo P, en una tarjeta. La
 > > biblioteca tiene la API de alto nivel (`@insim.on.IS_NPL`, `insim.send.IS_MST(...)`, `received` / `sent`,
 > `request` / `request_all` / `instruct`, `say()` / `command()`, `text.plain()`), plugins (`insim.use()`,
 > `Plugin`, `Commands`, `Roster`, `insim.need()`, `reserve_click_ids()`, `on_close`) y

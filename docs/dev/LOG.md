@@ -65,6 +65,14 @@ alguien que se conecte) quedan sin respuesta: se piden al llegar a cada grupo.
   S21, S23), no desde la búsqueda automática de nombres (daba falsos positivos). Con los paquetes, los subtipos y
   UDP: 31 comprobados, 46 solo leídos, 40 nunca vistos en real. `INDEX.md` la enlaza.
 
+**Permiso para el grupo A** (el usuario: «Me parece bien y te doy permiso, pero mejor si lo hacer en una sesión nueva
+y fresca. Cierra la sesión y deja todo listo»): abrir LFS en Un Jugador con IA, hacer carreras y teclear/hacer clic
+con `lfs_screen.ps1`; sin `cfg.txt`. Se hará en la sesión siguiente.
+
+**Cierre de S23.** LFS, que había abierto el agente, cerrado con `/exit` por InSim. Siguiente: W11.2 y W11.3.
+streamer-project cerrado en su S16 (0.7.0 fijada). Pendiente del usuario: U11 (opcional). Commits de la sesión:
+W6.3/W6.10, 0.7.0 (W6.4), W11.1 y este cierre; CI `verify` en verde.
+
 ## S22 — 2026-10-14 — W6.7 (`request.IS_XXX`, `request_all.IS_XXX`, `instruct.IS_XXX`), W6.5, W6.6, W6.8 y W6.9 (equipo secundario)
 
 **Inicio:** `session_start_check` PASS (rama, identidad, pull de lo de S21, plantilla v3). Desajuste:
