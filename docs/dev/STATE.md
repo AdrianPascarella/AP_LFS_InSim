@@ -16,8 +16,8 @@
 > con un cliente mínimo propio; no los causa la biblioteca (LOG S23).
 > **Fase activa: W11, pruebas intensivas contra el LFS real** (propuesta del usuario, plan aceptado en S23).
 > W11.1 hecha: `docs/dev/COVERAGE.md` (estado de cada paquete y subtipo en real, por grupos A/R/E/H/P/G).
-> **▶️ SIGUIENTE:** decidir con el usuario W11.8 y W11.9 (si cambian la biblioteca: docstrings / opción
-> `udp_port`) y pedir permiso para el grupo E (W11.4, editor de circuitos) o el H (W11.5, servidor propio). El
+> **▶️ SIGUIENTE:** preguntar si se publica 0.8.0 con W11.8 / W11.9 (o se espera al final de W11, W11.7), y
+> pedir permiso para el grupo E (W11.4, editor de circuitos) o el H (W11.5, servidor propio). El
 > permiso del grupo A (S23) vale para repetir `group_a.py`; sin tocar `cfg.txt`. LFS quedó cerrado al final de
 > S24 (lo abrió el agente; `/exit` por InSim). Los demás grupos, cada uno con su permiso; el grupo P, en una tarjeta. La
 > > biblioteca tiene la API de alto nivel (`@insim.on.IS_NPL`, `insim.send.IS_MST(...)`, `received` / `sent`,

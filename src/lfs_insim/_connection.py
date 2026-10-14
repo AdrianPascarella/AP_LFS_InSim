@@ -24,6 +24,7 @@ from lfs_insim.packets import (
     IS_MTC,
     IS_TINY,
     IS_VER,
+    ISF,
     TINY,
     PacketError,
 )
@@ -64,6 +65,7 @@ class InSim(StopsOnError):
         flags: int = 0,
         interval_ms: int = 0,
         prefix: str = "",
+        udp_port: int = 0,
         errors: Errors = "log",
     ) -> None:
         """Prepare the connection; nothing is sent until it is opened.
@@ -75,6 +77,9 @@ class InSim(StopsOnError):
         interval_ms: time between IS_MCI or IS_NLP packets (0 = none).
         prefix: the special host message prefix character, e.g. "!": as host, LFS hides what
             users type starting with it from the others. The chat commands use it by default.
+        udp_port: where LFS sends OutSim and OutGauge after `SMALL_SSP` / `SMALL_SSG` (listen
+            with OutSim / OutGauge on it). LFS then sends IS_MCI and IS_NLP there too, which
+            InSim does not read, so ISF.MCI and ISF.NLP raise ValueError with it.
         errors: what happens when a handler fails. "log" (the default): the error is logged and
             everything goes on. "raise", for development: the first error closes the connection
             and is raised again by `run()`, `wait_closed()` and `async with`.
@@ -91,7 +96,9 @@ class InSim(StopsOnError):
             Interval=interval_ms,
             Admin=admin_password,
             IName=name,
+            UDPPort=udp_port,
         )
+        self._check_udp(flags)
         self._isi.pack()  # fail now, not when connecting, if a name is too long
         self._handlers = Handlers(errors, self._fail)
         self._plugins = Plugins(self)
@@ -154,11 +161,16 @@ class InSim(StopsOnError):
         """
         if interval_ms < 0:
             raise ValueError(f"interval_ms must be 0 or more, not {interval_ms}")
+        self._check_udp(flags)
         self._isi.Flags |= flags
         if interval_ms and (not self._isi.Interval or interval_ms < self._isi.Interval):
             self._isi.Interval = interval_ms
         if self._supervisor is not None:
             log.warning("IS_ISI options asked for while connected count from the next connection")
+
+    def _check_udp(self, flags: int) -> None:
+        if self._isi.UDPPort and flags & (ISF.MCI | ISF.NLP):
+            raise ValueError("with udp_port, LFS sends IS_MCI / IS_NLP by UDP: use another InSim")
 
     def on_connect(self, handler: ConnectHandler) -> ConnectHandler:
         """Decorator: call the function (no arguments) after every connection and reconnection.

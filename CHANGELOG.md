@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- `InSim(udp_port=30001)`: the UDP port where LFS sends OutSim and OutGauge started with
+  `SMALL_SSP` / `SMALL_SSG`, with no `cfg.txt` lines. LFS also sends IS_MCI and IS_NLP there, which
+  InSim does not read, so `ISF.MCI` and `ISF.NLP` raise `ValueError` with it. See
+  [Without cfg.txt](docs/outsim-outgauge.md#without-cfgtxt-started-by-insim).
+- Docstrings say what LFS does and InSim.txt does not, as seen in LFS 0.8C32: `UVal` of
+  `SMALL.SSP` / `SMALL.SSG` is in hundredths of a second; any `IS_AIC` takes the car from the AI
+  driver (it stops driving, and `CS.STOP_CONTROL` does not give it back), while `SMALL.AII` only
+  reads it.
+
 ## 0.7.0
 
 - `await insim.request.IS_STA()`, `await insim.request_all.IS_NPL()`: the editor lists what LFS

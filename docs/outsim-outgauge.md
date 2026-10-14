@@ -53,6 +53,41 @@ def motion(packet: received.OutSimPack2) -> None:
 The options must match `OutSim Opts` in `cfg.txt`, written in hexadecimal there. If a datagram
 cannot be read, the library logs one warning pointing at `cfg.txt` and skips it.
 
+## Without cfg.txt: started by InSim
+
+An InSim program can make LFS send them, with no `cfg.txt` lines: give `InSim` the port with
+`udp_port`, and send `SMALL_SSP` (OutSim) or `SMALL_SSG` (OutGauge). `UVal` is the interval in
+hundredths of a second (10 = ten a second; InSim.txt does not say the unit, this is what LFS
+0.8C32 does), and 0 stops it. LFS sends them only while a car is on track, the one being viewed.
+
+```python
+from lfs_insim import InSim, OutGauge, received, run
+from lfs_insim.packets import IS_SMALL, SMALL
+
+insim = InSim(name="gauges", udp_port=30001)
+gauge = OutGauge(port=30001)
+
+
+@insim.on_connect
+def start() -> None:
+    insim.send(IS_SMALL(SubT=SMALL.SSG, UVal=10))  # every 0.1 s
+
+
+@gauge.on.OutGaugePack
+def dashboard(packet: received.OutGaugePack) -> None:
+    print(f"{packet.Speed * 3.6:.0f} km/h")
+
+
+if __name__ == "__main__":
+    run(insim, gauge)
+```
+
+Sent this way, OutSim is always `OutSimPack` (`OutSim(port)` with no options). With `udp_port`,
+LFS also sends IS_MCI and IS_NLP to that port instead of to the InSim connection, so `InSim`
+refuses `ISF.MCI` and `ISF.NLP` with it: if you need them too, open a second `InSim` without
+`udp_port` (LFS takes up to 8). For both OutSim and OutGauge, use two `InSim` with different
+ports: on one port the two cannot be told apart.
+
 ## Together with InSim
 
 `run()` starts several sources in one process and one event loop:

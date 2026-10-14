@@ -481,18 +481,18 @@ de pantalla) se pide antes, con copia de lo que se toque. Lo que necesita a otra
   `III`, `MTC` a una persona, `NCN`/`CNL` remotos, y U11.
 - [ ] **W11.7** — Cerrar: cada fallo encontrado arreglado (o anotado si es de LFS), `COVERAGE.md` al día, y
   publicar una versión si cambió la biblioteca (con permiso).
-- [ ] **W11.8** — (Encontrada en S24, por decidir con el usuario) `InSim()` no deja poner `IS_ISI.UDPPort`, así
+- [x] **W11.8** — (Encontrada en S24) `InSim()` no deja poner `IS_ISI.UDPPort`, así
   que `SMALL_SSP` / `SMALL_SSG` (OutSim / OutGauge sin tocar `cfg.txt`) no se pueden usar con la API pública: LFS
   manda los datos a ese puerto. La batería lo pone por dentro. Antes de decidir, ver en W11.3 si funciona y qué
   pasa con `IS_NLP` / `IS_MCI` (con `UDPPort` puesto, LFS los manda por UDP en vez de por TCP).
   Visto en S24: funciona (`UVal` en **centésimas de segundo**, 0 lo para); la segunda conexión llevaba `UDPPort` y
   ningún `ISF.MCI`/`NLP`, así que lo de `IS_NLP`/`IS_MCI` por UDP sigue sin probar. Si se expone, el docstring
-  debe decir la unidad (la especificación no la dice).
-- [ ] **W11.9** — (Encontrada en S24) **Cualquier `IS_AIC` le quita el coche a la IA de LFS**, aunque solo pida
+  debe decir la unidad (la especificación no la dice). Hecho en S24 → LOG.md S24.
+- [x] **W11.9** — (Encontrada en S24) **Cualquier `IS_AIC` le quita el coche a la IA de LFS**, aunque solo pida
   `CS_SEND_AI_INFO`: sin acelerador, frena; `CS_STOP_CONTROL` la para y no devuelve el control; no hay forma
   documentada de devolvérselo. `SMALL_AII` no lo quita. Decidir con el usuario: avisarlo en el docstring de
   `IS_AIC` / `CS` (vía `spec_overrides.py`), y buscar si Scawen dice algo en el foro (§15). Importa para la
-  aplicación de control de IA.
+  aplicación de control de IA. Hecho en S24 → LOG.md S24.
 - [ ] **W11.10** — Lo que queda del grupo A, que necesita tu coche en pista (o una IA en boxes): `PIT`/`PSF`,
   `CRS`, `PLL`/`PLP`, `PEN`, `CON` (si hay contacto), `SMALL_LCS` / `LCL` puestos, `IS_OCO` con captura en el
   momento, recibir `IS_BFN` (Shift+I / Shift+B).

@@ -36,6 +36,11 @@ def docstring(text: str, indent: str) -> str:
     return f'{indent}"""\n{body}\n{indent}"""\n'
 
 
+def with_note(text: str, key: str) -> str:
+    """The text from the specification, then what was seen in the game (overrides.NOTES)."""
+    return ". ".join(filter(None, (text, overrides.NOTES.get(key))))
+
+
 def prefix_of(name: str) -> str:
     return name.split("_", 1)[0]
 
@@ -197,5 +202,5 @@ def enum_classes(classes: list[EnumClass]) -> str:
                 raise SpecError(f"{member.name}: {cls.name}.{name} is defined twice")
             seen.add(name)
             out.append(f"\n    {name} = {member.value}\n")
-            out.append(docstring(member.comment, "    "))
+            out.append(docstring(with_note(member.comment, f"{cls.name}.{name}"), "    "))
     return "".join(out)

@@ -44,6 +44,7 @@ from generate_enums import (
     enum_import,
     member_name,
     prefix_of,
+    with_note,
 )
 from spec_directions import (
     DIRECTION_MODULES,
@@ -305,7 +306,7 @@ def emit_structs(
         extra = overrides.EXTRAS.get(struct.name)
         parents = f"_x.{extra}, {base}" if extra else base
         body.append(f"\n\n@dataclass(kw_only=True)\nclass {struct.name}({parents}):\n")
-        body.append(docstring(doc, "    "))
+        body.append(docstring(with_note(doc, struct.name), "    "))
         for col in cols:
             if col.annotation is not None:
                 body.append(f"\n    {col.name}: {col.annotation} = {col.default}\n")

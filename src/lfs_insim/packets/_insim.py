@@ -2339,7 +2339,12 @@ class AIInputVal(Structure):
 
 @dataclass(kw_only=True)
 class IS_AIC(InstructionPacket):
-    """AI Control - variable size (instruction: your program sends it)"""
+    """
+    AI Control - variable size (instruction: your program sends it). Seen in LFS 0.8C32: any
+    IS_AIC, even one that only asks for CS_SEND_AI_INFO, takes the car from the AI driver; its
+    inputs then stay at their defaults (no throttle), and CS_STOP_CONTROL stops the car without
+    giving it back. To only read an AI car, send SMALL_AII.
+    """
 
     ReqI: int = 0
     """Optional - returned in any immediate response e.g. reply to CS_SEND_AI_INFO"""

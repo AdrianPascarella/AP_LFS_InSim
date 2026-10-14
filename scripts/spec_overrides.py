@@ -188,3 +188,25 @@ MEMBER_NAMES: dict[str, str] = {
     "DL_22": "BIT_22",
     "DL_23": "BIT_23",
 }
+
+# What was seen in the real game and the specification does not say, added at the end of the
+# docstring of a packet ("IS_AIC") or an enum member ("SMALL.SSP"). Each note names the LFS version
+# it was seen in; tests/test_notes.py checks that every one reaches the generated code.
+NOTES: dict[str, str] = {
+    "IS_AIC": (
+        "Seen in LFS 0.8C32: any IS_AIC, even one that only asks for CS_SEND_AI_INFO, takes the"
+        " car from the AI driver; its inputs then stay at their defaults (no throttle), and"
+        " CS_STOP_CONTROL stops the car without giving it back. To only read an AI car, send"
+        " SMALL_AII."
+    ),
+    "CS.STOP_CONTROL": "Seen in LFS 0.8C32: the car stops; the AI does not drive it again.",
+    "SMALL.AII": "Unlike IS_AIC, it leaves the car to the AI driver (seen in LFS 0.8C32).",
+    "SMALL.SSP": (
+        "UVal: the interval in hundredths of a second (seen in LFS 0.8C32: 10 = ten per second),"
+        " 0 = stop. LFS sends to the UDPPort of IS_ISI: InSim(udp_port=...)."
+    ),
+    "SMALL.SSG": (
+        "UVal: the interval in hundredths of a second (seen in LFS 0.8C32: 10 = ten per second),"
+        " 0 = stop. LFS sends to the UDPPort of IS_ISI: InSim(udp_port=...)."
+    ),
+}

@@ -84,6 +84,26 @@ necesita un coche en pista (W11.10). LFS, abierto por el agente, cerrado con `/e
 `IS_AIC` solo tras la meta; nada de esto cambia la biblioteca: los hallazgos que sí podrían cambiarla (W11.8,
 W11.9) quedan para decidir con el usuario.
 
+**W11.8 y W11.9 hechas** (el usuario: «Sigue tus recomendaciones para W11.8 y W11.9»). Cambia la API pública:
+- **`InSim(udp_port=...)`** → `IS_ISI.UDPPort`. Con él, `ISF.MCI` o `ISF.NLP` dan `ValueError`, en `InSim()` y en
+  `need()` (que comprueba antes de cambiar las flags): según la nota 2 de `InSim.txt`, LFS manda entonces
+  `IS_MCI` / `IS_NLP` por UDP y la biblioteca no los leería; los handlers no se llamarían nunca, sin aviso. No
+  probado en real (la batería no lo combina); se sigue la especificación (§15). `_connection.py`: 466 líneas.
+  Guía `outsim-outgauge.md` («Without cfg.txt: started by InSim»), CHANGELOG («Unreleased»). La batería usa ya
+  la opción pública. 5 tests en `test_udp_port.py`.
+- **Notas de lo visto en el juego en los docstrings generados:** nuevo `NOTES` en `spec_overrides.py` (clave
+  `"IS_AIC"` o `"SMALL.SSP"`), que `with_note()` de `generate_enums.py` añade tras el comentario de la
+  especificación, en los dos generadores. Notas: `IS_AIC` (quita el coche a la IA; para solo leer, `SMALL_AII`),
+  `CS.STOP_CONTROL`, `SMALL.AII`, `SMALL.SSP` / `SSG` (`UVal` en centésimas, 0 para, `udp_port`). Cada nota dice
+  la versión de LFS en que se vio. `test_notes.py` comprueba que cada una llega al código generado.
+- **Scawen sobre devolver el control:** no se encontró. El foro de lfs.net pide iniciar sesión; la búsqueda solo dio
+  un hilo de otro usuario que tampoco sabía si se puede volver a la IA normal y que el sistema llegó en 0.7F5. Las
+  notas dicen lo observado, no se atribuyen a Scawen.
+- `generate_packets.py` pasó a **501 líneas** (aviso de `verify`) por la línea del import de `with_note`; se deja
+  así: partirlo por una línea no compensa ahora (anotado en `STATE.md`).
+
+**Verificación:** `verify` PASS (628). No se ha publicado versión: los cambios quedan en «Unreleased».
+
 ## S23 — 2026-10-14 — U13 cerrada; W6.3 (FreeCam, en streamer-project) y W6.10 (`connect()` y `on_connect`); avisos rojos de LFS investigados
 
 **Inicio:** `session_start_check` PASS (pull de S22). `verify` PASS (612). Equipo **principal**: LFS en `C:\LFS`, con

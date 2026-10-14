@@ -296,7 +296,7 @@ class GroupA:
         s.check(name, bool(state.Flags & flag) != off, repr(ISS(state.Flags)))
 
     async def udp(self) -> None:
-        """SMALL_SSP / SSG send to IS_ISI.UDPPort, which InSim() cannot set yet (W11 finding)."""
+        """SMALL_SSP / SSG send to the port of InSim(udp_port=...) (W11.8)."""
         # One port each: in S24, with one port, OutGauge datagrams reached the OutSim reader.
         ssp, ssg = UDP_PORTS[SMALL.SSP], UDP_PORTS[SMALL.SSG]
         for sub, source in ((SMALL.SSP, LiveOutSim(ssp)), (SMALL.SSG, LiveOutGauge(ssg))):

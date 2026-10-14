@@ -393,10 +393,18 @@ class SMALL(IntEnum):
     """0 : not used"""
 
     SSP = 1
-    """1 - instruction : start sending positions"""
+    """
+    1 - instruction : start sending positions. UVal: the interval in hundredths of a second
+    (seen in LFS 0.8C32: 10 = ten per second), 0 = stop. LFS sends to the UDPPort of IS_ISI:
+    InSim(udp_port=...).
+    """
 
     SSG = 2
-    """2 - instruction : start sending gauges"""
+    """
+    2 - instruction : start sending gauges. UVal: the interval in hundredths of a second (seen
+    in LFS 0.8C32: 10 = ten per second), 0 = stop. LFS sends to the UDPPort of IS_ISI:
+    InSim(udp_port=...).
+    """
 
     VTA = 3
     """3 - report : vote action"""
@@ -423,7 +431,10 @@ class SMALL(IntEnum):
     """10 - both ways : set or get local car lights (reply to TINY_LCL)"""
 
     AII = 11
-    """11 - info request : get local AI info"""
+    """
+    11 - info request : get local AI info. Unlike IS_AIC, it leaves the car to the AI driver
+    (seen in LFS 0.8C32).
+    """
 
 
 class TTC(IntEnum):
@@ -1574,6 +1585,7 @@ class CS(IntEnum):
     RESET_INPUTS = 254
 
     STOP_CONTROL = 255
+    """Seen in LFS 0.8C32: the car stops; the AI does not drive it again."""
 
 
 class AIFLAGS(IntFlag):

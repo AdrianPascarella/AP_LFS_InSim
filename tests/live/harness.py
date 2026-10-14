@@ -211,8 +211,7 @@ class Session:
         udp_port: int = 0,
         recorder: Recorder | None = None,
     ):
-        """udp_port: IS_ISI.UDPPort, where SMALL_SSP / SSG make LFS send OutSim / OutGauge (and
-        IS_NLP / IS_MCI, which then no longer come by TCP). InSim() has no option for it yet.
+        """udp_port: where SMALL_SSP / SSG make LFS send OutSim / OutGauge (InSim's udp_port).
         recorder: another session's, to put both connections in one report."""
         self.group = group
         self.port = port
@@ -221,9 +220,8 @@ class Session:
             recorder.install()
         self.recorder = recorder
         self.insim = LiveInSim(
-            name=f"live {group}", port=port, flags=flags, interval_ms=interval_ms
+            name=f"live {group}", port=port, flags=flags, interval_ms=interval_ms, udp_port=udp_port
         )
-        self.insim._isi.UDPPort = udp_port
         self.insim.sent_log = []
         self.checks: list[Check] = []
         self.notes: list[str] = []
