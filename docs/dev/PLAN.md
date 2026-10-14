@@ -225,7 +225,7 @@ estado `Development Status :: 3 - Alpha`. Todo lo público, en inglés.
 - [x] **W5.6** — **Etiqueta `v0.1.0` y release en GitHub, y publicación en PyPI.** Crear tags y
   publicar piden permiso explícito en el momento.
 
-## W7 — Dirección de los paquetes y atajos generados   🔜 EN CURSO (S15) · decidida en S14, rehecha en S15
+## W7 — Dirección de los paquetes y atajos generados   ✅ HECHA (sin tareas abiertas; cabecera corregida en S23) · decidida en S14, rehecha en S15
 **Objetivo:** que el editor ayude a escribir `on` y `send`: saber qué paquetes se reciben, cuáles se
 envían y cuáles van en los dos sentidos, sin recordarlo de memoria. Acordado con el usuario en S14
 tras revisar el proyecto anterior (`docs/dev/LEGADO.md`). El ID es W7 porque los IDs no se renumeran;
@@ -406,7 +406,7 @@ W10.8).
 **Fuera, a propósito:** manifiestos, carga por carpetas, buscar plugins por nombre, versiones entre plugins y
 activar o desactivar con el programa en marcha (el cargador del proyecto anterior, P4).
 
-## W6 — Primera aplicación aparte   🔜 EN CURSO (S21): solo falta W6.4 (publicar 0.7.0)
+## W6 — Primera aplicación aparte   ✅ HECHA en S23 · publicada como 0.7.0
 **Objetivo:** escribir, en un proyecto separado, la primera aplicación real con la biblioteca (la
 cámara libre, que necesita streamer-project) y anotar cada incomodidad como tarea de la biblioteca.
 **Decidido con el usuario en S20:** vive **dentro de streamer-project** (un módulo en `tools/`, que instala
@@ -429,7 +429,7 @@ con muestras que hacen de red, y es menos arriesgado que la cámara.
   copiada con permiso del usuario en `C:\LFS\data\mpr\freecam_prueba.mpr` (de `temp_mpr.mpr`, 107 MB). Permiso
   dado para controlar su LFS en la prueba en real. Hecho en S23 en streamer-project (`tools/freecam`, su W9.1),
   probado en real; el plano es el de U13 («me vale tal cual»). Encontró W6.10 → LOG.md S23. Allí falta fijar
-  `lfs-insim==0.7.0` cuando se publique (W6.4).
+  `lfs-insim==0.7.0` cuando se publique (W6.4; hecho en S23).
 - [x] **W6.10** — `connect()` no llamaba a `on_connect` / `on_disconnect`: con `connect()`, `roster.ready()`
   no volvía nunca (`where` de FreeCam se colgó en real). Ahora el aviso lo hace `connect()`, y la reconexión
   la usa. Hecho en S23 (test en rojo antes) → LOG.md S23.
@@ -451,7 +451,8 @@ con muestras que hacen de red, y es menos arriesgado que la cámara.
 - [x] **W6.7** — `insim.request.IS_XXX()`, `insim.request_all.IS_XXX()` e `insim.instruct.IS_XXX(...)` (propuesto
   por el usuario en S22: el mismo problema que W7 con `on` y `send`). Sustituye la forma `request(IS_RIP(...))`
   de W6.1 (sin publicar). Hecho en S22 → LOG.md S22; decisión en `API_DESIGN.md`.
-- [ ] **W6.4** — Publicar lo que pidan W6.2, W6.3 y W6.7 (0.7.0, con permiso del usuario).
+- [x] **W6.4** — Publicar lo que pidan W6.2, W6.3 y W6.7 (0.7.0, con permiso del usuario). Hecho en S23
+  («Sí, publica la 0.7.0»): `lfs-insim` 0.7.0 en PyPI; streamer-project la usa fijada → LOG.md S23.
 
 ## Ideas (aparcadas, sin compromiso)
 - **Ayudante de botones** (de escribir `examples/buttons.py`, S12): hay que repartir los `ClickID` a
