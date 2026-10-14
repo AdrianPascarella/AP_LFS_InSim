@@ -42,6 +42,23 @@ la respuesta; sin compartir (cada una se manda); otro paquete → `TypeError`. R
 `Requests.instruct` para no pasar de 500 líneas en `_connection.py` (se quedó en 500, justo en el límite: lo siguiente, en otro módulo). Guía `insim.md` («Asking
 LFS»), CHANGELOG «Unreleased». `verify` PASS (593 tests).
 
+**W6.2 hecha, en streamer-project** (el usuario: «La primera, sigue con el registrador»: el registrador sigue
+allí y usa la biblioteca; *descartado* meterlo en la biblioteca, que contradice S1). Todo el detalle en el LOG S15
+de streamer-project. Lo que importa aquí:
+- Con `lfs-insim` 0.6.0 de PyPI, `InSim.connect()` (una conexión, sin reconectar), `watch(before=...)`,
+  `request()` / `request_all()` y el LFS falso de `lfs_insim.testing` como red: el registrador antiguo pasó los
+  tests nuevos antes de cambiarlo, y el nuevo da lo mismo. En real, los dos a la vez sobre una repetición: los
+  mismos 239 eventos. Fuera de aquel repo ~560 líneas (socket, hilo, keepalive, decodificador).
+- **La biblioteca encontró un fallo de la aplicación:** leía `IS_PLA` con el tipo 40 (`IS_MSL`); es el 28.
+- **W6.1 probada en real:** `request(IS_RIP(MPR=1, RName="freecam_prueba"))` cargó la repetición en el LFS del
+  usuario y devolvió `Error 0`, `TTime 18230426`. La repetición queda cargada.
+- **Incomodidades** → W6.5 (no hay función pública para leer un paquete de sus bytes) y W6.6 (no hay enum
+  para `PType`). **Sin incomodidad:** `connect()` + `wait_closed()` para una sola conexión, `watch()`, el LFS
+  falso (con `replies` por `TINY`) y que `request()` comparta nada (pidió 3 cosas distintas).
+- **Nota:** un test antiguo de allí mira los bytes exactos y espera `ReqI=5` en el segundo `TINY_NPL`; pasa
+  porque la biblioteca reparte 2, 3 y 4 a las tres primeras peticiones. Es frágil, pero es de aquel repo.
+
+
 **0.6.0 publicada;** después, W6 en la misma sesión (abajo).
 
 ## S20 — 2026-10-13 — W6 decidida y aparcada; W10 (plugins) esbozada antes

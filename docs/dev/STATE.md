@@ -8,10 +8,11 @@
 > compartidas, `roster.ready()`, `insim.need()`, `insim.reserve_click_ids()`, `@insim.on_close` y
 > `lfs_insim.testing.FakeLFS`. Guías `docs/plugins.md` y `docs/testing.md`; ejemplos como plugins y `together.py`.
 > LFS acepta hasta 8 programas InSim a la vez (W10.0).
-> **▶️ SIGUIENTE: W6.2** — el registrador de streamer-project (`tools/insim_logger`) pasa a usar `lfs_insim`
-> (decisión del usuario en S21: antes que la cámara). W6.1 hecha en `dev`, sin publicar: `insim.request(IS_RIP(...))`.
-> Después, W6.3 (`FreeCam`; repetición de prueba `freecam_prueba.mpr` y permiso para usar su LFS). Tareas en
-> `PLAN.md` (W6); por qué, en `LOG.md` S21.
+> **▶️ SIGUIENTE: W6.3** — `FreeCam` en streamer-project (W9.1 de allí): repetición + plano guionizado. La
+> repetición `freecam_prueba.mpr` está cargada en el LFS del usuario y hay permiso para usarlo. **W6.2 hecha** en
+> S21: el registrador de streamer-project usa `lfs_insim` 0.6.0 (mismos eventos que antes). W6.1 en `dev` y
+> probada en real (`request(IS_RIP(...))`), sin publicar. Pendientes pequeñas: W6.5 (leer un paquete de sus
+> bytes, público) y W6.6 (enum de `PType`). Tareas en `PLAN.md` (W6); por qué, en `LOG.md` S21.
 > **Receta de una versión nueva:** versión y CHANGELOG en
 > `dev`; `verify` en verde; avance rápido de `dev` a `main`; `gh release create vX.Y.Z --target main`
 > (el tag debe ser `v<version>`); aprobar el entorno `pypi` (pedirlo cada vez; con permiso, el agente lo aprueba
@@ -21,7 +22,7 @@
 > módulo propio (los comandos de W8.2, en `_commands.py`). Ver `USER_ACTIONS.md`.
 
 ## Dónde estamos
-Fase activa: **W6** (en curso: W6.1 hecha; siguiente, W6.2, el registrador). W10 hecha y publicada como 0.6.0 en S21.
+Fase activa: **W6** (en curso: W6.1 y W6.2 hechas; siguiente, W6.3, la cámara libre). W10 hecha y publicada como 0.6.0 en S21.
 
 - **Cómo se genera:** `.venv/Scripts/python scripts/generate_packets.py` lee
   `spec/cache/InSim.txt` y `spec/cache/OutSimPack.txt` (con `scripts/spec_parser.py`) y las

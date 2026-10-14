@@ -420,12 +420,19 @@ primero el **registrador** de streamer-project (`tools/insim_logger`, con su pro
 usar `lfs_insim`; la cámara libre, después. El agente estuvo de acuerdo: se usa en cada partida, tiene tests
 con muestras que hacen de red, y es menos arriesgado que la cámara.
 - [x] **W6.1** — `insim.request(IS_RIP(...))` / `request(IS_SSH(...))`: mandar una instrucción que LFS contesta y
-  esperar la respuesta (lo necesita la cámara para cargar y saltar en una repetición). Hecho en S21, sin publicar.
-- [ ] **W6.2** — El registrador de streamer-project con `lfs_insim` (en aquel repo, W9 de allí); cada incomodidad,
-  como tarea aquí.
+  esperar la respuesta (lo necesita la cámara para cargar y saltar en una repetición). Hecho en S21, sin publicar;
+  **probado en real** en S21 (cargó `freecam_prueba`, 18.230.426 ms).
+- [x] **W6.2** — El registrador de streamer-project con `lfs_insim` (en aquel repo, W9.0 de allí; su LOG S15).
+  Hecho en S21 con 0.6.0 de PyPI: mismos eventos que el antiguo con tests y con una repetición real (239). La
+  biblioteca le encontró un fallo (leía `IS_PLA` con el tipo 40; su P11). Incomodidades, en W6.5 y W6.6.
 - [ ] **W6.3** — `FreeCam`: repetición + plano guionizado (`IS_RIP`, `IS_SCC`, `IS_CPP`). Repetición de prueba
   copiada con permiso del usuario en `C:\LFS\data\mpr\freecam_prueba.mpr` (de `temp_mpr.mpr`, 107 MB). Permiso
   dado para controlar su LFS en la prueba en real.
+- [ ] **W6.5** — Leer un paquete a partir de sus bytes con la API pública (hoy solo
+  `lfs_insim.packets._structure.unpack_insim`, privada): el registrador la necesita en sus tests, con paquetes
+  de ejemplo en bytes.
+- [ ] **W6.6** — Enum para los bits de `IS_NPL.PType` (mujer, IA, remoto; InSim.txt los da en un comentario, así
+  que el generador no lo crea): el registrador define `PTYPE_AI = 2` y `PTYPE_REMOTE = 4` a mano.
 - [ ] **W6.4** — Publicar lo que pidan W6.2 y W6.3 (0.7.0, con permiso del usuario).
 
 ## Ideas (aparcadas, sin compromiso)
