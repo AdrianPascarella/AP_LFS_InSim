@@ -6,10 +6,12 @@
 > `FreeCam` en streamer-project (`tools/freecam`, su W9.1), probada en real, con 0.7.0 de PyPI fijada allí.
 > **Avisos rojos de LFS** («sending to one but ReqI is not set»): salen al saltar hacia atrás en una MPR, también
 > con un cliente mínimo propio; no los causa la biblioteca (LOG S23).
-> **▶️ SIGUIENTE: decidir con el usuario la próxima fase.** No queda ninguna tarea abierta en `PLAN.md`. Candidatas
-> (sección «Ideas» y «Aplicaciones aparte»): la siguiente aplicación (control de IA, botones), el ayudante de
-> botones, InSim por UDP, o lo que pida FreeCam al crecer (planos desde los eventos del registrador). La
-> biblioteca tiene la API de alto nivel (`@insim.on.IS_NPL`, `insim.send.IS_MST(...)`, `received` / `sent`,
+> **Fase activa: W11, pruebas intensivas contra el LFS real** (propuesta del usuario, plan aceptado en S23).
+> W11.1 hecha: `docs/dev/COVERAGE.md` (estado de cada paquete y subtipo en real, por grupos A/R/E/H/P/G).
+> **▶️ SIGUIENTE: W11.2 + W11.3** — la batería en vivo y el grupo A (Un Jugador con IA). **Antes, pedir permiso**
+> para abrir Un Jugador con IA en su LFS y teclear en él con `lfs_screen.ps1` (le quita el foco si está usando el
+> ordenador). Los demás grupos, cada uno con su permiso; el grupo P, en una tarjeta. La
+> > biblioteca tiene la API de alto nivel (`@insim.on.IS_NPL`, `insim.send.IS_MST(...)`, `received` / `sent`,
 > `request` / `request_all` / `instruct`, `say()` / `command()`, `text.plain()`), plugins (`insim.use()`,
 > `Plugin`, `Commands`, `Roster`, `insim.need()`, `reserve_click_ids()`, `on_close`) y
 > `lfs_insim.testing.FakeLFS`. LFS acepta hasta 8 programas InSim a la vez (W10.0).
@@ -22,7 +24,7 @@
 > módulo propio (los comandos, en `_commands.py`; las peticiones, en `_asking.py`). Ver `USER_ACTIONS.md`.
 
 ## Dónde estamos
-Fase activa: **ninguna** — W6 cerrada en S23 y publicada como 0.7.0; la siguiente se decide con el usuario.
+Fase activa: **W11** (pruebas intensivas contra el LFS real; tabla en `COVERAGE.md`). W6 cerrada en S23 y publicada como 0.7.0.
 
 - **Cómo se genera:** `.venv/Scripts/python scripts/generate_packets.py` lee
   `spec/cache/InSim.txt` y `spec/cache/OutSimPack.txt` (con `scripts/spec_parser.py`) y las

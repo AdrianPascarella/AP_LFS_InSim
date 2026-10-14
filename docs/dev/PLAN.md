@@ -454,6 +454,34 @@ con muestras que hacen de red, y es menos arriesgado que la cámara.
 - [x] **W6.4** — Publicar lo que pidan W6.2, W6.3 y W6.7 (0.7.0, con permiso del usuario). Hecho en S23
   («Sí, publica la 0.7.0»): `lfs-insim` 0.7.0 en PyPI; streamer-project la usa fijada → LOG.md S23.
 
+## W11 — Pruebas intensivas contra el LFS real   🔜 EN CURSO (S23) · propuesta del usuario, plan aceptado en S23
+**Objetivo:** ver funcionar en el LFS real cada paquete y subtipo que se pueda provocar, en los dos sentidos:
+que lo que llega se lea con valores correctos y que lo que mandamos tenga efecto. El usuario: «hacer pruebas de
+forma intensiva de absolutamente todo contra el LFS real… para ver que funcione todo correctamente». El agente
+propuso (aceptado, «Me gusta»): no «todos los casos», sino una tabla de cobertura y grupos según lo que hace
+falta para provocar cada paquete; las pruebas automáticas, con informe; cada fallo, una tarea con su test en rojo.
+**Tabla:** `docs/dev/COVERAGE.md` (estado ✔ / ◐ / ✖ por paquete y subtipo, grupo, sesión).
+**Permisos:** cada grupo que cambie algo del LFS del usuario (partidas con IA, servidor propio, `cfg.txt`, modo
+de pantalla) se pide antes, con copia de lo que se toque. Lo que necesita a otra persona va en una tarjeta.
+- [x] **W11.1** — Tabla de cobertura, desde lo probado en el LOG (S9–S23). Hecho en S23: 70 paquetes,
+  31 `TINY`, 11 `SMALL`, 3 `TTC` y UDP → `COVERAGE.md`.
+- [ ] **W11.2** — Batería en vivo reutilizable (sobre `tests/live_lfs.py` o una carpeta `tests/live/`): un script
+  por grupo que monta la situación (con `lfs_screen.ps1` y comandos por `IS_MST`), espera lo que debe llegar,
+  comprueba valores, reescribe cada paquete (mismo contenido al releerlo, como en S12) y deja un informe en
+  `tests/live_reports/`. Fuera de pytest (como `live_lfs.py`).
+- [ ] **W11.3** — Grupo A (Un Jugador con IA): carrera completa (`RST`, `SPX`, `LAP`, `FIN`, `RES`, `NLP`, `MCI`,
+  `CON`, `FLG`, `HLV`, `PEN`, `PIT`/`PSF`/`PLA`, `CRS`, `CSC`, `PLL`/`PLP`, `TINY_REN`/`CLR`), botones (estilos,
+  `DEL_BTN`), `AIC`/`AII`, `OCO`, `SCH`, `SFP`, `SSH`, `SMALL_*` (`TMS`, `STP`, `NLI`, `LCS`, `LCL`, `SSP`,
+  `SSG`), `REO` enviado, `TINY_RES` (no respondió en S12).
+- [ ] **W11.4** — Grupo E (editor de circuitos): `AXM` en los dos sentidos, `AXI`, `AXO`, `OBH`, `UCO`, `CIM`,
+  `TTC_*`, `TINY_AXC`.
+- [ ] **W11.5** — Grupo H (tu LFS como servidor, aunque no entre nadie): `NCI`, `SLC`, `MAL`, `PLH`/`HCP`, `PLC`,
+  `IPB`, `MTC`, `ACR`, `III`, `ISM`/`MPE`, `SET`.
+- [ ] **W11.6** — Grupo P (otra persona conectada): tarjeta para el usuario con `JRR`, `VTN`/`VTC`/`VTA`, `TOC`,
+  `III`, `MTC` a una persona, `NCN`/`CNL` remotos, y U11.
+- [ ] **W11.7** — Cerrar: cada fallo encontrado arreglado (o anotado si es de LFS), `COVERAGE.md` al día, y
+  publicar una versión si cambió la biblioteca (con permiso).
+
 ## Ideas (aparcadas, sin compromiso)
 - **Ayudante de botones** (de escribir `examples/buttons.py`, S12): hay que repartir los `ClickID` a
   mano, guardar el estado en globales y reenviar el botón entero para cambiar su texto. Llevadero

@@ -55,6 +55,16 @@ con el arreglo de W6.10. streamer-project la instala de PyPI y la fija en su `CL
 FreeCam probado en real con ella. **W6 cerrada.** De paso, la cabecera de W7 decía «EN CURSO» sin tareas abiertas:
 corregida a HECHA.
 
+**W11 abierta: pruebas intensivas contra el LFS real.** El usuario: «Creo que ahora deberíamos hacer pruebas de
+forma intensiva de absolutamente todo contra el LFS real… Dime qué opinas». El agente: sí, pero no «todos los
+casos» (combinaciones sin fin; muchos paquetes necesitan un servidor, el editor u otra persona), sino una tabla de
+cobertura, grupos según lo que hace falta y una batería en vivo con informe; cada fallo, tarea con test en rojo.
+El usuario: «Me gusta». Las tres preguntas de permiso (cambiar cosas de su LFS, servidor propio y `cfg.txt`,
+alguien que se conecte) quedan sin respuesta: se piden al llegar a cada grupo.
+- **W11.1 hecha:** `docs/dev/COVERAGE.md`, desde las pruebas en real del LOG (S9, S12, S14, S16, S18, S19, W10.0,
+  S21, S23), no desde la búsqueda automática de nombres (daba falsos positivos). Con los paquetes, los subtipos y
+  UDP: 31 comprobados, 46 solo leídos, 40 nunca vistos en real. `INDEX.md` la enlaza.
+
 ## S22 — 2026-10-14 — W6.7 (`request.IS_XXX`, `request_all.IS_XXX`, `instruct.IS_XXX`), W6.5, W6.6, W6.8 y W6.9 (equipo secundario)
 
 **Inicio:** `session_start_check` PASS (rama, identidad, pull de lo de S21, plantilla v3). Desajuste:

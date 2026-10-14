@@ -28,6 +28,7 @@ en cada hito.
 | PLAN.md | Fases, tareas y criterios de aceptación | Cuando se terminan tareas o cambia el plan |
 | DIAGNOSIS.md | Problemas conocidos, con ID estable | Cuando se encuentra algo nuevo |
 | API_DESIGN.md | Cómo se usa la biblioteca (decisiones `D<n>`) | Cuando cambia la API pública |
+| COVERAGE.md | Qué paquete se ha visto funcionar en el LFS real (W11) | Al probar cada grupo en real |
 | LEGADO.md | Qué rescatar del proyecto anterior (propuestas sin decidir, S14) | Al planificar mejoras de la API |
 | PROTOCOL.md | Las reglas de trabajo | Cuando cambian las reglas |
 
