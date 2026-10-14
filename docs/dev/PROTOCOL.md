@@ -434,7 +434,8 @@ Formas en que este equipo o sus herramientas ya han dañado o pueden dañar el t
   contra la copia y con `od -c` que siguen en CRLF.
 - **Git Bash convierte los argumentos que empiezan por `/` en rutas de Windows** (visto en S12:
   `/help` llegó a LFS como `C:/Program Files/Git/help`). Para pasar comandos de LFS como
-  argumentos: `MSYS_NO_PATHCONV=1`.
+  argumentos: `MSYS_NO_PATHCONV=1`. **Repetida en S24** (`/insim=29998` se escribió en el chat de un
+  servidor oculto): las teclas a LFS, siempre desde la herramienta PowerShell.
 - **Manejar LFS sin el usuario** (desde S12): `tests/lfs_screen.ps1` teclea (`-Keys`, `-Then`), hace
   clic (`-X`, `-Y`) y deja una captura en `tests/live_reports/screen.png`. InSim se activa con
   `-Keys "t" -Then "/insim=29999{ENTER}"`. Una pulsación justo después de otra pantalla a veces no

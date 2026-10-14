@@ -210,4 +210,12 @@ NOTES: dict[str, str] = {
         "UVal: the interval in hundredths of a second (seen in LFS 0.8C32: 10 = ten per second),"
         " 0 = stop. LFS sends to the UDPPort of IS_ISI: InSim(udp_port=...)."
     ),
+    "IS_TTC": (
+        "Seen in LFS 0.8C32: every IS_TTC needs a non-zero ReqI, even TTC_SEL_STOP; with ReqI 0"
+        ' LFS ignores it and shows "IS_TTC with no ReqI".'
+    ),
+    "PMO.GET_Z": (
+        "Seen in LFS 0.8C32: the IS_AXM needs a non-zero ReqI, returned in the reply; with ReqI 0"
+        ' there is no reply (LFS shows "sending to one but ReqI is not set").'
+    ),
 }

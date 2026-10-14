@@ -111,6 +111,37 @@ W11.9) quedan para decidir con el usuario.
 
 **Verificación:** `verify` PASS (628). No se ha publicado versión: los cambios quedan en «Unreleased».
 
+**W11.4 (grupo E) hecha y W11.5 (grupo H) a medias** (el usuario: «te doy permiso para las siguientes prueba»;
+después, con el usuario en otra ventana: «Te puedo dejar haciendo las pruebas. Procede»). Una vez Windows no dejó
+poner LFS delante (el usuario usaba Chrome): `lfs_screen.ps1` no envió nada y se esperó. LFS se había cerrado al
+reiniciarse la sesión de Claude Code; lo reabrió el agente.
+- **`tests/live/group_e.py`** (reutiliza la preparación de `GroupA`): pone un cono (`AXO_CONE1`, 20) y un
+  checkpoint de InSim (252, media anchura 10 m) donde va la IA de cabeza, pasando de unidades de `IS_MCI` a las del
+  formato de layout (www.lfs.net/programmer/lyt: X, Y en 1/16 m, Zbyte en 1/4 m, `Heading` = (grados + 180)·256/360).
+  Dos pasadas: la segunda, **31 PASS, 1 FAIL, 2 SKIP**; 0 paquetes mal leídos o escritos. Visto: `IS_UCO`
+  (`CP_FWD`, `ObjectInfo` igual al enviado), `IS_OBH` (cono, `LAYOUT|CAN_MOVE|ON_SPOT`; en la otra pasada nadie lo
+  tocó), `IS_CIM`, selección del editor en los dos sentidos, `TTC_SEL_START`, `DEL_OBJECTS`, `CLEAR_ALL` →
+  `TINY_AXC`. `IS_AXO` no sale en una carrera normal.
+- **Hallazgos (notas nuevas en `NOTES`):** **todo `IS_TTC` necesita `ReqI`** («IS_TTC with no ReqI»: el
+  `TTC_SEL_STOP` con 0 se ignoró) y **`PMO_GET_Z` también** (con 0 no hay respuesta y sale el aviso rojo
+  «sending to one but ReqI is not set», el mismo de S23: LFS quiere contestar a un solo programa y no puede). Con
+  `ReqI` funcionan. `IS_AXI.NumO` no cuenta los checkpoints de InSim, ni `NumCP`. Shift+U por `IS_SCH` entra en la
+  vista libre pero no sale (dos veces); `IS_CPP` sin `SHIFTU` sí sale. El test de las notas compara ahora con el
+  docstring de cada paquete o miembro (las comillas salen escapadas en el código generado).
+- **`tests/live/group_h.py`**, con «MultiJugador → Crear servidor nuevo» (servidor «testing» del usuario, oculto,
+  sin contraseñas; no se tocó la configuración). **En LFS 0.8C32 eso no hace anfitrión al juego:** la conexión 0
+  «host» es remota (`Flags` 4) y el juego es un invitado admin (UCID 1); `IS_ISM.Host` 0; `/insim=29998` movió el
+  mismo InSim de puerto. Como invitado admin: **`IS_MAL` sí** (LFS la reenvía con el `UCID` que la cambió; lista
+  restaurada), `TINY_MAL`, `TINY_PLH`, `TINY_ALC`, `TINY_NCN`, `/leave` → `TINY_MPE`; **rechazados con «only for
+  multiplayer hosts»: `SMALL_ALC` enviado, `IS_PLC`, `IS_MTC`**; sin respuesta: `TINY_IPB`, `TINY_NCI`, `TINY_SLC`;
+  sin `IS_ACR` ni `IS_III` (van al InSim del servidor). `/ai` falló porque en ese servidor no había coche elegido;
+  `/end` como invitado no da `TINY_REN`. **11 PASS, 5 FAIL, 4 SKIP**; 0 paquetes mal leídos o escritos.
+- **Lo propio del anfitrión necesita un servidor dedicado**: un segundo proceso de LFS, más allá del permiso de
+  abrir LFS → W11.11, para el usuario. W11.12: documentarlo para los usuarios de la biblioteca.
+- **Trampa de §13 repetida:** `/insim=29998` mandado desde Git Bash llegó como `C:/Program Files/Git/insim=29998`
+  y se escribió en el chat del servidor oculto (solo este ordenador). Anotado en §13.
+- `COVERAGE.md`: 23 filas de los grupos E y H. LFS, abierto por el agente, cerrado con `/exit`.
+
 ## S23 — 2026-10-14 — U13 cerrada; W6.3 (FreeCam, en streamer-project) y W6.10 (`connect()` y `on_connect`); avisos rojos de LFS investigados
 
 **Inicio:** `session_start_check` PASS (pull de S22). `verify` PASS (612). Equipo **principal**: LFS en `C:\LFS`, con

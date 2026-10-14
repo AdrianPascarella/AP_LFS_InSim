@@ -1,5 +1,5 @@
 # 🧪 Cobertura en el LFS real — AP_LFS_InSim (lfs_insim)
-> Fase W11 (S23; grupo A probado en S24 con `tests/live/group_a.py`). Qué paquete se ha visto funcionar en el LFS real, cómo se provoca y qué falta. Se actualiza
+> Fase W11 (S23; grupos A, E y H probados en S24 con `tests/live/group_a.py`, `group_e.py` y `group_h.py`; el H solo como invitado admin: en LFS 0.8C32 «Crear servidor nuevo» no hace anfitrión al juego). Qué paquete se ha visto funcionar en el LFS real, cómo se provoca y qué falta. Se actualiza
 > al probar cada grupo; el detalle de cada prueba, en `LOG.md` (la sesión de la columna «Visto»).
 
 **Estado** (lo más fuerte que se ha comprobado de cada uno):
@@ -22,18 +22,18 @@
 
 | Paquete | Sentido | Estado | Visto | Grupo | Cómo se provoca / qué falta |
 |---|---|---|---|---|---|
-| IS_ACR | ⬇ | ✔ | S24 | A/H | también en Un Jugador: LFS confirma cada comando por InSim (`Text`, `Result` 1); falta el de otra persona como servidor |
+| IS_ACR | ⬇ | ✔ | S24 | A/H | en Un Jugador LFS confirma cada comando; como invitado admin no llega (va al InSim del servidor, S24) |
 | IS_AIC | ⬆ | ✔ | S24 | A | **le quita el coche a la IA** (cualquier `IS_AIC`, incluso `CS_SEND_AI_INFO`): sin acelerador frena; `CS_MSX` gira; `CS_STOP_CONTROL` la para y no devuelve el control (W11.9) |
 | IS_AII | ⬇ | ✔ | S24 | A | por `SMALL_AII` (no quita el control) y por `CS_SEND_AI_INFO`; marcha, rpm, posición y velocidad con sentido |
-| IS_AXI | ⬇ | ◐ | S12 | E | `TINY_AXI`; falta con un layout cargado |
-| IS_AXM | ⬍ | ◐ | S12 | E | `TINY_AXM` sin layout; falta añadir/quitar objetos y leerlos |
-| IS_AXO | ⬇ | ✖ | — | E | un coche toca un objeto de autocross |
+| IS_AXI | ⬇ | ✔ | S12, S24 | E | `TINY_AXI`; `NumO` cuenta un cono añadido; un checkpoint de InSim (índice 252) no cuenta ni en `NumO` ni en `NumCP` (S24) |
+| IS_AXM | ⬍ | ✔ | S24 | E | `PMO_ADD_OBJECTS` / `DEL_OBJECTS` / `CLEAR_ALL` (eco con `ISF_AXM_EDIT`), `TINY_AXM` con `FILE_END`, `PMO_SELECTION`, `PMO_TTC_SEL`; **`PMO_GET_Z` necesita `ReqI`** (sin él no contesta) |
+| IS_AXO | ⬇ | ✖ | — | E | no salió al tocar un cono en una carrera normal (S24); falta en un autocross |
 | IS_BFN | ⬍ | ✔ | S12, S24 | A | `CLEAR`; `DEL_BTN` de un rango (captura, S24); falta recibir `BFN` (el usuario pulsa Shift+I / Shift+B) |
 | IS_BTC | ⬇ | ✔ | S12 | A | clic en un botón |
 | IS_BTN | ⬆ | ✔ | S12, S24 | A | `Caption` y `TypeIn` (S12); estilos `LIGHT`, `DARK`, `LEFT`, `RIGHT`, `C1` (captura, S24); faltan `Inst` y botones de otra conexión |
 | IS_BTT | ⬇ | ✔ | S12 | A | texto escrito en un botón (`TypeIn`) |
 | IS_CCH | ⬇ | ◐ | S23, S24 | A/R | cambio de cámara; con `IS_SCH` «V» llegó una vez y otra no (la vista sí cambió, S24) |
-| IS_CIM | ⬇ | ◐ | S12 | A/E | cambio de modo de la interfaz (garaje, Shift+U, editor…) |
+| IS_CIM | ⬇ | ✔ | S12, S24 | A/E | Shift+U por `IS_SCH` → `SHIFTU` (6); la salida de la vista libre → `NORMAL` (S24) |
 | IS_CNL | ⬇ | ◐ | S23 | R/P | alguien se va (en repetición, sus conexiones); falta con una persona real |
 | IS_CON | ⬇ | ◐ | S12 | A | contacto entre coches (IA) |
 | IS_CPP | ⬍ | ✔ | S12, S23 | A/R | `TINY_SCP`; enviado: cámara libre, movimiento suave, salir de ella (S23) |
@@ -44,32 +44,32 @@
 | IS_FLG | ⬇ | ◐ | S12 | A | bandera azul / amarilla (IA lenta o parada) |
 | IS_HCP | ⬆ | ✖ | — | H | handicaps por coche; ver `IS_PLH` o el efecto |
 | IS_HLV | ⬇ | ◐ | S12 | A | salirse de pista, golpe contra muro (`ISF.HLV`) |
-| IS_III | ⬇ | ✖ | — | H/P | alguien escribe `/i texto` al InSim del servidor |
-| IS_IPB | ⬍ | ✖ | — | H | `TINY_IPB` («only for multiplayer hosts» en S12); poner y leer bans |
+| IS_III | ⬇ | ✖ | — | H/P | `/i` como invitado admin no da `IS_III` (S24): va al InSim del servidor |
+| IS_IPB | ⬍ | ✖ | — | H | `TINY_IPB` sin respuesta como invitado admin (S24); falta en un servidor dedicado |
 | IS_ISI | ⬆ | ✔ | todas | A | conectar (flags, `Interval`, prefijo, contraseña de admin) |
-| IS_ISM | ⬇ | ✔ | S12, S19 | H/G | `TINY_ISM`; como invitado (S19); falta al empezar un servidor propio |
+| IS_ISM | ⬇ | ✔ | S12, S19, S24 | H/G | `TINY_ISM`; como invitado (S19); con «Crear servidor nuevo» de 0.8C32, `Host` 0 (S24: el juego es invitado admin de su propio servidor) |
 | IS_JRR | ⬆ | ✖ | — | P | `ISF.REQ_JOIN`: aceptar o rechazar a alguien que quiere entrar |
 | IS_LAP | ⬇ | ✔ | S12, S24 | A | `LTime` ~1:40 en BL1, `LapsDone` (S24; también la registra streamer-project, S21) |
-| IS_MAL | ⬍ | ◐ | S12 | H | `TINY_MAL`; falta enviar una lista y ver el efecto |
+| IS_MAL | ⬍ | ✔ | S12, S24 | H | enviado como invitado admin: cambia la lista, LFS la reenvía con el `UCID` que la cambió; vacía = todos (S24) |
 | IS_MCI | ⬇ | ✔ | S12, S18 | A | `ISF.MCI`; unidades de velocidad y posición comprobadas (S18) |
 | IS_MOD | ⬆ | ✖ | — | A | cambiar resolución / ventana (cuidado: cambia la pantalla del usuario) |
 | IS_MSL | ⬆ | ✔ | S12, S19 | A | vuelve como `IS_MSO`; solo lo ve este ordenador (S19) |
 | IS_MSO | ⬇ | ✔ | S12, S19 | A/G | chat; `USER`, `O`, `PREFIX`; falta `ISF.MSO_COLS` |
 | IS_MST | ⬆ | ✔ | S12, S18 | A | mensaje y comando (`/ai`, `/end`, `/mpr`) |
 | IS_MSX | ⬆ | ✔ | S12 | A | mensaje largo |
-| IS_MTC | ⬆ | ◐ | S18, S19 | H/P | como invitado LFS lo rechaza (S18, S19); falta como servidor, a una persona y a un jugador |
+| IS_MTC | ⬆ | ◐ | S18, S19, S24 | H/P | rechazado como invitado y como invitado admin («only for multiplayer hosts», S24); falta desde el InSim de un servidor dedicado |
 | IS_NCI | ⬇ | ✖ | — | H | `TINY_NCI` en un servidor con contraseña de admin |
 | IS_NCN | ⬇ | ✔ | S12, S19 | A/G | `TINY_NCN`; flags de remoto y admin (S19) |
 | IS_NLP | ⬇ | ✔ | S12, S24 | A | `ISF.NLP` / `TINY_NLP`; vuelta y posición; ritmo de `SMALL_NLI` (S24) |
 | IS_NPL | ⬇ | ✔ | S12, S23 | A/R | entra un coche; `PType` de IA, `CName` de mod (S12) |
-| IS_OBH | ⬇ | ✖ | — | A/E | `ISF.OBH`: un coche golpea un objeto |
+| IS_OBH | ⬇ | ✔ | S24 | A/E | una IA golpea un cono añadido: `Index` 20, `LAYOUT \| CAN_MOVE \| ON_SPOT` (otra pasada no lo tocó) |
 | IS_OCO | ⬆ | ◐ | S24 | A | semáforos de salida enviados sin error; falta ver el efecto (captura en el momento) |
 | IS_PEN | ⬇ | ◐ | S23 | A | penalización dada o quitada |
 | IS_PFL | ⬇ | ◐ | S23 | A | cambiar ayudas del jugador |
 | IS_PIT | ⬇ | ◐ | S23 | A | parada en boxes |
 | IS_PLA | ⬇ | ◐ | S21, S23, S24 | A | entrar o salir del pit lane (una IA tras la meta, S24) |
-| IS_PLC | ⬆ | ✖ | — | H | coches permitidos a una conexión |
-| IS_PLH | ⬍ | ◐ | S12 | H | `TINY_PLH`; falta enviar handicaps y leerlos |
+| IS_PLC | ⬆ | ◐ | S24 | H | rechazado como invitado admin («only for multiplayer hosts»); falta en un servidor dedicado |
+| IS_PLH | ⬍ | ◐ | S12, S24 | H | `TINY_PLH` (vacío, S24); falta enviar handicaps (necesita un coche en un servidor) |
 | IS_PLL | ⬇ | ◐ | S23 | A | un jugador se va a espectador |
 | IS_PLP | ⬇ | ◐ | S23 | A | un jugador va a boxes (garaje) |
 | IS_PSF | ⬇ | ◐ | S23 | A | termina una parada en boxes |
@@ -88,8 +88,8 @@
 | IS_STA | ⬇ | ✔ | S12, S23 | A | `TINY_SST`; flags de estado (cámara libre, pausa) en S23 |
 | IS_TINY | ⬍ | ◐ | varias | A | ver la tabla de `TINY` |
 | IS_TOC | ⬇ | ◐ | S23 | R/P | alguien toma el coche de otro |
-| IS_TTC | ⬆ | ✖ | — | E | ver la tabla de `TTC` |
-| IS_UCO | ⬇ | ◐ | S23 | E/R | un coche cruza un control InSim (checkpoint / círculo) |
+| IS_TTC | ⬆ | ✔ | S24 | E | ver la tabla de `TTC`; **todos necesitan `ReqI`** («IS_TTC with no ReqI») |
+| IS_UCO | ⬇ | ✔ | S23, S24 | E/R | una IA cruza un checkpoint de InSim añadido: `CP_FWD`, `ObjectInfo` igual al enviado (S24) |
 | IS_VER | ⬇ | ✔ | todas | A | respuesta al `IS_ISI` y a `TINY_VER` |
 | IS_VTN | ⬇ | ◐ | S24 | A/P | también en Un Jugador al mandar `/end`; falta alguien que vote |
 
@@ -105,7 +105,7 @@
 | TINY_SCP | ⬆ | ✔ | S12, S23 | A | → `IS_CPP` |
 | TINY_SST | ⬆ | ✔ | S12, S23 | A | → `IS_STA` |
 | TINY_GTM | ⬆ | ◐ | S12 | A | → `SMALL_RTP` |
-| TINY_MPE | ⬇ | ✖ | — | H/G | salir de un multijugador |
+| TINY_MPE | ⬇ | ✔ | S24 | H/G | `/leave` del servidor |
 | TINY_ISM | ⬆ | ✔ | S19, S23 | H/G | → `IS_ISM` (en una MPR también contesta, S23) |
 | TINY_REN | ⬇ | ✔ | S24 | A | `/end` |
 | TINY_CLR | ⬇ | ✔ | S24 | A | `/clear` |
@@ -116,16 +116,16 @@
 | TINY_MCI | ⬆ | ✔ | S23 | A/R | → `IS_MCI` (`request_all.IS_MCI`, S23) |
 | TINY_REO | ⬆ | ✔ | S12, S24 | A | → `IS_REO` |
 | TINY_RST | ⬆ | ✔ | S12, S24 | A | → `IS_RST` (en carrera) |
-| TINY_AXI | ⬆ | ◐ | S12 | E | → `IS_AXI` |
-| TINY_AXC | ⬇ | ✖ | — | E | se borra el layout |
+| TINY_AXI | ⬆ | ✔ | S12, S24 | E | → `IS_AXI` |
+| TINY_AXC | ⬇ | ✔ | S24 | E | `IS_AXM` `PMO_CLEAR_ALL` |
 | TINY_RIP | ⬆ | ✔ | S12, S23 | R | → `IS_RIP` |
 | TINY_NCI | ⬆ | ✖ | — | H | → `IS_NCI` (servidor con contraseña) |
 | TINY_ALC | ⬆ | ◐ | S12 | A | → `SMALL_ALC` |
-| TINY_AXM | ⬆ | ◐ | S12 | E | → `IS_AXM` |
+| TINY_AXM | ⬆ | ✔ | S12, S24 | E | → `IS_AXM` hasta `PMO_FILE_END` |
 | TINY_SLC | ⬆ | ✖ | — | H | → `IS_SLC` |
 | TINY_MAL | ⬆ | ◐ | S12 | H | → `IS_MAL` |
 | TINY_PLH | ⬆ | ◐ | S12 | H | → `IS_PLH` |
-| TINY_IPB | ⬆ | ✖ | — | H | → `IS_IPB` |
+| TINY_IPB | ⬆ | ✖ | — | H | sin respuesta como invitado admin (S24) |
 | TINY_LCL | ⬆ | ◐ | S12 | A | → `SMALL_LCL` |
 | SMALL_SSP | ⬆ | ✔ | S24 | A | OutSim al `UDPPort` del `IS_ISI` (que `InSim()` no deja poner, W11.8); **`UVal` en centésimas** (10 → 10 por segundo); 0 lo para |
 | SMALL_SSG | ⬆ | ✔ | S24 | A | OutGauge igual que `SSP`: `UDPPort`, `UVal` en centésimas, 0 lo para |
@@ -134,12 +134,12 @@
 | SMALL_STP | ⬆ | — | — | — | la especificación dice «currently unavailable» |
 | SMALL_RTP | ⬇ | ◐ | S12 | A | respuesta a `TINY_GTM` |
 | SMALL_NLI | ⬆ | ✔ | S24 | A | 1000 ms → ~1 `IS_NLP` por segundo (tarda un momento en aplicarse) |
-| SMALL_ALC | ⬍ | ◐ | S12 | A/H | leído; falta poner coches permitidos |
+| SMALL_ALC | ⬍ | ◐ | S12, S24 | A/H | leído; enviarlo como invitado admin: «only for multiplayer hosts» (S24) |
 | SMALL_LCS | ⬆ | ✖ | — | A | luces, bocina, sirena del coche local |
 | SMALL_LCL | ⬍ | ◐ | S12 | A | leído; falta poner luces |
 | SMALL_AII | ⬆ | ✔ | S24 | A | → `IS_AII` de una IA, sin quitarle el control |
-| TTC_SEL | ⬆ | ✖ | — | E | → `IS_AXM` de la selección del editor |
-| TTC_SEL_START / STOP | ⬆ | ✖ | — | E | `IS_AXM` cada vez que cambia la selección / dejar de mandarlos |
+| TTC_SEL | ⬆ | ✔ | S24 | E | → `IS_AXM` `PMO_TTC_SEL` con la selección puesta por `PMO_SELECTION` |
+| TTC_SEL_START / STOP | ⬆ | ✔ | S24 | E | `IS_AXM` al cambiar la selección (con el `ReqI` del START); STOP solo con `ReqI` |
 
 ## Fuera de InSim (UDP)
 

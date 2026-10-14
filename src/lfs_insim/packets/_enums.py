@@ -1068,7 +1068,11 @@ class PMO(IntEnum):
     """7 - user pressed O without anything selected"""
 
     GET_Z = 8
-    """8 - request Z values / reply with Z values"""
+    """
+    8 - request Z values / reply with Z values. Seen in LFS 0.8C32: the IS_AXM needs a non-zero
+    ReqI, returned in the reply; with ReqI 0 there is no reply (LFS shows \"sending to one but
+    ReqI is not set\").
+    """
 
     NUM = 9
 

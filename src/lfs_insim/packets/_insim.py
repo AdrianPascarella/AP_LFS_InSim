@@ -185,7 +185,11 @@ class IS_SMALL(BothWaysPacket):
 
 @dataclass(kw_only=True)
 class IS_TTC(InstructionPacket):
-    """General purpose 8 byte packet (Target To Connection) (instruction: your program sends it)"""
+    """
+    General purpose 8 byte packet (Target To Connection) (instruction: your program sends it).
+    Seen in LFS 0.8C32: every IS_TTC needs a non-zero ReqI, even TTC_SEL_STOP; with ReqI 0 LFS
+    ignores it and shows \"IS_TTC with no ReqI\".
+    """
 
     ReqI: int = 0
     """0 unless it is an info request or a reply to an info request"""

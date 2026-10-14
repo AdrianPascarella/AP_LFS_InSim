@@ -1,25 +1,33 @@
-"""Every note of spec_overrides.NOTES (what was seen in the game) reaches the generated code."""
-
-from pathlib import Path
+"""Every note of spec_overrides.NOTES (what was seen in the game) reaches the docstrings."""
 
 import pytest
 import spec_overrides
 
-PACKETS = Path(__file__).resolve().parent.parent / "src" / "lfs_insim" / "packets"
+from lfs_insim import packets
 
 
-def generated_text() -> str:
-    text = "".join(path.read_text(encoding="utf-8") for path in PACKETS.glob("_*.py"))
-    return " ".join(text.replace('"""', " ").split())  # docstrings wrap: compare words only
+def words(text: str | None) -> str:
+    return " ".join((text or "").split())  # docstrings wrap: compare words only
+
+
+def docstring_of(key: str) -> str:
+    """The docstring a note goes to: a packet ("IS_AIC") or an enum member ("SMALL.SSP")."""
+    if "." not in key:
+        return words(getattr(packets, key).__doc__)
+    enum_name, member = key.split(".")
+    source = packets._enums.__file__
+    with open(source, encoding="utf-8") as file:
+        text = file.read()
+    start = text.index(f"\nclass {enum_name}(")
+    start = text.index(f"\n    {member} = ", start)
+    end = text.find("\n\n", text.index('"""', start) + 3)
+    return words(text[start:end].replace('\\"', '"'))
 
 
 @pytest.mark.parametrize("key", sorted(spec_overrides.NOTES))
-def test_note_is_in_a_docstring(key: str) -> None:
-    note = " ".join(spec_overrides.NOTES[key].split())
-    assert note in generated_text(), f"the note of {key} is not in the generated packets"
+def test_note_is_in_its_docstring(key: str) -> None:
+    assert words(spec_overrides.NOTES[key]) in docstring_of(key)
 
 
 def test_is_aic_warns_that_it_disables_the_ai() -> None:
-    from lfs_insim.packets import IS_AIC
-
-    assert "disables the AI driver completely" in " ".join((IS_AIC.__doc__ or "").split())
+    assert "disables the AI driver completely" in words(packets.IS_AIC.__doc__)

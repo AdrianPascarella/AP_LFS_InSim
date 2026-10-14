@@ -473,10 +473,11 @@ de pantalla) se pide antes, con copia de lo que se toque. Lo que necesita a otra
   `CON`, `FLG`, `HLV`, `PEN`, `PIT`/`PSF`/`PLA`, `CRS`, `CSC`, `PLL`/`PLP`, `TINY_REN`/`CLR`), botones (estilos,
   `DEL_BTN`), `AIC`/`AII`, `OCO`, `SCH`, `SFP`, `SSH`, `SMALL_*` (`TMS`, `STP`, `NLI`, `LCS`, `LCL`, `SSP`,
   `SSG`), `REO` enviado, `TINY_RES` (no respondió en S12). Hecho en S24 → LOG.md S24 (lo que queda, en W11.10).
-- [ ] **W11.4** — Grupo E (editor de circuitos): `AXM` en los dos sentidos, `AXI`, `AXO`, `OBH`, `UCO`, `CIM`,
-  `TTC_*`, `TINY_AXC`.
+- [x] **W11.4** — Grupo E (editor de circuitos): `AXM` en los dos sentidos, `AXI`, `AXO`, `OBH`, `UCO`, `CIM`,
+  `TTC_*`, `TINY_AXC`. Hecho en S24 → LOG.md S24 (`AXO` sigue sin salir: falta un autocross).
 - [ ] **W11.5** — Grupo H (tu LFS como servidor, aunque no entre nadie): `NCI`, `SLC`, `MAL`, `PLH`/`HCP`, `PLC`,
-  `IPB`, `MTC`, `ACR`, `III`, `ISM`/`MPE`, `SET`.
+  `IPB`, `MTC`, `ACR`, `III`, `ISM`/`MPE`, `SET`. **A medias (S24):** probado como invitado admin (en LFS 0.8C32
+  «Crear servidor nuevo» no hace anfitrión al juego); lo propio del anfitrión necesita un servidor dedicado (W11.11).
 - [ ] **W11.6** — Grupo P (otra persona conectada): tarjeta para el usuario con `JRR`, `VTN`/`VTC`/`VTA`, `TOC`,
   `III`, `MTC` a una persona, `NCN`/`CNL` remotos, y U11.
 - [ ] **W11.7** — Cerrar: cada fallo encontrado arreglado (o anotado si es de LFS), `COVERAGE.md` al día, y
@@ -493,6 +494,13 @@ de pantalla) se pide antes, con copia de lo que se toque. Lo que necesita a otra
   documentada de devolvérselo. `SMALL_AII` no lo quita. Decidir con el usuario: avisarlo en el docstring de
   `IS_AIC` / `CS` (vía `spec_overrides.py`), y buscar si Scawen dice algo en el foro (§15). Importa para la
   aplicación de control de IA. Hecho en S24 → LOG.md S24.
+- [ ] **W11.11** — (Encontrada en S24, decide el usuario) Servidor dedicado para lo que solo acepta el InSim del
+  anfitrión (`IPB`, `PLC`, `MTC`, `SMALL_ALC` enviado, `ACR`, `III`, `NCI` con contraseña de admin, `HCP`, `PLH`
+  enviado, `ISM` con `Host` 1): un **segundo proceso de LFS** (`/dedicated=nogfx`, `/usemaster=no`, otro puerto e
+  InSim) en la misma carpeta, más allá del permiso de abrir LFS. Antes, ver si escribe en `C:\LFS` (cfg.txt).
+  `group_h.py` ya sirve: avisa en una nota de si su InSim es el del anfitrión.
+- [ ] **W11.12** — (S24) Documentar en `docs/insim.md` que con «Create new host» de LFS 0.8C32 el juego es un
+  invitado admin (UCID 1) y su InSim no puede usar lo de anfitrión (`IS_MTC`, `SMALL_ALC`…); y en `say(to=...)`.
 - [ ] **W11.10** — Lo que queda del grupo A, que necesita tu coche en pista (o una IA en boxes): `PIT`/`PSF`,
   `CRS`, `PLL`/`PLP`, `PEN`, `CON` (si hay contacto), `SMALL_LCS` / `LCL` puestos, `IS_OCO` con captura en el
   momento, recibir `IS_BFN` (Shift+I / Shift+B).
