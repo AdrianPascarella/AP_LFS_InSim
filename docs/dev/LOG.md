@@ -99,6 +99,13 @@ W11.9) quedan para decidir con el usuario.
 - **Scawen sobre devolver el control:** no se encontró. El foro de lfs.net pide iniciar sesión; la búsqueda solo dio
   un hilo de otro usuario que tampoco sabía si se puede volver a la IA normal y que el sistema llegó en 0.7F5. Las
   notas dicen lo observado, no se atribuyen a Scawen.
+- **Después, con el usuario ya identificado en lfs.net** («Ya me autentifiqué en lfs por si lo quieres mirar
+  ahora»): leído con su Chrome el hilo 110309 «Simple control of AI car». Scawen, primer mensaje (23/01/2025):
+  controlar un coche desde InSim «disables the AI completely», y solo cuentan los valores que se mandan. En la
+  versión F4 de la especificación del hilo, `255: stop control` dice «The AI driver will stop the car», y un
+  probador vio que se para y apaga el motor. Nada sobre devolver el control. La nota de `IS_AIC` cita ahora a
+  Scawen (§15). Al editarla, un recorte por texto se llevó 124 líneas de `spec_overrides.py` (`"IS_AIC"`
+  aparecía antes, en `TAIL_ARRAY`); lo paró el generador y se restauró desde git.
 - `generate_packets.py` pasó a **501 líneas** (aviso de `verify`) por la línea del import de `with_note`; se deja
   así: partirlo por una línea no compensa ahora (anotado en `STATE.md`).
 

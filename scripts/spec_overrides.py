@@ -193,11 +193,12 @@ MEMBER_NAMES: dict[str, str] = {
 # docstring of a packet ("IS_AIC") or an enum member ("SMALL.SSP"). Each note names the LFS version
 # it was seen in; tests/test_notes.py checks that every one reaches the generated code.
 NOTES: dict[str, str] = {
+    # Scawen, lfs.net forum thread 110309 "Simple control of AI car" (23 Jan 2025), first post.
     "IS_AIC": (
-        "Seen in LFS 0.8C32: any IS_AIC, even one that only asks for CS_SEND_AI_INFO, takes the"
-        " car from the AI driver; its inputs then stay at their defaults (no throttle), and"
-        " CS_STOP_CONTROL stops the car without giving it back. To only read an AI car, send"
-        " SMALL_AII."
+        "It disables the AI driver completely (Scawen, lfs.net thread 110309, 2025): from the first"
+        " IS_AIC, even one that only asks for CS_SEND_AI_INFO, the car follows only your inputs,"
+        " at their defaults (no throttle) until you set them. Seen in LFS 0.8C32: CS_STOP_CONTROL"
+        " stops the car and the AI does not drive it again. To only read an AI car, send SMALL_AII."
     ),
     "CS.STOP_CONTROL": "Seen in LFS 0.8C32: the car stops; the AI does not drive it again.",
     "SMALL.AII": "Unlike IS_AIC, it leaves the car to the AI driver (seen in LFS 0.8C32).",
