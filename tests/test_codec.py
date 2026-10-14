@@ -8,7 +8,7 @@ from ipaddress import IPv4Address
 
 import pytest
 
-from lfs_insim.packets import PacketError, Vec
+from lfs_insim.packets import PacketError, Vec, unpack_insim
 from lfs_insim.packets._codec import (
     SIZE,
     TYPE,
@@ -28,7 +28,6 @@ from lfs_insim.packets._structure import (
     Structure,
     factory,
     register,
-    unpack_insim,
 )
 
 B, H = Scalar("B"), Scalar("H")
@@ -206,6 +205,16 @@ def test_unpack_any_chooses_the_class_by_type() -> None:
     assert unpack_insim(MSO(Msg="hi").pack()) == MSO(Msg="hi")
     with pytest.raises(PacketError, match="unknown packet type 250"):
         unpack_insim(bytes([1, 250, 0, 0]))
+
+
+def test_unpack_insim_reads_one_whole_packet() -> None:
+    # Public (W6.5): an application's tests read sample packets from their bytes. Bytes after
+    # the packet are refused, so a sample with two packets is not silently read as one.
+    two = MSO(Msg="hi").pack() + TINY().pack()
+    with pytest.raises(PacketError, match="one packet at a time"):
+        unpack_insim(two)
+    with pytest.raises(PacketError, match=r"Size says \d+ bytes, but 4 were given"):
+        unpack_insim(MSO(Msg="hi").pack()[:4])
 
 
 @pytest.mark.parametrize(

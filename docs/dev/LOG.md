@@ -1,7 +1,7 @@
 # 📓 Diario — AP_LFS_InSim (lfs_insim)
 <!-- Solo se añade, lo más nuevo arriba. Una entrada por sesión. -->
 
-## S22 — 2026-10-14 — W6.7: `request.IS_XXX`, `request_all.IS_XXX` e `instruct.IS_XXX` (equipo secundario)
+## S22 — 2026-10-14 — W6.7 (`request.IS_XXX`, `request_all.IS_XXX`, `instruct.IS_XXX`) y W6.5 (equipo secundario)
 
 **Inicio:** `session_start_check` PASS (rama, identidad, pull de lo de S21, plantilla v3). Desajuste:
 `STATE.md` decía que `_connection.py` tenía 496 líneas; tenía 500 (el LOG S21 sí lo decía). Ahora tiene 452.
@@ -34,9 +34,24 @@ los tipos; para enviar varios con ayuda del editor, `insim.send(sent.IS_MST(...)
 Encadenar `send` enviaría en cada eslabón (lo mismo que dos líneas) o necesitaría un final que, olvidado, no
 envía nada. Detalle en `API_DESIGN.md`.
 
-**Verificación:** `verify` PASS (597 tests). Control de cierre, abajo en el commit.
+**Verificación:** `verify` PASS (597 tests). CI `verify` en verde (run 38546151230).
 
-**Commits:** el de W6.7 con este cierre.
+**Commits:** `W6.7: ...` con su cierre.
+
+**Duda del usuario** (sin cambios): si meter un plugin entero en una función aguanta al crecer. Respuesta: la
+función es la forma corta; al crecer, `lfs_insim.Plugin` (estado en atributos, métodos que se prueban solos,
+`insim.use(X).algo` desde otros) y, sobre todo, partir en varios plugins que comparten con `insim.use`. Punto
+débil anotado, sin tarea: en la clase los manejadores se registran a mano en `__init__`
+(`insim.on.IS_CPP(self._m)`), sin decorador en el método. Se decide con FreeCam (W6.3) si molesta.
+
+**W6.5 hecha** (el usuario: «sigue con W6.5»). Cada clase ya tenía `IS_XXX.unpack(data)` público; lo que faltaba
+era leer uno cualquiera por su `Type`. `unpack_insim` pasa a `lfs_insim.packets` (exportada por el generador,
+sin cambiar de nombre: deja claro que es InSim y no OutSim / OutGauge) y, ya pública, **estricta**: bytes de
+más tras el paquete → `PacketError` («one packet at a time»), para que una muestra con dos paquetes no se lea
+en silencio como uno (`_stream` y `live_lfs` le pasan siempre un paquete exacto). `IS_XXX.unpack` sigue igual.
+Tests a la importación pública y uno nuevo (bytes de más, bytes de menos); el de ida y vuelta ya la probaba con
+cada paquete. Guía `testing.md` («Packets from their bytes», ejemplo ejecutado a mano), CHANGELOG. `verify`
+PASS (598). El registrador de streamer-project puede dejar `lfs_insim.packets._structure` cuando use 0.7.0.
 
 ## S21 — 2026-10-14 — U12 descartada; 0.6.0 publicada (W10.10)
 

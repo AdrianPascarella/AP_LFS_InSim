@@ -9,6 +9,9 @@
   send an instruction that LFS answers when it is done (load or move through a replay, save a
   screenshot) and wait for the reply. `insim.instruct(packet)` for one already built. See
   [Asking LFS](docs/insim.md#asking-lfs).
+- `lfs_insim.packets.unpack_insim(data)`: read one InSim packet from its bytes, whatever its type.
+  It refuses bytes left over after the packet. See
+  [Packets from their bytes](docs/testing.md#packets-from-their-bytes).
 
 ## 0.6.0
 

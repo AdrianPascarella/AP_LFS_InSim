@@ -1,7 +1,8 @@
 """The base classes of the generated packets, and reading any InSim packet (internal).
 
 `Structure` packs and unpacks its `_LAYOUT` with the codecs of lfs_insim.packets._codec;
-`InSimPacket` adds the 4-byte header, and `unpack_insim()` picks the class by the Type byte.
+`InSimPacket` adds the 4-byte header, and `unpack_insim()` (public in lfs_insim.packets) picks
+the class by the Type byte.
 """
 
 from __future__ import annotations
@@ -99,7 +100,16 @@ def register(*classes: type[InSimPacket]) -> None:
 
 
 def unpack_insim(data: bytes) -> InSimPacket:
-    """Read any InSim packet: the class is chosen by its Type byte."""
+    """Read one InSim packet from its bytes, as LFS sends them: the class is chosen by its Type
+    byte (`IS_NPL.unpack(data)` reads only that type).
+
+    The bytes must be one whole packet: its first byte says how long it is (Size / 4). Raises
+    PacketError (a ValueError) for bytes that are not one, and for a Type no packet has.
+    """
+    if len(data) >= 4 and 0 < data[0] * 4 < len(data):
+        raise PacketError(
+            f"Size says {data[0] * 4} bytes, but {len(data)} were given: one packet at a time"
+        )
     data = _checked(data)
     cls = _PACKET_TYPES.get(data[1])
     if cls is None:

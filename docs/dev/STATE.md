@@ -1,5 +1,6 @@
 # 📍 Estado — AP_LFS_InSim (lfs_insim)
-> Actualizado: 2026-10-14 (S22): **W6.7 hecha** en `dev` (equipo secundario), sin publicar: `await
+> Actualizado: 2026-10-14 (S22): **W6.7 y W6.5 hechas** en `dev` (equipo secundario), sin publicar. W6.5:
+> `lfs_insim.packets.unpack_insim(data)` es pública (lee un paquete cualquiera de sus bytes). W6.7: `await
 > insim.request.IS_STA()`, `await insim.request_all.IS_NPL()` y `await insim.instruct.IS_RIP(...)` (el editor
 > lista lo que cabe en cada uno; `request(IS_X)` y `request_all(IS_X)` siguen). Sustituye `request(IS_RIP(...))`
 > de W6.1. Encadenar (`request.IS_A().IS_B()`) descartado: `asyncio.gather`. Antes, en S21: W10 (plugins)
@@ -11,12 +12,11 @@
 > LFS acepta hasta 8 programas InSim a la vez (W10.0).
 > **▶️ SIGUIENTE: W6.3** — `FreeCam` en streamer-project (W9.1 de allí): repetición + plano guionizado; necesita
 > el equipo principal (LFS y streamer-project). FreeCam usará `instruct.IS_RIP(...)` (`request(IS_RIP(...))` ya no existe).
-> En el secundario, W6.5 y W6.6 se pueden hacer.
+> En el secundario se puede hacer W6.6 (enum de `PType`).
 > **Pregunta abierta al usuario (fin de S21), lo primero de la próxima sesión:** qué es «un plano». Propuesta del agente, sin respuesta todavía: un archivo pequeño con una lista de pasos: ir a un instante de la repetición; seguir a un coche con una vista del juego (`IS_SCC`); cámara libre de A a B en N segundos, con posición y hacia dónde mira (`IS_CPP`, LFS suaviza); esperar N segundos. Más adelante, planos generados desde los eventos del registrador. Con eso se graban tomas concretas con OBS. La
 > repetición `freecam_prueba.mpr` está cargada en el LFS del usuario y hay permiso para usarlo. **W6.2 hecha** en
 > S21: el registrador de streamer-project usa `lfs_insim` 0.6.0 (mismos eventos que antes). W6.1 (con la forma de W6.7) en `dev`,
-> probada en real en S21, sin publicar. Pendientes pequeñas: W6.5 (leer un paquete de sus
-> bytes, público) y W6.6 (enum de `PType`). Tareas en `PLAN.md` (W6); por qué, en `LOG.md` S21.
+> probada en real en S21, sin publicar. Pendiente pequeña: W6.6 (enum de `PType`). Tareas en `PLAN.md` (W6); por qué, en `LOG.md` S21.
 > **Receta de una versión nueva:** versión y CHANGELOG en
 > `dev`; `verify` en verde; avance rápido de `dev` a `main`; `gh release create vX.Y.Z --target main`
 > (el tag debe ser `v<version>`); aprobar el entorno `pypi` (pedirlo cada vez; con permiso, el agente lo aprueba
@@ -26,7 +26,7 @@
 > módulo propio (los comandos, en `_commands.py`; las peticiones, en `_asking.py`). Ver `USER_ACTIONS.md`.
 
 ## Dónde estamos
-Fase activa: **W6** (en curso: W6.1, W6.2 y W6.7 hechas; siguiente, W6.3, la cámara libre). W10 hecha y publicada como 0.6.0 en S21.
+Fase activa: **W6** (en curso: W6.1, W6.2, W6.5 y W6.7 hechas; siguiente, W6.3, la cámara libre). W10 hecha y publicada como 0.6.0 en S21.
 
 - **Cómo se genera:** `.venv/Scripts/python scripts/generate_packets.py` lee
   `spec/cache/InSim.txt` y `spec/cache/OutSimPack.txt` (con `scripts/spec_parser.py`) y las

@@ -33,10 +33,11 @@ from lfs_insim.packets import (
     PacketError,
     Vec,
     Vector,
+    unpack_insim,
 )
 from lfs_insim.packets import _codec as c
 from lfs_insim.packets._directions import BothWaysPacket, InfoPacket, InstructionPacket
-from lfs_insim.packets._structure import InSimPacket, OptionalParts, Structure, unpack_insim
+from lfs_insim.packets._structure import InSimPacket, OptionalParts, Structure
 
 CACHE = Path(__file__).resolve().parent.parent / "spec" / "cache"
 # OutSim and OutGauge: no Size field, so their sizes are checked one by one below.

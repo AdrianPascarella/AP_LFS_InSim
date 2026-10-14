@@ -428,9 +428,9 @@ con muestras que hacen de red, y es menos arriesgado que la cámara.
 - [ ] **W6.3** — `FreeCam`: repetición + plano guionizado (`IS_RIP`, `IS_SCC`, `IS_CPP`). Repetición de prueba
   copiada con permiso del usuario en `C:\LFS\data\mpr\freecam_prueba.mpr` (de `temp_mpr.mpr`, 107 MB). Permiso
   dado para controlar su LFS en la prueba en real.
-- [ ] **W6.5** — Leer un paquete a partir de sus bytes con la API pública (hoy solo
+- [x] **W6.5** — Leer un paquete a partir de sus bytes con la API pública (hoy solo
   `lfs_insim.packets._structure.unpack_insim`, privada): el registrador la necesita en sus tests, con paquetes
-  de ejemplo en bytes.
+  de ejemplo en bytes. Hecho en S22: `lfs_insim.packets.unpack_insim(data)`, pública y estricta → LOG.md S22.
 - [ ] **W6.6** — Enum para los bits de `IS_NPL.PType` (mujer, IA, remoto; InSim.txt los da en un comentario, así
   que el generador no lo crea): el registrador define `PTYPE_AI = 2` y `PTYPE_REMOTE = 4` a mano.
 - [x] **W6.7** — `insim.request.IS_XXX()`, `insim.request_all.IS_XXX()` e `insim.instruct.IS_XXX(...)` (propuesto

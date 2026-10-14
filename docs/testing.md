@@ -49,3 +49,19 @@ Everything else LFS would do (someone joining, chat, a race starting) your test 
 cuts the connection as if LFS had crashed, to test what happens on reconnecting.
 
 It takes one program at a time; the real LFS takes up to 8.
+
+## Packets from their bytes
+
+If your tests keep packets as bytes (recorded from LFS, say), `unpack_insim` reads one, choosing
+the class by its type byte, and `pack()` gives the bytes back:
+
+```python
+from lfs_insim.packets import IS_NPL, unpack_insim
+
+data = IS_NPL(PLID=3, PName="Bob").pack()
+packet = unpack_insim(data)  # an IS_NPL
+assert packet == IS_NPL(PLID=3, PName="Bob")
+```
+
+The bytes must be one whole packet; anything else raises `PacketError` (a `ValueError`).
+`IS_NPL.unpack(data)` reads only that type, and its result is typed as one.
