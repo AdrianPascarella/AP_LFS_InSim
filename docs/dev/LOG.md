@@ -51,6 +51,19 @@ el primero. **Hipótesis del usuario confirmada:** sin contraseña en `IS_ISI` n
 - Lista de IP de InSim vacía otra vez al terminar. Docs (`insim.md`, «Unreleased»): sin la contraseña de
   admin, el InSim no contesta; `IS_NCI` solo con contraseña.
 
+**W11.10 hecha: el usuario conduce** (el usuario: «procedamos entonces»). Nuevo `tests/live/group_d.py`: cada paso
+sale arriba en la pantalla de LFS (un botón) y en el chat (`IS_MSL`), y espera el paquete (2 min; si no, SKIP).
+- **El InSim local pidió la contraseña de admin**: LFS mostró «InSim : password does not match your multiplayer
+  admin password», porque el usuario la había puesto al crear el servidor. `group_d.py --admin admin`.
+- **12 PASS, 3 SKIP**; 0 paquetes mal leídos o escritos. `SMALL_LCL` (cortas, emergencia, antiniebla) releídas
+  con `TINY_LCL`; `SMALL_LCS` (ráfagas y bocina) enviado; `IS_OCO` no se veía desde la cabina; `IS_CRS`;
+  `IS_PEN` por `/p_dt` (`DT_VALID`: ya estaba en el pit lane, porque era una práctica) y quitada al salir del pit
+  lane; `IS_PEN` por exceso de velocidad en el pit lane (`DT`, luego `SG`); `IS_PLA` `ENTER` / `EXIT` /
+  `NO_PURPOSE`; `IS_PIT`; `IS_PSF`; `IS_BFN` `USER_CLEAR` y `REQUEST`; `IS_PLP`; `/spec` → `IS_PLL`.
+- **Fallos del script, corregidos:** decía «Shift+R para reiniciar el coche», que reinicia la carrera (el usuario
+  usó su tecla, «Y»); esperaba `DT` y no `DT_VALID`, y un `IS_PLA` DT; y pedía Shift+I, que es para los botones
+  del host: con un InSim local es Shift+B (con botones los quita, `USER_CLEAR`; sin ellos los pide, `REQUEST`).
+
 ## S24 — 2026-10-14 — W11.2: batería en vivo (`tests/live/`); W11.3: grupo A en el LFS real
 
 **Inicio:** `session_start_check` PASS (nada que traer). `verify` PASS (613). Equipo principal. LFS cerrado.

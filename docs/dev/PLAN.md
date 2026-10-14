@@ -509,9 +509,10 @@ de pantalla) se pide antes, con copia de lo que se toque. Lo que necesita a otra
   lfs.net, con su InSim (IP y puerto en «Your hosts», IP permitidas en «Access control») → LOG.md S25.
 - [x] **W11.12** — (S24) Documentar en `docs/insim.md` que con «Create new host» de LFS 0.8C32 el juego es un
   invitado admin (UCID 1) y su InSim no puede usar lo de anfitrión (`IS_MTC`, `SMALL_ALC`…); y en `say(to=...)`. Hecho en S24 → LOG.md S24.
-- [ ] **W11.10** — Lo que queda del grupo A, que necesita tu coche en pista (o una IA en boxes): `PIT`/`PSF`,
+- [x] **W11.10** — Lo que queda del grupo A, que necesita tu coche en pista (o una IA en boxes): `PIT`/`PSF`,
   `CRS`, `PLL`/`PLP`, `PEN`, `CON` (si hay contacto), `SMALL_LCS` / `LCL` puestos, `IS_OCO` con captura en el
-  momento, recibir `IS_BFN` (Shift+I / Shift+B).
+  momento, recibir `IS_BFN` (Shift+I / Shift+B). Hecho en S25 → LOG.md S25 (`group_d.py`; falta ver `IS_OCO`
+  y confirmar la bocina de `SMALL_LCS`).
 
 ## Ideas (aparcadas, sin compromiso)
 - **Ayudante de botones** (de escribir `examples/buttons.py`, S12): hay que repartir los `ClickID` a

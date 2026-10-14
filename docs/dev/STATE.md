@@ -24,9 +24,8 @@
 > lo de anfitrión necesita un servidor dedicado (W11.11).
 > **W11.5 y W11.11 cerradas (S25):** el servidor de «Crear servidor nuevo» corre en el hosting de lfs.net, con su
 > InSim (IP/puerto en «Your hosts», IP permitidas en «Access control»; **no pararlo: se borra**); `group_h.py
-> --host` 17 PASS. Docs en «Unreleased». **▶️ SIGUIENTE:**
-> W11.10 (lo del grupo A que pide un coche en pista: el usuario conduce o una IA en boxes) o W11.6 (tarjeta del
-> grupo P, con otra persona). Antes de lanzar LFS con opciones, copia de `cfg.txt` (§13). El
+> --host --admin` 23 PASS. **W11.10 hecha (S25):** `group_d.py`, el usuario conduce (12 PASS). Docs en
+> «Unreleased». **▶️ SIGUIENTE:** W11.6 (tarjeta del grupo P, con otra persona) y W11.7 (cerrar W11). Antes de lanzar LFS con opciones, copia de `cfg.txt` (§13). El
 > permiso del grupo A (S23) vale para repetir `group_a.py`; sin tocar `cfg.txt`. LFS quedó cerrado al final de
 > S24 (lo abrió el agente; `/exit` por InSim). Los demás grupos, cada uno con su permiso; el grupo P, en una tarjeta. La
 > > biblioteca tiene la API de alto nivel (`@insim.on.IS_NPL`, `insim.send.IS_MST(...)`, `received` / `sent`,
