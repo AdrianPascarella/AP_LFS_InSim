@@ -17,6 +17,27 @@ cualquier nombre: no sirve para saber si existe).
 que se publique un servidor dedicado de la 0.8C, o con un servidor alojado (servicio de hosting de LFS, InSim por
 IP) o el de otra persona (grupo P). Nada cambió en `C:\LFS`.
 
+**El usuario lo resolvió:** «Acabo de iniciar un servidor en LFS… en lfs.net si se va al apartado de hosting →
+your hosts aparece este e indica un host ip y un insim port. Míratelo». Con su Chrome: el servidor «testing»
+(450471) **corre en el servicio de hosting de LFS** (Holanda, 188.122.74.156, InSim 52831, LFS **0.8C22**,
+gratuito hasta el 15/10/2027): «Crear servidor nuevo» no aloja en el PC, y por eso el juego es un invitado
+admin (S24). Estaba: IP permitidas para InSim vacía (nadie), contraseñas de admin y de invitados vacías.
+- **Permiso del usuario** («Te doy permiso») para añadir su IP pública (85.55.134.178, de api.ipify.org) a la
+  lista de InSim: hecho con el formulario de «Access control» («All OK!»). Las contraseñas no las puede escribir
+  el agente en una web externa (norma de seguridad, aunque haya permiso): se generaron en el scratchpad para que
+  las pegara el usuario. La de admin no se puede cambiar con el servidor en marcha, y **parar un servidor
+  gratuito lo borra** (el usuario); se siguió sin contraseña de admin.
+- **InSim del servidor sin contraseña: funciona**, `IS_ISM` con `Host` 1. `group_h.py` admite `--host` (y se
+  niega a `leave` con un servidor remoto: lo pararía) y, si hay un invitado, le pide por `IS_MTC` que escriba
+  `/i hola` y `/rstend 0` (el usuario lo hizo). **17 PASS, 0 FAIL, 2 SKIP**; 0 paquetes mal leídos o escritos.
+  Vistos como anfitrión: `IS_SLC`, `IS_IPB` (y enviado: ban de 192.0.2.1, releído y quitado), `IS_MAL`,
+  `SMALL_ALC` enviado (aplicado y restaurado), `IS_MTC` a todos (en la pantalla del juego) y a una conexión,
+  `IS_III` (UCID 1, «hola»), `IS_ACR` del invitado y del propio InSim. SKIP: `IS_NCI` (sin contraseña de admin)
+  y `/uai` (el usuario no tenía coche elegido), así que no hubo handicaps.
+- Al terminar: lista de IP de InSim vacía otra vez («All OK!»), como estaba.
+- Docs (sin publicar, «Unreleased»): `docs/insim.md` explica cómo llegar al InSim del servidor (IP, puerto,
+  «Access control», no pararlo); docstring de `say()`. W11.5 y W11.11 cerradas; `COVERAGE.md`: 12 filas.
+
 ## S24 — 2026-10-14 — W11.2: batería en vivo (`tests/live/`); W11.3: grupo A en el LFS real
 
 **Inicio:** `session_start_check` PASS (nada que traer). `verify` PASS (613). Equipo principal. LFS cerrado.

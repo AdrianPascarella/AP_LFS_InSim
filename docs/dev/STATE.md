@@ -22,7 +22,9 @@
 > **W11.4 (grupo E) hecha y W11.5 (grupo H) a medias (S24):** `group_e.py` y `group_h.py`; notas nuevas
 > (`IS_TTC` y `PMO_GET_Z` necesitan `ReqI`). En LFS 0.8C32 «Crear servidor nuevo» deja al juego como invitado admin:
 > lo de anfitrión necesita un servidor dedicado (W11.11).
-> **W11.11 bloqueada (S25):** no hay servidor dedicado de la 0.8C publicado (solo el de 0.6V). **▶️ SIGUIENTE:**
+> **W11.5 y W11.11 cerradas (S25):** el servidor de «Crear servidor nuevo» corre en el hosting de lfs.net, con su
+> InSim (IP/puerto en «Your hosts», IP permitidas en «Access control»; **no pararlo: se borra**); `group_h.py
+> --host` 17 PASS. Docs en «Unreleased». **▶️ SIGUIENTE:**
 > W11.10 (lo del grupo A que pide un coche en pista: el usuario conduce o una IA en boxes) o W11.6 (tarjeta del
 > grupo P, con otra persona). Antes de lanzar LFS con opciones, copia de `cfg.txt` (§13). El
 > permiso del grupo A (S23) vale para repetir `group_a.py`; sin tocar `cfg.txt`. LFS quedó cerrado al final de
