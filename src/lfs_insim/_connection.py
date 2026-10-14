@@ -255,7 +255,8 @@ class InSim(StopsOnError):
         """Write in the chat, as if typed in LFS: `insim.say("Hello")`. Everyone sees it.
 
         With `to=UCID` only that connection sees it: `to=0` is this computer (IS_MSL, in single
-        player too); another UCID needs LFS to be a multiplayer host (IS_MTC; 255 = everyone).
+        player too); another UCID needs LFS to be a multiplayer host (IS_MTC; 255 = everyone): a
+        dedicated host, as a server started from the game makes it an admin guest (LFS 0.8C32).
         The limit counts bytes as LFS stores them: 95 for the chat (63 goes as IS_MST, longer
         as IS_MSX), 127 with `to`; longer text raises PacketError (a ValueError). For commands
         such as /restart, use command().

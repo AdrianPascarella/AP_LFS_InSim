@@ -499,8 +499,10 @@ de pantalla) se pide antes, con copia de lo que se toque. Lo que necesita a otra
   enviado, `ISM` con `Host` 1): un **segundo proceso de LFS** (`/dedicated=nogfx`, `/usemaster=no`, otro puerto e
   InSim) en la misma carpeta, más allá del permiso de abrir LFS. Antes, ver si escribe en `C:\LFS` (cfg.txt).
   `group_h.py` ya sirve: avisa en una nota de si su InSim es el del anfitrión.
-- [ ] **W11.12** — (S24) Documentar en `docs/insim.md` que con «Create new host» de LFS 0.8C32 el juego es un
-  invitado admin (UCID 1) y su InSim no puede usar lo de anfitrión (`IS_MTC`, `SMALL_ALC`…); y en `say(to=...)`.
+  S24: el `LFS.exe` del juego no aloja servidores dedicados (`/host=` no existe); hace falta el paquete aparte
+  «LFS dedicated host» de lfs.net (instalar software: otro permiso).
+- [x] **W11.12** — (S24) Documentar en `docs/insim.md` que con «Create new host» de LFS 0.8C32 el juego es un
+  invitado admin (UCID 1) y su InSim no puede usar lo de anfitrión (`IS_MTC`, `SMALL_ALC`…); y en `say(to=...)`. Hecho en S24 → LOG.md S24.
 - [ ] **W11.10** — Lo que queda del grupo A, que necesita tu coche en pista (o una IA en boxes): `PIT`/`PSF`,
   `CRS`, `PLL`/`PLP`, `PEN`, `CON` (si hay contacto), `SMALL_LCS` / `LCL` puestos, `IS_OCO` con captura en el
   momento, recibir `IS_BFN` (Shift+I / Shift+B).

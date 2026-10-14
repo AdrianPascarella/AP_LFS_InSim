@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.8.0
 
 - `InSim(udp_port=30001)`: the UDP port where LFS sends OutSim and OutGauge started with
   `SMALL_SSP` / `SMALL_SSG`, with no `cfg.txt` lines. LFS also sends IS_MCI and IS_NLP there, which
@@ -9,7 +9,11 @@
 - Docstrings say what LFS does and InSim.txt does not, as seen in LFS 0.8C32: `UVal` of
   `SMALL.SSP` / `SMALL.SSG` is in hundredths of a second; any `IS_AIC` disables the AI driver
   completely, as Scawen says (it stops driving, and `CS.STOP_CONTROL` does not give it back), while
-  `SMALL.AII` only reads it.
+  `SMALL.AII` only reads it. Also: every `IS_TTC`, and `IS_AXM` with `PMO.GET_Z`, needs a non-zero
+  `ReqI`, or LFS ignores it.
+- Docs: with LFS 0.8C32, a server started from the game (*Create new host*) makes the game an
+  admin guest, so its InSim cannot do what only a host may (`IS_MTC`, `IS_PLC`...). See
+  [Chat commands](docs/insim.md#chat-commands).
 
 ## 0.7.0
 

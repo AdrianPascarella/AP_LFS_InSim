@@ -142,6 +142,28 @@ reiniciarse la sesión de Claude Code; lo reabrió el agente.
   y se escribió en el chat del servidor oculto (solo este ordenador). Anotado en §13.
 - `COVERAGE.md`: 23 filas de los grupos E y H. LFS, abierto por el agente, cerrado con `/exit`.
 
+**W11.11, servidor dedicado: no se pudo** (el usuario: «Acepto lo del servidor dedicado. Y si lo consideras
+adecuado publica»). Opciones de la guía oficial (lfs.net/host.htm) y de LFSTop: `/host=`, `/admin=`, `/pass=`.
+Copia de `cfg.txt` en `_archivo_AP_LFS_InSim\cfg_backup_2026-10-14_S24.txt` antes de nada; contraseñas al azar,
+solo en el scratchpad.
+- `LFS.exe /host=...`: diálogo «Command 1 is invalid»; el `LFS.exe` del juego no tiene `/host`. Cerrado con
+  «Aceptar» (y el proceso terminó).
+- Con solo las opciones de `Commands.txt` (`/usemaster=hidden /port=63393 /insim=29997 /dedicated=nogfx`…):
+  arranca, pero queda en el menú sin alojar nada (`IS_ISM` vacío, `/pass` → «Comando desconocido»). El servidor
+  dedicado de verdad es el paquete aparte «LFS dedicated host»: instalarlo necesita otro permiso (W11.11 sigue).
+- **Al salir, LFS guardó en `cfg.txt` las opciones de la línea de comandos** (`Game Port` 63393, `Max Conns` 3,
+  `Cars In Race` 6, `Cars Per Guest` 4). Restaurado desde la copia (hash idéntico); la versión cambiada, guardada
+  en `cfg_after_dedicated_2026-10-14_S24.txt`. Cicatriz nueva en §13.
+
+**W11.12 hecha:** `docs/insim.md` («A server started from the game is not this computer») y docstring de `say()`.
+
+**`InSim(udp_port=...)` probado en real** (`group_a.py --only setup udp`, ya con la opción pública): 13 PASS,
+OutSim y OutGauge a 10 por segundo con `UVal` 10, 0 los para. Al cerrar LFS normalmente, `cfg.txt` no cambió.
+
+**0.8.0 preparada** (el agente la considera adecuada: `udp_port` probado en real, las notas no cambian código):
+versión y CHANGELOG («Unreleased» → «0.8.0»), `verify` PASS (630), wheel y sdist con `twine check` PASSED,
+instalada en un venv limpio (0.8.0, `udp_port`, notas). Publicación: en el siguiente paso.
+
 ## S23 — 2026-10-14 — U13 cerrada; W6.3 (FreeCam, en streamer-project) y W6.10 (`connect()` y `on_connect`); avisos rojos de LFS investigados
 
 **Inicio:** `session_start_check` PASS (pull de S22). `verify` PASS (612). Equipo **principal**: LFS en `C:\LFS`, con

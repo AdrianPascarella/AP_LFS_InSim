@@ -451,6 +451,12 @@ Formas en que este equipo o sus herramientas ya han dañado o pueden dañar el t
   en la barra de tareas y abrió los ajustes rápidos de Windows. Ahora el script declara los DPI y acepta `-FX` /
   `-FY` (fracciones de la ventana de LFS). **Regla:** clics siempre con `-FX` / `-FY`, y mirar la captura antes.
 
+- **LFS guarda en `cfg.txt` las opciones de la línea de comandos al salir** (visto en S24: `LFS.exe /port=63393
+  /maxguests=2 /carsmax=6 /carsguest=4 /dedicated=nogfx` dejó cambiados `Game Port`, `Max Conns`, `Cars In Race`
+  y `Cars Per Guest`; se restauró desde la copia). Además, el `LFS.exe` del juego no aloja servidores dedicados
+  (`/host=` da «Command 1 is invalid»). **Regla:** antes de lanzar LFS con opciones, copia de `cfg.txt`, y al
+  cerrarlo comparar los hashes.
+
 - **`ruff format` sobre una carpeta formatea también el Python de los `.md`** (visto en S20: `ruff format
   docs` cambió los bloques de código de `API_DESIGN.md`, `insim.md`, `units.md` y `roster-and-text.md`; se
   restauraron desde git). **Regla:** `ruff format` solo con archivos `.py` concretos o rutas de `CHECKED_PATHS`.

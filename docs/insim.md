@@ -150,6 +150,14 @@ your program still gets the chat, but it is not the host, so things change:
 `Roster` tells you where you are: `roster.guest` and `roster.local` (this computer's
 connection; see [Who is who](roster-and-text.md)).
 
+**A server started from the game is not this computer.** With LFS 0.8C32, *Multiplayer → Create
+new host* runs the server apart and your game joins it as an admin guest: the host is connection
+0, shown as remote, and you are connection 1. Your program is then a guest's InSim: `IS_ISM`
+says `Host` 0, and LFS refuses what only a host may do (`IS_MTC`, so `say(to=...)` for another
+connection, `IS_PLC`, setting `SMALL_ALC`) with "only for multiplayer hosts". Some admin tools
+still work, such as `IS_MAL`. To be the host, connect to the InSim of a dedicated host (LFS's
+separate dedicated server program).
+
 ### On connection, and on a rhythm
 
 ```python
