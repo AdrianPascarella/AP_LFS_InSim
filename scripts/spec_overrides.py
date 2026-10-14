@@ -121,9 +121,17 @@ COMMENT_VALUES: dict[str, str] = {
     "AXO": "OCO_INDEX",  # IS_OCO Index: AXO_START_LIGHTS1 149, ...
 }
 
+# Fields whose bits are described only in their own comment, with no C names ("bit 0: female /
+# bit 1: AI"): (struct, field) -> the IntFlag class they become. Its members are the words of the
+# comment in capitals; a comment that no longer reads like that stops the generation.
+BIT_COMMENTS: dict[tuple[str, str], str] = {
+    ("IS_NPL", "PType"): "PTYPE",  # bit 0: female / bit 1: AI / bit 2: remote
+}
+
 # Class docstrings where the comment above the values in the specification does not describe them.
 CLASS_DOCS: dict[str, str] = {
     "OCO_INDEX": "Index byte of IS_OCO: which start lights to override",
+    "PTYPE": "Kind of player. FEMALE is not reported on a dedicated host",
     "OSO": "Parts of OutSimPack2 chosen by OutSim Opts in cfg.txt (hexadecimal; 1ff = all of them)",
 }
 

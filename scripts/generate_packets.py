@@ -254,7 +254,9 @@ def plain_columns(struct: Struct, struct_names: set[str]) -> list[Column]:
             )
         else:
             codec, annotation, default = item_codec(item, struct_names)
-            result.append(Column(item.name, codec, annotation, default, item.comment))
+            bits = overrides.BIT_COMMENTS.get((struct.name, item.name))
+            doc = item.comment if bits is None else f"{item.comment} ({bits})"
+            result.append(Column(item.name, codec, annotation, default, doc))
     if zero_filled is not None and not any(
         c.name == zero_filled and c.codec.startswith("_c.Array(") for c in result
     ):

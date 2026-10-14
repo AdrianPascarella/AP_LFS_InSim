@@ -1,7 +1,7 @@
 # 📓 Diario — AP_LFS_InSim (lfs_insim)
 <!-- Solo se añade, lo más nuevo arriba. Una entrada por sesión. -->
 
-## S22 — 2026-10-14 — W6.7 (`request.IS_XXX`, `request_all.IS_XXX`, `instruct.IS_XXX`) y W6.5 (equipo secundario)
+## S22 — 2026-10-14 — W6.7 (`request.IS_XXX`, `request_all.IS_XXX`, `instruct.IS_XXX`), W6.5 y W6.6 (equipo secundario)
 
 **Inicio:** `session_start_check` PASS (rama, identidad, pull de lo de S21, plantilla v3). Desajuste:
 `STATE.md` decía que `_connection.py` tenía 496 líneas; tenía 500 (el LOG S21 sí lo decía). Ahora tiene 452.
@@ -52,6 +52,17 @@ en silencio como uno (`_stream` y `live_lfs` le pasan siempre un paquete exacto)
 Tests a la importación pública y uno nuevo (bytes de más, bytes de menos); el de ida y vuelta ya la probaba con
 cada paquete. Guía `testing.md` («Packets from their bytes», ejemplo ejecutado a mano), CHANGELOG. `verify`
 PASS (598). El registrador de streamer-project puede dejar `lfs_insim.packets._structure` cuando use 0.7.0.
+
+**W6.6 hecha** (el usuario: «sigue»). InSim.txt da los bits de `PType` solo en el comentario del campo («bit 0:
+female / bit 1: AI / bit 2: remote»), sin nombres C, así que no salía ningún enum. Nuevo `BIT_COMMENTS` en
+`spec_overrides.py`: `(struct, campo) → clase`; el generador lee los bits del comentario (`bit_members`, nombres
+en mayúsculas) y se para si deja de tener esa forma. Sale `PTYPE(IntFlag)`: `FEMALE`, `AI`, `REMOTE`, con la nota
+de InSim.txt de que `FEMALE` no llega en un servidor dedicado; el campo dice «(PTYPE)» en su ayuda y sigue siendo
+`int` (como `Flags` con `PIF`). *Descartado:* escribir el enum a mano en `spec_overrides.py` (se desfasaría sin
+avisar). `state.py` usaba `_AI = 2` a mano: ahora `PTYPE.AI`. Tests en `tests/test_bit_comments.py` (lectura,
+comentario cambiado → error, un `IS_NPL` de bytes). `verify` PASS (604).
+- **Encontrado:** otros tres campos con «bit N:» en el comentario (`IS_NCN.Flags`, con `_REMOTE = 4` a mano en
+  `state.py`; `IS_SCH.Flags`; los `Flags` de handicaps) → W6.8, falta elegir nombres.
 
 ## S21 — 2026-10-14 — U12 descartada; 0.6.0 publicada (W10.10)
 

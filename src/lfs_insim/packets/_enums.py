@@ -43,6 +43,7 @@ __all__ = [
     "PMO",
     "PMOF",
     "PSE",
+    "PTYPE",
     "RIF",
     "RIP",
     "RIPOPT",
@@ -1710,3 +1711,19 @@ class HOSTF(IntFlag):
     TEAMARROWS = 16384
 
     NO_FLOOD = 32768
+
+
+class PTYPE(IntFlag):
+    """
+    Kind of player. FEMALE is not reported on a dedicated host. Bits of IS_NPL.PType, as its
+    comment in InSim.txt describes them (no C names).
+    """
+
+    FEMALE = 1
+    """bit 0: female"""
+
+    AI = 2
+    """bit 1: AI"""
+
+    REMOTE = 4
+    """bit 2: remote"""

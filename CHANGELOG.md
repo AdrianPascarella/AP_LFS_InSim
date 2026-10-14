@@ -12,6 +12,8 @@
 - `lfs_insim.packets.unpack_insim(data)`: read one InSim packet from its bytes, whatever its type.
   It refuses bytes left over after the packet. See
   [Packets from their bytes](docs/testing.md#packets-from-their-bytes).
+- `PTYPE` (`FEMALE`, `AI`, `REMOTE`): the bits of `IS_NPL.PType`, e.g.
+  `packet.PType & PTYPE.AI`. InSim.txt gives them only in a comment, so there was no enum.
 
 ## 0.6.0
 

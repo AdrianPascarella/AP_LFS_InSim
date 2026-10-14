@@ -431,8 +431,12 @@ con muestras que hacen de red, y es menos arriesgado que la cámara.
 - [x] **W6.5** — Leer un paquete a partir de sus bytes con la API pública (hoy solo
   `lfs_insim.packets._structure.unpack_insim`, privada): el registrador la necesita en sus tests, con paquetes
   de ejemplo en bytes. Hecho en S22: `lfs_insim.packets.unpack_insim(data)`, pública y estricta → LOG.md S22.
-- [ ] **W6.6** — Enum para los bits de `IS_NPL.PType` (mujer, IA, remoto; InSim.txt los da en un comentario, así
-  que el generador no lo crea): el registrador define `PTYPE_AI = 2` y `PTYPE_REMOTE = 4` a mano.
+- [x] **W6.6** — Enum para los bits de `IS_NPL.PType` (mujer, IA, remoto; InSim.txt los da en un comentario, así
+  que el generador no lo crea): el registrador define `PTYPE_AI = 2` y `PTYPE_REMOTE = 4` a mano. Hecho en S22: `PTYPE`
+  (`BIT_COMMENTS` en `spec_overrides.py`) → LOG.md S22.
+- [ ] **W6.8** — Lo mismo para los otros campos con «bit N: …» en su comentario: `IS_NCN.Flags` (bit 2: remote;
+  `state.py` tiene `_REMOTE = 4` a mano), `IS_SCH.Flags` (SHIFT, CTRL) e `IS_PLH`/`PlayerHCap.Flags` (set Mass,
+  set TRes, silent). Basta una línea en `BIT_COMMENTS` cada uno; falta elegir los nombres de las clases.
 - [x] **W6.7** — `insim.request.IS_XXX()`, `insim.request_all.IS_XXX()` e `insim.instruct.IS_XXX(...)` (propuesto
   por el usuario en S22: el mismo problema que W7 con `on` y `send`). Sustituye la forma `request(IS_RIP(...))`
   de W6.1 (sin publicar). Hecho en S22 → LOG.md S22; decisión en `API_DESIGN.md`.

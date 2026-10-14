@@ -7,6 +7,7 @@ IntEnum and IntFlag classes, named as spec_overrides says.
 from __future__ import annotations
 
 import keyword
+import re
 import textwrap
 from dataclasses import dataclass
 
@@ -20,6 +21,7 @@ class EnumClass:
     doc: str
     members: list[Define]
     from_c_enum: bool  # values of a C enum (never flags) rather than #defines
+    field: str | None = None  # "IS_NPL.PType": bits named only in that field's comment
 
 
 def docstring(text: str, indent: str) -> str:
@@ -74,9 +76,35 @@ def collect_enums(spec: Spec) -> list[EnumClass]:
             classes[target] = EnumClass(target, "", [], False)
         classes[target].members.append(value)
 
+    for (struct_name, field_name), target in overrides.BIT_COMMENTS.items():
+        struct = spec.structs.get(struct_name)
+        if struct is None:
+            continue  # another specification (OutSimPack.txt)
+        item = next((f for f in struct.fields if f.name == field_name), None)
+        if item is None:
+            raise SpecError(f"{struct_name}.{field_name} is gone (see BIT_COMMENTS)")
+        add(target, "", bit_members(target, item.comment, struct.line), False, struct_name)
+        classes[target].field = f"{struct_name}.{field_name}"
+
     for cls in classes.values():
         cls.members.sort(key=lambda m: m.value)
     return list(classes.values())
+
+
+BIT = re.compile(r"^bit (\d+): ([A-Za-z][A-Za-z ]*)$")
+
+
+def bit_members(cls: str, comment: str, line: int) -> list[Define]:
+    """The bits of a comment like "bit 0: female / bit 1: AI", named as cls_FEMALE, cls_AI."""
+    members = []
+    for part in comment.split("/"):
+        match = BIT.match(part := part.strip())
+        if match is None:
+            raise SpecError(f"line {line}: {part!r} is not 'bit N: name' (see BIT_COMMENTS)")
+        bit, words = match.groups()
+        name = "_".join(words.upper().split())
+        members.append(Define(f"{cls}_{name}", 1 << int(bit), f"bit {bit}: {words}", line))
+    return members
 
 
 def member_name(cls: str, name: str) -> str:
@@ -128,7 +156,11 @@ def enum_classes(classes: list[EnumClass]) -> str:
         doc = overrides.CLASS_DOCS.get(cls.name, cls.doc).rstrip(":").strip()
         doc = f"{doc}. " if doc else ""
         out.append(f"\n\nclass {cls.name}({base}):\n")
-        out.append(docstring(f"{doc}C names: {', '.join(n + '_x' for n in c_names)}.", "    "))
+        if cls.field is not None:
+            names = f"Bits of {cls.field}, as its comment in InSim.txt describes them (no C names)."
+        else:
+            names = f"C names: {', '.join(n + '_x' for n in c_names)}."
+        out.append(docstring(doc + names, "    "))
         seen: set[str] = set()
         for member in cls.members:
             name = member_name(cls.name, member.name)

@@ -1083,7 +1083,7 @@ class IS_NPL(InfoPacket):
     """connection's unique id"""
 
     PType: int = 0
-    """bit 0: female / bit 1: AI / bit 2: remote"""
+    """bit 0: female / bit 1: AI / bit 2: remote (PTYPE)"""
 
     Flags: int = 0
     """player flags (PIF_x)"""

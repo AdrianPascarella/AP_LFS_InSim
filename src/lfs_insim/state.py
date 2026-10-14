@@ -40,6 +40,7 @@ from lfs_insim.packets import (
     IS_PLP,
     IS_TINY,
     IS_TOC,
+    PTYPE,
     TINY,
 )
 from lfs_insim.packets._structure import InSimPacket
@@ -47,7 +48,6 @@ from lfs_insim.packets._structure import InSimPacket
 __all__ = ["Connection", "Player", "Roster"]
 
 _REMOTE = 4  # IS_NCN.Flags bit 2
-_AI = 2  # IS_NPL.PType bit 1
 
 
 @dataclass(eq=False)
@@ -229,7 +229,7 @@ class Roster(Plugin):
         else:
             self._move(player, connection)  # leaving the pits
         player.name, player.plate, player.car = packet.PName, packet.Plate, packet.CName
-        player.is_ai = bool(packet.PType & _AI)
+        player.is_ai = bool(packet.PType & PTYPE.AI)
         player.in_pits = False
 
     def _connection(self, ucid: int) -> Connection:
