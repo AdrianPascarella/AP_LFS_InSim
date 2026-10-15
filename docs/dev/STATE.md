@@ -1,8 +1,14 @@
 # 📍 Estado — AP_LFS_InSim (lfs_insim)
-> Actualizado: 2026-10-15 (S26), segundo equipo. **S26: siguiente fase elegida, el control de IA, en un repositorio
-> aparte** (privado, `AdrianPascarella/lfs-ai-control`, en `C:\Users\Adrian\Projects\lfs-ai-control`, con su propio
-> protocolo de contexto; plan W1–W7 allí). **▶️ SIGUIENTE aquí:** nada propio; se trabaja en `lfs-ai-control`, y lo
-> que le falte a la biblioteca entra en este `PLAN.md` como tarea. W11 sigue abierta solo por W11.6 (U14).
+> Actualizado: 2026-10-15 (S27), equipo principal. **S27: W12 (nombres para los valores de `IS_AIC`, pedidos
+> desde `lfs-ai-control`) con W12.1 hecha, sin publicar («Unreleased»):** `STEER`, `TOGGLE`, `HEADLIGHTS`,
+> `SIREN`, `INDICATORS`, `LOOK` generados de `InSim.txt` (`LISTED_VALUES`) y `GEAR` a mano (`HAND_VALUES`).
+> **▶️ SIGUIENTE:** W12.2 (comprobar en el LFS real que `CS.GEAR` numera como `IS_AII.Gear`; pedir permiso para
+> lanzar LFS) y W12.3 (publicar 0.8.1, con permiso, y avisar a `lfs-ai-control`). `lfs-ai-control` está clonado
+> también en este equipo: `C:\Users\pasca\proyectos\lfs-ai-control` (sin `.venv` todavía).
+> Antes, S26 (segundo equipo): siguiente fase elegida, el control de IA, en el repositorio aparte (privado,
+> `AdrianPascarella/lfs-ai-control`, allí en `C:\Users\Adrian\Projects\lfs-ai-control`, con su propio
+> protocolo; plan W1–W7 allí). Lo que le falte a la biblioteca entra en este `PLAN.md` como tarea.
+> W11 en pausa: solo falta W11.6 (U14).
 > Antes, S25 (equipo principal): **`lfs-insim` 0.8.0 publicada (S24)**: `InSim(udp_port=...)`
 > (probado en real), notas de lo visto en LFS en los docstrings, docs de «Create new host». **W11.2 hecha (S24):** batería en vivo en `tests/live/`
 > (`harness.py`: `Session` con `expect` / `check` / `screen` e informe con lo visto en cada sentido;
@@ -47,7 +53,7 @@
 > módulo propio (los comandos, en `_commands.py`; las peticiones, en `_asking.py`). Ver `USER_ACTIONS.md`.
 
 ## Dónde estamos
-Fase activa: **W11** (pruebas intensivas contra el LFS real; tabla en `COVERAGE.md`). W6 cerrada en S23 y publicada como 0.7.0.
+Fase activa: **W12** (nombres para los valores de `IS_AIC`). W11 en pausa por W11.6 (U14; tabla en `COVERAGE.md`). W6 cerrada en S23 y publicada como 0.7.0.
 
 - **Cómo se genera:** `.venv/Scripts/python scripts/generate_packets.py` lee
   `spec/cache/InSim.txt` y `spec/cache/OutSimPack.txt` (con `scripts/spec_parser.py`) y las

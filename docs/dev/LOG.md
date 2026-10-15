@@ -1,6 +1,39 @@
 # 📓 Diario — AP_LFS_InSim (lfs_insim)
 <!-- Solo se añade, lo más nuevo arriba. Una entrada por sesión. -->
 
+## S27 — 2026-10-15 — W12.1: nombres para los valores de `IS_AIC`; `lfs-ai-control` clonado aquí
+
+**Contexto:** equipo principal. Control de inicio en verde; el pull trajo S26 (del segundo equipo) y `v0.8.0`.
+
+**Decisión del usuario:** de la propuesta del agente (la idea pedida desde `lfs-ai-control`, como W12, o pasar
+a trabajar allí): «Sí, hagamos la W12 con los nombres de IS_AIC. Cuando termines clona aquí también
+lfs-ai-control».
+
+**Hecho:**
+- **W12.1:** el parser guarda los párrafos de comentarios (`Spec.paragraphs`). `generate_enums.py` lee
+  `LISTED_VALUES` (nuevo en `spec_overrides.py`): el comentario de `CS_MSX`, `CS_HEADLIGHTS`, `CS_SIREN`,
+  `CS_INDICATORS` y `CS_LOOK` desde su primer valor, y el párrafo «Inputs marked 'toggle'…», un valor por línea.
+  `value_members` acepta ahora valores sin separador («1 hard left») y con «+» («5: left+» → `LOOK.FAR_LEFT`,
+  por `MEMBER_NAMES`). `GEAR` va en `HAND_VALUES`. El docstring de cada `CS_x` acaba en «Values: CLASE».
+  Tests: `tests/test_input_values.py` (9). CHANGELOG en «Unreleased».
+- `lfs-ai-control` clonado en `C:\Users\pasca\proyectos\lfs-ai-control` (rama `dev`). Con la cuenta de `gh`
+  activa (`Veloik-adrian`) daba «not found»: se clonó con el token de `AdrianPascarella` y se dejaron el mismo
+  ayudante de credenciales y la misma identidad locales que aquí.
+
+**Decisiones:**
+- **`GEAR` escrito a mano, no inventado** → la especificación solo da 255 (secuencial) para `CS_GEAR`; las
+  posiciones se toman de `IS_AII.Gear` y OutGauge (`Reverse:0, Neutral:1, First:2...`), hasta `SEVENTH`. Sin
+  verlo en el juego queda W12.2.
+- **`TOGGLE.TOGGLE`, `TOGGLE.OFF`, `TOGGLE.ON`** (no `SWITCH_OFF`) y **`LOOK.FAR_LEFT`** (no `LEFT_PLUS`):
+  más legibles, con el texto de la especificación en el docstring.
+- **Sin `MIN_MID_MAX`** (la versión antigua lo tenía): el 0–65535 de acelerador y freno no son valores con
+  nombre; `STEER.CENTRE` cubre el centro del volante.
+
+**Verificación:** `verify` PASS, 639 tests (9 nuevos; aviso conocido: `generate_packets.py`, 501 líneas, que
+esta sesión no tocó).
+
+**Commits:** `d362722` (W12.1) y el cierre.
+
 ## S26 — 2026-10-15 — Siguiente fase: el control de IA, en un repositorio aparte
 
 **Contexto:** segundo equipo. Control de inicio en verde; el pull trajo S23–S25 y las etiquetas `v0.7.0` y
