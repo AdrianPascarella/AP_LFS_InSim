@@ -1,12 +1,13 @@
 # Changelog
 
-## Unreleased
+## 0.8.1
 
 - Names for the values of `IS_AIC` inputs, read from the comments of InSim.txt:
   `AIInputVal(Input=CS.INDICATORS, Value=INDICATORS.LEFT)`. `STEER` (`HARD_LEFT`, `CENTRE`,
   `HARD_RIGHT`), `TOGGLE` (`TOGGLE`, `OFF`, `ON`, for every input marked 'toggle'), `HEADLIGHTS`,
   `SIREN`, `INDICATORS`, `LOOK` and `GEAR` (`REVERSE`, `NEUTRAL`, `FIRST`... numbered as
-  `IS_AII.Gear`, and `SEQUENTIAL` = 255). The docstring of each `CS` input names its class.
+  `IS_AII.Gear`, and `SEQUENTIAL` = 255). The docstring of each `CS` input names its class. Seen in LFS 0.8C32 on an AI car: the
+  gears, the indicators, `HEADLIGHTS.HIGH` and `TOGGLE` on `CS.IGNITION`.
 - Docs: how to reach the host's own InSim when the server was started from the game (it runs on
   LFS's hosting service): its IP, InSim port and access list on lfs.net. See
   [Chat commands](docs/insim.md#chat-commands).
