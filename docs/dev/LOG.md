@@ -76,6 +76,13 @@ especificación y está en los docstrings (`NOTES`), en la guía o en §13. **Si
 cambió el docstring de `say()` (lo demás, docs del repositorio, ya visibles en GitHub); se publicará con el
 próximo cambio de código («Unreleased»). La fase W11 sigue abierta solo por W11.6 (grupo P, con otra persona).
 
+**Cierre de S25** (el usuario: «cierra la sesión siguiendo el protocolo»). Tarjeta nueva **U14** (grupo P, con
+otra persona), a la vez que U11. En lfs.net, las listas de IP de InSim de los dos servidores «testing» quedaron
+vacías; las contraseñas del segundo («admin» / «host») son de prueba y del usuario. `C:\LFS\cfg.txt` igual a la
+copia de S24. El LFS abierto ahora es el del usuario: no se toca. Verificación: `verify` PASS (630). Commits de
+S25: W11.11 bloqueada, grupo H en el servidor alojado (17 y 23 PASS), W11.10 (grupo D), bocina y semáforos,
+W11.7 y este cierre.
+
 ## S24 — 2026-10-14 — W11.2: batería en vivo (`tests/live/`); W11.3: grupo A en el LFS real
 
 **Inicio:** `session_start_check` PASS (nada que traer). `verify` PASS (613). Equipo principal. LFS cerrado.

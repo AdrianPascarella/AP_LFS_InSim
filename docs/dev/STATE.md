@@ -26,8 +26,8 @@
 > InSim (IP/puerto en «Your hosts», IP permitidas en «Access control»; **no pararlo: se borra**); `group_h.py
 > --host --admin` 23 PASS. **W11.10 hecha (S25):** `group_d.py`, el usuario conduce (12 PASS). Docs en
 > «Unreleased». **W11.7 hecha (S25):** `COVERAGE.md` 97 ✔ / 13 ◐ / 5 ✖, ningún fallo de la biblioteca; sin
-> versión nueva (solo un docstring desde 0.8.0). **▶️ SIGUIENTE:** W11.6 (grupo P, con otra persona: el usuario
-> avisará); después, decidir la próxima fase. Antes de lanzar LFS con opciones, copia de `cfg.txt` (§13). El
+> versión nueva (solo un docstring desde 0.8.0). **▶️ SIGUIENTE:** decidir con el usuario la próxima fase (W11 sigue
+> abierta solo por W11.6, el grupo P: tarjeta U14, cuando el usuario tenga a otra persona). Antes de lanzar LFS con opciones, copia de `cfg.txt` (§13). El
 > permiso del grupo A (S23) vale para repetir `group_a.py`; sin tocar `cfg.txt`. LFS quedó cerrado al final de
 > S24 (lo abrió el agente; `/exit` por InSim). Los demás grupos, cada uno con su permiso; el grupo P, en una tarjeta. La
 > > biblioteca tiene la API de alto nivel (`@insim.on.IS_NPL`, `insim.send.IS_MST(...)`, `received` / `sent`,
@@ -70,7 +70,7 @@ El proyecto anterior está en la rama `refactor/estabilizacion` y en las etiquet
 consulta, no se copia.
 
 ## Lo que te espera
-1 pendiente → `USER_ACTIONS.md`: U11 (opcional: comando de otra persona como invitado). U13 cerrada en S23. 
+2 pendientes → `USER_ACTIONS.md`: U14 (grupo P, con otra persona en tu servidor) y U11, a la vez; ninguna bloquea.
 
 ## Tests inestables (arreglados en S14)
 `tests/test_every.py` fallaba a veces solo en el Windows del CI (3.12 y 3.13). Causa comprobada: en
