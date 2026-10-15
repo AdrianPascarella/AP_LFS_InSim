@@ -17,9 +17,12 @@ __all__ = [
     "DLF",
     "FLG",
     "FVM",
+    "GEAR",
     "GRG",
+    "HEADLIGHTS",
     "HLVC",
     "HOSTF",
+    "INDICATORS",
     "INST",
     "IS",
     "ISB",
@@ -34,6 +37,7 @@ __all__ = [
     "LEAVR",
     "LFS",
     "LID",
+    "LOOK",
     "MSO",
     "NCNF",
     "NRM",
@@ -59,10 +63,13 @@ __all__ = [
     "SAI",
     "SCHF",
     "SETF",
+    "SIREN",
     "SMALL",
     "SND",
     "SSH",
+    "STEER",
     "TINY",
+    "TOGGLE",
     "TTC",
     "TYRE",
     "UCO",
@@ -1521,7 +1528,7 @@ class CS(IntEnum):
     """Special values for Input. C names: CS_x."""
 
     MSX = 0
-    """steer: 1 hard left / 32768 centre / 65535 hard right"""
+    """steer: 1 hard left / 32768 centre / 65535 hard right. Values: STEER"""
 
     THROTTLE = 1
     """0 to 65535"""
@@ -1536,16 +1543,16 @@ class CS(IntEnum):
     """hold shift down lever"""
 
     IGNITION = 5
-    """toggle"""
+    """toggle. Values: TOGGLE"""
 
     EXTRALIGHT = 6
-    """toggle"""
+    """toggle. Values: TOGGLE"""
 
     HEADLIGHTS = 7
-    """1:off / 2:side / 3:low / 4:high"""
+    """1:off / 2:side / 3:low / 4:high. Values: HEADLIGHTS"""
 
     SIREN = 8
-    """hold siren - 1:fast / 2:slow"""
+    """hold siren - 1:fast / 2:slow. Values: SIREN"""
 
     HORN = 9
     """hold horn - 1 to 5"""
@@ -1560,25 +1567,25 @@ class CS(IntEnum):
     """0 to 65535"""
 
     INDICATORS = 13
-    """1: cancel / 2: left / 3: right / 4: hazard"""
+    """1: cancel / 2: left / 3: right / 4: hazard. Values: INDICATORS"""
 
     GEAR = 14
-    """for shifter (leave at 255 for sequential control)"""
+    """for shifter (leave at 255 for sequential control). Values: GEAR"""
 
     LOOK = 15
-    """0: none / 4: left / 5: left+ / 6: right / 7: right+"""
+    """0: none / 4: left / 5: left+ / 6: right / 7: right+. Values: LOOK"""
 
     PITSPEED = 16
-    """toggle"""
+    """toggle. Values: TOGGLE"""
 
     TCDISABLE = 17
-    """toggle"""
+    """toggle. Values: TOGGLE"""
 
     FOGREAR = 18
-    """toggle"""
+    """toggle. Values: TOGGLE"""
 
     FOGFRONT = 19
-    """toggle"""
+    """toggle. Values: TOGGLE"""
 
     SEND_AI_INFO = 240
 
@@ -1912,3 +1919,139 @@ class REPLAY(IntEnum):
 
     MPR = 1
     """1 = MPR"""
+
+
+class STEER(IntEnum):
+    """
+    With CS.MSX: any value from HARD_LEFT to HARD_RIGHT. Values of AIInputVal.Value, as
+    InSim.txt describes them in a comment (no C names).
+    """
+
+    HARD_LEFT = 1
+    """1 hard left"""
+
+    CENTRE = 32768
+    """32768 centre"""
+
+    HARD_RIGHT = 65535
+    """65535 hard right"""
+
+
+class HEADLIGHTS(IntEnum):
+    """
+    With CS.HEADLIGHTS. Values of AIInputVal.Value, as InSim.txt describes them in a comment (no
+    C names).
+    """
+
+    OFF = 1
+    """1:off"""
+
+    SIDE = 2
+    """2:side"""
+
+    LOW = 3
+    """3:low"""
+
+    HIGH = 4
+    """4:high"""
+
+
+class SIREN(IntEnum):
+    """
+    With CS.SIREN (0 = off). Values of AIInputVal.Value, as InSim.txt describes them in a
+    comment (no C names).
+    """
+
+    FAST = 1
+    """1:fast"""
+
+    SLOW = 2
+    """2:slow"""
+
+
+class INDICATORS(IntEnum):
+    """
+    With CS.INDICATORS. Values of AIInputVal.Value, as InSim.txt describes them in a comment (no
+    C names).
+    """
+
+    CANCEL = 1
+    """1: cancel"""
+
+    LEFT = 2
+    """2: left"""
+
+    RIGHT = 3
+    """3: right"""
+
+    HAZARD = 4
+    """4: hazard"""
+
+
+class LOOK(IntEnum):
+    """
+    With CS.LOOK. Values of AIInputVal.Value, as InSim.txt describes them in a comment (no C
+    names).
+    """
+
+    NONE = 0
+    """0: none"""
+
+    LEFT = 4
+    """4: left"""
+
+    FAR_LEFT = 5
+    """5: left+"""
+
+    RIGHT = 6
+    """6: right"""
+
+    FAR_RIGHT = 7
+    """7: right+"""
+
+
+class TOGGLE(IntEnum):
+    """
+    With the inputs marked 'toggle' (CS.IGNITION, CS.PITSPEED...). Values of AIInputVal.Value,
+    as InSim.txt describes them in a comment (no C names).
+    """
+
+    TOGGLE = 1
+    """1 toggle"""
+
+    OFF = 2
+    """2 switch off"""
+
+    ON = 3
+    """3 switch on"""
+
+
+class GEAR(IntEnum):
+    """
+    With CS.GEAR: the shifter position, or SEQUENTIAL (positions as IS_AII.Gear). Values of
+    AIInputVal.Value, as InSim.txt describes them in a comment (no C names).
+    """
+
+    REVERSE = 0
+    """Reverse:0 (as IS_AII.Gear)"""
+
+    NEUTRAL = 1
+    """Neutral:1"""
+
+    FIRST = 2
+    """First:2 (then 3 for second, and so on)"""
+
+    SECOND = 3
+
+    THIRD = 4
+
+    FOURTH = 5
+
+    FIFTH = 6
+
+    SIXTH = 7
+
+    SEVENTH = 8
+
+    SEQUENTIAL = 255
+    """leave at 255 for sequential control (CS_GEAR)"""

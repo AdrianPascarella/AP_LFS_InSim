@@ -106,6 +106,9 @@ class Spec:
     # Values listed only in comments, e.g. "// CS_THROTTLE  1 - 0 to 65535". The generator decides
     # which of them become enum members.
     comment_values: list[Define] = field(default_factory=list)
+    # Every paragraph of comment lines (without the //), with the line where it starts. The
+    # generator reads lists from some of them ("Inputs marked 'toggle' accept the following...").
+    paragraphs: list[tuple[int, list[str]]] = field(default_factory=list)
 
 
 class _Parser:
@@ -156,6 +159,7 @@ class _Parser:
             elif code.startswith("//"):
                 if self.blanks_after_paragraph > 0 or not self.paragraph:
                     self.paragraph = []
+                    self.spec.paragraphs.append((self.index + 1, self.paragraph))
                 self.paragraph.append(code[2:].strip())
                 if match := COMMENT_VALUE.match(code):
                     name, value, comment = match.groups()

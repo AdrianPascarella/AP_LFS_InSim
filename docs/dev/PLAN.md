@@ -454,7 +454,7 @@ con muestras que hacen de red, y es menos arriesgado que la cámara.
 - [x] **W6.4** — Publicar lo que pidan W6.2, W6.3 y W6.7 (0.7.0, con permiso del usuario). Hecho en S23
   («Sí, publica la 0.7.0»): `lfs-insim` 0.7.0 en PyPI; streamer-project la usa fijada → LOG.md S23.
 
-## W11 — Pruebas intensivas contra el LFS real   🔜 EN CURSO (S23) · propuesta del usuario, plan aceptado en S23
+## W11 — Pruebas intensivas contra el LFS real   ⏸️ EN PAUSA desde S25 (solo falta W11.6, U14) · propuesta del usuario, plan aceptado en S23
 **Objetivo:** ver funcionar en el LFS real cada paquete y subtipo que se pueda provocar, en los dos sentidos:
 que lo que llega se lea con valores correctos y que lo que mandamos tenga efecto. El usuario: «hacer pruebas de
 forma intensiva de absolutamente todo contra el LFS real… para ver que funcione todo correctamente». El agente
@@ -514,6 +514,21 @@ de pantalla) se pide antes, con copia de lo que se toque. Lo que necesita a otra
   `CRS`, `PLL`/`PLP`, `PEN`, `CON` (si hay contacto), `SMALL_LCS` / `LCL` puestos, `IS_OCO` con captura en el
   momento, recibir `IS_BFN` (Shift+I / Shift+B). Hecho en S25 → LOG.md S25 (`group_d.py`).
 
+## W12 — Nombres para los valores de `IS_AIC`   ⏳ ACTIVA (S27) · pedida desde `lfs-ai-control`, aceptada en S27
+**Objetivo:** que `AIInputVal.Value` tenga nombres (`INDICATORS.LEFT`, `TOGGLE.ON`, `GEAR.FIRST`), generados
+desde los comentarios de `InSim.txt`, para que `lfs-ai-control` borre los suyos (`car/controls.py`:
+`STEER_CENTRE`, `_TOGGLE_ON/OFF`, `Gear`). Era una idea aparcada (pedida en la S3 de `lfs-ai-control`); el usuario,
+en S27: «Sí, hagamos la W12 con los nombres de IS_AIC».
+- [x] **W12.1** — Generar `STEER`, `HEADLIGHTS`, `SIREN`, `INDICATORS`, `LOOK` (del comentario de cada `CS_x`) y
+  `TOGGLE` (del párrafo «Inputs marked 'toggle'…»), con `LISTED_VALUES` en `spec_overrides.py`; `GEAR` a mano
+  (`HAND_VALUES`): la especificación solo dice 255 = secuencial, y las posiciones van como `IS_AII.Gear`
+  (0 marcha atrás, 1 punto muerto, 2 primera). El docstring de cada `CS_x` nombra su clase. Tests en
+  `tests/test_input_values.py`; CHANGELOG en «Unreleased». Hecho en S27 → LOG.md S27.
+- [ ] **W12.2** — Comprobar en el LFS real que `CS.GEAR` usa esa numeración (`GEAR.FIRST` = 2 → `IS_AII.Gear`
+  2), con una IA sin cambio automático (`CS.SET_HELP_FLAGS` = `PIF.AUTOCLUTCH`). Necesita permiso para lanzar
+  LFS (no es repetir `group_a.py`).
+- [ ] **W12.3** — Publicar como 0.8.1 (con permiso) y avisar a `lfs-ai-control` para que use estos nombres.
+
 ## Ideas (aparcadas, sin compromiso)
 - **Ayudante de botones** (de escribir `examples/buttons.py`, S12): hay que repartir los `ClickID` a
   mano, guardar el estado en globales y reenviar el botón entero para cambiar su texto. Llevadero
@@ -528,12 +543,3 @@ de pantalla) se pide antes, con copia de lo que se toque. Lo que necesita a otra
   aplicación de la lista lo necesita hoy.
 - **Relay de InSim** (`isrelay.lfs.net`, paquetes `IR_*`) para conectar a servidores remotos
   (aparcado en S9): ninguna aplicación de la lista lo usa.
-- **Nombres para los valores de `IS_AIC`** (pedido desde `lfs-ai-control`, su S3, 2026-10-15). En
-  0.8.0 los valores de `AIInputVal.Value` solo están en docstrings: volante `CS.MSX` (1 izquierda /
-  32768 centro / 65535 derecha), interruptores (1 cambiar / 2 apagar / 3 encender), posiciones de
-  `CS_GEAR` (0 marcha atrás, 1 punto muerto, 2 primera…, 255 secuencial), luces, intermitentes
-  (1 cancelar / 2 izquierda / 3 derecha / 4 emergencia). La versión antigua los tenía (`CSVAL`:
-  `STEER`, `TOGGLE`, `GEAR`, `MIN_MID_MAX`). Evidencia: `lfs-ai-control` tuvo que definirlos en
-  `src/lfs_ai_control/car/controls.py` (`STEER_CENTRE`, `_TOGGLE_ON/OFF`, `Gear`). No bloquea: allí
-  se sustituyen por los de la biblioteca cuando existan. Encaja con W2 (generados desde los
-  comentarios de `InSim.txt`).

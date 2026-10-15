@@ -147,6 +147,41 @@ VALUE_COMMENTS: dict[tuple[str, str], str] = {
     ("IS_RIP", "MPR"): "REPLAY",  # 0 = SPR / 1 = MPR
 }
 
+# Values of AIInputVal.Value (IS_AIC) listed only in comments -> the IntEnum class they become,
+# read as VALUE_COMMENTS. A CS_x key: the comment of that input, from its first value on
+# ("hold siren - 1:fast / 2:slow"). Any other key: the first line of a comment paragraph whose
+# other lines are the values, one per line; the inputs whose comment is the class name in small
+# letters ("toggle") take them. Each CS_x input names its class in its docstring.
+LISTED_VALUES: dict[str, str] = {
+    "CS_MSX": "STEER",  # steer: 1 hard left / 32768 centre / 65535 hard right
+    "CS_HEADLIGHTS": "HEADLIGHTS",  # 1:off / 2:side / 3:low / 4:high
+    "CS_SIREN": "SIREN",  # hold siren - 1:fast / 2:slow
+    "CS_INDICATORS": "INDICATORS",  # 1: cancel / 2: left / 3: right / 4: hazard
+    "CS_LOOK": "LOOK",  # 0: none / 4: left / 5: left+ / 6: right / 7: right+
+    "Inputs marked 'toggle' accept the following Values:": "TOGGLE",  # 1 toggle / 2 switch off
+}
+
+# Values of an input that the specification does not list: CS_x -> (class, [(name, value,
+# docstring)]). CS_GEAR only says "leave at 255 for sequential control"; the positions are
+# numbered as IS_AII.Gear and OutGauge Gear say ("Reverse:0, Neutral:1, First:2...").
+HAND_VALUES: dict[str, tuple[str, list[tuple[str, int, str]]]] = {
+    "CS_GEAR": (
+        "GEAR",
+        [
+            ("GEAR_REVERSE", 0, "Reverse:0 (as IS_AII.Gear)"),
+            ("GEAR_NEUTRAL", 1, "Neutral:1"),
+            ("GEAR_FIRST", 2, "First:2 (then 3 for second, and so on)"),
+            ("GEAR_SECOND", 3, ""),
+            ("GEAR_THIRD", 4, ""),
+            ("GEAR_FOURTH", 5, ""),
+            ("GEAR_FIFTH", 6, ""),
+            ("GEAR_SIXTH", 7, ""),
+            ("GEAR_SEVENTH", 8, ""),
+            ("GEAR_SEQUENTIAL", 255, "leave at 255 for sequential control (CS_GEAR)"),
+        ],
+    ),
+}
+
 # Class docstrings where the comment above the values in the specification does not describe them.
 CLASS_DOCS: dict[str, str] = {
     "OCO_INDEX": "Index byte of IS_OCO: which start lights to override",
@@ -162,6 +197,13 @@ CLASS_DOCS: dict[str, str] = {
     "FLG": "Which flag a player is shown",
     "HLVC": "What a player did wrong on a hot lap",
     "REPLAY": "Kind of replay: single player (SPR) or multiplayer (MPR)",
+    "STEER": "With CS.MSX: any value from HARD_LEFT to HARD_RIGHT",
+    "HEADLIGHTS": "With CS.HEADLIGHTS",
+    "SIREN": "With CS.SIREN (0 = off)",
+    "INDICATORS": "With CS.INDICATORS",
+    "LOOK": "With CS.LOOK",
+    "TOGGLE": "With the inputs marked 'toggle' (CS.IGNITION, CS.PITSPEED...)",
+    "GEAR": "With CS.GEAR: the shifter position, or SEQUENTIAL (positions as IS_AII.Gear)",
     "OSO": "Parts of OutSimPack2 chosen by OutSim Opts in cfg.txt (hexadecimal; 1ff = all of them)",
 }
 
@@ -181,6 +223,10 @@ MEMBER_NAMES: dict[str, str] = {
     "OCO_1": "UNUSED_1",
     "OCO_2": "UNUSED_2",
     "OCO_3": "UNUSED_3",
+    "LOOK_LEFT+": "FAR_LEFT",  # "5: left+"
+    "LOOK_RIGHT+": "FAR_RIGHT",
+    "TOGGLE_SWITCH_OFF": "OFF",  # "2 switch off"
+    "TOGGLE_SWITCH_ON": "ON",
     "DL_18": "BIT_18",
     "DL_19": "BIT_19",
     "DL_20": "BIT_20",

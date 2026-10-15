@@ -9,7 +9,8 @@ from __future__ import annotations
 import keyword
 import re
 import textwrap
-from dataclasses import dataclass, field
+from collections.abc import Callable
+from dataclasses import dataclass, field, replace
 
 import spec_overrides as overrides
 from spec_parser import Define, Spec, SpecError
@@ -100,9 +101,46 @@ def collect_enums(spec: Spec) -> list[EnumClass]:
             raise SpecError(f"{struct_name}.{field_name}: not the same values as {known.fields}")
         classes[target].fields.append(f"{struct_name}.{field_name}")
 
+    if "AIInputVal" in spec.structs:  # not in another specification (OutSimPack.txt)
+        input_values(spec, classes, add)
+
     for cls in classes.values():
         cls.members.sort(key=lambda m: m.value)
     return list(classes.values())
+
+
+def input_values(spec: Spec, classes: dict[str, EnumClass], add: Callable[..., None]) -> None:
+    """The classes of AIInputVal.Value (LISTED_VALUES, HAND_VALUES), named in each CS_x input."""
+    inputs = {value.name: value for value in spec.comment_values if value.name.startswith("CS_")}
+    paragraphs = {lines[0]: (line, lines[1:]) for line, lines in spec.paragraphs}
+    named: dict[str, str] = {}  # CS_x -> the class of its values
+    for key, target in overrides.LISTED_VALUES.items():
+        if key in inputs:
+            comment = inputs[key].comment
+            start = FIRST_VALUE.search(comment)
+            text = comment[start.start() :] if start else comment
+            add(target, "", value_members(target, text, inputs[key].line), True, key)
+            named[key] = target
+            classes[target].fields.append("AIInputVal.Value")
+        elif key in paragraphs:
+            line, lines = paragraphs[key]
+            add(target, "", value_members(target, " / ".join(lines), line), True, key)
+            classes[target].fields.append("AIInputVal.Value")
+            named.update({n: target for n, v in inputs.items() if v.comment == target.lower()})
+        else:
+            raise SpecError(f"{key!r} is gone from the specification (see LISTED_VALUES)")
+    for key, (target, members) in overrides.HAND_VALUES.items():
+        if key not in inputs:
+            raise SpecError(f"{key} is gone from the specification (see HAND_VALUES)")
+        line = inputs[key].line
+        add(target, "", [Define(n, v, c, line) for n, v, c in members], True, key)
+        classes[target].fields.append("AIInputVal.Value")
+        named[key] = target
+    cs = classes["CS"]
+    cs.members = [
+        replace(m, comment=f"{m.comment}. Values: {named[m.name]}") if m.name in named else m
+        for m in cs.members
+    ]
 
 
 BIT = re.compile(r"^bit (\d+): ([A-Za-z][A-Za-z ]*?)\s*(\([^)]*\))?$")  # an aside in brackets
@@ -121,7 +159,10 @@ def bit_members(cls: str, comment: str, line: int) -> list[Define]:
     return members
 
 
-VALUE = re.compile(r"^(\d+) ?(?:=|:|-) ?([A-Za-z][A-Za-z0-9 ]*?)\s*(\([^)]*\))?$")
+# "0 = off", "1: cancel", "1 - processed", "1 hard left"; "5: left+" (renamed in MEMBER_NAMES)
+VALUE = re.compile(r"^(\d+)\s*(?:[=:-]\s*)?([A-Za-z][A-Za-z0-9 +]*?)\s*(\([^)]*\))?$")
+# Where the values start in the comment of a CS_x input ("hold siren - 1:fast / 2:slow")
+FIRST_VALUE = re.compile(r"\d+\s*(?:[=:-]\s*)?[A-Za-z]")
 
 
 def value_members(cls: str, comment: str, line: int) -> list[Define]:
