@@ -246,6 +246,11 @@ NOTES: dict[str, str] = {
         " at their defaults (no throttle) until you set them. Seen in LFS 0.8C32: CS_STOP_CONTROL"
         " stops the car and the AI does not drive it again. To only read an AI car, send SMALL_AII."
     ),
+    "CS.GEAR": (
+        "Seen in LFS 0.8C32 on an AI car with CS.SET_HELP_FLAGS = PIF.AUTOCLUTCH (no AUTOGEARS):"
+        " GEAR.REVERSE, NEUTRAL, FIRST and SECOND read back the same in IS_AII.Gear, and"
+        " GEAR.SEQUENTIAL then CS.CHUP shifts from neutral to first."
+    ),
     "CS.STOP_CONTROL": "Seen in LFS 0.8C32: the car stops; the AI does not drive it again.",
     "SMALL.AII": "Unlike IS_AIC, it leaves the car to the AI driver (seen in LFS 0.8C32).",
     "SMALL.SSP": (

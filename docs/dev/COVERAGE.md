@@ -23,7 +23,7 @@
 | Paquete | Sentido | Estado | Visto | Grupo | Cómo se provoca / qué falta |
 |---|---|---|---|---|---|
 | IS_ACR | ⬇ | ✔ | S24, S25 | A/H | en Un Jugador, cada comando; en el InSim del servidor, el de un invitado admin (`Result` 1, y 2 = rechazado con `/rstend` sin valor) y el del propio InSim (S25) |
-| IS_AIC | ⬆ | ✔ | S24 | A | **le quita el coche a la IA** (cualquier `IS_AIC`, incluso `CS_SEND_AI_INFO`): sin acelerador frena; `CS_MSX` gira; `CS_STOP_CONTROL` la para y no devuelve el control (W11.9) |
+| IS_AIC | ⬆ | ✔ | S24 | A | **le quita el coche a la IA** (cualquier `IS_AIC`, incluso `CS_SEND_AI_INFO`): sin acelerador frena; `CS_MSX` gira; `CS_STOP_CONTROL` la para y no devuelve el control (W11.9). S27 (`aic_values.py`): `GEAR` (las cuatro posiciones probadas y `SEQUENTIAL` + `CS_CHUP`), `INDICATORS`, `HEADLIGHTS.HIGH`/`OFF` y `TOGGLE` sobre `CS_IGNITION` vistos en `IS_AII`; `SIDE`, `LOW` y `CS_PITSPEED` sin testigo en ese coche |
 | IS_AII | ⬇ | ✔ | S24 | A | por `SMALL_AII` (no quita el control) y por `CS_SEND_AI_INFO`; marcha, rpm, posición y velocidad con sentido |
 | IS_AXI | ⬇ | ✔ | S12, S24 | E | `TINY_AXI`; `NumO` cuenta un cono añadido; un checkpoint de InSim (índice 252) no cuenta ni en `NumO` ni en `NumCP` (S24) |
 | IS_AXM | ⬍ | ✔ | S24 | E | `PMO_ADD_OBJECTS` / `DEL_OBJECTS` / `CLEAR_ALL` (eco con `ISF_AXM_EDIT`), `TINY_AXM` con `FILE_END`, `PMO_SELECTION`, `PMO_TTC_SEL`; **`PMO_GET_Z` necesita `ReqI`** (sin él no contesta) |

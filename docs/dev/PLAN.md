@@ -524,9 +524,10 @@ en S27: «Sí, hagamos la W12 con los nombres de IS_AIC».
   (`HAND_VALUES`): la especificación solo dice 255 = secuencial, y las posiciones van como `IS_AII.Gear`
   (0 marcha atrás, 1 punto muerto, 2 primera). El docstring de cada `CS_x` nombra su clase. Tests en
   `tests/test_input_values.py`; CHANGELOG en «Unreleased». Hecho en S27 → LOG.md S27.
-- [ ] **W12.2** — Comprobar en el LFS real que `CS.GEAR` usa esa numeración (`GEAR.FIRST` = 2 → `IS_AII.Gear`
+- [x] **W12.2** — Comprobar en el LFS real que `CS.GEAR` usa esa numeración (`GEAR.FIRST` = 2 → `IS_AII.Gear`
   2), con una IA sin cambio automático (`CS.SET_HELP_FLAGS` = `PIF.AUTOCLUTCH`). Necesita permiso para lanzar
-  LFS (no es repetir `group_a.py`).
+  LFS (no es repetir `group_a.py`). Hecho en S27 con permiso («Procede»): `tests/live/aic_values.py`, 24 PASS
+  y 4 SKIP (testigos que el coche no tiene) → LOG.md S27.
 - [ ] **W12.3** — Publicar como 0.8.1 (con permiso) y avisar a `lfs-ai-control` para que use estos nombres.
 
 ## Ideas (aparcadas, sin compromiso)

@@ -1570,7 +1570,12 @@ class CS(IntEnum):
     """1: cancel / 2: left / 3: right / 4: hazard. Values: INDICATORS"""
 
     GEAR = 14
-    """for shifter (leave at 255 for sequential control). Values: GEAR"""
+    """
+    for shifter (leave at 255 for sequential control). Values: GEAR. Seen in LFS 0.8C32 on an AI
+    car with CS.SET_HELP_FLAGS = PIF.AUTOCLUTCH (no AUTOGEARS): GEAR.REVERSE, NEUTRAL, FIRST and
+    SECOND read back the same in IS_AII.Gear, and GEAR.SEQUENTIAL then CS.CHUP shifts from
+    neutral to first.
+    """
 
     LOOK = 15
     """0: none / 4: left / 5: left+ / 6: right / 7: right+. Values: LOOK"""
