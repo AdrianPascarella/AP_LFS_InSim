@@ -32,7 +32,26 @@ lfs-ai-control».
 **Verificación:** `verify` PASS, 639 tests (9 nuevos; aviso conocido: `generate_packets.py`, 501 líneas, que
 esta sesión no tocó).
 
-**Commits:** `d362722` (W12.1) y el cierre.
+**Después del primer cierre** (el usuario: «Procede» a W12.2 y W12.3; luego «Te doy permiso»):
+- **W12.2, en el LFS real (0.8C32):** el agente abrió LFS (sin opciones, copia de `cfg.txt` antes), Un Jugador
+  en Blackwood GP con 2 IA, `/insim=29999`. Primer intento: LFS cerraba la conexión tras el `IS_ISI`; el
+  usuario: «la contraseña de admin no es correcta. Diría que dejamos puesto "admin"» (`Game Admin admin` en
+  `cfg.txt`). Nuevo `tests/live/aic_values.py --admin`: toma la primera IA en la parrilla y lo lee todo con
+  `SMALL_AII`. **Resultado: 24 PASS, 4 SKIP, 0 paquetes mal leídos o escritos.** `GEAR.REVERSE/NEUTRAL/FIRST/
+  SECOND` dan `IS_AII.Gear` 0/1/2/3 (con `CS.SET_HELP_FLAGS` = `PIF.AUTOCLUTCH`); `SEQUENTIAL` + `CS.CHUP` sube
+  de punto muerto a primera; `INDICATORS` (las cuatro) y `HEADLIGHTS.HIGH`/`OFF` en `ShowLights`; `TOGGLE`
+  (OFF, ON, TOGGLE ×2) sobre `CS.IGNITION` en `AIFLAGS.IGNITION`. SKIP: `HEADLIGHTS.SIDE`/`LOW` y
+  `CS.PITSPEED`, sin ningún testigo encendido (el coche no los tiene; el script los da por SKIP, no FAIL).
+  Nota del juego en el docstring de `CS.GEAR` (`NOTES`). `COVERAGE.md` al día.
+- **`cfg.txt`:** LFS se cerró con `/exit` por InSim; al arrancar había cambiado él solo 3 líneas de pantalla
+  (`Borderless Window`, `Screen Info`, `SHIFT_F9`: pasó a pantalla completa 1920×1080 144 Hz). Restaurado
+  desde la copia; hash igual que al empezar.
+- **W12.3:** versión 0.8.1 (CHANGELOG), `verify` en verde, avance rápido de `dev` a `main`, `gh release
+  create v0.8.1`, entorno `pypi` aprobado por la API con permiso. `lfs-insim` 0.8.1 en PyPI.
+- **Aviso a `lfs-ai-control`:** tarea W3.9 en su `PLAN.md` (commit `8f1659a` allí): fijar 0.8.1 y cambiar
+  `STEER_CENTRE`, `_TOGGLE_OFF/ON` y `Gear` por los de la biblioteca. No se tocó su código.
+
+**Commits:** `d362722` (W12.1), `abeacbb` (W12.2), la versión 0.8.1 y los cierres.
 
 ## S26 — 2026-10-15 — Siguiente fase: el control de IA, en un repositorio aparte
 

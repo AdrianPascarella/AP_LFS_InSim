@@ -1,10 +1,11 @@
 # 📍 Estado — AP_LFS_InSim (lfs_insim)
-> Actualizado: 2026-10-15 (S27), equipo principal. **S27: W12 (nombres para los valores de `IS_AIC`, pedidos
-> desde `lfs-ai-control`) con W12.1 hecha, sin publicar («Unreleased»):** `STEER`, `TOGGLE`, `HEADLIGHTS`,
-> `SIREN`, `INDICATORS`, `LOOK` generados de `InSim.txt` (`LISTED_VALUES`) y `GEAR` a mano (`HAND_VALUES`).
-> **▶️ SIGUIENTE:** W12.2 (comprobar en el LFS real que `CS.GEAR` numera como `IS_AII.Gear`; pedir permiso para
-> lanzar LFS) y W12.3 (publicar 0.8.1, con permiso, y avisar a `lfs-ai-control`). `lfs-ai-control` está clonado
-> también en este equipo: `C:\Users\pasca\proyectos\lfs-ai-control` (sin `.venv` todavía).
+> Actualizado: 2026-10-15 (S27), equipo principal. **S27: W12 cerrada y `lfs-insim` 0.8.1 publicada:** nombres
+> para los valores de `IS_AIC` (`STEER`, `TOGGLE`, `HEADLIGHTS`, `SIREN`, `INDICATORS`, `LOOK` generados de
+> `InSim.txt` con `LISTED_VALUES`; `GEAR` a mano, `HAND_VALUES`), vistos en LFS 0.8C32 con
+> `tests/live/aic_values.py --admin admin` (24 PASS, 4 SKIP). Aviso dejado en `lfs-ai-control` (su W3.9).
+> **▶️ SIGUIENTE aquí:** nada propio; se trabaja en `lfs-ai-control` (clonado también en este equipo:
+> `C:\Users\pasca\proyectos\lfs-ai-control`, sin `.venv` todavía). **El LFS de este equipo tiene
+> `Game Admin admin` en `cfg.txt`:** su InSim solo acepta conexiones con esa contraseña (`--admin admin`).
 > Antes, S26 (segundo equipo): siguiente fase elegida, el control de IA, en el repositorio aparte (privado,
 > `AdrianPascarella/lfs-ai-control`, allí en `C:\Users\Adrian\Projects\lfs-ai-control`, con su propio
 > protocolo; plan W1–W7 allí). Lo que le falte a la biblioteca entra en este `PLAN.md` como tarea.
@@ -53,7 +54,7 @@
 > módulo propio (los comandos, en `_commands.py`; las peticiones, en `_asking.py`). Ver `USER_ACTIONS.md`.
 
 ## Dónde estamos
-Fase activa: **W12** (nombres para los valores de `IS_AIC`). W11 en pausa por W11.6 (U14; tabla en `COVERAGE.md`). W6 cerrada en S23 y publicada como 0.7.0.
+Sin fase activa propia: W12 cerrada en S27 (0.8.1). W11 en pausa por W11.6 (U14; tabla en `COVERAGE.md`). W6 cerrada en S23 y publicada como 0.7.0.
 
 - **Cómo se genera:** `.venv/Scripts/python scripts/generate_packets.py` lee
   `spec/cache/InSim.txt` y `spec/cache/OutSimPack.txt` (con `scripts/spec_parser.py`) y las

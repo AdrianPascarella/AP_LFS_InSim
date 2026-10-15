@@ -514,7 +514,7 @@ de pantalla) se pide antes, con copia de lo que se toque. Lo que necesita a otra
   `CRS`, `PLL`/`PLP`, `PEN`, `CON` (si hay contacto), `SMALL_LCS` / `LCL` puestos, `IS_OCO` con captura en el
   momento, recibir `IS_BFN` (Shift+I / Shift+B). Hecho en S25 → LOG.md S25 (`group_d.py`).
 
-## W12 — Nombres para los valores de `IS_AIC`   ⏳ ACTIVA (S27) · pedida desde `lfs-ai-control`, aceptada en S27
+## W12 — Nombres para los valores de `IS_AIC`   ✅ CERRADA en S27 · publicada como 0.8.1 · pedida desde `lfs-ai-control`, aceptada en S27
 **Objetivo:** que `AIInputVal.Value` tenga nombres (`INDICATORS.LEFT`, `TOGGLE.ON`, `GEAR.FIRST`), generados
 desde los comentarios de `InSim.txt`, para que `lfs-ai-control` borre los suyos (`car/controls.py`:
 `STEER_CENTRE`, `_TOGGLE_ON/OFF`, `Gear`). Era una idea aparcada (pedida en la S3 de `lfs-ai-control`); el usuario,
@@ -528,7 +528,8 @@ en S27: «Sí, hagamos la W12 con los nombres de IS_AIC».
   2), con una IA sin cambio automático (`CS.SET_HELP_FLAGS` = `PIF.AUTOCLUTCH`). Necesita permiso para lanzar
   LFS (no es repetir `group_a.py`). Hecho en S27 con permiso («Procede»): `tests/live/aic_values.py`, 24 PASS
   y 4 SKIP (testigos que el coche no tiene) → LOG.md S27.
-- [ ] **W12.3** — Publicar como 0.8.1 (con permiso) y avisar a `lfs-ai-control` para que use estos nombres.
+- [x] **W12.3** — Publicar como 0.8.1 (con permiso) y avisar a `lfs-ai-control` para que use estos nombres.
+  Hecho en S27 («Procede», «Te doy permiso»): 0.8.1 en PyPI; allí, W3.9 en su `PLAN.md` → LOG.md S27.
 
 ## Ideas (aparcadas, sin compromiso)
 - **Ayudante de botones** (de escribir `examples/buttons.py`, S12): hay que repartir los `ClickID` a
