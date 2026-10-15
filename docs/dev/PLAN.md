@@ -528,3 +528,12 @@ de pantalla) se pide antes, con copia de lo que se toque. Lo que necesita a otra
   aplicación de la lista lo necesita hoy.
 - **Relay de InSim** (`isrelay.lfs.net`, paquetes `IR_*`) para conectar a servidores remotos
   (aparcado en S9): ninguna aplicación de la lista lo usa.
+- **Nombres para los valores de `IS_AIC`** (pedido desde `lfs-ai-control`, su S3, 2026-10-15). En
+  0.8.0 los valores de `AIInputVal.Value` solo están en docstrings: volante `CS.MSX` (1 izquierda /
+  32768 centro / 65535 derecha), interruptores (1 cambiar / 2 apagar / 3 encender), posiciones de
+  `CS_GEAR` (0 marcha atrás, 1 punto muerto, 2 primera…, 255 secuencial), luces, intermitentes
+  (1 cancelar / 2 izquierda / 3 derecha / 4 emergencia). La versión antigua los tenía (`CSVAL`:
+  `STEER`, `TOGGLE`, `GEAR`, `MIN_MID_MAX`). Evidencia: `lfs-ai-control` tuvo que definirlos en
+  `src/lfs_ai_control/car/controls.py` (`STEER_CENTRE`, `_TOGGLE_ON/OFF`, `Gear`). No bloquea: allí
+  se sustituyen por los de la biblioteca cuando existan. Encaja con W2 (generados desde los
+  comentarios de `InSim.txt`).
