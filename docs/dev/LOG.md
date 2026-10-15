@@ -1,6 +1,27 @@
 # 📓 Diario — AP_LFS_InSim (lfs_insim)
 <!-- Solo se añade, lo más nuevo arriba. Una entrada por sesión. -->
 
+## S26 — 2026-10-15 — Siguiente fase: el control de IA, en un repositorio aparte
+
+**Contexto:** segundo equipo. Control de inicio en verde; el pull trajo S23–S25 y las etiquetas `v0.7.0` y
+`v0.8.0`. `verify` en verde aquí: 630 tests (aviso conocido: `generate_packets.py`, 501 líneas).
+
+**Decisión del usuario:** de las opciones propuestas (una aplicación aparte, ayudante de botones, InSim por UDP o
+relay, tareas pequeñas), la aplicación aparte, empezando por el control de IA (la recomendada): «Sí, hagamos la 1.
+Primero planeemoslo todo y cuando lo tengamos claro procedamos, propongo hacerlo en un repositorio independiente
+para llevar bien el contexto (probablemente se haga un proyecto grande y con alguna dependencia)».
+- Se planeó entero en esta sesión (arquitectura por capas con la base como API, acciones únicas para chat y
+  terminal, mapas en formato nuevo con conversor, fases A0–A6). Las palabras del usuario y cada decisión están en
+  el `LOG.md` S1 y el `ARCHITECTURE.md` del repositorio nuevo, no se repiten aquí.
+- **Repositorio:** privado, `AdrianPascarella/lfs-ai-control`, en `C:\Users\Adrian\Projects\lfs-ai-control`
+  (creado con `gh repo create`, con permiso: «Creo el repo privado…» aceptado), rama `dev`, con su propio
+  protocolo de contexto (skill `agentic-protocol`, plantilla v3). Fija `lfs-insim==0.8.0` de PyPI.
+- **Aquí:** «Aplicaciones aparte» de `PLAN.md` apunta al repositorio nuevo. Lo que la aplicación eche en falta de
+  la biblioteca entrará en este `PLAN.md` como tarea.
+- Los mapas archivados no se tocaron: solo se leyeron de `refactor/estabilizacion` para describir su formato.
+
+**Verificación:** `verify` PASS (630) al empezar; esta sesión solo cambió documentos aquí.
+
 ## S25 — 2026-10-15 — W11.11: no hay servidor dedicado para la 0.8C
 
 **Contexto:** misma conversación que S24, al día siguiente. El usuario dio permiso para descargar e instalar el

@@ -1,5 +1,9 @@
 # 📍 Estado — AP_LFS_InSim (lfs_insim)
-> Actualizado: 2026-10-15 (S25), equipo principal. **`lfs-insim` 0.8.0 publicada (S24)**: `InSim(udp_port=...)`
+> Actualizado: 2026-10-15 (S26), segundo equipo. **S26: siguiente fase elegida, el control de IA, en un repositorio
+> aparte** (privado, `AdrianPascarella/lfs-ai-control`, en `C:\Users\Adrian\Projects\lfs-ai-control`, con su propio
+> protocolo de contexto; plan W1–W7 allí). **▶️ SIGUIENTE aquí:** nada propio; se trabaja en `lfs-ai-control`, y lo
+> que le falte a la biblioteca entra en este `PLAN.md` como tarea. W11 sigue abierta solo por W11.6 (U14).
+> Antes, S25 (equipo principal): **`lfs-insim` 0.8.0 publicada (S24)**: `InSim(udp_port=...)`
 > (probado en real), notas de lo visto en LFS en los docstrings, docs de «Create new host». **W11.2 hecha (S24):** batería en vivo en `tests/live/`
 > (`harness.py`: `Session` con `expect` / `check` / `screen` e informe con lo visto en cada sentido;
 > `group_a.py`: secciones `requests setup race sends udp finish`, `--only`; `probe.py`, antes `tests/live_lfs.py`).
@@ -26,7 +30,7 @@
 > InSim (IP/puerto en «Your hosts», IP permitidas en «Access control»; **no pararlo: se borra**); `group_h.py
 > --host --admin` 23 PASS. **W11.10 hecha (S25):** `group_d.py`, el usuario conduce (12 PASS). Docs en
 > «Unreleased». **W11.7 hecha (S25):** `COVERAGE.md` 97 ✔ / 13 ◐ / 5 ✖, ningún fallo de la biblioteca; sin
-> versión nueva (solo un docstring desde 0.8.0). **▶️ SIGUIENTE:** decidir con el usuario la próxima fase (W11 sigue
+> versión nueva (solo un docstring desde 0.8.0). En S25 quedaba decidir la próxima fase (hecho en S26; W11 sigue
 > abierta solo por W11.6, el grupo P: tarjeta U14, cuando el usuario tenga a otra persona). Antes de lanzar LFS con opciones, copia de `cfg.txt` (§13). El
 > permiso del grupo A (S23) vale para repetir `group_a.py`; sin tocar `cfg.txt`. LFS quedó cerrado al final de
 > S24 (lo abrió el agente; `/exit` por InSim). Los demás grupos, cada uno con su permiso; el grupo P, en una tarjeta. La
