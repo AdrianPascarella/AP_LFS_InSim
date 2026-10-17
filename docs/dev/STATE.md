@@ -1,7 +1,7 @@
 # 📍 Estado — AP_LFS_InSim (lfs_insim)
-> Actualizado: 2026-10-17 (S28), equipo principal. **S28: W13.1 hecha** (`Arg` en los comandos, `float`
-> finito; sin publicar). **▶️ SIGUIENTE: W13.2**, publicar 0.9.0 con permiso y fijarla en `lfs-ai-control`.
-> Lo de S27 sigue debajo. **S27: W12 cerrada y `lfs-insim` 0.8.1 publicada:** nombres
+> Actualizado: 2026-10-17 (S28), equipo principal. **S28: W13 cerrada y `lfs-insim` 0.9.0 publicada**
+> (`Arg` para argumentos de tipo propio en los comandos, `float` finito), fijada en `lfs-ai-control`.
+> **▶️ SIGUIENTE aquí:** nada propio; se sigue en `lfs-ai-control`. Lo de S27 sigue debajo. **S27: W12 cerrada y `lfs-insim` 0.8.1 publicada:** nombres
 > para los valores de `IS_AIC` (`STEER`, `TOGGLE`, `HEADLIGHTS`, `SIREN`, `INDICATORS`, `LOOK` generados de
 > `InSim.txt` con `LISTED_VALUES`; `GEAR` a mano, `HAND_VALUES`), vistos en LFS 0.8C32 con
 > `tests/live/aic_values.py --admin admin` (24 PASS, 4 SKIP). Aviso dejado en `lfs-ai-control` (su W3.9).
@@ -56,9 +56,8 @@
 > módulo propio (los comandos, en `_commands.py`; las peticiones, en `_asking.py`). Ver `USER_ACTIONS.md`.
 
 ## Dónde estamos
-**Fase activa: W13** (S28, pedida desde `lfs-ai-control`): `Arg` para argumentos de tipo propio en los
-comandos y `float` finito, hechos en `dev` (W13.1, «Unreleased»); **▶️ SIGUIENTE: W13.2, publicar 0.9.0
-(con permiso)** y fijarla allí. Antes: W12 cerrada en S27 (0.8.1). W11 en pausa por W11.6 (U14; tabla en `COVERAGE.md`). W6 cerrada en S23 y publicada como 0.7.0.
+Sin fase activa propia: W13 cerrada en S28 (0.9.0, pedida desde `lfs-ai-control`). Antes: W12 cerrada
+en S27 (0.8.1). W11 en pausa por W11.6 (U14; tabla en `COVERAGE.md`). W6 cerrada en S23 y publicada como 0.7.0.
 
 - **Cómo se genera:** `.venv/Scripts/python scripts/generate_packets.py` lee
   `spec/cache/InSim.txt` y `spec/cache/OutSimPack.txt` (con `scripts/spec_parser.py`) y las

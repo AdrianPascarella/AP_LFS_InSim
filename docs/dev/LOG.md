@@ -21,7 +21,13 @@ finito. Tests primero, `tests/test_command_args.py` (9): los cinco de `nan`/`inf
 también con `lfs-ai-control` contra este `src` (`PYTHONPATH`): su `verify` en verde, 356 tests.
 
 **API:** nueva, `lfs_insim.Arg`; cambia el contrato de `float` en los comandos (ya no acepta lo no finito).
-Siguiente: W13.2, publicar 0.9.0 (con permiso).
+
+**W13.2, con permiso del usuario («Te doy permiso»):** versión 0.9.0 (CHANGELOG, `pyproject.toml`),
+`verify` en verde y CI `verify` en verde sobre `f1d5b76`; avance rápido de `dev` a `main`; release
+`v0.9.0` (normal, como 0.8.1; notas del CHANGELOG, con `GH_TOKEN` de `AdrianPascarella`); entorno `pypi`
+aprobado por la API (§15); `publish` en verde (run 39014214387). `pip install lfs-insim==0.9.0` en un venv
+limpio: 0.9.0, con `Arg`. En `lfs-ai-control`, fijada y con su `verify` en verde (su S16).
+**Fase W13 cerrada.**
 
 ## S27 — 2026-10-15 — W12.1: nombres para los valores de `IS_AIC`; `lfs-ai-control` clonado aquí
 

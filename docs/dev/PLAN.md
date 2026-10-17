@@ -531,14 +531,14 @@ en S27: «Sí, hagamos la W12 con los nombres de IS_AIC».
 - [x] **W12.3** — Publicar como 0.8.1 (con permiso) y avisar a `lfs-ai-control` para que use estos nombres.
   Hecho en S27 («Procede», «Te doy permiso»): 0.8.1 en PyPI; allí, W3.9 en su `PLAN.md` → LOG.md S27.
 
-## W13 — Argumentos de tipo propio en los comandos   ⏳ ACTIVA desde S28 · pedida desde `lfs-ai-control` (su W5.1)
+## W13 — Argumentos de tipo propio en los comandos   ✅ CERRADA en S28 · publicada como 0.9.0 · pedida desde `lfs-ai-control` (su W5.1)
 **Objetivo:** que un comando pueda leer un argumento de un tipo propio (en `lfs-ai-control`, una velocidad
 que es un número o `max`), y que un `float` no acepte `nan` ni `inf`. Diseño en `API_DESIGN.md` (W13). El
 usuario, preguntado si rodearlo allí o arreglarlo aquí: «Arreglarlo en lfs-insim ya».
 - [x] **W13.1** — `Arg` y `Annotated[T, Arg(...)]` en `_commands.py`; `float` finito. Tests primero
   (`tests/test_command_args.py`; los de `nan`/`inf`, vistos en rojo con el `float` de antes); docs en
   `docs/insim.md`; CHANGELOG en «Unreleased»          hecho en S28 → LOG.md S28
-- [ ] **W13.2** — Publicar como 0.9.0 (con permiso) y fijarla en `lfs-ai-control`
+- [x] **W13.2** — Publicar como 0.9.0 (con permiso) y fijarla en `lfs-ai-control`          hecho en S28 → LOG.md S28
 **Acepta:** `!ai follow me max 10` funciona en `lfs-ai-control` con la versión de PyPI.
 
 ## Ideas (aparcadas, sin compromiso)
