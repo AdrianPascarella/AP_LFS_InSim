@@ -454,7 +454,7 @@ con muestras que hacen de red, y es menos arriesgado que la cámara.
 - [x] **W6.4** — Publicar lo que pidan W6.2, W6.3 y W6.7 (0.7.0, con permiso del usuario). Hecho en S23
   («Sí, publica la 0.7.0»): `lfs-insim` 0.7.0 en PyPI; streamer-project la usa fijada → LOG.md S23.
 
-## W11 — Pruebas intensivas contra el LFS real   ⏸️ EN PAUSA desde S25 (solo falta W11.6, U14) · propuesta del usuario, plan aceptado en S23
+## W11 — Pruebas intensivas contra el LFS real   ✅ CERRADA en S29 (W11.6 con el grupo P; lo que queda, en `COVERAGE.md`) · propuesta del usuario, plan aceptado en S23
 **Objetivo:** ver funcionar en el LFS real cada paquete y subtipo que se pueda provocar, en los dos sentidos:
 que lo que llega se lea con valores correctos y que lo que mandamos tenga efecto. El usuario: «hacer pruebas de
 forma intensiva de absolutamente todo contra el LFS real… para ver que funcione todo correctamente». El agente
@@ -479,8 +479,9 @@ de pantalla) se pide antes, con copia de lo que se toque. Lo que necesita a otra
   `IPB`, `MTC`, `ACR`, `III`, `ISM`/`MPE`, `SET`. **A medias (S24):** probado como invitado admin (en LFS 0.8C32
   «Crear servidor nuevo» no hace anfitrión al juego); lo propio del anfitrión necesita un servidor dedicado (W11.11).
   **Hecho en S25 → LOG.md S25**, contra el InSim del servidor alojado (con contraseña de admin: 23 PASS).
-- [ ] **W11.6** — Grupo P (otra persona conectada): tarjeta para el usuario con `JRR`, `VTN`/`VTC`/`VTA`, `TOC`,
-  `III`, `MTC` a una persona, `NCN`/`CNL` remotos, y U11.
+- [x] **W11.6** — Grupo P (otra persona conectada): tarjeta para el usuario con `JRR`, `VTN`/`VTC`/`VTA`, `TOC`,
+  `III`, `MTC` a una persona, `NCN`/`CNL` remotos, y U11. Hecho en S29 → LOG.md S29 (`tests/live/group_p.py`;
+  `IS_TOC` y mandar `TINY_VTC` con una votación abierta, sin poder provocarlos: `COVERAGE.md`)
 - [x] **W11.7** — Cerrar: cada fallo encontrado arreglado (o anotado si es de LFS), `COVERAGE.md` al día, y
   publicar una versión si cambió la biblioteca (con permiso). Hecho en S25 → LOG.md S25 (sin versión nueva: desde
   0.8.0 solo cambió un docstring; va con el próximo cambio de código). Queda W11.6 (grupo P) para cerrar W11.

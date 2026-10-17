@@ -1,26 +1,13 @@
 # 🙋 Tus acciones — AP_LFS_InSim (lfs_insim)
-> **1 pendiente** · actualizado en S29 · ninguna bloquea · U14, cuando haya alguien más en tu servidor
+> **0 pendientes** · actualizado en S29
 >
 > Todo lo de aquí necesita tus manos o tu criterio: el agente no puede hacerlo o no puede
 > comprobarlo. **Nunca editas este archivo**: cuéntale el resultado al agente y él cerrará la tarjeta.
 
 ## ⏳ Pendientes
 
-### U14 — Grupo P: probar con otra persona conectada a tu servidor          ⏳ · bloquea: el cierre de W11 · abierta en S25
-**Tipo:** hacer          **Tiempo:** ~20 min, con una segunda persona y tu servidor alojado en lfs.net
-**Por qué:** lo que queda de las pruebas en real (W11.6) solo lo provoca otra persona: pedir entrar
-(`IS_JRR`), mandar su setup (`IS_SET`), tomar un coche (`IS_TOC`), cambiar de nombre (`IS_CPR`), irse
-(`IS_CNL`) y votar (`IS_VTN`, `TINY_VTC`, `SMALL_VTA`). Se hace a la vez que U11.
-**Pasos:**
-  1. Crea (o deja en marcha) tu servidor desde el juego, con contraseña de admin, y avisa al agente: él añade tu
-     IP en lfs.net → Hosting → Your hosts → Access control (como en S25) y prepara la prueba.
-  2. Que la otra persona entre en el servidor (dale la contraseña de host si tiene).
-  3. Sigue lo que el agente te diga en el chat de LFS: él le pedirá a la otra persona cada acción por mensaje.
-**Resultado esperado:** el informe de `group_h.py` / grupo P en verde, con los paquetes de la lista.
-**Señales de fallo:** la otra persona hace la acción y el agente dice que no llegó el paquete.
-**Si falla, dime:** qué hizo la otra persona y qué veías tú en el chat en ese momento.
-
 ## ✅ Cerradas (recientes; el registro completo está en LOG.md)
+- **U14** — Grupo P con otra persona: hecho con una segunda cuenta del usuario; 8 PASS en la segunda pasada (2026-10-17, S29).
 - **U11** — Como invitado, los comandos de otra persona se ignoran: «Ahora sí, salió perfecto» (2026-10-17, S29).
 - **U13** — Qué es «un plano»: «Me vale tal cual» → lista de pasos: ir a un instante, seguir a un coche con una vista (`IS_SCC`), cámara libre a una posición en N segundos (`IS_CPP`), esperar (2026-10-14, S23).
 - **U12** — Probar si escribir y combinar plugins es cómodo: descartada por el usuario («No lo haré… ya iremos viendo si es cómodo o no a medida que avancemos») (2026-10-14, S21).

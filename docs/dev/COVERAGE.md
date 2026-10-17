@@ -34,10 +34,10 @@
 | IS_BTT | ⬇ | ✔ | S12 | A | texto escrito en un botón (`TypeIn`) |
 | IS_CCH | ⬇ | ◐ | S23, S24 | A/R | cambio de cámara; con `IS_SCH` «V» llegó una vez y otra no (la vista sí cambió, S24) |
 | IS_CIM | ⬇ | ✔ | S12, S24 | A/E | Shift+U por `IS_SCH` → `SHIFTU` (6); la salida de la vista libre → `NORMAL` (S24) |
-| IS_CNL | ⬇ | ◐ | S23 | R/P | alguien se va (en repetición, sus conexiones); falta con una persona real |
+| IS_CNL | ⬇ | ✔ | S23, S29 | R/P | una persona se va del servidor alojado: `Reason` `DISCO`, `Total` (S29) |
 | IS_CON | ⬇ | ◐ | S12 | A | contacto entre coches (IA) |
 | IS_CPP | ⬍ | ✔ | S12, S23 | A/R | `TINY_SCP`; enviado: cámara libre, movimiento suave, salir de ella (S23) |
-| IS_CPR | ⬇ | ◐ | S23 | R/P | cambio de nombre |
+| IS_CPR | ⬇ | ✔ | S23, S29 | R/P | una persona cambia su nombre: `PName`, `Plate` (S29; LFS escribe «X took over from Y» en el chat) |
 | IS_CRS | ⬇ | ✔ | S23, S25 | A | la tecla de reiniciar el coche del piloto (S25; Shift+R reinicia la carrera) |
 | IS_CSC | ⬇ | ✔ | S23, S24 | A | `CSC.START` de cada coche al salir (S24) |
 | IS_FIN | ⬇ | ✔ | S12, S24 | A | `TTime` igual al de `IS_RES` (S24) |
@@ -48,7 +48,7 @@
 | IS_IPB | ⬍ | ✔ | S25 | H | `TINY_IPB` y enviado (ban de 192.0.2.1, releído y quitado) en el InSim del servidor; como invitado admin, sin respuesta (S24) |
 | IS_ISI | ⬆ | ✔ | todas | A | conectar (flags, `Interval`, prefijo, contraseña de admin) |
 | IS_ISM | ⬇ | ✔ | S12, S19, S24, S25 | H/G | `Host` 1 en el InSim del servidor alojado (S25); `Host` 0 en el del juego, invitado admin (S24) |
-| IS_JRR | ⬆ | ✖ | — | P | `ISF.REQ_JOIN`: aceptar o rechazar a alguien que quiere entrar |
+| IS_JRR | ⬆ | ✔ | S29 | P | `ISF.REQ_JOIN`: la petición llega como `IS_NPL` con `NumP` 0; `JRR.REJECT` → no entra; `JRR.SPAWN` → `IS_NPL` (S29). Mover un coche (`JRR.RESET`), sin probar |
 | IS_LAP | ⬇ | ✔ | S12, S24 | A | `LTime` ~1:40 en BL1, `LapsDone` (S24; también la registra streamer-project, S21) |
 | IS_MAL | ⬍ | ✔ | S12, S24, S25 | H | enviado como invitado admin (S24) y como anfitrión (S25): cambia la lista, releída y restaurada |
 | IS_MCI | ⬇ | ✔ | S12, S18 | A | `ISF.MCI`; unidades de velocidad y posición comprobadas (S18) |
@@ -79,7 +79,7 @@
 | IS_RST | ⬇ | ✔ | S12, S24 | A | `RaceLaps`, `Track`, `NumNodes`, parciales; también con `TINY_RST` (S24). En Un Jugador `/restart` no arranca: hay que pulsar GO |
 | IS_SCC | ⬆ | ✔ | S23 | A/R | coche y vista; no saca de la cámara libre (S23) |
 | IS_SCH | ⬆ | ✔ | S24 | A | «V» cambia la vista (`IS_STA.InGameCam`); falta con SHIFT / CTRL |
-| IS_SET | ⬇ | ✖ | — | H/P | `ISF.SET`: un invitado manda su setup (¿también el anfitrión? por ver) |
+| IS_SET | ⬇ | ✔ | S29 | H/P | `ISF.SET`: un invitado manda su setup desde el garaje (`PLID`, `CName`, `FuelLoad`); también llega al salir a pista (S29) |
 | IS_SFP | ⬆ | ✔ | S24 | A | ocultar y mostrar el 2D (`ISS.SHOW_2D` en `IS_STA`) |
 | IS_SLC | ⬇ | ✔ | S25 | H | `TINY_SLC` en el InSim del servidor: `XFG` del host y vacío del invitado sin coche |
 | IS_SMALL | ⬍ | ✔ | S12, S24, S25 | A | ver la tabla de `SMALL` |
@@ -87,11 +87,11 @@
 | IS_SSH | ⬍ | ✔ | S24 | A | `instruct.IS_SSH(Name=...)` → `SSH.OK` y el archivo en `C:\LFS\data\shots` |
 | IS_STA | ⬇ | ✔ | S12, S23 | A | `TINY_SST`; flags de estado (cámara libre, pausa) en S23 |
 | IS_TINY | ⬍ | ✔ | varias | A | ver la tabla de `TINY` |
-| IS_TOC | ⬇ | ◐ | S23 | R/P | alguien toma el coche de otro |
+| IS_TOC | ⬇ | ◐ | S23 | R/P | alguien toma el coche de otro; necesita un relevo de pilotos en una carrera por equipos (no en S29) |
 | IS_TTC | ⬆ | ✔ | S24 | E | ver la tabla de `TTC`; **todos necesitan `ReqI`** («IS_TTC with no ReqI») |
 | IS_UCO | ⬇ | ✔ | S23, S24 | E/R | una IA cruza un checkpoint de InSim añadido: `CP_FWD`, `ObjectInfo` igual al enviado (S24) |
 | IS_VER | ⬇ | ✔ | todas | A | respuesta al `IS_ISI` y a `TINY_VER` |
-| IS_VTN | ⬇ | ◐ | S24 | A/P | también en Un Jugador al mandar `/end`; falta alguien que vote |
+| IS_VTN | ⬇ | ✔ | S24, S29 | A/P | un invitado vota `/restart`: `UCID` suyo, `Action` `RESTART`; el `/restart` de un admin llega con `UCID` 0 (el host) y se cumple al momento (S29) |
 
 ## Subtipos de `IS_TINY`, `IS_SMALL` e `IS_TTC`
 
@@ -101,7 +101,7 @@
 | TINY_VER | ⬆ | ✔ | S12 | A | → `IS_VER` |
 | TINY_CLOSE | ⬆ | ✔ | S9 | A | cerrar la conexión |
 | TINY_PING / TINY_REPLY | ⬍ | ✔ | S12 | A | ping → `TINY_REPLY` |
-| TINY_VTC | ⬍ | ◐ | S24 | A/P | llega tras `/end` en Un Jugador; falta cancelar una votación |
+| TINY_VTC | ⬍ | ◐ | S24, S29 | A/P | llega tras cumplirse una votación (S29: tras `SMALL_VTA`); falta mandarlo con una votación abierta (con un solo votante pasa al momento) |
 | TINY_SCP | ⬆ | ✔ | S12, S23 | A | → `IS_CPP` |
 | TINY_SST | ⬆ | ✔ | S12, S23 | A | → `IS_STA` |
 | TINY_GTM | ⬆ | ◐ | S12 | A | → `SMALL_RTP` |
@@ -129,7 +129,7 @@
 | TINY_LCL | ⬆ | ✔ | S12, S25 | A | → `SMALL_LCL` con lo puesto (S25) |
 | SMALL_SSP | ⬆ | ✔ | S24 | A | OutSim al `UDPPort` del `IS_ISI` (que `InSim()` no deja poner, W11.8); **`UVal` en centésimas** (10 → 10 por segundo); 0 lo para |
 | SMALL_SSG | ⬆ | ✔ | S24 | A | OutGauge igual que `SSP`: `UDPPort`, `UVal` en centésimas, 0 lo para |
-| SMALL_VTA | ⬇ | ◐ | S24 | A/P | llega tras `/end` en Un Jugador |
+| SMALL_VTA | ⬇ | ✔ | S24, S29 | A/P | votación cumplida: `UVal` `RESTART`, luego `IS_RST` (S29) |
 | SMALL_TMS | ⬆ | — | — | — | la especificación dice «currently unavailable» |
 | SMALL_STP | ⬆ | — | — | — | la especificación dice «currently unavailable» |
 | SMALL_RTP | ⬇ | ◐ | S12 | A | respuesta a `TINY_GTM` |
@@ -156,8 +156,9 @@ Al cerrar las pruebas de los grupos A, E, H y D: **97 comprobados, 13 solo leíd
 vistos y 2 que LFS no tiene** (de 117 filas). En todas las pasadas, **0 paquetes mal leídos o
 escritos** en ningún sentido. Lo que falta, por motivo:
 
-- **Otra persona conectada (grupo P, W11.6):** `IS_JRR`, `IS_SET`, `IS_TOC`, `IS_CPR`, `IS_CNL` de una persona,
-  votaciones (`IS_VTN`, `TINY_VTC`, `SMALL_VTA`) y el efecto de `IS_PLC`; también U11.
+- **Otra persona conectada (grupo P, W11.6):** ~~`IS_JRR`, `IS_SET`, `IS_CPR`, `IS_CNL`, `IS_VTN`, `SMALL_VTA`,
+  U11~~ (S29, `tests/live/group_p.py`). Quedan `IS_TOC` (un relevo de pilotos), `TINY_VTC` mandado con una
+  votación abierta (hacen falta varios votantes) y el efecto de `IS_PLC`.
 - **Valores sin mirar** (llegaron y se reescriben igual): `IS_CON` (no hubo contactos), `IS_PFL`, `IS_CCH`,
   `TINY_GTM` / `SMALL_RTP` (solo fuera de carrera, `UVal` 0); el efecto de `IS_HCP`.
 - **No se provoca a propósito:** `IS_MOD` (cambia la pantalla del usuario); `IS_AXO` (necesita un autocross).

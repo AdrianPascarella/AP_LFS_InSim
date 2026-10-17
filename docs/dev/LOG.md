@@ -25,6 +25,33 @@ solo a su conexión; `/ai` desde el servidor: «/ai move: Not for dedicated host
 del usuario, que el `IS_AIC` del servidor no conduce y el del LFS del usuario sí. Detalle en el `LOG.md` de
 `lfs-ai-control`, S20. **Pendiente:** U14 (grupo P).
 
+### S29, U14: el grupo P (otra persona conectada), y W11 cerrada
+
+El usuario: «ya que estamos hagamos U14 del repositorio de la biblioteca». No había script del grupo P: nuevo
+**`tests/live/group_p.py`** (ruff y `mypy --strict` limpios), contra el InSim del servidor alojado (`--host`,
+`--port`, `--admin`), con la otra persona por `--person USERNAME`: cada paso se le pide por `IS_MTC` y tiene 2
+minutos. Pasos `message rename setup join vote leave`; con `ISF.REQ_JOIN`, cualquier otra petición de entrada se
+deja pasar sola. `IS_TOC` queda fuera (un relevo de pilotos en una carrera por equipos).
+
+**Primera pasada** (`P_20261017_195925.json`): 8 PASS, 3 FAIL, 0 paquetes mal leídos o escritos. **Los tres FAIL
+eran del script o del momento, no de la biblioteca** (todo llegó; visto en el informe): el `/i ok` llegó después
+de los 2 minutos; el `/restart` de un admin llega como **`IS_VTN` del host (UCID 0)**, con `IS_ACR` antes y
+`SMALL_VTA`, `TINY_VTC` e `IS_RST` después, y el filtro solo aceptaba la conexión de la persona; y la persona salió
+antes de que empezara el paso (`IS_CNL` antes de la marca). Visto además: `IS_CPR` («Angelo», placa «LFS S3»;
+LFS escribe «Angelo took over from AngeloPascarella»); `IS_SET` del XRG desde el garaje (y al salir a pista);
+`IS_JRR REJECT` sin `IS_NPL` detrás y `SPAWN` con él. Al volver, la persona ya no era admin: su `/restart` fue un
+voto (`IS_ACR` `Result` 2, `IS_VTN` de su conexión, «voted to RESTART», `SMALL_VTA` al momento: era la única que
+votaba).
+
+**Corregido el paso de votar** (acepta el `IS_VTN` del host y ve si la votación ya pasó) y **segunda pasada**
+(`--only message vote leave`, `P_20261017_200102.json`): **8 PASS, 0 FAIL**; 0 paquetes mal leídos o escritos.
+`IS_III` «ok» (UCID 8); `IS_VTN` (UCID 8, `RESTART`) y `SMALL_VTA`; `IS_CNL` (`DISCO`), `IS_NCN` remota (UCID 10,
+admin 0) e `IS_NCI` (idioma 9, licencia 3).
+
+**`COVERAGE.md`:** a ✔ `IS_JRR`, `IS_SET`, `IS_CPR`, `IS_CNL`, `IS_VTN`, `SMALL_VTA`; `TINY_VTC` sigue ◐ (llega,
+pero mandarlo con una votación abierta pide varios votantes); `IS_TOC` ◐. **W11.6 hecha, U14 cerrada y W11
+cerrada** (lo que no se puede provocar, en «Lo que queda»). Sin cambios en la biblioteca: no hace falta versión.
+
 ## S28 — 2026-10-17 — W13.1: argumentos de tipo propio en los comandos (`Arg`), y `float` finito
 
 **Contexto:** equipo principal, desde la S16 de `lfs-ai-control`. Control de inicio en verde; los documentos
