@@ -542,15 +542,17 @@ usuario, preguntado si rodearlo allí o arreglarlo aquí: «Arreglarlo en lfs-in
 - [x] **W13.2** — Publicar como 0.9.0 (con permiso) y fijarla en `lfs-ai-control`          hecho en S28 → LOG.md S28
 **Acepta:** `!ai follow me max 10` funciona en `lfs-ai-control` con la versión de PyPI.
 
-## W14 — Un `Roster` creado con la conexión ya abierta   ⏳ propuesta, sin aceptar · pedida desde `lfs-ai-control` (su S21, W11.2)
+## W14 — Un `Roster` creado con la conexión ya abierta   ▶️ ABIERTA · aceptada en S30 («sí a W14») · pedida desde `lfs-ai-control` (su S21, W11.2)
 **El defecto:** `insim.use(Roster)` después de conectar crea un `Roster` que no pide nada a LFS
 (`TINY_ISM`, `TINY_NCN`, `TINY_NPL`): se queda vacío y `ready()` espera para siempre, sin error ni
 aviso. Reproducido con 0.9.0 y `FakeLFS` (en `lfs-ai-control`, S21): creado antes de conectar, listo con la
 conexión 0; creado 0,2 s después, «NOT ready after 5 s», sin conexiones. Salió al probar allí dos `InSim`
 en un programa (D17): un `InSim` sin otro complemento que use `Roster` lo creaba tarde y el test se
 colgaba. Allí se rodea creando el `Roster` antes de conectar; nada lo pide con prisa.
-- [ ] **W14.1** — Decidir con el usuario: que un `Roster` hecho con la conexión abierta pida al momento
-  lo que pediría al conectar, o que `use(Roster)` tarde lo diga (error o aviso); tests primero con `FakeLFS`
+- [x] **W14.1** — Decidir con el usuario: que un `Roster` hecho con la conexión abierta pida al momento
+  lo que pediría al conectar, o que `use(Roster)` tarde lo diga (error o aviso); tests primero con `FakeLFS`          hecho en S30 → LOG.md S30 (P12)
+- [ ] **W14.2** — Publicar como 0.9.1 (con permiso) y fijarla en `lfs-ai-control`
+- [ ] **W14.3** — (P13, propuesta, sin aceptar) `every()` registrado con la conexión abierta, que arranque al momento
 **Acepta:** `await insim.use(Roster).ready()` con la conexión ya abierta termina con la foto completa,
 o falla con un mensaje que dice qué hacer.
 

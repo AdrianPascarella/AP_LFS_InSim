@@ -10,7 +10,7 @@ from lfs_insim import InSim, received
 from lfs_insim.state import Roster
 
 insim = InSim(name="who")
-roster = insim.use(Roster)  # before running; one per connection, shared with the commands
+roster = insim.use(Roster)  # one per connection, shared with the commands
 
 
 @insim.on.IS_NPL

@@ -134,3 +134,22 @@ generadas, y las ideas de la conexión (reconexión, errores aislados por maneja
 - **Impacto:** quien combine muchos programas busca el fallo en la contraseña.
 - Resuelto (S20): el aviso nombra las dos causas («…or 8 InSim programs already connected?»). Test
   `test_lfs_closing_at_once_is_reported_and_slows_down` ampliado, en rojo antes del cambio.
+
+### P12 — Un `on_connect` registrado con la conexión abierta no se llamaba hasta la siguiente   [RESUELTO en S30]
+- **Evidencia:** S30 (pedido desde `lfs-ai-control`, su S21): `insim.use(Roster)` después de conectar dejaba
+  un `Roster` vacío y `ready()` esperando para siempre, sin error (con 0.9.0 y `FakeLFS`: creado antes de
+  conectar, listo; 0,2 s después, nada en 5 s). Causa raíz: `on_connect` solo guardaba la función para las
+  conexiones siguientes, y el `Roster` pide el estado desde su `on_connect`.
+- **Impacto:** cualquier complemento que pida datos al conectar y se cree tarde se queda sin ellos, en
+  silencio (en `lfs-ai-control`, también su `Atlas`).
+- Resuelto (S30): `on_connect` registrado con la conexión abierta se llama al momento para esa conexión
+  (y su `on_disconnect` al acabar); `connect()` recorre una copia de la lista, para que uno registrado
+  desde otro `on_connect` no corra dos veces. Tests en `tests/test_lifecycle.py` (W14): los dos del arreglo,
+  en rojo antes del código; el de «una sola vez», en rojo con la mutación «sin copia».
+
+### P13 — `every()` registrado con la conexión abierta no empieza hasta la siguiente   [ABIERTO]
+- **Evidencia:** S30, script del scratchpad con `FakeLFS`: `insim.every(0.05)` registrado 0,2 s después de
+  conectar, 0 llamadas en 0,5 s. Los ticks solo arrancan cuando LFS acepta una conexión (`IS_VER`).
+- **Impacto:** el mismo que P12, para lo que se repite: un complemento hecho tarde no hace nada hasta una
+  reconexión, sin aviso.
+- **Acción:** W14.3, si el usuario la acepta: que arranque al momento si la conexión ya está aceptada.

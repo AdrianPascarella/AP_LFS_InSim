@@ -176,8 +176,12 @@ class InSim(StopsOnError):
         """Decorator: call the function (no arguments) after every connection and reconnection.
 
         IS_ISI has been sent, so it may send requests: the place to ask LFS for the initial state.
+        Registered while connected, it is also called at once for this connection, so a plugin
+        made late (`insim.use(Roster)`) still asks LFS.
         """
         self._connect_handlers.append(handler)
+        if self._announced:  # the others already ran for this connection; on_disconnect will
+            self._handlers.call(handler, (), "on_connect")
         return handler
 
     def on_disconnect(self, handler: ConnectHandler) -> ConnectHandler:
@@ -303,7 +307,7 @@ class InSim(StopsOnError):
         log.info("connected to LFS at %s:%d", self.host, self.port)
         self._connections += 1
         self._announced = True
-        for handler in self._connect_handlers:
+        for handler in list(self._connect_handlers):  # one registered by these runs at once
             self._handlers.call(handler, (), "on_connect")
 
     async def close(self) -> None:

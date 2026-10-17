@@ -82,8 +82,9 @@ class Player:
 
 
 class Roster(Plugin):
-    """The connections and players of LFS, by UCID and PLID: `roster = insim.use(Roster)`,
-    before running insim. One per InSim, shared with the commands and every other plugin.
+    """The connections and players of LFS, by UCID and PLID: `roster = insim.use(Roster)`.
+    One per InSim, shared with the commands and every other plugin. Made while connected, it asks
+    LFS at once.
     """
 
     def __init__(self, insim: InSim) -> None:

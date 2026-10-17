@@ -1,6 +1,34 @@
 # 📓 Diario — AP_LFS_InSim (lfs_insim)
 <!-- Solo se añade, lo más nuevo arriba. Una entrada por sesión. -->
 
+## S30 — 2026-10-18 — W14.1: un `on_connect` registrado con la conexión abierta se llama al momento
+
+**Contexto:** equipo principal, desde una sesión de `lfs-ai-control` (su S21), donde salió el defecto al probar
+dos `InSim` en un programa. Control de inicio en verde (rama, identidad, pull, plantilla v3). **Los documentos
+no cuadraban:** `STATE.md` decía «2 pendientes» (U14 y U11), cerradas las dos en S29; corregido. El usuario:
+«sí a W14».
+
+**La causa raíz es más general que el `Roster`** (§8): `on_connect` registrado con la conexión abierta solo
+valía para las conexiones siguientes, y el `Roster` pide el estado desde su `on_connect`. Se le preguntó al
+usuario cómo arreglarlo, con tres opciones (que `on_connect` llame ya; solo el `Roster`; un error al crearlo
+tarde). Eligió la recomendada, **«on_connect llama ya»**: arregla cualquier complemento hecho tarde sin tocar
+cada uno, y es lo que ya prometía su docstring («after every connection»). Descartadas: solo el `Roster`
+(los demás seguirían fallando en silencio) y el error (no arregla nada).
+
+**Hecho:** en `_connection.py`, `on_connect` llama al momento a la función si `on_connect` ya corrió en esta
+conexión (`_announced`, que también garantiza su `on_disconnect`), y `connect()` recorre una copia de la
+lista. Cuatro tests en `tests/test_lifecycle.py`: registrado con la conexión abierta (corre ya y en cada
+reconexión, con su `on_disconnect`) y `Roster` hecho tarde que queda listo, **en rojo antes del código**; uno
+registrado desde otro `on_connect` corre una vez (**en rojo con la mutación «sin copia»**: `second` dos veces);
+registrado antes de conectar no corre antes de tiempo. Docstring del `Roster`, `docs/insim.md`,
+`docs/roster-and-text.md` y CHANGELOG («Unreleased»). **Cambia el contrato público** (a mejor: lo que antes no
+se llamaba, ahora sí). P12 archivado y resuelto.
+
+**Encontrado y sin arreglar (no pedido):** `every()` registrado con la conexión abierta no empieza hasta la
+siguiente (0 llamadas en 0,5 s; script del scratchpad) → **P13**, W14.3 propuesta.
+
+**Verificación:** `verify.py` en verde (653 passed). Sin publicar: W14.2 necesita permiso.
+
 ## S29 — 2026-10-17 — U11: como invitado, los comandos de otra persona se ignoran
 
 **Contexto:** equipo principal, desde una sesión de `lfs-ai-control` (su S20). El usuario: «Aprovechando

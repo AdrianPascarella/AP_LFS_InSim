@@ -8,7 +8,7 @@ from collections.abc import Callable
 import pytest
 
 from lfs_insim import InSim, OutGauge, text
-from lfs_insim.packets import IS_ISI, IS_TINY, OutGaugePack
+from lfs_insim.packets import IS_ISI, IS_NCN, IS_TINY, TINY, OutGaugePack
 from lfs_insim.state import Roster
 from lfs_insim.testing import FakeLFS
 from lfs_insim.text import Colour
@@ -335,5 +335,82 @@ def test_connect_alone_calls_on_connect_and_close_calls_on_disconnect() -> None:
             await insim.close()
             assert events == ["connect", "disconnect"]
             assert not insim.reconnected
+
+    asyncio.run(main())
+
+
+# W14: on_connect registered while connected
+
+
+def test_on_connect_registered_while_connected_runs_now_and_on_every_reconnection() -> None:
+    async def main() -> None:
+        async with FakeLFS() as lfs:
+            insim = InSim(port=lfs.port)
+            insim._retry_delays = FAST
+            events: list[str] = []
+            async with insim:
+                await lfs.wait_connected()
+                await _until(lambda: insim.connected)
+                insim.on_connect(lambda: events.append("connect"))
+                insim.on_disconnect(lambda: events.append("disconnect"))
+                await _until(lambda: events == ["connect"])
+                await lfs.drop()
+                await lfs.wait_connected(connections=2)
+                await _until(lambda: len(events) == 3)
+            assert events == ["connect", "disconnect", "connect", "disconnect"]
+
+    asyncio.run(main())
+
+
+def test_on_connect_registered_by_an_on_connect_runs_once() -> None:
+    async def main() -> None:
+        async with FakeLFS() as lfs:
+            insim = InSim(port=lfs.port)
+            events: list[str] = []
+
+            @insim.on_connect
+            def first() -> None:
+                events.append("first")
+                insim.on_connect(lambda: events.append("second"))
+
+            async with insim:
+                await lfs.wait_connected()
+                await _until(lambda: len(events) >= 2)
+                await asyncio.sleep(0.1)
+            assert events == ["first", "second"]
+
+    asyncio.run(main())
+
+
+def test_on_connect_registered_before_connecting_does_not_run_early() -> None:
+    async def main() -> None:
+        async with FakeLFS() as lfs:
+            insim = InSim(port=lfs.port)
+            events: list[str] = []
+            insim.on_connect(lambda: events.append("connect"))
+            await asyncio.sleep(0.05)
+            assert events == []
+            async with insim:
+                await lfs.wait_connected()
+                await _until(lambda: events == ["connect"])
+
+    asyncio.run(main())
+
+
+def test_a_roster_made_while_connected_gets_ready() -> None:
+    """Asked for from lfs-ai-control (its S21): it never asked LFS and ready() waited for good."""
+
+    async def main() -> None:
+        async with FakeLFS() as lfs:
+            lfs.replies[TINY.NCN] = [IS_NCN(UCID=0, PName="Me", Total=1)]
+            insim = InSim(port=lfs.port)
+            async with insim:
+                await lfs.wait_connected()
+                await _until(lambda: insim.connected)
+                await asyncio.sleep(0.05)
+                roster = insim.use(Roster)
+                async with asyncio.timeout(3):
+                    await roster.ready()
+                assert list(roster.connections) == [0]
 
     asyncio.run(main())

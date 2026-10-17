@@ -1,5 +1,7 @@
 # 📍 Estado — AP_LFS_InSim (lfs_insim)
-> Actualizado: 2026-10-17 (S29), equipo principal. **S29: U11 y U14 cerradas, W11 cerrada** (con dos cuentas
+> Actualizado: 2026-10-18 (S30), equipo principal. **S30: W14 aceptada y W14.1 hecha** (P12: un `on_connect`
+> registrado con la conexión abierta se llama al momento; un `Roster` hecho tarde ya queda listo). Sin publicar:
+> **▶️ SIGUIENTE aquí: W14.2** (0.9.1, con permiso del usuario) y decidir W14.3 (P13, `every()` tarde). Antes: **S29: U11 y U14 cerradas, W11 cerrada** (con dos cuentas
 > del usuario en su servidor; nuevo `tests/live/group_p.py`; ninguna acción pendiente). **S28: W13 cerrada y `lfs-insim` 0.9.0 publicada**
 > (`Arg` para argumentos de tipo propio en los comandos, `float` finito), fijada en `lfs-ai-control`.
 > **▶️ SIGUIENTE aquí:** nada propio; se sigue en `lfs-ai-control`. Lo de S27 sigue debajo. **S27: W12 cerrada y `lfs-insim` 0.8.1 publicada:** nombres
@@ -85,7 +87,7 @@ El proyecto anterior está en la rama `refactor/estabilizacion` y en las etiquet
 consulta, no se copia.
 
 ## Lo que te espera
-2 pendientes → `USER_ACTIONS.md`: U14 (grupo P, con otra persona en tu servidor) y U11, a la vez; ninguna bloquea.
+1 pendiente → `USER_ACTIONS.md`: U15 (decidir: publicar 0.9.1 y W14.3); bloquea W14.2.
 
 ## Tests inestables (arreglados en S14)
 `tests/test_every.py` fallaba a veces solo en el Windows del CI (3.12 y 3.13). Causa comprobada: en

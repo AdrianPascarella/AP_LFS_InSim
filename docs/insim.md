@@ -213,6 +213,9 @@ async def tick() -> None:
     ...  # every 2 seconds while connected; calls never overlap
 ```
 
+An `on_connect` function registered while connected is also called at once, for this connection;
+so is a plugin made late (`insim.use(Roster)` after connecting), which asks LFS as it is made.
+
 ## Sending
 
 ```python

@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Fixed: an `on_connect` function registered while connected was not called until the next
+  connection, so a plugin made late never asked LFS for the state: `insim.use(Roster)` after
+  connecting stayed empty and `roster.ready()` waited for good. Now it is called at once for this
+  connection (and its `on_disconnect` when it ends).
+
 ## 0.9.0
 
 - Chat command arguments of your own type: `kmh: Annotated[float, Arg(parse_kmh, "a number or

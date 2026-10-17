@@ -1,10 +1,21 @@
 # 🙋 Tus acciones — AP_LFS_InSim (lfs_insim)
-> **0 pendientes** · actualizado en S29
+> **1 pendiente** · 🚧 U15 bloquea W14.2 (publicar 0.9.1) · actualizado en S30
 >
 > Todo lo de aquí necesita tus manos o tu criterio: el agente no puede hacerlo o no puede
 > comprobarlo. **Nunca editas este archivo**: cuéntale el resultado al agente y él cerrará la tarjeta.
 
 ## ⏳ Pendientes
+
+### U15 — 🚧 ¿Publico 0.9.1 con el arreglo de W14, y arreglo también `every()` (W14.3)?          ⏳ · bloquea: W14.2 · abierta en S30
+**Tipo:** decidir          **Tiempo:** ~1 min
+**Por qué:** el arreglo de P12 está en `dev`, sin publicar; `lfs-ai-control` lo rodea mientras tanto. Publicar
+necesita tu permiso. `every()` tiene el mismo defecto (P13) y entraría en la misma versión si lo apruebas.
+**Pasos:**
+  1. Dime una de estas: «publica 0.9.1» (solo W14.1), «arregla también every() y publica» (recomendada: un
+     solo arreglo coherente para todo lo que se registra tarde), o «espera».
+**Resultado esperado:** con permiso, 0.9.1 en PyPI y fijada en `lfs-ai-control`.
+**Señales de fallo:** no aplica (es una decisión).
+**Si falla, dime:** no aplica.
 
 ## ✅ Cerradas (recientes; el registro completo está en LOG.md)
 - **U14** — Grupo P con otra persona: hecho con una segunda cuenta del usuario; 8 PASS en la segunda pasada (2026-10-17, S29).
