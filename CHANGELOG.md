@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.9.0
 
 - Chat command arguments of your own type: `kmh: Annotated[float, Arg(parse_kmh, "a number or
   max")]` reads the word with `parse_kmh` (which raises `ValueError` when it does not fit) and,
