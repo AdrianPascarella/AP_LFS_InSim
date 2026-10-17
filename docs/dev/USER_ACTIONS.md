@@ -1,5 +1,5 @@
 # 🙋 Tus acciones — AP_LFS_InSim (lfs_insim)
-> **2 pendientes** · actualizado en S25 · ninguna bloquea · U14 y U11 a la vez, cuando haya alguien más en tu
+> **2 pendientes** · actualizado en S28 · ninguna bloquea · U14 y U11 a la vez, cuando haya alguien más en tu
 > servidor
 >
 > Todo lo de aquí necesita tus manos o tu criterio: el agente no puede hacerlo o no puede

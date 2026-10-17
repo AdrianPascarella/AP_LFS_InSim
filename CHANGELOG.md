@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- Chat command arguments of your own type: `kmh: Annotated[float, Arg(parse_kmh, "a number or
+  max")]` reads the word with `parse_kmh` (which raises `ValueError` when it does not fit) and,
+  when it does not, answers "kmh must be a number or max, not 'fast'" with the usage. `Arg` is
+  exported from `lfs_insim`; `Annotated[int, ...]` without an `Arg` is still an `int`. See
+  [Chat commands](docs/insim.md#chat-commands).
+- Fixed: a `float` argument took `nan`, `inf` and `1e999` (which `float()` reads); now they are
+  answered with the usage, like any word that is not a number.
+
 ## 0.8.1
 
 - Names for the values of `IS_AIC` inputs, read from the comments of InSim.txt:

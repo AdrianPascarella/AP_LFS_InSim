@@ -87,6 +87,34 @@ the usage, and the function is not called:
 !speed ?     ->  !speed <kmh> [who]: Set the speed limit.
 ```
 
+A `float` is a finite number: `nan`, `inf` and `1e999` do not fit. For an argument of your own
+type, give the type the function gets and an `Arg` with how to read the word (a function that
+raises `ValueError` when it does not fit) and what it should be, for the reply:
+
+```python
+import math
+from typing import Annotated
+
+from lfs_insim import Arg
+
+
+def parse_kmh(word: str) -> float:
+    return math.inf if word.lower() == "max" else float(word)
+
+
+Kmh = Annotated[float, Arg(parse_kmh, "a number or max")]
+
+
+@commands.on_command("follow")
+def follow(command: Command, who: str, kmh: Kmh = 80.0) -> None:
+    """Follow a car."""
+    # !follow Bob max -> kmh == math.inf
+```
+
+```text
+!follow Bob fast  ->  !follow: kmh must be a number or max, not 'fast'. Use: !follow <who> [kmh]
+```
+
 A function that takes only the `Command` gets whatever was typed in `command.args`, unchecked.
 
 **Who may use it.** `admin=True` keeps a command for LFS admins and the host (UCID 0). `allow` is

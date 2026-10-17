@@ -1,6 +1,28 @@
 # 📓 Diario — AP_LFS_InSim (lfs_insim)
 <!-- Solo se añade, lo más nuevo arriba. Una entrada por sesión. -->
 
+## S28 — 2026-10-17 — W13.1: argumentos de tipo propio en los comandos (`Arg`), y `float` finito
+
+**Contexto:** equipo principal, desde la S16 de `lfs-ai-control`. Control de inicio en verde; los documentos
+cuadraban con git. Pendientes: U14 y U11, que no tocan esto.
+
+**Por qué:** en `lfs-ai-control` (W5.1, D13) el usuario pidió «max» en toda velocidad que se escriba
+(«un !follow me max 10»). `Commands` solo admitía `str`, `int` y `float`, y el `float` dejaba pasar `nan`,
+`inf` y `1e999`. Preguntado si rodearlo allí o arreglarlo aquí (allí, su §15: los problemas de la
+biblioteca se arreglan en la biblioteca), el usuario: «Arreglarlo en lfs-insim ya».
+
+**Hecho (W13.1):** `Arg(parse, expected)` en `_commands.py`, exportado; una anotación
+`Annotated[T, Arg(...)]` lee la palabra con `parse`, y `Annotated[T, ...]` sin `Arg` es `T`. El `float` es
+finito. Tests primero, `tests/test_command_args.py` (9): los cinco de `nan`/`inf`/`1e999`, en rojo con el
+`float` de antes (archivo restaurado y `__pycache__` borrados, §13). Docs en `docs/insim.md`, CHANGELOG en
+«Unreleased». Diseño y descartes en `API_DESIGN.md` (W13).
+
+**Verificación:** `verify` PASS, 649 tests (aviso conocido: `generate_packets.py`, 501 líneas). Probado
+también con `lfs-ai-control` contra este `src` (`PYTHONPATH`): su `verify` en verde, 356 tests.
+
+**API:** nueva, `lfs_insim.Arg`; cambia el contrato de `float` en los comandos (ya no acepta lo no finito).
+Siguiente: W13.2, publicar 0.9.0 (con permiso).
+
 ## S27 — 2026-10-15 — W12.1: nombres para los valores de `IS_AIC`; `lfs-ai-control` clonado aquí
 
 **Contexto:** equipo principal. Control de inicio en verde; el pull trajo S26 (del segundo equipo) y `v0.8.0`.

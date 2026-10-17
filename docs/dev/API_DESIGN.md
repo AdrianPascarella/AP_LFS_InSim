@@ -446,6 +446,18 @@ class FreeCam(Plugin):                      # o una clase, si aporta herencia, o
 - *Descartado* (el cargador del proyecto anterior, P4): manifiestos `insim.json`, carga por carpetas, buscar
   plugins por nombre (`get_insim("...")`, sin tipo), versiones entre plugins, activar o desactivar en marcha.
 
+## Argumentos de tipo propio en los comandos (W13, S28; pedido desde `lfs-ai-control`, diseño del agente)
+`lfs-ai-control` necesitaba que una velocidad fuera «un número o `max`» (`!ai follow me max 10`) y los
+comandos solo aceptaban `str`, `int` y `float`. El usuario eligió arreglarlo aquí y no rodearlo allí.
+- **`Annotated[T, Arg(parse, expected)]`:** el verificador de tipos sigue viendo `T` y la biblioteca lee la
+  palabra con `parse` (que lanza `ValueError` si no encaja); `expected` es lo que se dice en la respuesta
+  («kmh must be a number or max, not 'fast'»). `Arg` se exporta en `lfs_insim`. `Annotated[int, ...]` sin
+  `Arg` es un `int`. Vale también con `*rest`.
+- **Un `float` es un número finito:** `float()` leía `nan`, `inf` y `1e999`, que ninguna palabra quiere decir
+  como número (llegaban así hasta los controladores de `lfs-ai-control`). Arreglo de comportamiento.
+- *Descartado:* aceptar como anotación cualquier función (`kmh: parse_kmh`, como el `type=` de argparse): mypy
+  no la admite como tipo; y sacar el texto de la respuesta del docstring del convertidor (frágil).
+
 ## Abierto (se decide más adelante, no ahora)
 - Agrupar manejadores en módulos (lo que hacía `InSimApp` con varias aplicaciones a la vez): si
   hiciera falta, algo como el `APIRouter` de FastAPI. Solo si una aplicación real lo pide.

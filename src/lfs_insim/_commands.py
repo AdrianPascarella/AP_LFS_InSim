@@ -16,18 +16,20 @@ only the messages with the prefix of IS_ISI, so as host the others are seen by e
 The arguments are the parameters of the function after the Command: with
 `def speed(command, kmh: int, who: str = "all")`, "!speed 80" calls `speed(command, 80, "all")`.
 Words that do not fit are answered with the usage, and the function is not called; "!speed ?" is
-answered with the usage and the first line of the docstring. A function that takes only the
-Command gets any words, unchecked, in `command.args`.
+answered with the usage and the first line of the docstring. A float is a finite number ("nan",
+"inf" and "1e999" do not fit). An argument of your own type is `Annotated[T, Arg(parse, expected)]`.
+A function that takes only the Command gets any words, unchecked, in `command.args`.
 """
 
 from __future__ import annotations
 
 import functools
 import inspect
+import math
 import typing
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Literal, get_args
+from typing import TYPE_CHECKING, Annotated, Any, Literal, get_args
 
 from lfs_insim._handlers import Handlers
 from lfs_insim._plugins import Plugin
@@ -41,7 +43,51 @@ CommandHandler = Callable[..., None] | Callable[..., Awaitable[None]]
 Allow = Callable[["Command"], bool]
 GuestCommands = Literal["local", "everyone"]
 
-_TYPES: dict[Any, str] = {str: "text", int: "a whole number", float: "a number"}
+
+@dataclass(frozen=True)
+class Arg:
+    """How a command argument of your own type is read from its word.
+
+    Put it in the annotation, after the type the function gets, so type checkers still see that
+    type: a speed that is a number or "max" (infinity) is
+
+        Kmh = Annotated[float, Arg(parse_kmh, "a number or max")]
+
+        @commands.on_command("speed")
+        def speed(command: Command, kmh: Kmh) -> None: ...
+
+    "!speed fast" is answered "kmh must be a number or max, not 'fast'" with the usage.
+    """
+
+    parse: Callable[[str], Any]
+    """Turns the word into the value; raises ValueError if it does not fit."""
+    expected: str
+    """What the word should be, for the reply: "a number or max"."""
+
+
+def _number(word: str) -> float:
+    """float() also reads "nan", "inf" and "1e999", which no word means as a number."""
+    value = float(word)
+    if not math.isfinite(value):
+        raise ValueError(word)
+    return value
+
+
+_BUILTIN: dict[Any, Arg] = {
+    str: Arg(str, "text"),
+    int: Arg(int, "a whole number"),
+    float: Arg(_number, "a number"),
+}
+
+
+def _arg_of(kind: Any) -> Arg | None:
+    """The Arg for an annotation: its own in Annotated[T, Arg(...)], else T's; None if none."""
+    if typing.get_origin(kind) is Annotated:
+        kind, *extras = get_args(kind)
+        for extra in extras:
+            if isinstance(extra, Arg):
+                return extra
+    return _BUILTIN.get(kind)
 
 
 @dataclass(frozen=True)
@@ -78,7 +124,7 @@ class _Misuse(Exception):
 @dataclass(frozen=True)
 class _Param:
     name: str
-    type: Any
+    arg: Arg
     optional: bool
     rest: bool
 
@@ -89,9 +135,9 @@ class _Param:
 
     def convert(self, word: str) -> Any:
         try:
-            return self.type(word)
+            return self.arg.parse(word)
         except ValueError:
-            raise _Misuse(f"{self.name} must be {_TYPES[self.type]}, not {word!r}") from None
+            raise _Misuse(f"{self.name} must be {self.arg.expected}, not {word!r}") from None
 
 
 def _params(name: str, handler: CommandHandler) -> list[_Param] | None:
@@ -106,7 +152,7 @@ def _params(name: str, handler: CommandHandler) -> list[_Param] | None:
     if params[0].kind is params[0].VAR_POSITIONAL:
         return None  # like print(*args): it takes the Command and nothing is checked
     try:
-        hints = typing.get_type_hints(handler)
+        hints = typing.get_type_hints(handler, include_extras=True)
     except Exception:
         hints = {}
     result: list[_Param] = []
@@ -118,13 +164,17 @@ def _params(name: str, handler: CommandHandler) -> list[_Param] | None:
                 raise TypeError(f"{name}: {param.name} must have a default (it is not a word)")
             continue
         kind = hints.get(param.name, str)
-        if kind not in _TYPES:
+        arg = _arg_of(kind)
+        if arg is None:
+            if typing.get_origin(kind) is Annotated:
+                kind = get_args(kind)[0]
             shown = getattr(kind, "__name__", repr(kind))
             raise TypeError(
-                f"{name}: {param.name} is a {shown}; command arguments are str, int or float"
+                f"{name}: {param.name} is a {shown}; command arguments are str, int or float,"
+                " or your own type as Annotated[T, Arg(...)]"
             )
         optional = param.default is not param.empty
-        result.append(_Param(param.name, kind, optional, param.kind is param.VAR_POSITIONAL))
+        result.append(_Param(param.name, arg, optional, param.kind is param.VAR_POSITIONAL))
     return result or None
 
 
@@ -231,8 +281,9 @@ class Commands(Plugin):
 
         `@commands.on_command("kick")` is called for "!kick Bob" with a Command first:
         `command.reply("...")` answers only who typed it. The parameters after it are the words
-        typed, converted to their annotation (str, int or float; a `*rest` takes the remaining
-        ones): `def kick(command: Command, name: str, minutes: int = 5)`. Words that do not fit
+        typed, converted to their annotation (str, int, float, or `Annotated[T, Arg(...)]`; a
+        `*rest` takes the remaining ones): `def kick(command: Command, name: str, minutes: int =
+        5)`. Words that do not fit
         are answered with the usage, and "!kick ?" with the usage and the first line of the
         docstring. A function of only the Command gets any words in `command.args`.
 
