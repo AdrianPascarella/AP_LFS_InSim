@@ -1,5 +1,6 @@
 # 📍 Estado — AP_LFS_InSim (lfs_insim)
-> Actualizado: 2026-10-17 (S28), equipo principal. **S28: W13 cerrada y `lfs-insim` 0.9.0 publicada**
+> Actualizado: 2026-10-17 (S29), equipo principal. **S29: U11 cerrada** (como invitado, los comandos de
+> otra persona se ignoran, visto con dos cuentas del usuario en su servidor). **S28: W13 cerrada y `lfs-insim` 0.9.0 publicada**
 > (`Arg` para argumentos de tipo propio en los comandos, `float` finito), fijada en `lfs-ai-control`.
 > **▶️ SIGUIENTE aquí:** nada propio; se sigue en `lfs-ai-control`. Lo de S27 sigue debajo. **S27: W12 cerrada y `lfs-insim` 0.8.1 publicada:** nombres
 > para los valores de `IS_AIC` (`STEER`, `TOGGLE`, `HEADLIGHTS`, `SIREN`, `INDICATORS`, `LOOK` generados de

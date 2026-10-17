@@ -1,6 +1,30 @@
 # 📓 Diario — AP_LFS_InSim (lfs_insim)
 <!-- Solo se añade, lo más nuevo arriba. Una entrada por sesión. -->
 
+## S29 — 2026-10-17 — U11: como invitado, los comandos de otra persona se ignoran
+
+**Contexto:** equipo principal, desde una sesión de `lfs-ai-control` (su S20). El usuario: «Aprovechando
+ahora podríamos probar el useraction que tenemos pendiente en el repositorio de la biblioteca. Tendríamos
+que conectar el insim al local». Su servidor alojado «testing» (lfs.net, SO7) con **dos cuentas suyas**:
+`A.Pascarella` (este PC, conexión 1) y `AngeloPascarella` (conexión 4). Sin cambios de código.
+
+**U11** (con `lfs-insim` 0.9.0 de PyPI, en el `.venv` de `lfs-ai-control`): un programa como
+`examples/who.py` conectado al LFS local (`127.0.0.1:29999`, `--admin admin`, prefijo `!`), con `!who` y un
+`!kick NAME` que solo escribe en el log. `roster.guest` True, `roster.local` = conexión 1.
+- `AngeloPascarella` escribió `!who` y `!kick bob`: llegaron (`IS_MSO` `USER`, UCID 4) y **no se ejecutó
+  ninguno ni se le contestó**.
+- `A.Pascarella` escribió `!who`: se ejecutó (`local=True`) y la respuesta salió por `IS_MSL` (vuelve como
+  `IS_MSO` UCID 0 `SYSTEM`), solo en su pantalla. El usuario: «Ahora sí, salió perfecto».
+- **Un fallo del script de prueba, no de la biblioteca:** el primer intento solo contestaba una línea por
+  piloto y no había nadie en pista: el comando se ejecutó y no dijo nada (el usuario: «no se ejecutó nada»).
+  Repetido con una respuesta siempre.
+
+**De paso, para `lfs-ai-control` (su D17, sin código aquí):** en el InSim del servidor alojado con prefijo
+`!`, los `!` de las dos cuentas llegan como `IS_MSO` `PREFIX` y LFS no los muestra a nadie; `IS_MTC` llega
+solo a su conexión; `/ai` desde el servidor: «/ai move: Not for dedicated host»; `/uai USERNAME` crea una IA
+del usuario, que el `IS_AIC` del servidor no conduce y el del LFS del usuario sí. Detalle en el `LOG.md` de
+`lfs-ai-control`, S20. **Pendiente:** U14 (grupo P).
+
 ## S28 — 2026-10-17 — W13.1: argumentos de tipo propio en los comandos (`Arg`), y `float` finito
 
 **Contexto:** equipo principal, desde la S16 de `lfs-ai-control`. Control de inicio en verde; los documentos
