@@ -29,6 +29,7 @@ Stdlib only. Python 3.8+. Works on Windows, macOS and Linux.
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import subprocess
 import sys
@@ -182,10 +183,46 @@ def read_version(path: Path) -> "int | None":
     return int(m.group(1)) if m else None
 
 
-def check_protocol_version(project_file: Path, skill_file: Path) -> None:
-    skill_version = read_version(skill_file)
+def _version_key(text: str) -> "tuple[int, ...]":
+    return tuple(int(part) for part in re.findall(r"\d+", text))
+
+
+def find_template(explicit: "str | None", home: "Path | None" = None) -> "Path | None":
+    """The template to compare against: the explicit path when it exists; otherwise the newest
+    installed ``agentic-protocol`` plugin, read from Claude Code's record of installs
+    (``~/.claude/plugins/installed_plugins.json``). A project written before the protocol became
+    a plugin passes the old loose-copy path, which no longer exists: it falls through to the
+    plugin instead of reporting SKIP."""
+    if explicit and Path(explicit).is_file():
+        return Path(explicit)
+    home = Path.home() if home is None else home
+    record = home / ".claude" / "plugins" / "installed_plugins.json"
+    try:
+        plugins = json.loads(record.read_text(encoding="utf-8")).get("plugins", {})
+    except (OSError, ValueError, AttributeError):
+        return None
+    found = []
+    for key, entries in plugins.items():
+        if not key.startswith("agentic-protocol@") or not isinstance(entries, list):
+            continue
+        for entry in entries:
+            if not isinstance(entry, dict):
+                continue
+            candidate = Path(str(entry.get("installPath", ""))) / "skills" / "agentic-protocol" / "references" / "protocol.md"
+            if candidate.is_file():
+                found.append((_version_key(str(entry.get("version", ""))), candidate))
+    return max(found)[1] if found else None
+
+
+def check_protocol_version(project_file: Path, skill_file: "Path | None") -> None:
+    skill_version = read_version(skill_file) if skill_file else None
     if skill_version is None:
-        report("SKIP", "protocol template version", f"{skill_file} not found on this machine")
+        report(
+            "SKIP",
+            "protocol template version",
+            "no agentic-protocol plugin installed on this machine (where it is, its session-start "
+            "hook does this check)",
+        )
         return
     project_version = read_version(project_file)
     if project_version is None:
@@ -233,8 +270,9 @@ def main() -> int:
     )
     parser.add_argument(
         "--skill-template",
-        default=str(Path.home() / ".claude" / "skills" / "agentic-protocol" / "references" / "protocol.md"),
-        help="the installed skill's protocol.md, used for the version check",
+        default=None,
+        help="a protocol.md to compare against; when missing, the installed agentic-protocol "
+        "plugin's is used",
     )
     parser.add_argument(
         "--no-pull", action="store_true", help="skip 'git pull' even over a clean tree"
@@ -255,7 +293,7 @@ def main() -> int:
         check_gh_account(args.gh_account)
     check_pull(do_pull=not args.no_pull)
     check_reality()
-    check_protocol_version(Path(args.protocol_file), Path(args.skill_template))
+    check_protocol_version(Path(args.protocol_file), find_template(args.skill_template))
 
     print("-" * 60)
     if failures:
