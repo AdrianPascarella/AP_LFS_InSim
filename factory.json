@@ -1,0 +1,5 @@
+{
+  "verify": ".venv/Scripts/python scripts/verify.py",
+  "protected_paths": ["docs/dev/PROTOCOL.md", "factory.json", ".github/workflows/*"],
+  "timeout_seconds": 900
+}

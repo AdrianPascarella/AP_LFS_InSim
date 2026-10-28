@@ -1,6 +1,6 @@
 # 📜 Protocolo de trabajo — AP_LFS_InSim (lfs_insim)
 
-<!-- protocol-template-version: 3 -->
+<!-- protocol-template-version: 4 -->
 
 ## Configuración
 
@@ -58,6 +58,11 @@ de lfs.net o `OutSimPack.txt` difieren de la versión comprobada (`spec/checked.
 `--accept` registra la nueva tras revisarla. Los tests que necesitan red se saltan por defecto
 (`pytest -m network`). El workflow `spec` los ejecuta cada lunes (**solo desde `main`**, que es
 la rama por defecto) y en cada push que cambie la especificación.
+**El comando de verificación, como dato** (desde S31, plantilla v4): `factory.json`, en la raíz del
+repositorio, es la única fuente del comando que tiene que pasar y de las rutas que ningún cambio
+automático puede tocar (este archivo, `factory.json` y `.github/workflows/`). Esta Configuración lo
+nombra y describe el comando por su propósito; las herramientas (una puerta antes de un merge, el CI,
+un hilo de la nube que solo ve `CLAUDE.md`) leen el archivo, nunca esta prosa.
 
 **Punto ciego (lo que el agente no puede comprobar).**
 - **Que funcione en el LFS real**: que el juego acepte los paquetes y haga lo esperado (cámara,
@@ -110,7 +115,12 @@ cambia**. Este repositorio tiene un ayudante de credenciales local que pide siem
 
 **Trampas conocidas de este equipo:** ver §13.
 
-**Versión de la plantilla del protocolo absorbida:** **3**.
+**Versión de la plantilla del protocolo absorbida:** **4** (instalación FRESH en S1 con la v3;
+UPGRADE a la v4 en S31). La plantilla llega con el plugin **`agentic-protocol@software-factory`**,
+activado solo en el equipo del usuario (`.claude/settings.local.json`, fuera de git: el repositorio
+es público y el marketplace, privado) con la actualización automática encendida (`autoUpdate` en
+su marketplace); su gancho de inicio de sesión compara esta versión con la del
+plugin y avisa si hay que hacer UPGRADE (§3, paso 9).
 
 Cuando se describa un comando de verificación, lint o smoke, se indica su nombre y qué clase de
 defecto detecta, nunca su cableado interno. *Por qué: el cableado ya está en el código, completo y
@@ -146,7 +156,9 @@ nadie pidió quitar. Ni los tests ni `close_check.py` lo detectan.*
 | `LOG.md` | Diario de solo añadir, una entrada por sesión | Sin límite. Al empezar solo se lee la última entrada. |
 | `PLAN.md` | Plan por fases, con tareas y criterios de aceptación | Sin límite. Al empezar solo se lee la fase activa. |
 | `DIAGNOSIS.md` | Problemas conocidos, con ID estable y estado | Referencia: se lee bajo demanda. |
-| `API_DESIGN.md` | Cómo se usa la biblioteca: ejemplos y decisiones `D<n>` aprobadas | Referencia: se lee al tocar la API pública. |
+| `DECISIONS.md` | **El brain, primera parte:** cada decisión vigente, una entrada por decisión, ID estable `D<n>`, su porqué y las alternativas descartadas | Referencia. Solo se añade. Se lee **por tema, antes de especificar, construir o revisar** lo que la decisión toca; nunca entero, nunca al arrancar. |
+| `ARCHITECTURE.md` | **El brain, segunda parte:** el mapa de lo que es cierto ahora: componentes, dónde vive cada cosa, convenciones, fronteras, lo que no se hace a propósito y qué `D<n>` dice por qué | Referencia. Se reescribe en el sitio cuando cambia la realidad. Se lee por tema antes de especificar o construir. **Tope ~200 líneas**; el detalle va a una guía (§14). |
+| `API_DESIGN.md` | Cómo se usa la biblioteca: ejemplos y el detalle de las decisiones de API (D1–D6 y sus precisiones) | Referencia: se lee al tocar la API pública. Las `D<n>` son las mismas de `DECISIONS.md` (una sola numeración). |
 | `PROTOCOL.md` | Estas reglas | **Se lee entero en cada sesión.** |
 | `INDEX.md` | Punto de entrada | Mínimo. |
 
@@ -180,13 +192,32 @@ Acción.
 reconstruirla desde `LOG.md`.*
 
 **La regla de fondo:** `LOG.md` es el diario del proceso (qué pasó y cuándo). Todo lo que tiene ID
-temático propio es referencia (qué es verdad ahora). Un hecho va en uno de los dos, nunca en ambos.
+temático propio (`P<n>` y `D<n>`) es referencia (qué es verdad ahora). Un hecho va en uno de los dos,
+nunca en ambos.
+
+**El brain (`DECISIONS.md` + `ARCHITECTURE.md`) es referencia para lo que peor hace el diario: qué se
+decidió y por qué se descartó lo otro.** Una decisión va a `DECISIONS.md` cuando un agente futuro
+podría deshacerla sin notar que estaba decidida: la pila, una frontera, una convención, algo que no se
+hace a propósito. Una elección que nadie podría rehacer al revés se queda en el diario. Una entrada por
+decisión, `### D<n> — <título>`, con la decisión, su porqué, cada alternativa descartada con su porqué,
+la sesión en que se tomó y qué toca (rutas o temas, para encontrarla con un grep desde el código).
+**Solo se añade, como `DIAGNOSIS.md`:** una decisión que deja de valer gana `SUSTITUIDA (S<n>) por
+D<m>` y la entrada nueva dice qué cambió. Las decisiones de la API pública guardan su detalle y sus
+ejemplos en `API_DESIGN.md`; `DECISIONS.md` lleva su entrada y apunta allí. `ARCHITECTURE.md` es el
+mapa que hace encontrables las decisiones: qué existe, dónde vive, cómo se verifica y qué `D<n>`
+explica cada frontera; por estructura y convenciones, nunca por números de línea (§14), y se reescribe
+en el sitio en el cierre que cambia la realidad (§4). **Nadie lee el brain al arrancar la sesión**;
+todo el que va a especificar, construir o revisar un cambio lee antes las entradas de **su tema**,
+incluido un agente que no es el de la sesión (un hilo de la nube, un subagente, un revisor).
+*Por qué: al quinto mes nadie relee cuarenta sesiones de diario para enterarse de que X se probó y se
+descartó; una decisión que solo vive en `LOG.md` se vuelve a tomar, a menudo al revés, y un revisor no
+distingue «no lo sabía» de «lo cambié a propósito».*
 
 **Presupuesto de lectura al empezar una sesión:**
 
 | Se lee entero | Se lee en parte | NO se lee al empezar |
 |---|---|---|
-| `STATE.md` · `USER_ACTIONS.md` · este archivo | la **última entrada** de `LOG.md` · la **fase activa** de `PLAN.md` | el resto de `LOG.md` · el resto de `PLAN.md` · `DIAGNOSIS.md` (bajo demanda, buscando por ID) |
+| `STATE.md` · `USER_ACTIONS.md` · este archivo | la **última entrada** de `LOG.md` · la **fase activa** de `PLAN.md` | el resto de `LOG.md` · el resto de `PLAN.md` · `DIAGNOSIS.md` (bajo demanda, buscando por ID) · `DECISIONS.md`, `ARCHITECTURE.md` y `API_DESIGN.md` (por tema, justo antes de especificar, construir o revisar; nunca enteros) |
 
 *Por qué: `LOG.md` crece sin límite por diseño. Si un archivo que se lee entero se vuelve demasiado
 grande, el defecto está en el archivo, y eso no da permiso para leer más.*
@@ -203,9 +234,12 @@ coste que se paga para siempre.*
 
 ## §3 — INICIO de sesión
 1. Estar en `dev`.
-2. **Confirmar la identidad antes de hacer nada más con git.** Comprobar que `git config user.email`
-   es `pascarellaadrian@gmail.com`. Si no lo es, corregirlo con `git config` en local (nunca
-   `--global`). Autorizado sin preguntar. No se comprueba la cuenta activa de `gh`: aquí es
+2. **Confirmar la identidad antes de hacer nada más con git.** Comprobar la identidad **efectiva**
+   (`git config user.name` y `user.email`, lo que llevará el próximo commit): tiene que ser
+   `AdrianPascarella <pascarellaadrian@gmail.com>`. Nunca el autor del último commit: en un clon
+   nuevo el historial se escribió en otro equipo, así que esa comprobación pasa justo donde la
+   identidad tiene más probabilidades de estar mal (§13, S15). Si no lo es, corregirlo con
+   `git config` en local (nunca `--global`). Autorizado sin preguntar. No se comprueba la cuenta activa de `gh`: aquí es
    `Veloik-adrian` a propósito, y este repo autentica con su propio ayudante de credenciales
    (Configuración).
 3. Proteger lo que nunca se debe perder antes de cualquier pull, checkout o stash. Hoy la lista está
@@ -216,10 +250,11 @@ coste que se paga para siempre.*
 7. Leer la última entrada de `LOG.md` y la fase activa de `PLAN.md`.
 8. Contrastar los documentos con la realidad (`git status`, `git log --oneline -5`). Si no coinciden,
    decirlo: manda la realidad y los documentos están mal.
-9. **Comprobar si la plantilla del protocolo ha avanzado**: leer solo la línea de versión de
-   `~/.claude/skills/agentic-protocol/references/protocol.md` y compararla con la versión anotada en
-   la Configuración. Si son distintas, avisar y ofrecer volver a ejecutar la skill en modo
-   **UPGRADE**. Si la skill no está en el equipo, saltar este paso sin decir nada.
+9. **Comprobar si la plantilla del protocolo ha avanzado.** Lo hace el gancho de inicio de sesión
+   del plugin `agentic-protocol@software-factory` (Configuración): compara la versión anotada en la
+   Configuración con la del plugin y, solo si este proyecto va por detrás, pide ofrecer la skill en
+   modo **UPGRADE**. Si el gancho avisa, se ofrece; si el plugin no está en el equipo, se salta este
+   paso sin decir nada.
 10. Resumir en 2–3 líneas dónde estamos y qué se propone, **diciendo cuántas acciones esperan al
     usuario y cuál bloquea el siguiente paso**. Después, actuar.
 
@@ -229,9 +264,18 @@ coste que se paga para siempre.*
 python scripts/session_start_check.py --git-identity "AdrianPascarella <pascarellaadrian@gmail.com>" --branch dev
 ```
 
-Para el paso 7: `python scripts/ctx_log_last.py` y `python scripts/ctx_plan_active.py`. Si un script
-falta o falla, el paso se hace a mano tal como está escrito: los scripts ahorran repetición, no
-sustituyen ningún paso.
+Sin `--skill-template`: la comparación de versión del paso 9 la hace el gancho del plugin, y el
+script la da como `SKIP`. Para el paso 7: `python scripts/ctx_log_last.py` y
+`python scripts/ctx_plan_active.py`. Si un script falta o falla, el paso se hace a mano tal como está
+escrito: los scripts ahorran repetición, no sustituyen ningún paso.
+
+**Un hilo sin inicio de sesión** (una rutina de la nube, un job del CI, un `claude -p`, un
+subagente) solo lee lo que el entorno carga solo (`CLAUDE.md`). Por eso el gancho escrito ahí lleva
+§3 comprimido: la rama de trabajo (`dev`), qué leer antes de cambiar nada (`STATE.md` y después el
+brain de su tema), dónde está declarado el comando de verificación (`factory.json`) y qué no debe
+hacer nunca (merge a `main`, reescribir la historia de los archivos de contexto). *Por qué: ese hilo
+clona la rama por defecto y arranca sin ningún contexto; un gancho que solo dice «al empezar la sesión
+lee `STATE.md`» se escribió para una sesión, y un hilo que nunca la tiene se lo salta en silencio.*
 
 *Por qué (2): una identidad equivocada se publica en silencio y queda para siempre en el historial.
 Con la cuenta de `gh` equivocada, un repo privado devuelve «not found», que parece «este repo no
@@ -247,10 +291,14 @@ una mejora de la plantilla solo llega si alguien se acuerda de reinstalar.*
    `USER_ACTIONS.md`, escrita antes de cerrar, y con los contadores de la cabecera actualizados.
    *Por qué: lo que solo se dijo en el chat muere con el chat.*
 3. Añadir una entrada a `LOG.md`: qué se hizo, **decisiones con su porqué**, resultados de la
-   verificación, commits y veredictos del usuario sobre las `U<n>`.
+   verificación, commits y veredictos del usuario sobre las `U<n>`. **Una decisión que seguirá
+   valiendo el mes que viene gana su `D<n>` en `DECISIONS.md`** (§2, §10); la entrada del diario la
+   cita por ID con una línea en vez de llevar el razonamiento dos veces.
 4. Marcar lo hecho en `PLAN.md` y añadir las tareas descubiertas. **Un defecto o problema estructural
    encontrado va a `DIAGNOSIS.md` con un nuevo `P<n>`** y su evidencia, aunque no se arregle ahora.
-   Si se cierra una fase que cambia lo que el proyecto es en esencia (arquitectura, pila, despliegue),
+   **Si el cierre cambió cómo está construido el proyecto** (un componente que entra o sale, una
+   convención adoptada, una frontera que se mueve), se reescribe la parte afectada de
+   `ARCHITECTURE.md` en el mismo cierre. Si se cierra una fase que cambia lo que el proyecto es en esencia (arquitectura, pila, despliegue),
    se actualiza en el mismo cierre la Configuración de este archivo.
    *Por qué: un problema encontrado y no archivado se encuentra dos veces. Y atar la actualización de
    la Configuración al cierre de fase es el único disparador lo bastante preciso para que no se
@@ -372,7 +420,13 @@ descubre ya publicado.*
 - **Antes de matar procesos «huérfanos», mirar qué son.** Pueden ser trabajo del usuario.
 
 ## §10 — Decisiones
-- Registrar toda decisión relevante **con su porqué** en `LOG.md`, incluido lo descartado y por qué.
+- Registrar toda decisión relevante **con su porqué**, incluido lo descartado y por qué. Una decisión
+  que seguirá valiendo el mes que viene (una que un agente futuro podría deshacer sin notar que
+  estaba decidida) va a `DECISIONS.md` como `D<n>` (la decisión vigente, lo descartado, qué toca), y
+  si es de la API pública, con su detalle en `API_DESIGN.md`; `LOG.md` registra que se tomó en esta
+  sesión y cita el ID (§2: diario = cuándo; brain = qué es cierto ahora). Una elección que nadie
+  podría rehacer al revés se queda solo en el diario. *Por qué: el «qué» está en el diff; el «por
+  qué» solo sobrevive donde el próximo agente va a buscarlo: por tema, no por fecha.*
 - **Al presentar opciones, marcar la recomendada y justificarla.** Recomendar, no enumerar.
 - Con información suficiente, actuar. No preguntar lo que se puede averiguar.
 
@@ -489,7 +543,8 @@ Si no está claro si una instrucción es permanente o puntual, **se pregunta**.
 | Un daño causado por este equipo o sus herramientas | §13 |
 | Algo que el usuario debe probar, hacer, decidir o aportar | `USER_ACTIONS.md`, con un nuevo `U<n>` |
 | Un veredicto sobre algo que el agente no podía comprobar | Cerrar esa `U<n>` y registrar el veredicto en `LOG.md` |
-| Una decisión de diseño y sus motivos | `LOG.md` (y `STATE.md` si condiciona el siguiente paso) |
+| Una decisión de diseño y sus motivos | `DECISIONS.md`, con un `D<n>` nuevo (si es de la API, su detalle en `API_DESIGN.md`); una línea que lo cita en `LOG.md` (y `STATE.md` si condiciona el siguiente paso) |
+| Un hecho sobre cómo está construido el proyecto (un componente, una convención, una frontera) | `ARCHITECTURE.md`, reescrito en el sitio |
 | Un hecho sobre en qué punto está el trabajo | `STATE.md` |
 | Una tarea o una idea para más adelante | `PLAN.md` |
 | Un defecto o problema estructural | `DIAGNOSIS.md`, con un nuevo `P<n>` |

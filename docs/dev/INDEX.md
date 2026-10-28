@@ -18,6 +18,8 @@ en cada hito.
 4. **PLAN.md**: la fase activa y su lista de tareas.
 5. **PROTOCOL.md**: las reglas (obligatorias). Se consulta ante cualquier duda.
 6. **DIAGNOSIS.md**: los problemas conocidos. Bajo demanda.
+7. **DECISIONS.md** y **ARCHITECTURE.md**: el brain (qué se decidió y por qué, y el mapa de lo
+   que existe). Por tema, antes de especificar, construir o revisar un cambio. Nunca al empezar.
 
 ## Los archivos
 | Archivo | Qué es | Cuándo se actualiza |
@@ -27,10 +29,13 @@ en cada hito.
 | LOG.md | Diario de solo añadir | Al final de cada sesión |
 | PLAN.md | Fases, tareas y criterios de aceptación | Cuando se terminan tareas o cambia el plan |
 | DIAGNOSIS.md | Problemas conocidos, con ID estable | Cuando se encuentra algo nuevo |
-| API_DESIGN.md | Cómo se usa la biblioteca (decisiones `D<n>`) | Cuando cambia la API pública |
+| DECISIONS.md | Las decisiones vigentes, `D<n>`, con lo descartado (una sola numeración con `API_DESIGN.md`) | Cuando se toma o se sustituye una decisión |
+| ARCHITECTURE.md | El mapa de lo que existe y cómo se verifica | En el cierre que cambia cómo está construido el proyecto |
+| API_DESIGN.md | Cómo se usa la biblioteca (detalle de las decisiones de API, `D<n>`) | Cuando cambia la API pública |
 | COVERAGE.md | Qué paquete se ha visto funcionar en el LFS real (W11) | Al probar cada grupo en real |
 | LEGADO.md | Qué rescatar del proyecto anterior (propuestas sin decidir, S14) | Al planificar mejoras de la API |
 | PROTOCOL.md | Las reglas de trabajo | Cuando cambian las reglas |
+| ../../factory.json | El comando de verificación y las rutas protegidas, como dato | Cuando cambia la verificación |
 
 > Estos archivos los escribe el agente, nunca a mano. Si algo está mal, díselo al agente y lo
 > corregirá.

@@ -38,7 +38,7 @@ dev = ["ruff>=0.17,<0.18", "mypy", "pytest"]
 
 [tool.hatch.build.targets.sdist]
 # Working notes and agent instructions stay out of the public package.
-exclude = ["CLAUDE.md", "docs/dev", ".github"]
+exclude = ["CLAUDE.md", "docs/dev", ".github", "factory.json"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/lfs_insim"]

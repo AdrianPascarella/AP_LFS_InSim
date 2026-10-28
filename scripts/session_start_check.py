@@ -72,11 +72,12 @@ def check_branch(expected: str) -> None:
 
 
 def check_identity(expected: str) -> None:
-    res = git("log", "-1", "--format=%an <%ae>")
-    if res.returncode != 0:
-        report("SKIP", "git identity", "no commits yet in this repo")
-        return
-    actual = res.stdout.strip()
+    # The oracle is the *effective* config, which is what the next commit will carry. Reading
+    # the last commit's author instead passes on any fresh clone (the history was written on
+    # another machine) - exactly the machine where the identity is most likely to be wrong.
+    name = git("config", "user.name").stdout.strip()
+    email = git("config", "user.email").stdout.strip()
+    actual = f"{name} <{email}>"
     if actual == expected:
         report("PASS", "git identity", actual)
     else:

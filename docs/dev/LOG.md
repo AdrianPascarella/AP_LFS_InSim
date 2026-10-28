@@ -1,6 +1,51 @@
 # 📓 Diario — AP_LFS_InSim (lfs_insim)
 <!-- Solo se añade, lo más nuevo arriba. Una entrada por sesión. -->
 
+## S31 — 2026-10-28 — UPGRADE del protocolo a la plantilla v4 (brain, `factory.json`, gancho para hilos)
+
+**Contexto:** equipo principal, desde una sesión de `software-factory` (su S19), a petición del usuario. Solo
+documentación y configuración: no se tocó código. El plugin `agentic-protocol@software-factory` quedó activado
+**solo en el equipo del usuario**, en `.claude/settings.local.json` (fuera de git), con `autoUpdate` en su
+marketplace: el repositorio es público y el marketplace, privado, así que nadie que lo clone recibe un plugin
+que no puede instalar. Su gancho hace ahora la comparación de versión de §3.9.
+
+**Hecho (modo UPGRADE, de v3 a v4):**
+- **`PROTOCOL.md`:** versión 4 (comentario y Configuración); en Configuración, `factory.json` como fuente del
+  comando de verificación y el plugin del protocolo con su actualización automática. §2: `DECISIONS.md` y
+  `ARCHITECTURE.md` en la tabla y en el presupuesto de lectura, el párrafo del brain y `D<n>` como referencia.
+  §3: identidad **efectiva** (`git config`, nunca el autor del último commit), el paso 9 lo hace el gancho del
+  plugin (el atajo ya no lleva `--skill-template`; el script lo da como `SKIP`) y el párrafo de los hilos sin
+  sesión. §4.3 y §4.4: `D<n>` a `DECISIONS.md` y reescribir `ARCHITECTURE.md` cuando cambia cómo está construido.
+  §10 y la tabla de §15, con el brain. Se conservan la Configuración, §13, §15 y todos los IDs.
+- **`DECISIONS.md` (nuevo):** 23 decisiones vigentes de S1–S30. **D1–D6 conservan el número que tenían en
+  `API_DESIGN.md` desde S2** (una sola numeración en el proyecto; el detalle de la API sigue allí); D7–D23 son
+  nuevas entradas para decisiones que solo estaban en este diario o en `PLAN.md`. Sesiones citadas: S1–S9, S13,
+  S14, S15, S19, S20, S24, S26 y S30.
+- **`ARCHITECTURE.md` (nuevo):** el mapa del repositorio tal como está (0.9.0 publicada, W14.1 en `dev`).
+- **`factory.json` (nuevo, raíz):** `verify` = el comando de la Configuración; rutas protegidas
+  `docs/dev/PROTOCOL.md`, `factory.json` y `.github/workflows/*`.
+- **`CLAUDE.md`:** el párrafo para hilos sin sesión, añadido debajo del de siempre. **`INDEX.md`:** los tres
+  archivos nuevos.
+- **Scripts del protocolo:** `session_start_check.py`, `close_check.py`, `ctx_log_last.py` y `ctx_plan_active.py`
+  sustituidos por los de la v4 (con LF). Solo cambia el contenido de `session_start_check.py` (lee la identidad
+  efectiva); los otros tres ya eran iguales.
+
+**Decisiones:** D1–D6 se quedan con su número y las nuevas siguen desde D7, en vez de renumerar → los IDs no se
+renumeran nunca (§2) y `LOG.md`, `PLAN.md` y `DIAGNOSIS.md` ya citan D1–D6. *Descartado:* mover todo el detalle
+de `API_DESIGN.md` a `DECISIONS.md` (perdería los ejemplos y duplicaría las precisiones).
+
+**Verificación:** `.venv/Scripts/python scripts/verify.py` → PASS (environment, lint, format, types, tests: 653
+passed, 1 deselected; generated). Aviso conocido: `generate_packets.py`, 501 líneas. Control de cierre: todo en
+verde salvo el árbol limpio (11 cambios sin commit: el commit y el push se dejaron para la sesión que lo pidió) y
+el aviso de U15. `session_start_check.py` v4 en verde (identidad efectiva PASS; versión de la plantilla SKIP, la
+hace el gancho del plugin).
+
+**Decidido por el usuario (modo preguntas, desde `software-factory` S19):** «AP_LFS_InSim: fuera de PyPI»:
+`factory.json` se añade a la exclusión del sdist en `pyproject.toml`, junto a `CLAUDE.md`, `docs/dev` y
+`.github`. Comprobado construyendo el sdist: no lleva ninguno de los cuatro. `verify.py` → `RESULT: PASS`.
+
+**Commits:** uno, con todo lo anterior, a `dev` (con el permiso del usuario: «Sí, los cuatro»).
+
 ## S30 — 2026-10-18 — W14.1: un `on_connect` registrado con la conexión abierta se llama al momento
 
 **Contexto:** equipo principal, desde una sesión de `lfs-ai-control` (su S21), donde salió el defecto al probar

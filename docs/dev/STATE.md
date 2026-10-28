@@ -1,5 +1,9 @@
 # 📍 Estado — AP_LFS_InSim (lfs_insim)
-> Actualizado: 2026-10-18 (S30), equipo principal. **S30: W14 aceptada y W14.1 hecha** (P12: un `on_connect`
+> Actualizado: 2026-10-28 (S31), equipo principal. **S31: protocolo actualizado a la plantilla v4** (sin tocar
+> código): `DECISIONS.md` (D1–D23; D1–D6 son las de `API_DESIGN.md`), `ARCHITECTURE.md`, `factory.json` con el
+> comando de verificación, párrafo para hilos sin sesión en `CLAUDE.md` y scripts del protocolo v4. El plugin
+> `agentic-protocol@software-factory` está en `.claude/settings.json`. El siguiente paso no cambia: lo de S30.
+> Antes, S30 (2026-10-18). **S30: W14 aceptada y W14.1 hecha** (P12: un `on_connect`
 > registrado con la conexión abierta se llama al momento; un `Roster` hecho tarde ya queda listo). Sin publicar:
 > **▶️ SIGUIENTE aquí: W14.2** (0.9.1, con permiso del usuario) y decidir W14.3 (P13, `every()` tarde). Antes: **S29: U11 y U14 cerradas, W11 cerrada** (con dos cuentas
 > del usuario en su servidor; nuevo `tests/live/group_p.py`; ninguna acción pendiente). **S28: W13 cerrada y `lfs-insim` 0.9.0 publicada**
