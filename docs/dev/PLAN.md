@@ -551,18 +551,27 @@ en un programa (D17): un `InSim` sin otro complemento que use `Roster` lo creaba
 colgaba. Allí se rodea creando el `Roster` antes de conectar; nada lo pide con prisa.
 - [x] **W14.1** — Decidir con el usuario: que un `Roster` hecho con la conexión abierta pida al momento
   lo que pediría al conectar, o que `use(Roster)` tarde lo diga (error o aviso); tests primero con `FakeLFS`          hecho en S30 → LOG.md S30 (P12)
-- [ ] **W14.2** — Publicar como 0.9.1 (con permiso) y fijarla en `lfs-ai-control`
+- [x] **W14.2** — Publicar como 0.9.1 (con permiso) y fijarla en `lfs-ai-control`          hecho en S32 → LOG.md S32
 - [ ] **W14.3** — (P13, propuesta, sin aceptar) `every()` registrado con la conexión abierta, que arranque al momento
 **Acepta:** `await insim.use(Roster).ready()` con la conexión ya abierta termina con la foto completa,
 o falla con un mensaje que dice qué hacer.
 
-## W15 — `Roster.guest` verdadero en un jugador   ▶️ ABIERTA · pedida desde `lfs-ai-control` S58
+## W15 — `Roster.guest` verdadero en un jugador   ✅ cerrada en S32 · pedida desde `lfs-ai-control` S58
 **El defecto:** `Roster._before` hace `_guest = packet.Host == ISM.GUEST`, y `_ask_multiplayer` supone que en un jugador LFS no contesta a `TINY_ISM`.
 Medido en `lfs-ai-control` S58, LFS real en un jugador: contesta `IS_ISM` con `Host 0` y `HName` vacío (una conexión, UCID 0). `guest` queda verdadero, cuando
 su documentación dice «False in single player». Allí bloquea repetir una toma (su P26); se probó corrigiéndolo en memoria, sin parchear. `FakeLFS` calla, por eso no salió.
-- [ ] **W15.1** — Invitado es `Host 0` con nombre de servidor; `FakeLFS` contesta como el LFS real; tests primero
-- [ ] **W15.2** — Publicar como 0.9.1, junto con W14.2 (con permiso), y fijarla en `lfs-ai-control` (su W21.6)
+- [x] **W15.1** — Invitado es `Host 0` con nombre de servidor; `FakeLFS` contesta como el LFS real; tests primero          hecho en S32 → LOG.md S32 (P14)
+- [x] **W15.2** — Publicar como 0.9.1, junto con W14.2 (con permiso), y fijarla en `lfs-ai-control` (su W21.6)          hecho en S32 → LOG.md S32
 **Acepta:** en el LFS real, `guest` es falso en un jugador y como host, y verdadero en un servidor ajeno.
+
+## W16 — Comandos: texto entre comillas y encadenar con `&&`   ⏳ aceptada en S32; se hace después de W21 de `lfs-ai-control` (el usuario: «Primero W21, luego comandos»)
+**El objetivo (el usuario, S32):** escribir un texto con espacios entre comillas, con las reglas de Python para escapar, y varios comandos en un mensaje. Hoy `Commands._handle` trocea con `split()`.
+- [ ] **W16.1** — Medir en el LFS real qué llega al escribir `"`, `\` y `/` en el chat (según `text._ESCAPES`, `^t`, `^d` y `^s`; sin medir). Si es así, `a/b` ya llega hoy como `a^sb`
+- [ ] **W16.2** — El lector de palabras, como función pública (la terminal de `lfs-ai-control` lo usará): `"` y `'` solo abren al empezar una palabra; dentro se escapan `\"`, `\'` y `\\`; cualquier otra `\` se queda (`"C:\LFS"`); fuera de comillas, todo igual que hoy (`C:\LFS`, `Bob's`). No `shlex`: se come esas `\` y falla con `Bob's`. Comillas sin cerrar: se contesta con el uso. Tests primero
+- [ ] **W16.3** — `&&`: en orden, esperando a cada comando (también los `async`) y parando en el primer fallo; un trozo que empieza por el prefijo es un comando completo, y el que no, sigue en el mismo grupo. Hace falta una forma de decir «ha fallado» (hoy solo se contesta en el chat). Tests primero
+- [ ] **W16.4** — Publicar como 0.10.0 (con permiso) y fijarla en `lfs-ai-control`, donde `add` tiene que terminar con la IA en pista y su posición conocida
+**Acepta:** en el LFS real, `!ai take "curva larga"` llega como una palabra y `!ai add && wander` manda a vagar a la IA nueva; si `add` falla, `wander` no se ejecuta.
+**Descartado:** repetir el prefijo como separador (`!ai add !ai wander`, gasta espacio de 128 bytes y se confunde con un texto) y `;` (si falla `add`, `wander` se lo lleva la IA anterior).
 
 ## Ideas (aparcadas, sin compromiso)
 - **Ayudante de botones** (de escribir `examples/buttons.py`, S12): hay que repartir los `ClickID` a

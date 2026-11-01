@@ -147,6 +147,12 @@ generadas, y las ideas de la conexión (reconexión, errores aislados por maneja
   desde otro `on_connect` no corra dos veces. Tests en `tests/test_lifecycle.py` (W14): los dos del arreglo,
   en rojo antes del código; el de «una sola vez», en rojo con la mutación «sin copia».
 
+### P14 — En un jugador, `Roster.guest` daba verdadero   [RESUELTO en S32]
+- **Evidencia:** `lfs-ai-control` S58 (su P26), LFS real en un jugador: `TINY_ISM` responde `IS_ISM` con `Host 0` y `HName` vacío; `_before` hacía `_guest = Host == ISM.GUEST`. `FakeLFS` callaba, por eso no salió.
+- **Impacto:** `guest` contradecía su documentación; allí bloqueaba repetir una toma.
+- **Acción:** W15.
+- Resuelto (S32): invitado es `Host 0` con nombre; `FakeLFS` contesta como el real. Visto en el LFS real: `Host 0`, `''`, `guest` falso. Publicado en 0.9.1.
+
 ### P13 — `every()` registrado con la conexión abierta no empieza hasta la siguiente   [ABIERTO]
 - **Evidencia:** S30, script del scratchpad con `FakeLFS`: `insim.every(0.05)` registrado 0,2 s después de
   conectar, 0 llamadas en 0,5 s. Los ticks solo arrancan cuando LFS acepta una conexión (`IS_VER`).

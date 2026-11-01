@@ -1,11 +1,13 @@
 # 📍 Estado — AP_LFS_InSim (lfs_insim)
-> Actualizado: 2026-10-28 (S31), equipo principal. **S31: protocolo actualizado a la plantilla v4** (sin tocar
+> Actualizado: 2026-11-01 (S32), equipo principal. **S32: `lfs-insim` 0.9.1 publicada** (`Roster.guest` falso en un jugador, P14; `on_connect` tardío, P12), fijada en
+> `lfs-ai-control`. **▶️ SIGUIENTE aquí: W16** (comandos: comillas y `&&`, hacia la 0.10.0), **después de W21 de `lfs-ai-control`**; W14.3 (P13), sin decidir.
+> Antes, S31 (2026-10-28). **S31: protocolo actualizado a la plantilla v4** (sin tocar
 > código): `DECISIONS.md` (D1–D23; D1–D6 son las de `API_DESIGN.md`), `ARCHITECTURE.md`, `factory.json` con el
 > comando de verificación, párrafo para hilos sin sesión en `CLAUDE.md` y scripts del protocolo v4. El plugin
 > `agentic-protocol@software-factory` está en `.claude/settings.json`. El siguiente paso no cambia: lo de S30.
 > Antes, S30 (2026-10-18). **S30: W14 aceptada y W14.1 hecha** (P12: un `on_connect`
-> registrado con la conexión abierta se llama al momento; un `Roster` hecho tarde ya queda listo). Sin publicar:
-> **▶️ SIGUIENTE aquí: W14.2** (0.9.1, con permiso del usuario) y decidir W14.3 (P13, `every()` tarde). Antes: **S29: U11 y U14 cerradas, W11 cerrada** (con dos cuentas
+> registrado con la conexión abierta se llama al momento; un `Roster` hecho tarde ya queda listo). Publicado en S32.
+> Antes: **S29: U11 y U14 cerradas, W11 cerrada** (con dos cuentas
 > del usuario en su servidor; nuevo `tests/live/group_p.py`; ninguna acción pendiente). **S28: W13 cerrada y `lfs-insim` 0.9.0 publicada**
 > (`Arg` para argumentos de tipo propio en los comandos, `float` finito), fijada en `lfs-ai-control`.
 > **▶️ SIGUIENTE aquí:** nada propio; se sigue en `lfs-ai-control`. Lo de S27 sigue debajo. **S27: W12 cerrada y `lfs-insim` 0.8.1 publicada:** nombres

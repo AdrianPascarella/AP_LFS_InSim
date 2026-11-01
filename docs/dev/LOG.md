@@ -1,6 +1,22 @@
 # 📓 Diario — AP_LFS_InSim (lfs_insim)
 <!-- Solo se añade, lo más nuevo arriba. Una entrada por sesión. -->
 
+## S32 — 2026-11-01 — W15: `Roster.guest` falso en un jugador; 0.9.1 publicada; W16 (comandos) aceptada
+
+**Contexto:** hecha desde la sesión S59 de `lfs-ai-control`, con el permiso de su S58 (su P26). Equipo principal.
+
+**El arreglo (P14):** invitado es `Host 0` con nombre de servidor. `FakeLFS` contesta `TINY_ISM` como en un jugador, salvo que el test ponga otra respuesta; `ready()` ya no se queda el segundo de espera.
+Rojo primero: 3 tests. **Dos tests cambiados, y por qué:** `test_ready_waits_after_a_new_host...` (su `on(IS_ISM)` ahora recibe también la respuesta a la pregunta del `Roster`, como en el juego real: `[[0]]` frente a `[[0, 3]]`; filtra por `ReqI`) y el de volver a un jugador en `test_guest.py` (contesta como el LFS real en vez de callar).
+Hipótesis refutada: que `ready()` quedara al instante con `FakeLFS`: sin jugadores tarda 0,5 s, que son de `TINY_NPL` sin respuesta, no de la pregunta de invitado.
+
+**En el LFS real** (conexión de solo lectura, con permiso del usuario; un jugador, 1 jugador en pista): `IS_ISM` `Host 0`, `''`; `guest` falso; `ready()` en 0,055 s. Invitado y host, no probados de nuevo: los paquetes son los de los informes `H_20261014_233029` (`Host 0, 'testing'`) y `H_20261015_002534` (`Host 1, 'testing'`).
+
+**Publicada:** `v0.9.1` (`cee4b02`, avance rápido de `main`), CI `verify` en verde, entorno `pypi` aprobado por la API, PyPI da 0.9.1. Lleva también W14.1 (P12), como pedía W14.2. U15 cerrada; W14.3 (`every()`, P13) queda fuera, sin decidir.
+
+**W16 (el usuario):** comillas con las reglas de Python y varios comandos en un mensaje. Comparado con las terminales: `&&` espera y para en el primer fallo; el usuario: «De momento la primera opción». `then` (esperar a que acabe la maniobra), idea del usuario: va en `lfs-ai-control`, no aquí. Orden: «Primero W21, luego comandos».
+
+**Verificación:** `verify.py` PASS (655 tests). Commits: `b272d60`, `cee4b02` y el de este cierre.
+
 ## S31 — 2026-10-28 — UPGRADE del protocolo a la plantilla v4 (brain, `factory.json`, gancho para hilos)
 
 **Contexto:** equipo principal, desde una sesión de `software-factory` (su S19), a petición del usuario. Solo
