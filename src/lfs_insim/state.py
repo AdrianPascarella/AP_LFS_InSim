@@ -114,7 +114,7 @@ class Roster(Plugin):
 
     @property
     def guest(self) -> bool:
-        """True while LFS is a guest in someone else's server (IS_ISM with Host 0).
+        """True while LFS is a guest in someone else's server (IS_ISM with Host 0 and a name).
 
         False in single player and as host. Only the host may answer one connection (IS_MTC),
         and as a guest the host is UCID 0 and this computer another UCID: see `local`.
@@ -133,9 +133,6 @@ class Roster(Plugin):
         """Wait until the roster has the whole picture of this connection: every connection and
         player, and whether LFS is a guest. At once if it has it; again after LFS changes host or
         game (IS_ISM, TINY_MPE) and after a reconnection, until LFS has answered.
-
-        In single player LFS does not answer the guest question, so the first picture takes about
-        a second.
         """
         await self._ready.wait()
 
@@ -163,7 +160,7 @@ class Roster(Plugin):
         try:
             await self._insim.request.IS_ISM(timeout=1.0)  # handled by _before
         except TimeoutError:
-            self._guest = False  # not in multiplayer: LFS does not answer
+            self._guest = False  # no answer: nothing says this is someone else's server
         except ConnectionError:
             return False  # the next connection asks again
         return True
@@ -183,7 +180,8 @@ class Roster(Plugin):
             if not connection.remote:
                 self._local = packet.UCID
         elif isinstance(packet, IS_ISM):
-            self._guest = packet.Host == ISM.GUEST
+            # In single player LFS answers TINY_ISM with Host 0 too, but with no server name.
+            self._guest = packet.Host == ISM.GUEST and bool(packet.HName)
             if not packet.ReqI:
                 self._ready.clear()  # now, not when _restarted runs: ready() must not say yes
         elif isinstance(packet, IS_TINY) and packet.SubT == TINY.MPE:

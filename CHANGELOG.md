@@ -1,11 +1,16 @@
 # Changelog
 
-## Unreleased
+## 0.9.1
 
 - Fixed: an `on_connect` function registered while connected was not called until the next
   connection, so a plugin made late never asked LFS for the state: `insim.use(Roster)` after
   connecting stayed empty and `roster.ready()` waited for good. Now it is called at once for this
   connection (and its `on_disconnect` when it ends).
+- Fixed: `Roster.guest` was true in single player. There LFS answers `TINY_ISM` with `Host` 0 and
+  no server name (it was thought not to answer), so now a guest is `Host` 0 with a name. `ready()`
+  no longer waits a second in single player.
+- `FakeLFS` answers `TINY_ISM` as the real LFS does in single player, unless the test puts its own
+  answer in `replies`.
 
 ## 0.9.0
 

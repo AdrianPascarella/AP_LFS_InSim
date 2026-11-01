@@ -383,6 +383,8 @@ def test_ready_waits_after_a_new_host_whoever_was_registered_first() -> None:
 
             @insim.on(IS_ISM)
             async def new_host(packet: IS_ISM) -> None:
+                if packet.ReqI:
+                    return  # the answer to the roster's own TINY_ISM: no new host
                 await roster.ready()
                 seen.append(sorted(roster.connections))
 

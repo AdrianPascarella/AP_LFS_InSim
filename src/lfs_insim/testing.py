@@ -20,6 +20,7 @@ It does only what InSim.txt says LFS does, and what was seen in the real game:
 - after IS_ISI with a non-zero ReqI, it sends IS_VER;
 - TINY_VER is answered with IS_VER, TINY_PING with TINY_REPLY (same ReqI);
 - other info requests (TINY_NPL...) with what the test put in `replies`, with the same ReqI;
+- TINY_ISM starts in `replies` as in single player: IS_ISM with Host 0 and no name;
 - TINY_CLOSE closes the connection;
 - with `keepalive`, it sends a blank IS_TINY (TINY_NONE) every `keepalive` seconds;
 - with `timeout`, it closes the connection when nothing arrives for that long (LFS: 70 s).
@@ -41,7 +42,7 @@ from types import TracebackType
 from typing import Any, Self, TypeVar, cast
 
 from lfs_insim._stream import PacketStream
-from lfs_insim.packets import IS_ISI, IS_TINY, IS_VER, TINY
+from lfs_insim.packets import IS_ISI, IS_ISM, IS_TINY, IS_VER, TINY
 from lfs_insim.packets._structure import InSimPacket
 
 P = TypeVar("P", bound=InSimPacket)
@@ -69,7 +70,7 @@ class FakeLFS:
         self.received: list[InSimPacket] = []
         self.connections = 0
         """How many times a program has connected."""
-        self.replies: dict[TINY, list[InSimPacket]] = {}
+        self.replies: dict[TINY, list[InSimPacket]] = {TINY.ISM: [IS_ISM(Host=0, HName="")]}
         """What an IS_TINY info request (TINY_NPL...) is answered with, with the request's ReqI."""
         self._server: asyncio.Server | None = None
         self._port = 0

@@ -96,7 +96,7 @@ def test_the_roster_knows_when_lfs_is_a_guest_and_which_connection_is_this_compu
     async def test(lfs: FakeLFS, roster: Roster) -> None:
         assert roster.guest
         assert roster.local is roster.connections[1]
-        lfs.replies[TINY.ISM] = []
+        lfs.replies[TINY.ISM] = [IS_ISM(Host=0, HName="")]
         lfs.replies[TINY.NCN] = [IS_NCN(UCID=0, PName="Me", Total=1)]
         await lfs.send(IS_TINY(SubT=TINY.MPE))  # back to single player
         await _until(lambda: not roster.guest)
@@ -118,9 +118,36 @@ def test_as_host_this_computer_is_the_host() -> None:
     roster_run(test, lfs)
 
 
+def test_in_single_player_lfs_is_not_a_guest() -> None:
+    # Seen in the real LFS (lfs-ai-control S58): TINY_ISM is answered with Host 0 and no name.
+    lfs = FakeLFS()
+    lfs.replies[TINY.ISM] = [IS_ISM(Host=0, HName="")]
+    lfs.replies[TINY.NCN] = [IS_NCN(UCID=0, PName="Me", Total=1)]
+
+    async def test(lfs: FakeLFS, roster: Roster) -> None:
+        assert not roster.guest
+        assert roster.local is roster.connections[0]
+
+    roster_run(test, lfs)
+
+
+def test_the_fake_lfs_answers_tiny_ism_as_in_single_player() -> None:
+    async def test(lfs: FakeLFS, roster: Roster) -> None:
+        answer = lfs.replies[TINY.ISM][0]
+        assert isinstance(answer, IS_ISM)
+        assert (answer.Host, answer.HName) == (0, "")
+        assert not roster.guest
+        async with asyncio.timeout(0.7):  # LFS answers: no waiting for the 1 s timeout
+            await roster.ready()
+
+    lfs = FakeLFS()
+    lfs.replies[TINY.NCN] = [IS_NCN(UCID=0, PName="Me", Total=1)]
+    roster_run(test, lfs)
+
+
 def test_joining_a_server_makes_lfs_a_guest() -> None:
     async def test(lfs: FakeLFS, roster: Roster) -> None:
-        assert not roster.guest  # single player: LFS does not answer TINY_ISM
+        assert not roster.guest  # single player: Host 0 and no name
         as_guest(lfs)
         await lfs.send(IS_ISM(Host=0, HName="testing"))  # LFS sends it on joining
         await _until(lambda: roster.guest and roster.local is roster.connections.get(1))
