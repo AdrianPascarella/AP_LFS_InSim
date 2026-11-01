@@ -25,7 +25,7 @@ def joined(packet: received.IS_NPL) -> None:
   `connection`). An AI belongs to the connection that added it.
 - On every connection and reconnection it asks LFS for everyone, so it starts complete. In an
   `on_connect` function LFS may not have answered yet: `await roster.ready()` waits for the whole
-  picture (about a second in single player, where LFS does not answer whether it is a guest).
+  picture.
 - It is already up to date in your handlers: when someone arrives it is updated before them, and
   when someone leaves (`IS_PLL`, `IS_CNL`) after them, so you can still look up who is leaving.
 - `roster.guest` is `True` while your LFS is a guest in someone else's server, and
