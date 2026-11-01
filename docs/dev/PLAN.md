@@ -556,6 +556,14 @@ colgaba. Allí se rodea creando el `Roster` antes de conectar; nada lo pide con 
 **Acepta:** `await insim.use(Roster).ready()` con la conexión ya abierta termina con la foto completa,
 o falla con un mensaje que dice qué hacer.
 
+## W15 — `Roster.guest` verdadero en un jugador   ▶️ ABIERTA · pedida desde `lfs-ai-control` S58
+**El defecto:** `Roster._before` hace `_guest = packet.Host == ISM.GUEST`, y `_ask_multiplayer` supone que en un jugador LFS no contesta a `TINY_ISM`.
+Medido en `lfs-ai-control` S58, LFS real en un jugador: contesta `IS_ISM` con `Host 0` y `HName` vacío (una conexión, UCID 0). `guest` queda verdadero, cuando
+su documentación dice «False in single player». Allí bloquea repetir una toma (su P26); se probó corrigiéndolo en memoria, sin parchear. `FakeLFS` calla, por eso no salió.
+- [ ] **W15.1** — Invitado es `Host 0` con nombre de servidor; `FakeLFS` contesta como el LFS real; tests primero
+- [ ] **W15.2** — Publicar como 0.9.1, junto con W14.2 (con permiso), y fijarla en `lfs-ai-control` (su W21.6)
+**Acepta:** en el LFS real, `guest` es falso en un jugador y como host, y verdadero en un servidor ajeno.
+
 ## Ideas (aparcadas, sin compromiso)
 - **Ayudante de botones** (de escribir `examples/buttons.py`, S12): hay que repartir los `ClickID` a
   mano, guardar el estado en globales y reenviar el botón entero para cambiar su texto. Llevadero
