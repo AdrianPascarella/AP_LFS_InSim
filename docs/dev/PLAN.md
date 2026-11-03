@@ -574,6 +574,7 @@ su documentación dice «False in single player». Allí bloquea repetir una tom
 **Descartado:** repetir el prefijo como separador (`!ai add !ai wander`, gasta espacio de 128 bytes y se confunde con un texto) y `;` (si falla `add`, `wander` se lo lleva la IA anterior).
 
 ## Ideas (aparcadas, sin compromiso)
+- **(pedida desde `lfs-ai-control` S67, su P41 y D48) La documentación de `AIFLAGS.IGNITION`:** dice «detect if engine running», y medido en LFS es el interruptor: a un motor calado le sigue activo a 0 RPM, y `TOGGLE.ON` no lo arranca (hay que `OFF` y `ON`, con la transmisión libre). Medido con una IA y el SLX180; lo medido, en `.factory/jobs/20261103-restart-a-stalled-engine/measure/` de ese repositorio. Si la frase viene de InSim.txt, es de Scawen: decirlo, sin elegir en silencio. Añadirlo a la nota del enum; quizá también al método de `CS.IGNITION`.
 - **Ayudante de botones** (de escribir `examples/buttons.py`, S12): hay que repartir los `ClickID` a
   mano, guardar el estado en globales y reenviar el botón entero para cambiar su texto. Llevadero
   en un ejemplo; se diseña cuando la aplicación de botones o la de IA lo pida (decidido en S12).
