@@ -13,16 +13,22 @@ Verifies what the protocol otherwise only promises:
      missing its steps or its fields — a card the user cannot act on is not a card.
   8. the session number the handoff cites matches the log's actual last entry — not a stale
      number left over from before this close, not an invented one the log does not know yet.
+  9. no process and no subagent of this session is still open (open_work.py, next to this file).
 
 Run it as the last step of every session close and paste its output.
 Exit code 0 = green, 1 = at least one FAIL. Warnings never fail the run.
 
     python scripts/close_check.py
     python scripts/close_check.py --state ESTADO_ACTUAL.md --actions ACCIONES_USUARIO.md --log DIARIO.md
+    python scripts/close_check.py --ignore 1234 --ignore "npm run dev"   # left running on purpose
 
 File names default to the canonical English ones; pass them explicitly if the project
 translated them. Stdlib only. Python 3.8+. Works on Windows, macOS and Linux.
 """
+
+# close-check-version: 2
+# protocol_updates.py compares this number with the project's copy: raise it when a change to this
+# script or to open_work.py has to reach the projects that already copied them.
 
 from __future__ import annotations
 
@@ -307,7 +313,22 @@ def check_sessions(state: Path, log: Path) -> None:
         report("PASS", "session numbers", f"S{latest}")
 
 
-def main() -> int:
+def check_open_work(ignore: "list[str]", delegated: bool = False) -> None:
+    """What the session left running. Separate file: this one is near the size the repo allows."""
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import open_work
+    except ImportError:
+        report(
+            "WARN",
+            "nothing left open",
+            "did not run: copy open_work.py next to this script (agentic-protocol, UPGRADE)",
+        )
+        return
+    open_work.check(report, Path.cwd(), ignore=ignore, delegated=delegated)
+
+
+def main(argv: "list[str] | None" = None) -> int:
     parser = argparse.ArgumentParser(
         description="Close-of-session check (Agentic Work Protocol)."
     )
@@ -333,7 +354,19 @@ def main() -> int:
         help="warn above this many pending actions",
     )
     parser.add_argument("--skip-git", action="store_true")
-    args = parser.parse_args()
+    parser.add_argument(
+        "--ignore",
+        action="append",
+        default=[],
+        metavar="PID_OR_TEXT",
+        help="a process (PID or part of its command line) or subagent (id) left open on purpose",
+    )
+    parser.add_argument(
+        "--delegated",
+        action="store_true",
+        help="a subagent is closing the session: one open subagent is taken to be it, and the output says so",
+    )
+    args = parser.parse_args(argv)
 
     print("Close check - Agentic Work Protocol")
     print("-" * 60)
@@ -344,6 +377,7 @@ def main() -> int:
     pending = check_actions(ctx / args.actions, args.max_pending)
     check_state(ctx / args.state, args.cap, args.actions, pending)
     check_sessions(ctx / args.state, ctx / args.log)
+    check_open_work(args.ignore, delegated=args.delegated)
 
     print("-" * 60)
     if failures:

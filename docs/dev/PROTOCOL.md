@@ -303,8 +303,9 @@ una mejora de la plantilla solo llega si alguien se acuerda de reinstalar.*
    *Por qué: un problema encontrado y no archivado se encuentra dos veces. Y atar la actualización de
    la Configuración al cierre de fase es el único disparador lo bastante preciso para que no se
    olvide.*
-5. Ejecutar `python scripts/close_check.py --context-dir docs/dev` y **pegar su salida**. Si falla, se
-   corrige: nunca se informa de un cierre con el control en rojo.
+5. Ejecutar `python scripts/close_check.py --context-dir docs/dev` y **pegar su salida**. Comprueba también que no quede abierto ningún proceso ni subagente de la
+   sesión (lo que nombre, se para; lo que se deja corriendo a propósito va con `--ignore` y se dice).
+   Si falla, se corrige: nunca se informa de un cierre con el control en rojo.
 6. Commit y push a `dev`. Nunca terminar con trabajo sin subir.
 7. **Terminar el informe con lo que queda en manos del usuario**: las tarjetas pendientes, en el
    orden recomendado.

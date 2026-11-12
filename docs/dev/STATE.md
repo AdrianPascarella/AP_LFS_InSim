@@ -1,6 +1,6 @@
 # 📍 Estado — AP_LFS_InSim (lfs_insim)
 > Actualizado: 2026-11-12 (S33), equipo principal. **S33:** sin cambios aquí; desde esta sesión se creó el proyecto aparte
-> `lfs-setup-optimizer` (usará `lfs-insim` 0.9.1). Pendiente ofrecido: UPGRADE de `close_check.py` (LOG S33).
+> `lfs-setup-optimizer` (usará `lfs-insim` 0.9.1). `close_check.py` y `open_work.py` actualizados desde el plugin (LOG S33).
 > Antes, S32 (2026-11-01). **S32: `lfs-insim` 0.9.1 publicada** (`Roster.guest` falso en un jugador, P14; `on_connect` tardío, P12), fijada en
 > `lfs-ai-control`. **▶️ SIGUIENTE aquí: W16** (comandos: comillas y `&&`, hacia la 0.10.0), **después de W21 de `lfs-ai-control`**; W14.3 (P13), sin decidir.
 > Antes, S31 (2026-10-28). **S31: protocolo actualizado a la plantilla v4** (sin tocar

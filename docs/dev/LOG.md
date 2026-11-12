@@ -7,7 +7,7 @@
 
 **Hecho (en el otro repositorio):** `AdrianPascarella/lfs-setup-optimizer` (privado, `C:\Users\pasca\proyectos\lfs-setup-optimizer`), con el protocolo de contexto v4, la fábrica (`autonomy: merge`, `route_paths: src/**`) y el paquete vacío con `verify.py` en verde; su S1 tiene el detalle. Usará `lfs-insim==0.9.1`: lo que le falte o falle se apunta como tarea en este `PLAN.md` (su §15).
 
-**Aviso del gancho, sin hacer:** `scripts/close_check.py` de este repositorio es más viejo que el del plugin `agentic-protocol` 4.2.0 (el nuevo también falla si queda abierto un proceso o un subagente de la sesión). Se arregla con el skill en modo UPGRADE (copiar `close_check.py` y `open_work.py`); ofrecido al usuario.
+**UPGRADE del control de cierre (aviso del gancho):** `scripts/close_check.py` era más viejo que el del plugin `agentic-protocol` 4.2.0. Con el «Sí, ahora» del usuario, copiados `close_check.py` y `open_work.py` (nuevo) del plugin; §4 paso 5 de `PROTOCOL.md` dice ahora que también comprueba que no quede abierto ningún proceso ni subagente de la sesión. La plantilla sigue en v4: nada más que cambiar.
 
 **Verificación:** sin cambios de código aquí; `verify` no se ejecutó.
 
