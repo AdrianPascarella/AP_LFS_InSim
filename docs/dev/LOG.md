@@ -1,6 +1,16 @@
 # 📓 Diario — AP_LFS_InSim (lfs_insim)
 <!-- Solo se añade, lo más nuevo arriba. Una entrada por sesión. -->
 
+## S33 — 2026-11-12 — Proyecto nuevo `lfs-setup-optimizer`, lanzado desde aquí
+
+**Contexto:** equipo principal. El usuario empezó desde esta sesión un proyecto aparte: «un creador de set ups óptimos, quiero que funcione con la fábrica». Aquí no se tocó código ni documentación de la biblioteca.
+
+**Hecho (en el otro repositorio):** `AdrianPascarella/lfs-setup-optimizer` (privado, `C:\Users\pasca\proyectos\lfs-setup-optimizer`), con el protocolo de contexto v4, la fábrica (`autonomy: merge`, `route_paths: src/**`) y el paquete vacío con `verify.py` en verde; su S1 tiene el detalle. Usará `lfs-insim==0.9.1`: lo que le falte o falle se apunta como tarea en este `PLAN.md` (su §15).
+
+**Aviso del gancho, sin hacer:** `scripts/close_check.py` de este repositorio es más viejo que el del plugin `agentic-protocol` 4.2.0 (el nuevo también falla si queda abierto un proceso o un subagente de la sesión). Se arregla con el skill en modo UPGRADE (copiar `close_check.py` y `open_work.py`); ofrecido al usuario.
+
+**Verificación:** sin cambios de código aquí; `verify` no se ejecutó.
+
 ## S32 — 2026-11-01 — W15: `Roster.guest` falso en un jugador; 0.9.1 publicada; W16 (comandos) aceptada
 
 **Contexto:** hecha desde la sesión S59 de `lfs-ai-control`, con el permiso de su S58 (su P26). Equipo principal.
