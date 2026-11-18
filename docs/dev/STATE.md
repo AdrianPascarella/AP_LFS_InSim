@@ -104,6 +104,7 @@ seguidas podían salir iguales. Los tests miden ahora con `time.perf_counter()` 
 vuelve a fallar en el CI, reabrir con el log delante.
 
 ## Restricciones ahora mismo
+- **Repositorios hermanos (S101 de lfs-ai-control, el usuario: «quiero que todos sean hermanos porque como todos trabajan con LFS así será más cómodo el tema de compartir los descubrimientos»):** `ai-control` = `../lfs-ai-control`, `setups` = `../lfs-setup-optimizer`, `streamer` = `../streamer-project`, `web` = `../simracerap-web`, `camera` = `../lfs-free-camera`; declarados en `siblings` de `factory.json`, se entra con `siblings.py enter <nombre>` (plugin agentic-protocol, §17). En cada equipo, todos en la misma carpeta madre; sus rutas absolutas, en `.claude/settings.local.json` (`siblings.py allow --local`).
 - En este equipo solo hay Python 3.14. Las demás versiones las comprueba el CI.
 - El `python` de la terminal es el de streamer-project: aquí siempre `.venv/Scripts/python` (§13).
 - `ruff format` y `ruff check --fix` solo sobre las rutas de `CHECKED_PATHS`, nunca sobre `scripts`
