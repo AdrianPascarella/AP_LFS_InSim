@@ -37,8 +37,8 @@ Issues = "https://github.com/AdrianPascarella/AP_LFS_InSim/issues"
 dev = ["ruff>=0.17,<0.18", "mypy", "pytest"]
 
 [tool.hatch.build.targets.sdist]
-# Working notes and agent instructions stay out of the public package.
-exclude = ["CLAUDE.md", "docs/dev", ".github", "factory.json"]
+# CI configuration stays out of the public package.
+exclude = [".github"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/lfs_insim"]

@@ -66,8 +66,7 @@ The guide is in [`docs/`](docs/README.md). Short, runnable programs are in [`exa
 
 ## Development
 
-This repository is worked on with the notes in [`docs/dev`](docs/dev) (in Spanish). To check
-everything: `python scripts/verify.py`.
+To check everything: `python scripts/verify.py`.
 
 ## License
 

@@ -7,7 +7,7 @@ writes it wrongly. Every packet the test sends is packed and read back the same 
 A group script (group_a.py...) opens a `Session`, sets up a situation (LFS commands by InSim, keys
 and clicks with tests/lfs_screen.ps1), waits for what LFS must send (`expect`) and records checks.
 `finish()` writes a JSON report to tests/live_reports/ (ignored by git: it holds player names) and
-prints a summary: the checks, what was seen in each direction (for docs/dev/COVERAGE.md) and any
+prints a summary: the checks, what was seen in each direction (for tests/live/COVERAGE.md) and any
 packet read or written wrongly.
 """
 
