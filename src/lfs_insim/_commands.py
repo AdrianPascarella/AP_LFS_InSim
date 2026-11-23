@@ -10,6 +10,9 @@ unless insim.use(Commands, guest_commands="everyone"); admin commands are only f
 computer; and replies go to this computer as IS_MSL, and to anyone else in the public chat (a
 guest cannot send IS_MTC).
 
+While a replay is loaded, what is typed on this computer comes as a SYSTEM message: it runs as
+this computer's if it starts with one of the commands (see _typed_here).
+
 A command or a group may have a prefix of its own (`on_command("who", prefix=".")`); LFS hides
 only the messages with the prefix of IS_ISI, so as host the others are seen by everyone.
 
@@ -33,6 +36,7 @@ from typing import TYPE_CHECKING, Annotated, Any, Literal, get_args
 
 from lfs_insim._handlers import Handlers
 from lfs_insim._plugins import Plugin
+from lfs_insim._typed_here import ReplayLines, typed_in_replay
 from lfs_insim.packets import IS_MSO, MSO
 from lfs_insim.state import Roster
 
@@ -103,7 +107,8 @@ class Command:
     plid: int
     """Its player, if it typed it while driving (0 if not)."""
     local: bool
-    """Typed on this computer (UCID 0, or this computer's UCID when LFS is a guest)."""
+    """Typed on this computer: UCID 0, or this computer's UCID when LFS is a guest; with "/o"
+    (MSO.O); or during a replay (a SYSTEM message from UCID 0 with the bare text)."""
     packet: IS_MSO
     """The IS_MSO it came in."""
     _reply: Callable[[str], None] = field(repr=False, compare=False)
@@ -267,6 +272,7 @@ class Commands(Plugin):
         # by prefix, then by name: "!who" and ".who" are two commands
         self._by_name: dict[str, dict[str, _Entry]] = {}
         self._groups: dict[str, dict[str, _Group]] = {}
+        self._replay_lines = ReplayLines()
         insim.on(IS_MSO)(self._handle)
 
     def on_command(
@@ -368,7 +374,10 @@ class Commands(Plugin):
         self._groups.setdefault(prefix, {})[key] = group
         return CommandGroup(self, group)
 
-    def _is_local(self, ucid: int) -> bool:
+    def _is_local(self, packet: IS_MSO) -> bool:
+        if packet.UserType == MSO.O:
+            return True  # only this computer's own "/o" text comes as MSO.O, whatever the UCID
+        ucid = packet.UCID
         local = self._roster.local
         if local is None:  # not known yet: UCID 0 is this computer unless LFS is a guest
             return ucid == 0 and not self._roster.guest
@@ -385,8 +394,9 @@ class Commands(Plugin):
     def _handle(self, packet: IS_MSO) -> None:
         """Run the command in this message, if it is one of ours; otherwise do nothing."""
         handlers, say = self._insim._handlers, self._insim.say
-        if packet.UserType == MSO.SYSTEM:
-            return
+        in_replay = typed_in_replay(packet, bool(self._roster.guest))
+        if packet.UserType == MSO.SYSTEM and not in_replay:
+            return  # LFS's notices
         text = packet.text
         prefix = text[:1]
         by_name, groups = self._by_name.get(prefix, {}), self._groups.get(prefix, {})
@@ -396,7 +406,7 @@ class Commands(Plugin):
         if not words:
             return
         guest = bool(self._roster.guest)
-        local = self._is_local(packet.UCID)
+        local = in_replay or self._is_local(packet)
         if guest and not local and self.guest_commands == "local":
             return  # someone else's server: not for them, and they get no answer
         key = words[0].lower()
@@ -415,6 +425,11 @@ class Commands(Plugin):
             else:
                 name, args = entry.name, tuple(words[2:])
                 admin, allow = group.admin or entry.admin, group.allow + entry.allow
+        line = " ".join([prefix + key, *words[1:]])
+        if in_replay:
+            self._replay_lines.ran(line)
+        elif self._replay_lines.is_copy(packet, line):
+            return  # already run from the SYSTEM form
         reply: Callable[[str], None]
         if not guest:
             reply = functools.partial(say, to=packet.UCID)

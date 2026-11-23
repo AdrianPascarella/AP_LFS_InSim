@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.9.2
+
+- Fixed: chat commands typed while watching a replay never ran. There LFS sends what is typed on
+  this computer only as a system message (`MSO.SYSTEM`, UCID 0, `TextStart` 0, the bare text);
+  now `Commands` runs it as this computer (`command.local`, answered with `IS_MSL`) when it starts
+  with one of its commands. If LFS later sends the same line in the usual form, within a minute,
+  it is not run again. Other system messages are still never commands, and as a guest none is.
+- Fixed: as a guest, `/o !cmd` (`MSO.O`) with UCID 0 was dropped while this computer's
+  connection was not known yet. `MSO.O` is only ever this computer's own text, so it is local
+  whatever its UCID.
+
 ## 0.9.1
 
 - Fixed: an `on_connect` function registered while connected was not called until the next

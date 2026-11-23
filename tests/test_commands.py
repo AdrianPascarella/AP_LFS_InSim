@@ -114,7 +114,7 @@ def test_what_is_not_a_known_command_is_left_alone(caplog: pytest.LogCaptureFixt
             typed("hello", user_type=MSO.USER),  # no prefix
             typed("?hello", user_type=MSO.USER),  # another program's prefix
             typed("!", user_type=MSO.PREFIX),  # only the prefix
-            IS_MSO(UserType=MSO.SYSTEM, Msg="!hello"),  # LFS's own message
+            IS_MSO(UserType=MSO.SYSTEM, Msg="Bob : hello"),  # LFS's own message
             typed("!hello"),
         )
         await _until(lambda: len(messages) == 6)

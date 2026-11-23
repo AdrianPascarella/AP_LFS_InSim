@@ -164,6 +164,12 @@ admin_tools = commands.command_group("adm", prefix="#", admin=True)  # #adm kick
 As host, LFS hides from the others only the messages that start with the `InSim`'s prefix: a
 command with another one is seen by everyone.
 
+**While watching a replay**, LFS sends what you type as a system message (`MSO.SYSTEM`, UCID 0,
+the bare text). `Commands` runs it as typed on this computer if it starts with one of your
+commands; any other system message is left alone. If LFS later sends the same line again in the
+usual form (within a minute), it does not run twice. Chat recorded in the replay keeps the
+connection that typed it: it is not this computer.
+
 **As a guest in someone else's server.** When your LFS has joined a server that is not yours,
 your program still gets the chat, but it is not the host, so things change:
 
@@ -171,7 +177,8 @@ your program still gets the chat, but it is not the host, so things change:
   `insim.use(Commands, guest_commands="everyone")` lets everyone in, and `allow` still applies.
 - `admin=True` means this computer only: the server's admins are not yours.
 - Commands are not hidden: everyone in the server sees `!speed 80`. To keep one to yourself,
-  type `/o !speed 80`: only your InSim sees it.
+  type `/o !speed 80`: only your InSim sees it, and it counts as this computer even before the
+  roster knows which connection that is.
 - `command.reply()` shows the answer only to you (`IS_MSL`). Someone else is answered in the
   public chat, because a guest cannot write to just one connection.
 
