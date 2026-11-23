@@ -10,6 +10,9 @@
 - Fixed: as a guest, `/o !cmd` (`MSO.O`) with UCID 0 was dropped while this computer's
   connection was not known yet. `MSO.O` is only ever this computer's own text, so it is local
   whatever its UCID.
+- Known limit: chat recorded in a replay (`MSO.USER` from its own UCID) is never this computer
+  nor an admin, but a command in it that anyone may use still runs, as in 0.9.1: LFS does not
+  say whether a multiplayer replay is loaded (`ISS_REPLAY` marks single player replays only).
 
 ## 0.9.1
 
